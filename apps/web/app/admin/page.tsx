@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback as _useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { unwrapApiResponseData } from '@/lib/api-fetch';
 import { UserGroupsManagement } from '@/components/admin/user-groups-management';
 import SSOConfigManager from '@/components/admin/SSOConfigManager';
@@ -132,6 +133,8 @@ interface AccuracyData {
 }
 
 function AIAccuracyDashboard() {
+  const t = useTranslations('admin');
+  const tCommon = useTranslations('common');
   const [data, setData] = useState<AccuracyData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -165,7 +168,7 @@ function AIAccuracyDashboard() {
       <Card className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm border-white/50 dark:border-slate-700 shadow-lg">
         <CardContent className="p-12 text-center">
           <BarChart3 className="h-12 w-12 mx-auto text-gray-400 dark:text-slate-500 mb-4" />
-          <p className="text-gray-500 dark:text-slate-400">No extraction data yet. Accuracy tracking begins when users provide feedback on extracted fields.</p>
+          <p className="text-gray-500 dark:text-slate-400">{t('aiAccuracy.noDataYet')}</p>
         </CardContent>
       </Card>
     );
@@ -182,7 +185,7 @@ function AIAccuracyDashboard() {
                 <BarChart3 className="h-6 w-6 text-violet-600 dark:text-violet-400" />
               </div>
               <div>
-                <p className="text-sm text-gray-500 dark:text-slate-400">Overall Accuracy</p>
+                <p className="text-sm text-gray-500 dark:text-slate-400">{t('aiAccuracy.overallAccuracy')}</p>
                 <p className="text-2xl font-bold text-gray-900 dark:text-white">
                   {data.overview.overallAccuracy ?? '--'}%
                 </p>
@@ -198,7 +201,7 @@ function AIAccuracyDashboard() {
                 <Check className="h-6 w-6 text-violet-600 dark:text-violet-400" />
               </div>
               <div>
-                <p className="text-sm text-gray-500 dark:text-slate-400">Correct Extractions</p>
+                <p className="text-sm text-gray-500 dark:text-slate-400">{t('aiAccuracy.correctExtractions')}</p>
                 <p className="text-2xl font-bold text-gray-900 dark:text-white">
                   {data.overview.correctExtractions}
                 </p>
@@ -214,7 +217,7 @@ function AIAccuracyDashboard() {
                 <Edit2 className="h-6 w-6 text-amber-600 dark:text-amber-400" />
               </div>
               <div>
-                <p className="text-sm text-gray-500 dark:text-slate-400">Corrections Made</p>
+                <p className="text-sm text-gray-500 dark:text-slate-400">{t('aiAccuracy.correctionsMade')}</p>
                 <p className="text-2xl font-bold text-gray-900 dark:text-white">
                   {data.overview.corrections}
                 </p>
@@ -230,7 +233,7 @@ function AIAccuracyDashboard() {
                 <FileText className="h-6 w-6 text-violet-600 dark:text-violet-400" />
               </div>
               <div>
-                <p className="text-sm text-gray-500 dark:text-slate-400">Total Feedback</p>
+                <p className="text-sm text-gray-500 dark:text-slate-400">{t('aiAccuracy.totalFeedback')}</p>
                 <p className="text-2xl font-bold text-gray-900 dark:text-white">
                   {data.overview.totalFeedback}
                 </p>
@@ -245,10 +248,10 @@ function AIAccuracyDashboard() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Zap className="h-5 w-5 text-violet-500 dark:text-violet-400" />
-            Field Accuracy
+            {t('aiAccuracy.fieldAccuracyTitle')}
           </CardTitle>
           <CardDescription>
-            Accuracy by extracted field - lowest accuracy fields shown first
+            {t('aiAccuracy.fieldAccuracyDescription')}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -286,13 +289,13 @@ function AIAccuracyDashboard() {
                     <TableCell>{field.sampleSize} samples</TableCell>
                     <TableCell>
                       {field.accuracy >= 90 ? (
-                        <Badge className="bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300">Excellent</Badge>
+                        <Badge className="bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300">{t('aiAccuracy.quality.excellent')}</Badge>
                       ) : field.accuracy >= 70 ? (
-                        <Badge className="bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300">Good</Badge>
+                        <Badge className="bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300">{t('aiAccuracy.quality.good')}</Badge>
                       ) : field.accuracy >= 50 ? (
-                        <Badge className="bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300">Needs Improvement</Badge>
+                        <Badge className="bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300">{t('aiAccuracy.quality.needsImprovement')}</Badge>
                       ) : (
-                        <Badge className="bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300">Poor</Badge>
+                        <Badge className="bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300">{t('aiAccuracy.quality.poor')}</Badge>
                       )}
                     </TableCell>
                   </TableRow>
@@ -300,7 +303,7 @@ function AIAccuracyDashboard() {
               </TableBody>
             </Table>
           ) : (
-            <p className="text-gray-500 dark:text-slate-400 text-center py-8">No field-level data yet</p>
+            <p className="text-gray-500 dark:text-slate-400 text-center py-8">{t('aiAccuracy.noFieldData')}</p>
           )}
         </CardContent>
       </Card>
@@ -311,7 +314,7 @@ function AIAccuracyDashboard() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <AlertCircle className="h-5 w-5 text-violet-600 dark:text-violet-400" />
-              AI Recommendations
+              {t('aiAccuracy.recommendationsTitle')}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -331,6 +334,9 @@ function AIAccuracyDashboard() {
 }
 
 export default function TenantAdminPage() {
+  const t = useTranslations('admin');
+  const tCommon = useTranslations('common');
+  const tNav = useTranslations('navigation');
   const { data: session } = useSession();
   const confirm = useConfirm();
   const [activeTab, setActiveTab] = useState("team");
@@ -577,17 +583,17 @@ export default function TenantAdminPage() {
             </motion.div>
             <div>
               <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 dark:from-slate-200 dark:to-slate-400 bg-clip-text text-transparent">
-                Organization Settings
+                {t('title')}
               </h1>
               <p className="text-slate-500 dark:text-slate-400 mt-1">
-                Manage your organization, team members, and settings
+                {t('subtitle')}
               </p>
             </div>
           </div>
           <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
             <Button onClick={loadData} variant="outline" size="sm" className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm shadow-sm">
               <RefreshCw className="h-4 w-4 mr-2" />
-              Refresh
+              {tCommon('refresh')}
             </Button>
           </motion.div>
         </motion.div>
@@ -617,10 +623,10 @@ export default function TenantAdminPage() {
           className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8"
         >
           {[
-            { label: 'Team Members', value: tenantInfo?._count?.users || 0, icon: Users, gradient: 'from-violet-500 to-purple-500' },
-            { label: 'Contracts', value: tenantInfo?._count?.contracts || 0, icon: FileText, gradient: 'from-violet-500 to-violet-500' },
-            { label: 'Storage Used', value: formatBytes(tenantInfo?.usage?.storageUsed || 0), icon: BarChart3, gradient: 'from-amber-500 to-orange-500' },
-            { label: 'Plan', value: tenantInfo?.subscription?.plan?.toLowerCase() || 'Free', icon: Crown, gradient: 'from-violet-500 to-pink-500', capitalize: true },
+            { label: t('stats.teamMembers'), value: tenantInfo?._count?.users || 0, icon: Users, gradient: 'from-violet-500 to-purple-500' },
+            { label: t('stats.contracts'), value: tenantInfo?._count?.contracts || 0, icon: FileText, gradient: 'from-violet-500 to-violet-500' },
+            { label: t('stats.storageUsed'), value: formatBytes(tenantInfo?.usage?.storageUsed || 0), icon: BarChart3, gradient: 'from-amber-500 to-orange-500' },
+            { label: t('stats.plan'), value: tenantInfo?.subscription?.plan?.toLowerCase() || 'Free', icon: Crown, gradient: 'from-violet-500 to-pink-500', capitalize: true },
           ].map((stat, i) => {
             const StatIcon = stat.icon;
             return (
@@ -659,11 +665,11 @@ export default function TenantAdminPage() {
             <TabsList className="mb-6 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm p-1 shadow-sm">
               <TabsTrigger value="team" className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-500 data-[state=active]:to-purple-500 data-[state=active]:text-white">
                 <Users className="h-4 w-4" />
-                Team
+                {t('tabs.team')}
               </TabsTrigger>
               <TabsTrigger value="invitations" className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-500 data-[state=active]:to-purple-500 data-[state=active]:text-white">
                 <Mail className="h-4 w-4" />
-                Invitations
+                {t('tabs.invitations')}
                 {invitations.filter(i => i.status === "PENDING").length > 0 && (
                   <Badge variant="secondary" className="ml-1 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300">
                     {invitations.filter(i => i.status === "PENDING").length}
@@ -672,19 +678,19 @@ export default function TenantAdminPage() {
               </TabsTrigger>
               <TabsTrigger value="groups" className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-500 data-[state=active]:to-purple-500 data-[state=active]:text-white">
                 <Shield className="h-4 w-4" />
-                Access Groups
+                {t('tabs.accessGroups')}
               </TabsTrigger>
               <TabsTrigger value="organization" className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-500 data-[state=active]:to-purple-500 data-[state=active]:text-white">
                 <Building2 className="h-4 w-4" />
-                Organization
+                {tNav('nav.organization.name')}
               </TabsTrigger>
               <TabsTrigger value="ai-accuracy" className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-500 data-[state=active]:to-purple-500 data-[state=active]:text-white">
                 <Zap className="h-4 w-4" />
-                AI Accuracy
+                {t('tabs.aiAccuracy')}
               </TabsTrigger>
               <TabsTrigger value="sso" className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-500 data-[state=active]:to-purple-500 data-[state=active]:text-white">
                 <Key className="h-4 w-4" />
-                SSO
+                {tNav('nav.sso.name')}
               </TabsTrigger>
             </TabsList>
 
@@ -693,14 +699,14 @@ export default function TenantAdminPage() {
               <Card className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm border-white/50 dark:border-slate-700 shadow-lg">
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
-                <CardTitle>Team Members</CardTitle>
-                <CardDescription>Manage your team and their permissions</CardDescription>
+                <CardTitle>{t('sections.teamMembersTitle')}</CardTitle>
+                <CardDescription>{t('sections.teamMembersDescription')}</CardDescription>
               </div>
               <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
                 <DialogTrigger asChild>
                   <Button>
                     <UserPlus className="h-4 w-4 mr-2" />
-                    Invite Member
+                    {t('inviteMember')}
                   </Button>
                 </DialogTrigger>
                 <DialogContent>
@@ -774,12 +780,12 @@ export default function TenantAdminPage() {
                   </div>
                   <DialogFooter>
                     <Button variant="outline" onClick={() => setInviteDialogOpen(false)}>
-                      Cancel
+                      {tCommon('cancel')}
                     </Button>
                     <Button onClick={handleInvite} disabled={inviting || !inviteEmail}>
                       {inviting
-                        ? (onboardingMode === 'setup' ? "Creating..." : "Sending...")
-                        : (onboardingMode === 'setup' ? "Create Account" : "Send Invitation")}
+                        ? (onboardingMode === 'setup' ? t('creatingAccount') : t('sendingInvitation'))
+                        : (onboardingMode === 'setup' ? t('createAccount') : t('sendInvitation'))}
                     </Button>
                   </DialogFooter>
                 </DialogContent>
@@ -841,7 +847,7 @@ export default function TenantAdminPage() {
                         ) : (
                           <Badge variant={getRoleBadgeVariant(member.role)}>
                             {member.role === "owner" && <Crown className="h-3 w-3 mr-1" />}
-                            {member.role}
+                            {['owner', 'admin', 'member', 'viewer'].includes(member.role) ? t(`roles.${member.role}`) : member.role}
                           </Badge>
                         )}
                       </TableCell>
@@ -889,14 +895,14 @@ export default function TenantAdminPage() {
             <TabsContent value="invitations">
               <Card className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm border-white/50 dark:border-slate-700 shadow-lg">
             <CardHeader>
-              <CardTitle>Pending Invitations</CardTitle>
-              <CardDescription>Track and manage pending team invitations</CardDescription>
+              <CardTitle>{t('sections.pendingInvitationsTitle')}</CardTitle>
+              <CardDescription>{t('sections.pendingInvitationsDescription')}</CardDescription>
             </CardHeader>
             <CardContent>
               {invitations.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   <Mail className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>No pending invitations</p>
+                  <p>{t('noPendingInvitations')}</p>
                 </div>
               ) : (
                 <Table>
@@ -971,8 +977,8 @@ export default function TenantAdminPage() {
               <div className="grid gap-6">
                 <Card className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm border-white/50 dark:border-slate-700 shadow-lg">
               <CardHeader>
-                <CardTitle>Organization Details</CardTitle>
-                <CardDescription>Update your organization information</CardDescription>
+                <CardTitle>{t('sections.organizationDetailsTitle')}</CardTitle>
+                <CardDescription>{t('sections.organizationDetailsDescription')}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
@@ -984,11 +990,11 @@ export default function TenantAdminPage() {
                       onChange={(e) => setOrgName(e.target.value)}
                       placeholder="Organization name"
                     />
-                    <Button 
-                      onClick={handleSaveOrganization} 
+                    <Button
+                      onClick={handleSaveOrganization}
                       disabled={savingOrg || orgName === tenantInfo?.name}
                     >
-                      {savingOrg ? "Saving..." : "Save"}
+                      {savingOrg ? t('saving') : tCommon('save')}
                     </Button>
                   </div>
                 </div>
@@ -1011,8 +1017,8 @@ export default function TenantAdminPage() {
 
             <Card className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm border-white/50 dark:border-slate-700 shadow-lg">
               <CardHeader>
-                <CardTitle>Subscription</CardTitle>
-                <CardDescription>Your current plan and usage</CardDescription>
+                <CardTitle>{t('sections.subscriptionTitle')}</CardTitle>
+                <CardDescription>{t('sections.subscriptionDescription')}</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="flex items-center justify-between p-4 bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-950 dark:to-purple-950 rounded-lg border border-indigo-100 dark:border-violet-800">
@@ -1028,7 +1034,7 @@ export default function TenantAdminPage() {
                     className="bg-gradient-to-r from-violet-500 to-purple-500 text-white hover:from-violet-600 hover:to-purple-600"
                     onClick={() => window.location.href = '/settings'}
                   >
-                    Upgrade Plan
+                    {t('upgradePlan')}
                   </Button>
                 </div>
               </CardContent>
@@ -1036,8 +1042,8 @@ export default function TenantAdminPage() {
 
             <Card className="border-destructive/50 bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm shadow-lg">
               <CardHeader>
-                <CardTitle className="text-destructive">Danger Zone</CardTitle>
-                <CardDescription>Irreversible actions - proceed with caution</CardDescription>
+                <CardTitle className="text-destructive">{t('sections.dangerZoneTitle')}</CardTitle>
+                <CardDescription>{t('sections.dangerZoneDescription')}</CardDescription>
               </CardHeader>
               <CardContent>
                 <Button
@@ -1045,10 +1051,10 @@ export default function TenantAdminPage() {
                   className="shadow-lg shadow-red-500/20"
                   disabled
                 >
-                  Deletion Unavailable In-App
+                  {t('deletionUnavailable')}
                 </Button>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  Tenant removal is intentionally disabled here because there is no matching self-service backend route.
+                  {t('tenantRemovalDisabled')}
                 </p>
               </CardContent>
             </Card>

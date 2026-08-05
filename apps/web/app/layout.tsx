@@ -3,6 +3,8 @@ import "../styles/orchestrator.css";
 import "../styles/accessibility.css";
 import { Inter } from "next/font/google";
 import { Suspense } from "react";
+import { NextIntlClientProvider } from "next-intl";
+import { getLocale, getMessages } from "next-intl/server";
 
 import { ConditionalLayout } from "@/components/layout/ConditionalLayout";
 import { DataModeProvider } from "@/contexts/DataModeContext";
@@ -60,13 +62,16 @@ export const viewport = {
 export const dynamic = 'force-dynamic';
 export const dynamicParams = true;
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const locale = await getLocale();
+  const messages = await getMessages();
+
   return (
-    <html lang="en" className={inter.variable} suppressHydrationWarning>
+    <html lang={locale} className={inter.variable} suppressHydrationWarning>
       <head>
         {/* Additional icons rendered manually to avoid Next.js metadata key prop bug */}
         <link rel="icon" href="/icons/icon-192x192.svg" sizes="192x192" type="image/svg+xml" />
@@ -74,12 +79,13 @@ export default function RootLayout({
       </head>
       <body className="min-h-screen bg-slate-50 dark:bg-slate-900 font-sans antialiased">
         {/* Skip to main content link for accessibility */}
-        <a 
-          href="#main-content" 
+        <a
+          href="#main-content"
           className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-violet-600 focus:text-white focus:rounded-lg focus:shadow-lg focus:outline-none focus:ring-2 focus:ring-violet-400 focus:ring-offset-2"
         >
           Skip to main content
         </a>
+        <NextIntlClientProvider locale={locale} messages={messages}>
         <GlobalErrorBoundary>
           <Toaster position="top-right" richColors closeButton />
           <ThemeProvider defaultTheme="system" storageKey="contigo-theme">
@@ -126,6 +132,7 @@ export default function RootLayout({
           </EnterpriseThemeProvider>
           </ThemeProvider>
         </GlobalErrorBoundary>
+        </NextIntlClientProvider>
       </body>
     </html>
   );

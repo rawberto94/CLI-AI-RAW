@@ -7,8 +7,11 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import Link from 'next/link'
 import { BulkOperations } from '@/components/contracts/BulkOperations'
+import { useTranslations } from 'next-intl'
 
 export default function BulkOperationsPage() {
+  const t = useTranslations('contracts')
+  const tCommon = useTranslations('common')
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-orange-50/30 to-amber-50/20">
       {/* Premium Hero Header */}
@@ -28,7 +31,7 @@ export default function BulkOperationsPage() {
               <Link href="/contracts">
                 <Button variant="ghost" size="sm" className="text-white/80 hover:text-white hover:bg-white/20">
                   <ArrowLeft className="w-4 h-4 mr-2" />
-                  Back
+                  {tCommon('back')}
                 </Button>
               </Link>
               <div className="h-8 w-px bg-white/20" />
@@ -36,8 +39,8 @@ export default function BulkOperationsPage() {
                 <Layers className="h-8 w-8 text-white" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-white">Bulk Operations</h1>
-                <p className="text-orange-100 mt-1">Process multiple contracts at once with AI-powered automation</p>
+                <h1 className="text-3xl font-bold text-white">{t('bulkOperationsPage.title')}</h1>
+                <p className="text-orange-100 mt-1">{t('bulkOperationsPage.subtitle')}</p>
               </div>
             </div>
             

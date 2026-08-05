@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { DashboardLayout } from '@/components/layout/AppLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import { useTranslations } from 'next-intl';
 
 interface RiskFlag {
   id: string;
@@ -42,17 +43,27 @@ interface GovernanceData {
   };
 }
 
-const SEVERITY_CONFIG: Record<string, { label: string; color: string; bg: string; icon: React.ElementType }> = {
-  critical: { label: 'Critical', color: 'text-red-700', bg: 'bg-red-50 border-red-200', icon: XCircle },
-  high: { label: 'High', color: 'text-orange-700', bg: 'bg-orange-50 border-orange-200', icon: AlertTriangle },
-  medium: { label: 'Medium', color: 'text-amber-700', bg: 'bg-amber-50 border-amber-200', icon: AlertCircle },
-  low: { label: 'Low', color: 'text-blue-700', bg: 'bg-blue-50 border-blue-200', icon: Activity },
+// Severity styling keyed by severity id; `label` resolves via intelligence.risk.severity.<id>
+const SEVERITY_META: Record<string, { color: string; bg: string; icon: React.ElementType }> = {
+  critical: { color: 'text-red-700', bg: 'bg-red-50 border-red-200', icon: XCircle },
+  high: { color: 'text-orange-700', bg: 'bg-orange-50 border-orange-200', icon: AlertTriangle },
+  medium: { color: 'text-amber-700', bg: 'bg-amber-50 border-amber-200', icon: AlertCircle },
+  low: { color: 'text-blue-700', bg: 'bg-blue-50 border-blue-200', icon: Activity },
 };
 
 export default function RiskDashboardClient() {
+  const t = useTranslations('intelligence');
+  const tCommon = useTranslations('common');
   const [severityFilter, setSeverityFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+
+  const severityConfig = useMemo(
+    () => Object.fromEntries(
+      Object.entries(SEVERITY_META).map(([key, meta]) => [key, { ...meta, label: t(`risk.severity.${key}`) }]),
+    ) as Record<string, { color: string; bg: string; icon: React.ElementType; label: string }>,
+    [t],
+  );
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['governance-risk'],
@@ -80,12 +91,13 @@ export default function RiskDashboardClient() {
   const mediumCount = flags.filter(f => f.severity === 'medium').length;
   const riskScore = stats ? Math.max(0, 100 - stats.complianceScore) : 0;
 
-  const riskLevel = riskScore > 50 ? 'High' : riskScore > 25 ? 'Medium' : 'Low';
+  const riskLevelKey = riskScore > 50 ? 'high' : riskScore > 25 ? 'medium' : 'low';
+  const riskLevel = t(`risk.level.${riskLevelKey}`);
   const riskColor = riskScore > 50 ? 'text-red-600' : riskScore > 25 ? 'text-amber-600' : 'text-green-600';
 
   if (isLoading) {
     return (
-      <DashboardLayout title="Risk Management" description="Portfolio risk analysis & mitigation">
+      <DashboardLayout title={t('risk.title')} description={t('risk.loadingSubtitle')}>
         <div className="flex items-center justify-center min-h-[60vh]">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600" />
         </div>
@@ -95,11 +107,11 @@ export default function RiskDashboardClient() {
 
   return (
     <DashboardLayout
-      title="Risk Management"
-      description="Monitor, assess, and mitigate contract portfolio risks"
+      title={t('risk.title')}
+      description={t('risk.subtitle')}
       actions={
         <Button size="sm" variant="outline" onClick={() => refetch()}>
-          <RefreshCw className="h-4 w-4 mr-2" /> Refresh
+          <RefreshCw className="h-4 w-4 mr-2" /> {tCommon('refresh')}
         </Button>
       }
     >
@@ -111,9 +123,9 @@ export default function RiskDashboardClient() {
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">Overall Risk Score</p>
+                    <p className="text-sm text-muted-foreground">{t('risk.stats.overallRiskScore')}</p>
                     <p className={cn('text-3xl font-bold', riskColor)}>{riskScore}</p>
-                    <p className={cn('text-xs font-medium', riskColor)}>{riskLevel} Risk</p>
+                    <p className={cn('text-xs font-medium', riskColor)}>{t('risk.riskLevel', { level: riskLevel })}</p>
                   </div>
                   <div className={cn('p-3 rounded-full', riskScore > 50 ? 'bg-red-100' : riskScore > 25 ? 'bg-amber-100' : 'bg-green-100')}>
                     <Shield className={cn('h-6 w-6', riskColor)} />
@@ -128,9 +140,9 @@ export default function RiskDashboardClient() {
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">Critical Issues</p>
+                    <p className="text-sm text-muted-foreground">{t('risk.stats.criticalIssues')}</p>
                     <p className="text-3xl font-bold text-red-600">{criticalCount}</p>
-                    <p className="text-xs text-muted-foreground">Require immediate action</p>
+                    <p className="text-xs text-muted-foreground">{t('risk.stats.requireImmediateAction')}</p>
                   </div>
                   <div className="p-3 rounded-full bg-red-100">
                     <XCircle className="h-6 w-6 text-red-600" />
@@ -145,9 +157,9 @@ export default function RiskDashboardClient() {
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">High Severity</p>
+                    <p className="text-sm text-muted-foreground">{t('risk.stats.highSeverity')}</p>
                     <p className="text-3xl font-bold text-orange-600">{highCount}</p>
-                    <p className="text-xs text-muted-foreground">Open risk flags</p>
+                    <p className="text-xs text-muted-foreground">{t('risk.stats.openRiskFlags')}</p>
                   </div>
                   <div className="p-3 rounded-full bg-orange-100">
                     <AlertTriangle className="h-6 w-6 text-orange-600" />
@@ -162,9 +174,9 @@ export default function RiskDashboardClient() {
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">Contracts Analyzed</p>
+                    <p className="text-sm text-muted-foreground">{t('risk.stats.contractsAnalyzed')}</p>
                     <p className="text-3xl font-bold">{stats?.totalContracts || 0}</p>
-                    <p className="text-xs text-muted-foreground">{stats?.activePolicies || 0} active policies</p>
+                    <p className="text-xs text-muted-foreground">{t('risk.stats.activePolicies', { count: stats?.activePolicies || 0 })}</p>
                   </div>
                   <div className="p-3 rounded-full bg-green-100">
                     <FileText className="h-6 w-6 text-green-600" />
@@ -178,7 +190,7 @@ export default function RiskDashboardClient() {
         {/* Risk Distribution Bar */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm">Risk Distribution</CardTitle>
+            <CardTitle className="text-sm">{t('risk.distribution')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex gap-1 h-8 rounded-lg overflow-hidden">
@@ -199,14 +211,14 @@ export default function RiskDashboardClient() {
               )}
               {flags.length === 0 && (
                 <div className="bg-green-500 flex-1 flex items-center justify-center text-white text-xs font-medium">
-                  No risks detected
+                  {t('risk.noRisksDetected')}
                 </div>
               )}
             </div>
             <div className="flex gap-4 mt-3 text-xs">
-              <span className="flex items-center gap-1"><div className="w-3 h-3 rounded bg-red-500" /> Critical ({criticalCount})</span>
-              <span className="flex items-center gap-1"><div className="w-3 h-3 rounded bg-orange-500" /> High ({highCount})</span>
-              <span className="flex items-center gap-1"><div className="w-3 h-3 rounded bg-amber-400" /> Medium ({mediumCount})</span>
+              <span className="flex items-center gap-1"><div className="w-3 h-3 rounded bg-red-500" /> {severityConfig.critical.label} ({criticalCount})</span>
+              <span className="flex items-center gap-1"><div className="w-3 h-3 rounded bg-orange-500" /> {severityConfig.high.label} ({highCount})</span>
+              <span className="flex items-center gap-1"><div className="w-3 h-3 rounded bg-amber-400" /> {severityConfig.medium.label} ({mediumCount})</span>
             </div>
           </CardContent>
         </Card>
@@ -215,7 +227,7 @@ export default function RiskDashboardClient() {
         <Card>
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm">Risk Flags ({filteredFlags.length})</CardTitle>
+              <CardTitle className="text-sm">{t('risk.flagsCount', { count: filteredFlags.length })}</CardTitle>
               <div className="flex items-center gap-2">
                 <div className="relative">
                   <Search className="absolute left-2.5 top-2.5 h-3 w-3 text-muted-foreground" />
@@ -242,15 +254,15 @@ export default function RiskDashboardClient() {
             {filteredFlags.length === 0 ? (
               <div className="py-12 text-center">
                 <Shield className="h-12 w-12 mx-auto mb-3 text-green-500/30" />
-                <p className="text-sm font-medium text-green-600">No risks found</p>
+                <p className="text-sm font-medium text-green-600">{t('risk.emptyTitle')}</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {flags.length === 0 ? 'Your contract portfolio looks healthy!' : 'No risks match the current filters'}
+                  {flags.length === 0 ? t('risk.emptyHealthy') : t('risk.emptyFiltered')}
                 </p>
               </div>
             ) : (
               <div className="space-y-2">
                 {filteredFlags.map(flag => {
-                  const config = SEVERITY_CONFIG[flag.severity] || SEVERITY_CONFIG.medium;
+                  const config = severityConfig[flag.severity] || severityConfig.medium;
                   const Icon = config.icon;
                   return (
                     <div key={flag.id} className={cn('flex items-center gap-3 p-3 rounded-lg border', config.bg)}>

@@ -11,6 +11,7 @@
  */
 
 import React, { useState, useEffect, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { motion, AnimatePresence } from "framer-motion";
 import { getTenantId } from '@/lib/tenant';
 import { useConfirm, confirmPresets } from '@/components/dialogs/ConfirmDialog';
@@ -89,6 +90,8 @@ const DEFAULT_FORM_DATA: TagFormData = {
 // ============================================================================
 
 export default function TagManagementPage() {
+  const t = useTranslations('settingsPages');
+  const tCommon = useTranslations('common');
   const confirm = useConfirm();
   const [tags, setTags] = useState<TagData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -237,13 +240,13 @@ export default function TagManagementPage() {
             <div>
               <h1 className="text-3xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
                 <Tag className="w-8 h-8 text-violet-600" />
-                Tag Management
+                {t('tags.title')}
               </h1>
               <p className="text-slate-600 dark:text-slate-400 mt-1">
-                Create and manage tags for organizing contracts
+                {t('tags.subtitle')}
               </p>
             </div>
-            
+
             <div className="flex items-center gap-3">
               <Button
                 variant="outline"
@@ -252,14 +255,14 @@ export default function TagManagementPage() {
                 className="flex items-center gap-2"
               >
                 <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
-                Refresh
+                {tCommon('refresh')}
               </Button>
               <Button
                 onClick={handleCreateTag}
                 className="flex items-center gap-2 bg-violet-600 hover:bg-violet-700 text-white"
               >
                 <Plus className="w-4 h-4" />
-                Create Tag
+                {t('tags.createTag')}
               </Button>
             </div>
           </div>
@@ -352,7 +355,7 @@ export default function TagManagementPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Tag className="w-5 h-5" />
-              Tags ({filteredTags.length})
+              {t('tags.tagsHeading')} ({filteredTags.length})
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -364,15 +367,15 @@ export default function TagManagementPage() {
               <div className="text-center py-12">
                 <Tag className="w-12 h-12 mx-auto text-slate-300 dark:text-slate-600 mb-4" />
                 <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">
-                  No tags found
+                  {t('tags.emptyTitle')}
                 </h3>
                 <p className="text-slate-600 dark:text-slate-400 mb-4">
-                  {searchQuery ? "Try a different search term" : "Create your first tag to get started"}
+                  {searchQuery ? t('tags.emptyDescSearch') : t('tags.emptyDescNoSearch')}
                 </p>
                 {!searchQuery && (
                   <Button onClick={handleCreateTag} className="bg-violet-600 hover:bg-violet-700 text-white">
                     <Plus className="w-4 h-4 mr-2" />
-                    Create Tag
+                    {t('tags.createTag')}
                   </Button>
                 )}
               </div>
@@ -456,12 +459,12 @@ export default function TagManagementPage() {
                   {editingTag ? (
                     <>
                       <Pencil className="w-5 h-5 text-violet-600" />
-                      Edit Tag
+                      {t('tags.editTag')}
                     </>
                   ) : (
                     <>
                       <Plus className="w-5 h-5 text-violet-600" />
-                      Create New Tag
+                      {t('tags.createNewTag')}
                     </>
                   )}
                 </h2>
@@ -539,7 +542,7 @@ export default function TagManagementPage() {
                 {/* Form Actions */}
                 <div className="flex items-center justify-end gap-3 mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
                   <Button variant="outline" onClick={handleCancelForm}>
-                    Cancel
+                    {tCommon('cancel')}
                   </Button>
                   <Button
                     onClick={handleSaveTag}
@@ -554,7 +557,7 @@ export default function TagManagementPage() {
                     ) : (
                       <>
                         <Save className="w-4 h-4 mr-2" />
-                        {editingTag ? "Update Tag" : "Create Tag"}
+                        {editingTag ? t('tags.updateTag') : t('tags.createTag')}
                       </>
                     )}
                   </Button>

@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { useTranslations } from 'next-intl';
 
 interface HealthScores {
   average: number;
@@ -51,35 +52,28 @@ interface IntelligenceData {
   aiCapabilities: { searchEnabled: boolean; healthScoresEnabled: boolean; negotiationCopilotEnabled: boolean; knowledgeGraphEnabled: boolean };
 }
 
-const features = [
+// `key` resolves to messages/{locale}.json under intelligence.features.<key>.{title,description}
+const featuresConfig = [
   {
     id: 'graph',
-    title: 'Contract Knowledge Graph',
-    description: 'Visualize relationships between contracts, suppliers, clauses, and risks in an interactive graph explorer.',
     icon: Share2,
     href: '/intelligence/graph',
     color: 'from-violet-500 to-purple-500',
   },
   {
     id: 'health',
-    title: 'Contract Health Scores',
-    description: 'Monitor contract performance with AI-powered health scoring across risk, compliance, financial, and operational dimensions.',
     icon: Activity,
     href: '/intelligence/health',
     color: 'from-violet-500 to-violet-500',
   },
   {
     id: 'search',
-    title: 'Universal RAG Search',
-    description: 'Ask questions in natural language and get AI-powered answers with evidence links from across your contract portfolio.',
     icon: Search,
     href: '/intelligence/search',
     color: 'from-violet-500 to-pink-500',
   },
   {
     id: 'negotiate',
-    title: 'Negotiation Co-Pilot',
-    description: 'AI-assisted redline analysis with playbook matching, risk assessment, and counter-proposal suggestions.',
     icon: GitCompare,
     href: '/intelligence/negotiate',
     color: 'from-amber-500 to-orange-500',
@@ -100,6 +94,17 @@ const item = {
 };
 
 export default function IntelligencePage() {
+  const t = useTranslations('intelligence');
+  const tCommon = useTranslations('common');
+  const features = React.useMemo(
+    () => featuresConfig.map(({ id, ...rest }) => ({
+      ...rest,
+      id,
+      title: t(`features.${id}.title`),
+      description: t(`features.${id}.description`),
+    })),
+    [t],
+  );
   const { data, isLoading, refetch } = useQuery<{ data: IntelligenceData }>({
     queryKey: ['intelligence'],
     queryFn: async () => {
@@ -145,17 +150,17 @@ export default function IntelligencePage() {
             </motion.div>
             <div>
               <h1 className="text-3xl font-bold bg-gradient-to-r from-violet-600 via-purple-600 to-purple-600 bg-clip-text text-transparent">
-                Contract Intelligence
+                {t('title')}
               </h1>
-              <p className="text-muted-foreground text-lg">AI-powered insights and analysis for your contract portfolio</p>
+              <p className="text-muted-foreground text-lg">{t('subtitle')}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" className="gap-1.5" onClick={() => refetch()}>
-              <RefreshCcw className="h-3.5 w-3.5" /> Refresh
+              <RefreshCcw className="h-3.5 w-3.5" /> {tCommon('refresh')}
             </Button>
             <Button size="sm" className="gap-1.5 bg-violet-600 hover:bg-violet-700" onClick={() => openChatbot('Give me an overview of my contract portfolio health and key intelligence insights')}>
-              <MessageCircle className="h-3.5 w-3.5" /> Ask AI
+              <MessageCircle className="h-3.5 w-3.5" /> {t('askAi')}
             </Button>
           </div>
         </div>
@@ -176,10 +181,10 @@ export default function IntelligencePage() {
         transition={{ duration: 0.5, delay: 0.1 }}
       >
         <div className="grid grid-cols-4 gap-4">
-          <StatCard icon={TrendingUp} gradient="from-violet-500 to-purple-500" value={isLoading ? '—' : String(health?.average ?? '—')} label="Avg Health Score" loading={isLoading} />
-          <StatCard icon={Shield} gradient="from-violet-500 to-purple-500" value={isLoading ? '—' : `${health ? Math.round((health.healthy / Math.max(health.healthy + health.atRisk + health.critical, 1)) * 100) : '—'}%`} label="Compliance Rate" loading={isLoading} />
-          <StatCard icon={Sparkles} gradient="from-violet-500 to-pink-500" value={isLoading ? '—' : String(insights.length)} label="AI Insights" loading={isLoading} />
-          <StatCard icon={Zap} gradient="from-amber-500 to-orange-500" value={isLoading ? '—' : String(highSeverity)} label="Actions Required" loading={isLoading} />
+          <StatCard icon={TrendingUp} gradient="from-violet-500 to-purple-500" value={isLoading ? '—' : String(health?.average ?? '—')} label={t('stats.avgHealthScore')} loading={isLoading} />
+          <StatCard icon={Shield} gradient="from-violet-500 to-purple-500" value={isLoading ? '—' : `${health ? Math.round((health.healthy / Math.max(health.healthy + health.atRisk + health.critical, 1)) * 100) : '—'}%`} label={t('stats.complianceRate')} loading={isLoading} />
+          <StatCard icon={Sparkles} gradient="from-violet-500 to-pink-500" value={isLoading ? '—' : String(insights.length)} label={t('stats.aiInsights')} loading={isLoading} />
+          <StatCard icon={Zap} gradient="from-amber-500 to-orange-500" value={isLoading ? '—' : String(highSeverity)} label={t('stats.actionsRequired')} loading={isLoading} />
         </div>
       </motion.div>
 
@@ -192,7 +197,7 @@ export default function IntelligencePage() {
           transition={{ duration: 0.5, delay: 0.15 }}
         >
           <h2 className="text-lg font-semibold text-slate-800 mb-3 flex items-center gap-2">
-            <AlertTriangle className="h-4 w-4 text-amber-500" /> Active Risk Insights
+            <AlertTriangle className="h-4 w-4 text-amber-500" /> {t('activeRiskInsights')}
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {insights.slice(0, 4).map((insight) => (
@@ -207,7 +212,7 @@ export default function IntelligencePage() {
                     <p className="text-[10px] text-violet-600 italic">{insight.recommendation}</p>
                     {insight.contractId && (
                       <Link href={`/contracts/${insight.contractId}`} className="text-[10px] text-violet-600 hover:underline font-medium flex-shrink-0">
-                        View →
+                        {t('view')} →
                       </Link>
                     )}
                   </div>
@@ -227,7 +232,7 @@ export default function IntelligencePage() {
       >
         {features.map((feature) => {
           const Icon = feature.icon;
-          const featureStats = getFeatureStats(feature.id, health, insights);
+          const featureStats = getFeatureStats(feature.id, health, insights, t, tCommon);
           return (
             <motion.div key={feature.id} variants={item}>
               <Link href={feature.href}>
@@ -282,28 +287,28 @@ export default function IntelligencePage() {
                 <Sparkles className="w-7 h-7" />
               </motion.div>
               <div>
-                <h3 className="text-xl font-semibold">AI Contract Assistant</h3>
-                <p className="text-violet-100">Ask about health scores, risks, insights, or anything across your portfolio</p>
+                <h3 className="text-xl font-semibold">{t('aiAssistantBanner.title')}</h3>
+                <p className="text-violet-100">{t('aiAssistantBanner.subtitle')}</p>
               </div>
             </div>
             <div className="flex gap-3">
-              <motion.button 
+              <motion.button
                 className="px-5 py-2.5 bg-white/20 text-white rounded-xl font-semibold hover:bg-white/30 transition-colors flex items-center gap-2 backdrop-blur-sm"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => openChatbot('What are the top risk insights and contracts that need my attention right now?')}
               >
                 <MessageCircle className="w-4 h-4" />
-                Ask AI
+                {t('askAi')}
               </motion.button>
               <Link href="/intelligence/search">
-                <motion.button 
+                <motion.button
                   className="px-5 py-2.5 bg-white text-violet-600 rounded-xl font-semibold hover:bg-violet-50 transition-colors flex items-center gap-2 shadow-lg"
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.98 }}
                 >
                   <Search className="w-4 h-4" />
-                  RAG Search
+                  {t('ragSearch')}
                 </motion.button>
               </Link>
             </div>
@@ -319,7 +324,7 @@ export default function IntelligencePage() {
           animate={{ opacity: 1 }}
           transition={{ delay: 0.6 }}
         >
-          <h2 className="text-sm font-semibold text-slate-500 mb-2">Recent Activity</h2>
+          <h2 className="text-sm font-semibold text-slate-500 mb-2">{t('recentActivity')}</h2>
           <div className="flex flex-wrap gap-2">
             {activity.slice(0, 6).map((a, i) => (
               <span key={i} className="text-xs bg-white/80 border border-slate-100 rounded-full px-3 py-1 text-slate-600">
@@ -357,17 +362,23 @@ function StatCard({ icon: Icon, gradient, value, label, loading }: { icon: React
   );
 }
 
-function getFeatureStats(id: string, health: HealthScores | undefined, insights: Insight[]): string {
-  if (!health) return 'Loading...';
+function getFeatureStats(
+  id: string,
+  health: HealthScores | undefined,
+  insights: Insight[],
+  t: (key: string, values?: Record<string, string | number>) => string,
+  tCommon: (key: string) => string,
+): string {
+  if (!health) return tCommon('loading');
   switch (id) {
     case 'graph':
-      return `${health.healthy + health.atRisk + health.critical} contracts • ${health.atRisk + health.critical} need attention`;
+      return t('featureStats.graph', { total: health.healthy + health.atRisk + health.critical, needAttention: health.atRisk + health.critical });
     case 'health':
-      return `${health.average} avg score • ${health.atRisk} at risk • ${health.critical} critical`;
+      return t('featureStats.health', { avg: health.average, atRisk: health.atRisk, critical: health.critical });
     case 'search':
-      return `${health.healthy + health.atRisk + health.critical} contracts indexed • AI-powered Q&A`;
+      return t('featureStats.search', { total: health.healthy + health.atRisk + health.critical });
     case 'negotiate':
-      return `${insights.filter(i => i.severity === 'high').length} high priority • ${insights.length} total insights`;
+      return t('featureStats.negotiate', { highPriority: insights.filter(i => i.severity === 'high').length, total: insights.length });
     default:
       return '';
   }

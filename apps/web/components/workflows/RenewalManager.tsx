@@ -36,6 +36,7 @@ import { useCrossModuleInvalidation, useRenewals } from '@/hooks/use-queries';
 import { getTenantId } from '@/lib/tenant';
 import { useDemoMode } from '@/hooks/useDemoMode';
 import { RenewalsCalendar } from '@/components/calendar/RenewalsCalendar';
+import { useTranslations } from 'next-intl';
 
 // ============================================================================
 // Types
@@ -88,25 +89,27 @@ interface RenewalEvent {
 // Helper Functions
 // ============================================================================
 
-const getStatusConfig = (status: RenewalContract['status']) => {
+// `t` is a next-intl translator scoped to the `obligations` namespace, passed in
+// by the calling component (hooks can only run inside components, these helpers can't call useTranslations themselves).
+const getStatusConfig = (status: RenewalContract['status'], t: (key: string) => string) => {
   switch (status) {
-    case 'upcoming': return { color: 'bg-violet-100 text-violet-700', icon: Calendar, label: 'Upcoming' };
-    case 'urgent': return { color: 'bg-red-100 text-red-700', icon: AlertTriangle, label: 'Urgent' };
-    case 'in-negotiation': return { color: 'bg-amber-100 text-amber-700', icon: RefreshCw, label: 'In Negotiation' };
-    case 'pending-review': return { color: 'bg-blue-100 text-blue-700', icon: Eye, label: 'Pending Review' };
-    case 'completed': return { color: 'bg-green-100 text-green-700', icon: CheckCircle2, label: 'Completed' };
-    case 'expired': return { color: 'bg-red-100 text-red-700', icon: XCircle, label: 'Expired' };
-    default: return { color: 'bg-slate-100 text-slate-700', icon: Clock, label: 'Unknown' };
+    case 'upcoming': return { color: 'bg-violet-100 text-violet-700', icon: Calendar, label: t('renewalManager.status.upcoming') };
+    case 'urgent': return { color: 'bg-red-100 text-red-700', icon: AlertTriangle, label: t('renewalManager.status.urgent') };
+    case 'in-negotiation': return { color: 'bg-amber-100 text-amber-700', icon: RefreshCw, label: t('renewalManager.status.inNegotiation') };
+    case 'pending-review': return { color: 'bg-blue-100 text-blue-700', icon: Eye, label: t('renewalManager.status.pendingReview') };
+    case 'completed': return { color: 'bg-green-100 text-green-700', icon: CheckCircle2, label: t('renewalManager.status.completed') };
+    case 'expired': return { color: 'bg-red-100 text-red-700', icon: XCircle, label: t('renewalManager.status.expired') };
+    default: return { color: 'bg-slate-100 text-slate-700', icon: Clock, label: t('renewalManager.status.unknown') };
   }
 };
 
-const getRecommendationConfig = (rec: RenewalContract['recommendation']) => {
+const getRecommendationConfig = (rec: RenewalContract['recommendation'], t: (key: string) => string) => {
   switch (rec) {
-    case 'renew': return { color: 'bg-green-100 text-green-700 border-green-200', icon: CheckCircle2, label: 'Renew' };
-    case 'renegotiate': return { color: 'bg-amber-100 text-amber-700 border-amber-200', icon: Edit, label: 'Renegotiate' };
-    case 'terminate': return { color: 'bg-red-100 text-red-700 border-red-200', icon: XCircle, label: 'Terminate' };
-    case 'review': return { color: 'bg-violet-100 text-violet-700 border-violet-200', icon: Eye, label: 'Review' };
-    default: return { color: 'bg-slate-100 text-slate-700 border-slate-200', icon: Eye, label: 'Unknown' };
+    case 'renew': return { color: 'bg-green-100 text-green-700 border-green-200', icon: CheckCircle2, label: t('renewalManager.recommendation.renew') };
+    case 'renegotiate': return { color: 'bg-amber-100 text-amber-700 border-amber-200', icon: Edit, label: t('renewalManager.recommendation.renegotiate') };
+    case 'terminate': return { color: 'bg-red-100 text-red-700 border-red-200', icon: XCircle, label: t('renewalManager.recommendation.terminate') };
+    case 'review': return { color: 'bg-violet-100 text-violet-700 border-violet-200', icon: Eye, label: t('renewalManager.recommendation.review') };
+    default: return { color: 'bg-slate-100 text-slate-700 border-slate-200', icon: Eye, label: t('renewalManager.recommendation.unknown') };
   }
 };
 
@@ -175,25 +178,26 @@ interface RenewalCardProps {
   onSubmitForApproval: (renewal: RenewalContract) => void;
 }
 
-const getApprovalStatusConfig = (status?: RenewalContract['approvalStatus']) => {
+const getApprovalStatusConfig = (status: RenewalContract['approvalStatus'] | undefined, t: (key: string) => string) => {
   switch (status) {
-    case 'pending': return { color: 'bg-amber-100 text-amber-700 border-amber-200', icon: Clock, label: 'Pending Approval' };
-    case 'approved': return { color: 'bg-green-100 text-green-700 border-green-200', icon: CheckCircle2, label: 'Approved' };
-    case 'rejected': return { color: 'bg-red-100 text-red-700 border-red-200', icon: XCircle, label: 'Rejected' };
+    case 'pending': return { color: 'bg-amber-100 text-amber-700 border-amber-200', icon: Clock, label: t('renewalManager.approvalStatus.pending') };
+    case 'approved': return { color: 'bg-green-100 text-green-700 border-green-200', icon: CheckCircle2, label: t('renewalManager.approvalStatus.approved') };
+    case 'rejected': return { color: 'bg-red-100 text-red-700 border-red-200', icon: XCircle, label: t('renewalManager.approvalStatus.rejected') };
     default: return null;
   }
 };
 
 const RenewalCard: React.FC<RenewalCardProps> = ({ renewal, isSelected, onSelect, onSubmitForApproval }) => {
   const isDemo = useDemoMode();
-  const status = getStatusConfig(renewal.status);
+  const t = useTranslations('obligations');
+  const status = getStatusConfig(renewal.status, t);
   const StatusIcon = status.icon;
-  const rec = getRecommendationConfig(renewal.recommendation);
+  const rec = getRecommendationConfig(renewal.recommendation, t);
   const RecIcon = rec.icon;
   const urgencyClass = getUrgencyColor(renewal.daysUntilRenewal, renewal.autoRenewal, renewal.noticeDeadline);
   const valueChange = renewal.projectedValue - renewal.currentValue;
   const valueChangePercent = renewal.currentValue > 0 ? (valueChange / renewal.currentValue) * 100 : 0;
-  const approvalConfig = getApprovalStatusConfig(renewal.approvalStatus);
+  const approvalConfig = getApprovalStatusConfig(renewal.approvalStatus, t);
 
   return (
     <motion.div
@@ -393,6 +397,8 @@ const RenewalCard: React.FC<RenewalCardProps> = ({ renewal, isSelected, onSelect
 
 export const RenewalManager: React.FC = () => {
   const isDemo = useDemoMode();
+  const t = useTranslations('obligations');
+  const tCommon = useTranslations('common');
   const router = useRouter();
   const crossModule = useCrossModuleInvalidation();
   const { data: queryData, isLoading: loading, refetch } = useRenewals();
@@ -644,7 +650,7 @@ export const RenewalManager: React.FC = () => {
       <div className="h-full flex items-center justify-center bg-slate-50">
         <div className="text-center">
           <Loader2 className="w-8 h-8 text-green-500 animate-spin mx-auto mb-3" />
-          <p className="text-slate-600">Loading renewals...</p>
+          <p className="text-slate-600">{t('renewalManager.loading')}</p>
         </div>
       </div>
     );
@@ -660,9 +666,9 @@ export const RenewalManager: React.FC = () => {
               <div className="p-2 rounded-xl bg-gradient-to-br from-violet-400 to-violet-600 text-white shadow-lg shadow-violet-500/30">
                 <RefreshCw className="w-5 h-5" />
               </div>
-              Renewal Manager
+              {t('renewalManager.title')}
             </h1>
-            <p className="text-sm text-slate-500 mt-1">Track and manage upcoming contract renewals</p>
+            <p className="text-sm text-slate-500 mt-1">{t('renewalManager.subtitle')}</p>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -670,7 +676,7 @@ export const RenewalManager: React.FC = () => {
               className="px-3 py-2 bg-white/80 backdrop-blur-sm text-slate-700 rounded-xl border border-slate-200/50 hover:bg-white hover:shadow-md transition-all duration-200 font-medium flex items-center gap-2"
             >
               <Download className="w-4 h-4" />
-              Export
+              {tCommon('export')}
             </button>
             <button
               onClick={() => {
@@ -680,15 +686,15 @@ export const RenewalManager: React.FC = () => {
               className="px-3 py-2 bg-white/80 backdrop-blur-sm text-slate-700 rounded-xl border border-slate-200/50 hover:bg-white hover:shadow-md transition-all duration-200 font-medium flex items-center gap-2"
             >
               <Bell className="w-4 h-4" />
-              Refresh
+              {tCommon('refresh')}
             </button>
             {!isDemo && (
-              <button 
+              <button
                 onClick={handleInitiateRenewal}
                 className="px-4 py-2 bg-gradient-to-r from-violet-500 to-violet-600 text-white rounded-xl hover:from-violet-600 hover:to-purple-700 shadow-lg shadow-violet-500/30 hover:shadow-xl hover:shadow-violet-500/40 transition-all duration-200 font-medium flex items-center gap-2"
               >
                 <Play className="w-4 h-4" />
-                Initiate Renewal
+                {t('renewalManager.actions.initiateRenewal')}
               </button>
             )}
           </div>
@@ -698,27 +704,27 @@ export const RenewalManager: React.FC = () => {
         <div className="grid grid-cols-6 gap-4">
           <div className="group p-3 bg-gradient-to-br from-slate-50 to-slate-100/70 rounded-xl text-center border border-slate-200/50 shadow-md hover:shadow-lg hover:shadow-slate-200/50 transition-all duration-300">
             <div className="text-xl font-bold text-slate-900">{stats.total}</div>
-            <div className="text-xs text-slate-500 font-medium">Total Renewals</div>
+            <div className="text-xs text-slate-500 font-medium">{t('renewalManager.stats.totalRenewals')}</div>
           </div>
           <div className="group p-3 bg-gradient-to-br from-red-50 to-rose-100/70 rounded-xl text-center border border-red-200/50 shadow-md hover:shadow-lg hover:shadow-red-200/50 transition-all duration-300">
             <div className="text-xl font-bold text-red-600">{stats.urgent}</div>
-            <div className="text-xs text-red-600 font-medium">Due in 30 Days</div>
+            <div className="text-xs text-red-600 font-medium">{t('renewalManager.stats.dueIn30Days')}</div>
           </div>
           <div className="group p-3 bg-gradient-to-br from-violet-50 to-purple-100/70 rounded-xl text-center border border-violet-200/50 shadow-md hover:shadow-lg hover:shadow-violet-200/50 transition-all duration-300">
             <div className="text-xl font-bold text-violet-600">{stats.autoRenewal}</div>
-            <div className="text-xs text-violet-600 font-medium">Auto-Renewal</div>
+            <div className="text-xs text-violet-600 font-medium">{t('renewalManager.stats.autoRenewal')}</div>
           </div>
           <div className="group p-3 bg-gradient-to-br from-amber-50 to-orange-100/70 rounded-xl text-center border border-amber-200/50 shadow-md hover:shadow-lg hover:shadow-amber-200/50 transition-all duration-300">
             <div className="text-xl font-bold text-amber-600">{stats.atRisk}</div>
-            <div className="text-xs text-amber-600 font-medium">Action Needed</div>
+            <div className="text-xs text-amber-600 font-medium">{t('renewalManager.stats.actionNeeded')}</div>
           </div>
           <div className="group p-3 bg-gradient-to-br from-violet-50 to-purple-100/70 rounded-xl text-center border border-violet-200/50 shadow-md hover:shadow-lg hover:shadow-violet-200/50 transition-all duration-300">
             <div className="text-xl font-bold text-violet-600">${(stats.totalValue / 1000000).toFixed(1)}M</div>
-            <div className="text-xs text-violet-600 font-medium">Total Value</div>
+            <div className="text-xs text-violet-600 font-medium">{t('renewalManager.stats.totalValue')}</div>
           </div>
           <div className="group p-3 bg-gradient-to-br from-violet-50 to-violet-100/70 rounded-xl text-center border border-green-200/50 shadow-md hover:shadow-lg hover:shadow-green-200/50 transition-all duration-300">
             <div className="text-xl font-bold text-green-600">${(stats.potentialSavings / 1000).toFixed(0)}K</div>
-            <div className="text-xs text-green-600 font-medium">Savings Identified</div>
+            <div className="text-xs text-green-600 font-medium">{t('renewalManager.stats.savingsIdentified')}</div>
           </div>
         </div>
       </div>
@@ -796,11 +802,11 @@ export const RenewalManager: React.FC = () => {
             {filteredRenewals.length === 0 && (
               <div className="col-span-2 text-center py-16">
                 <RefreshCw className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-                <h3 className="text-lg font-semibold text-slate-700 mb-1">No Renewals Found</h3>
+                <h3 className="text-lg font-semibold text-slate-700 mb-1">{t('renewalManager.empty.title')}</h3>
                 <p className="text-sm text-slate-500 max-w-md mx-auto">
                   {searchQuery || filter !== 'all'
-                    ? 'No renewals match your current filters. Try adjusting your search or filter criteria.'
-                    : 'No contracts with upcoming renewal dates were found. Upload contracts with expiration dates to see them here.'}
+                    ? t('renewalManager.empty.filtered')
+                    : t('renewalManager.empty.none')}
                 </p>
               </div>
             )}
@@ -852,7 +858,7 @@ export const RenewalManager: React.FC = () => {
                 className="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors font-medium flex items-center gap-2"
               >
                 <ClipboardCheck className="w-4 h-4" />
-                View Approvals
+                {t('renewalManager.actions.viewApprovals')}
               </Link>
             )}
             {!isDemo && (
@@ -862,7 +868,7 @@ export const RenewalManager: React.FC = () => {
                 className="px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors font-medium flex items-center gap-2 disabled:opacity-50"
               >
                 {sendingReminders ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
-                Send Reminders
+                {t('renewalManager.actions.sendReminders')}
               </button>
             )}
             {!isDemo && (
@@ -872,7 +878,7 @@ export const RenewalManager: React.FC = () => {
                   className="px-4 py-2 bg-violet-500 text-white rounded-lg hover:bg-violet-600 transition-colors font-medium flex items-center gap-2"
                 >
                   <Zap className="w-4 h-4" />
-                  Bulk Actions{selectedIds.size > 0 && ` (${selectedIds.size})`}
+                  {t('renewalManager.actions.bulkActions')}{selectedIds.size > 0 && ` (${selectedIds.size})`}
                 </button>
               <AnimatePresence>
                 {bulkMenuOpen && (
@@ -887,34 +893,34 @@ export const RenewalManager: React.FC = () => {
                       disabled={selectedIds.size === 0}
                       className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-violet-50 disabled:opacity-40 flex items-center gap-2"
                     >
-                      <Play className="w-4 h-4" /> Initiate Selected
+                      <Play className="w-4 h-4" /> {t('renewalManager.bulkMenu.initiateSelected')}
                     </button>
                     <button
                       onClick={() => handleBulkAction('toggle-auto-renewal')}
                       disabled={selectedIds.size === 0}
                       className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-violet-50 disabled:opacity-40 flex items-center gap-2"
                     >
-                      <RefreshCw className="w-4 h-4" /> Toggle Auto-Renewal
+                      <RefreshCw className="w-4 h-4" /> {t('renewalManager.bulkMenu.toggleAutoRenewal')}
                     </button>
                     <button
                       onClick={() => handleBulkAction('complete')}
                       disabled={selectedIds.size === 0}
                       className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-violet-50 disabled:opacity-40 flex items-center gap-2"
                     >
-                      <CheckCircle2 className="w-4 h-4" /> Mark Complete
+                      <CheckCircle2 className="w-4 h-4" /> {t('renewalManager.bulkMenu.markComplete')}
                     </button>
                     <div className="border-t border-slate-100 mt-1 pt-1">
                       <button
                         onClick={() => { setSelectedIds(new Set(filteredRenewals.map(r => r.id))); setBulkMenuOpen(false); }}
                         className="w-full px-4 py-2 text-left text-sm text-slate-500 hover:bg-slate-50 flex items-center gap-2"
                       >
-                        <Check className="w-4 h-4" /> Select All Visible
+                        <Check className="w-4 h-4" /> {t('renewalManager.bulkMenu.selectAllVisible')}
                       </button>
                       <button
                         onClick={() => { setSelectedIds(new Set()); setBulkMenuOpen(false); }}
                         className="w-full px-4 py-2 text-left text-sm text-slate-500 hover:bg-slate-50 flex items-center gap-2"
                       >
-                        <XCircle className="w-4 h-4" /> Clear Selection
+                        <XCircle className="w-4 h-4" /> {t('renewalManager.bulkMenu.clearSelection')}
                       </button>
                     </div>
                   </motion.div>
@@ -963,8 +969,8 @@ export const RenewalManager: React.FC = () => {
                     <Play className="w-5 h-5 text-white" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-slate-900">Initiate Renewal</h3>
-                    <p className="text-sm text-slate-500">Start the renewal process</p>
+                    <h3 className="font-semibold text-slate-900">{t('renewalManager.initiateModal.title')}</h3>
+                    <p className="text-sm text-slate-500">{t('renewalManager.initiateModal.subtitle')}</p>
                   </div>
                 </div>
               </div>
@@ -990,8 +996,8 @@ export const RenewalManager: React.FC = () => {
                   <div className="flex items-start gap-2">
                     <GitBranch className="w-4 h-4 text-violet-500 mt-0.5" />
                     <div className="text-sm">
-                      <p className="font-medium text-violet-900">Choose the next step</p>
-                      <p className="text-violet-700">Initiating the renewal marks the workflow as active, then takes you into either the guided renewal wizard or AI Copilot with the source contract loaded.</p>
+                      <p className="font-medium text-violet-900">{t('renewalManager.initiateModal.chooseNextStep')}</p>
+                      <p className="text-violet-700">{t('renewalManager.initiateModal.description')}</p>
                     </div>
                   </div>
                 </div>
@@ -1002,14 +1008,14 @@ export const RenewalManager: React.FC = () => {
                     className="px-4 py-2 bg-white text-blue-700 rounded-lg border border-blue-200 hover:bg-blue-50 transition-colors font-medium flex items-center justify-center gap-2"
                   >
                     <FileEdit className="w-4 h-4" />
-                    Open AI Copilot
+                    {t('renewalManager.initiateModal.openCopilot')}
                   </button>
                   <button
                     onClick={() => handleConfirmInitiateRenewal('wizard')}
                     className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors font-medium flex items-center justify-center gap-2"
                   >
                     <Play className="w-4 h-4" />
-                    Open Renewal Wizard
+                    {t('renewalManager.initiateModal.openWizard')}
                   </button>
                 </div>
                 <div className="flex items-center gap-3 mt-3">
@@ -1017,7 +1023,7 @@ export const RenewalManager: React.FC = () => {
                     onClick={() => setInitiateModalOpen(false)}
                     className="flex-1 px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors font-medium"
                   >
-                    Cancel
+                    {tCommon('cancel')}
                   </button>
                 </div>
               </div>

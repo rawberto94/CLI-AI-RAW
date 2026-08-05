@@ -21,6 +21,7 @@ import {
   Grid3X3,
 } from 'lucide-react'
 import { useRealTimeEvents } from '@/contexts/RealTimeContext'
+import { useTranslations } from 'next-intl'
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -42,7 +43,20 @@ const itemVariants = {
   }
 };
 
+// `key` resolves to messages/{locale}.json under analytics.modules.<key>.{title,description}
+const analyticsPagesConfig = [
+  { key: 'documents', icon: FileText, href: '/analytics/documents', gradient: 'from-violet-500 to-violet-500', shadowColor: 'shadow-violet-500/20' },
+  { key: 'artifacts', icon: FileBarChart, href: '/analytics/artifacts', gradient: 'from-violet-500 to-purple-500', shadowColor: 'shadow-violet-500/20' },
+  { key: 'savings', icon: DollarSign, href: '/analytics/savings', gradient: 'from-violet-500 to-purple-500', shadowColor: 'shadow-violet-500/20' },
+  { key: 'renewals', icon: Calendar, href: '/analytics/renewals', gradient: 'from-violet-500 to-purple-500', shadowColor: 'shadow-violet-500/20' },
+  { key: 'suppliers', icon: Users, href: '/analytics/suppliers', gradient: 'from-orange-500 to-amber-500', shadowColor: 'shadow-orange-500/20' },
+  { key: 'negotiation', icon: TrendingUp, href: '/analytics/negotiation', gradient: 'from-rose-500 to-red-500', shadowColor: 'shadow-rose-500/20' },
+  { key: 'procurement', icon: Briefcase, href: '/analytics/procurement', gradient: 'from-violet-500 to-purple-500', shadowColor: 'shadow-violet-500/20' },
+  { key: 'portfolio', icon: Grid3X3, href: '/analytics/portfolio', gradient: 'from-teal-500 to-emerald-500', shadowColor: 'shadow-teal-500/20' },
+];
+
 export default function ImprovedAnalyticsPage() {
+  const t = useTranslations('analytics');
   const [refreshKey, setRefreshKey] = useState(0);
 
   // Real-time updates for analytics
@@ -63,78 +77,16 @@ export default function ImprovedAnalyticsPage() {
 
   useRealTimeEvents(eventHandlers);
 
-  const getPageIcon = (title: string) => {
-    const icons: Record<string, any> = {
-      'Artifacts': FileBarChart,
-      'Cost Savings': DollarSign,
-      'Renewals': Calendar,
-      'Suppliers': Users,
-      'Negotiation': TrendingUp,
-      'Procurement': Briefcase,
-      'Documents': FileText,
-      'Portfolio': Grid3X3,
-    };
-    return icons[title] || FileBarChart;
-  };
-
-  const analyticsPages = [
-    {
-      title: 'Documents',
-      description: 'Document classification & signature trends',
-      href: '/analytics/documents',
-      gradient: 'from-violet-500 to-violet-500',
-      shadowColor: 'shadow-violet-500/20'
-    },
-    {
-      title: 'Artifacts',
-      description: 'Artifact extraction analytics',
-      href: '/analytics/artifacts',
-      gradient: 'from-violet-500 to-purple-500',
-      shadowColor: 'shadow-violet-500/20'
-    },
-    {
-      title: 'Cost Savings',
-      description: 'Savings opportunities',
-      href: '/analytics/savings',
-      gradient: 'from-violet-500 to-purple-500',
-      shadowColor: 'shadow-violet-500/20'
-    },
-    {
-      title: 'Renewals',
-      description: 'Contract renewals',
-      href: '/analytics/renewals',
-      gradient: 'from-violet-500 to-purple-500',
-      shadowColor: 'shadow-violet-500/20'
-    },
-    {
-      title: 'Suppliers',
-      description: 'Supplier analytics',
-      href: '/analytics/suppliers',
-      gradient: 'from-orange-500 to-amber-500',
-      shadowColor: 'shadow-orange-500/20'
-    },
-    {
-      title: 'Negotiation',
-      description: 'Negotiation prep',
-      href: '/analytics/negotiation',
-      gradient: 'from-rose-500 to-red-500',
-      shadowColor: 'shadow-rose-500/20'
-    },
-    {
-      title: 'Procurement',
-      description: 'Procurement intelligence',
-      href: '/analytics/procurement',
-      gradient: 'from-violet-500 to-purple-500',
-      shadowColor: 'shadow-violet-500/20'
-    },
-    {
-      title: 'Portfolio',
-      description: 'Portfolio risk heatmap & exposure',
-      href: '/analytics/portfolio',
-      gradient: 'from-teal-500 to-emerald-500',
-      shadowColor: 'shadow-teal-500/20'
-    }
-  ]
+  const analyticsPages = useMemo(
+    () => analyticsPagesConfig.map(({ key, ...rest }) => ({
+      ...rest,
+      key,
+      title: t(`modules.${key}.title`),
+      description: t(`modules.${key}.description`),
+    })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [t],
+  )
 
   return (
     <div className="max-w-[1600px] mx-auto px-6 sm:px-8 lg:px-10 py-6 space-y-6">
@@ -152,10 +104,10 @@ export default function ImprovedAnalyticsPage() {
         </div>
         <div>
           <h1 className="text-4xl font-bold bg-gradient-to-r from-violet-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
-            Analytics Hub
+            {t('title')}
           </h1>
           <p className="text-muted-foreground text-lg">
-            Comprehensive insights into your contract portfolio
+            {t('subtitle')}
           </p>
         </div>
       </motion.div>
@@ -178,9 +130,9 @@ export default function ImprovedAnalyticsPage() {
         transition={{ duration: 0.5, delay: 0.3 }}
       >
         <div className="flex items-center gap-3 mb-6">
-          <h3 className="text-2xl font-bold">Detailed Analytics</h3>
+          <h3 className="text-2xl font-bold">{t('detailedAnalytics')}</h3>
           <span className="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-sm text-muted-foreground">
-            {analyticsPages.length} modules
+            {t('modulesCount', { count: analyticsPages.length })}
           </span>
         </div>
         <motion.div 
@@ -190,9 +142,9 @@ export default function ImprovedAnalyticsPage() {
           animate="visible"
         >
           {analyticsPages.map((page) => {
-            const PageIcon = getPageIcon(page.title);
+            const PageIcon = page.icon;
             return (
-            <motion.div key={page.href} variants={itemVariants}>
+            <motion.div key={page.key} variants={itemVariants}>
               <Link href={page.href}>
                 <motion.div
                   whileHover={{ scale: 1.02, y: -4 }}

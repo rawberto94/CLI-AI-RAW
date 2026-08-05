@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Card,
@@ -30,6 +30,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 
 const REQUIRED_COLUMNS = ['contractTitle', 'effectiveDate', 'expirationDate'];
 const OPTIONAL_COLUMNS = ['supplierName', 'clientName', 'contractType', 'totalValue', 'currency', 'paymentTerms', 'paymentFrequency', 'description', 'jurisdiction'];
@@ -49,7 +50,25 @@ const COLUMN_LABELS: Record<string, string> = {
   jurisdiction: 'Jurisdiction',
 };
 
+// `key` resolves to messages/{locale}.json under migration.steps.<key>
+const stepsConfig = [
+  { id: 'upload' as const, key: 'upload', icon: Upload },
+  { id: 'mapping' as const, key: 'mapping', icon: Map },
+  { id: 'review' as const, key: 'review', icon: ShieldCheck },
+  { id: 'complete' as const, key: 'complete', icon: CheckCircle2 },
+];
+
 export default function ContractMigrationPage() {
+  const t = useTranslations('migration');
+  const tCommon = useTranslations('common');
+  const tNav = useTranslations('navigation');
+  const steps = useMemo(
+    () => stepsConfig.map(({ key, ...rest }) => ({
+      ...rest,
+      label: key === 'upload' ? tCommon('upload') : t(`steps.${key}`),
+    })),
+    [t, tCommon],
+  );
   const [step, setStep] = useState<'upload' | 'mapping' | 'review' | 'complete'>('upload');
   const [file, setFile] = useState<File | null>(null);
   const [parsedHeaders, setParsedHeaders] = useState<string[]>([]);
@@ -154,20 +173,15 @@ export default function ContractMigrationPage() {
       <div className="max-w-4xl mx-auto px-6 py-10">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold tracking-tight">Contract Migration</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{tNav('nav.contractMigration.name')}</h1>
           <p className="text-slate-500 mt-2">
-            Bulk import your existing contract portfolio from CSV or Excel.
+            {t('subtitle')}
           </p>
         </div>
 
         {/* Stepper */}
         <div className="flex items-center gap-2 mb-8">
-          {[
-            { id: 'upload', label: 'Upload', icon: Upload },
-            { id: 'mapping', label: 'Map Columns', icon: Map },
-            { id: 'review', label: 'Review', icon: ShieldCheck },
-            { id: 'complete', label: 'Complete', icon: CheckCircle2 },
-          ].map((s, i) => {
+          {steps.map((s, i) => {
             const Icon = s.icon;
             const isActive = step === s.id;
             const isPast = ['upload', 'mapping', 'review', 'complete'].indexOf(step) > i;
@@ -204,8 +218,8 @@ export default function ContractMigrationPage() {
                     <div className="w-16 h-16 rounded-2xl bg-violet-100 flex items-center justify-center mx-auto mb-4">
                       <Upload className="h-8 w-8 text-violet-600" />
                     </div>
-                    <h3 className="text-lg font-semibold mb-2">Drop your file here</h3>
-                    <p className="text-sm text-slate-500 mb-4">CSV or Excel up to 1000 rows</p>
+                    <h3 className="text-lg font-semibold mb-2">{t('upload.dropTitle')}</h3>
+                    <p className="text-sm text-slate-500 mb-4">{t('upload.dropDescription')}</p>
                     <input
                       type="file"
                       accept=".csv,.xlsx,.xls"
@@ -215,7 +229,7 @@ export default function ContractMigrationPage() {
                     />
                     <label htmlFor="migration-file">
                       <Button variant="outline" className="cursor-pointer" asChild>
-                        <span>Select File</span>
+                        <span>{t('selectFile')}</span>
                       </Button>
                     </label>
                   </div>
@@ -223,7 +237,7 @@ export default function ContractMigrationPage() {
                   <div className="mt-6 flex items-center justify-center gap-4">
                     <Button variant="ghost" size="sm" onClick={downloadTemplate}>
                       <Download className="h-4 w-4 mr-2" />
-                      Download Template
+                      {t('downloadTemplate')}
                     </Button>
                   </div>
 
@@ -255,7 +269,7 @@ export default function ContractMigrationPage() {
                 <CardHeader>
                   <CardTitle className="text-lg flex items-center gap-2">
                     <Map className="h-5 w-5 text-violet-600" />
-                    Map Columns
+                    {t('steps.mapping')}
                   </CardTitle>
                   <CardDescription>
                     Match your spreadsheet columns to contract fields. Required fields must be mapped.
@@ -264,7 +278,7 @@ export default function ContractMigrationPage() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-3">
-                    <p className="text-sm font-medium text-slate-700">Required Fields</p>
+                    <p className="text-sm font-medium text-slate-700">{t('mapping.requiredFields')}</p>
                     {REQUIRED_COLUMNS.map(field => (
                       <div key={field} className="flex items-center gap-3">
                         <label className="w-40 text-sm text-slate-600">{COLUMN_LABELS[field]}</label>
@@ -288,7 +302,7 @@ export default function ContractMigrationPage() {
                   </div>
 
                   <div className="space-y-3 pt-4 border-t">
-                    <p className="text-sm font-medium text-slate-700">Optional Fields</p>
+                    <p className="text-sm font-medium text-slate-700">{t('mapping.optionalFields')}</p>
                     {OPTIONAL_COLUMNS.map(field => (
                       <div key={field} className="flex items-center gap-3">
                         <label className="w-40 text-sm text-slate-500">{COLUMN_LABELS[field]}</label>
@@ -309,14 +323,14 @@ export default function ContractMigrationPage() {
 
                   <div className="flex items-center justify-end gap-3 pt-4">
                     <Button variant="outline" onClick={() => setStep('upload')}>
-                      Back
+                      {tCommon('back')}
                     </Button>
                     <Button
                       onClick={handleImport}
                       disabled={mappedCount < REQUIRED_COLUMNS.length || loading}
                     >
                       {loading ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : <ArrowRight className="h-4 w-4 mr-2" />}
-                      Import Contracts
+                      {t('importContracts')}
                     </Button>
                   </div>
                 </CardContent>
@@ -330,22 +344,22 @@ export default function ContractMigrationPage() {
                 <CardHeader>
                   <CardTitle className="text-lg flex items-center gap-2">
                     <CheckCircle2 className="h-5 w-5 text-green-600" />
-                    Migration Complete
+                    {t('complete.title')}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <div className="grid grid-cols-3 gap-4">
                     <div className="p-4 rounded-xl bg-green-50 border border-green-200 text-center">
                       <p className="text-3xl font-bold text-green-700">{result.imported}</p>
-                      <p className="text-sm text-green-600 mt-1">Imported</p>
+                      <p className="text-sm text-green-600 mt-1">{t('complete.imported')}</p>
                     </div>
                     <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-center">
                       <p className="text-3xl font-bold text-amber-700">{result.skipped}</p>
-                      <p className="text-sm text-amber-600 mt-1">Skipped</p>
+                      <p className="text-sm text-amber-600 mt-1">{t('complete.skipped')}</p>
                     </div>
                     <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-center">
                       <p className="text-3xl font-bold text-red-700">{result.errors}</p>
-                      <p className="text-sm text-red-600 mt-1">Errors</p>
+                      <p className="text-sm text-red-600 mt-1">{t('complete.errors')}</p>
                     </div>
                   </div>
 
@@ -353,7 +367,7 @@ export default function ContractMigrationPage() {
                     <div className="rounded-xl border border-red-200 bg-red-50 p-4">
                       <p className="text-sm font-medium text-red-700 mb-2 flex items-center gap-2">
                         <AlertTriangle className="h-4 w-4" />
-                        Validation Issues
+                        {t('complete.validationIssues')}
                       </p>
                       <ul className="text-xs text-red-600 space-y-1 max-h-40 overflow-auto">
                         {result.validationErrors.map((err: string, i: number) => (
@@ -365,7 +379,7 @@ export default function ContractMigrationPage() {
 
                   {result.importedContracts?.length > 0 && (
                     <div>
-                      <p className="text-sm font-medium text-slate-700 mb-2">Imported Contracts</p>
+                      <p className="text-sm font-medium text-slate-700 mb-2">{t('complete.importedContracts')}</p>
                       <div className="max-h-60 overflow-auto rounded-xl border divide-y">
                         {result.importedContracts.map((c: any) => (
                           <Link
@@ -390,10 +404,10 @@ export default function ContractMigrationPage() {
                       setMapping({});
                     }}>
                       <RefreshCw className="h-4 w-4 mr-2" />
-                      Import Another File
+                      {t('complete.importAnother')}
                     </Button>
                     <Link href="/contracts">
-                      <Button>View Contracts</Button>
+                      <Button>{t('complete.viewContracts')}</Button>
                     </Link>
                   </div>
                 </CardContent>

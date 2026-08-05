@@ -35,6 +35,7 @@ import { useWorkflows, useUpdateWorkflow, useDeleteWorkflow, useCreateWorkflow, 
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
 import { PageBreadcrumb } from '@/components/navigation'
+import { useTranslations } from 'next-intl'
 import {
   Dialog,
   DialogContent,
@@ -161,6 +162,8 @@ const workflowTemplates = [
 function WorkflowsPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const t = useTranslations('workflows')
+  const tCommon = useTranslations('common')
   const initialTab = searchParams.get('tab') || 'queue'
   
   const [activeTab, setActiveTab] = useState<'queue' | 'automation' | 'templates'>(
@@ -285,7 +288,7 @@ function WorkflowsPageContent() {
           <div className="mb-6">
             <Button variant="outline" onClick={() => setShowBuilder(false)} className="gap-2 dark:border-slate-600 dark:hover:bg-slate-700">
               <ArrowRight className="h-4 w-4 rotate-180" aria-hidden="true" />
-              Back to Workflows
+              {t('backToWorkflows')}
             </Button>
           </div>
           <WorkflowBuilder
@@ -338,13 +341,13 @@ function WorkflowsPageContent() {
               </div>
               <div>
                 <h1 className="text-2xl font-bold bg-gradient-to-r from-violet-900 via-purple-800 to-violet-900 dark:from-violet-300 dark:via-purple-300 dark:to-purple-300 bg-clip-text text-transparent">
-                  Workflows
+                  {t('title')}
                 </h1>
                 <p className="text-sm text-slate-500 dark:text-slate-400 flex items-center gap-2">
-                  Manage approvals and automation in one place
+                  {t('subtitle')}
                   <Badge variant="secondary" className="bg-violet-100/80 dark:bg-violet-900/50 text-violet-700 dark:text-violet-300 text-xs px-3 py-1">
                     <Sparkles className="h-3.5 w-3.5 mr-1.5" aria-hidden="true" />
-                    Unified
+                    {t('unified')}
                   </Badge>
                 </p>
               </div>
@@ -354,25 +357,25 @@ function WorkflowsPageContent() {
               <div className="hidden lg:flex items-center gap-2.5 mr-2">
                 <Badge variant="outline" className="gap-1.5 px-3 py-1 bg-amber-50 dark:bg-amber-900/30 border-amber-200 dark:border-amber-700 text-amber-700 dark:text-amber-300">
                   <Clock className="h-3.5 w-3.5" aria-hidden="true" />
-                  <span className="font-semibold">{stats.pending}</span> Pending
+                  <span className="font-semibold">{stats.pending}</span> {t('stats.pending')}
                 </Badge>
                 <Badge variant="outline" className="gap-1.5 px-3 py-1 bg-green-50 dark:bg-green-900/30 border-green-200 dark:border-green-700 text-green-700 dark:text-green-300">
                   <CheckCircle className="h-3.5 w-3.5" aria-hidden="true" />
-                  <span className="font-semibold">{stats.active}</span> Active
+                  <span className="font-semibold">{stats.active}</span> {t('stats.active')}
                 </Badge>
               </div>
 
               <Button variant="outline" onClick={() => refetch()} className="gap-2 h-8 dark:border-slate-600 dark:hover:bg-slate-700" aria-label="Refresh workflows">
                 <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
-                <span className="hidden sm:inline">Refresh</span>
+                <span className="hidden sm:inline">{tCommon('refresh')}</span>
               </Button>
-              
+
               <Button
                 onClick={createNew}
                 className="bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 shadow-lg gap-2 h-8"
               >
                 <Plus className="h-3.5 w-3.5" />
-                New Workflow
+                {t('newWorkflow')}
               </Button>
             </div>
           </motion.div>
@@ -386,23 +389,23 @@ function WorkflowsPageContent() {
                   className="gap-2 rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-500 data-[state=active]:via-violet-500 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-violet-500/30 transition-all duration-200 dark:text-slate-300"
                 >
                   <Inbox className="h-4 w-4" aria-hidden="true" />
-                  Queue
+                  {t('tabs.queue')}
                   <Badge variant="secondary" className="bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 ml-1 text-xs">{stats.pending}</Badge>
                 </TabsTrigger>
-                <TabsTrigger 
-                  value="automation" 
+                <TabsTrigger
+                  value="automation"
                   className="gap-2 rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-500 data-[state=active]:via-violet-500 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-violet-500/30 transition-all duration-200 dark:text-slate-300"
                 >
                   <GitBranch className="h-4 w-4" aria-hidden="true" />
-                  Automation
+                  {t('tabs.automation')}
                   <Badge variant="secondary" className="bg-violet-100 dark:bg-violet-900/50 text-violet-700 dark:text-violet-300 ml-1 text-xs">{stats.total}</Badge>
                 </TabsTrigger>
-                <TabsTrigger 
-                  value="templates" 
+                <TabsTrigger
+                  value="templates"
                   className="gap-2 rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-500 data-[state=active]:via-violet-500 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-violet-500/30 transition-all duration-200 dark:text-slate-300"
                 >
                   <FileText className="h-4 w-4" aria-hidden="true" />
-                  Templates
+                  {t('tabs.templates')}
                 </TabsTrigger>
               </TabsList>
             </Tabs>
@@ -437,10 +440,10 @@ function WorkflowsPageContent() {
                 {/* Stats Row */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   {[
-                    { label: 'Total', value: stats.total, icon: GitBranch, color: 'from-violet-100 to-purple-100 dark:from-violet-900/50 dark:to-purple-900/50', iconColor: 'text-violet-600 dark:text-violet-400' },
-                    { label: 'Active', value: stats.active, icon: CheckCircle, color: 'from-violet-100 to-violet-100 dark:from-violet-900/50 dark:to-violet-900/50', iconColor: 'text-green-600 dark:text-green-400', valueColor: 'text-green-600 dark:text-green-400' },
-                    { label: 'Inactive', value: stats.inactive, icon: Pause, color: 'from-slate-100 to-slate-50 dark:from-slate-800/50 dark:to-slate-700/50', iconColor: 'text-slate-600 dark:text-slate-400', valueColor: 'text-slate-600 dark:text-slate-400' },
-                    { label: 'Executions', value: stats.totalExecutions, icon: Activity, color: 'from-violet-100 to-purple-100 dark:from-violet-900/50 dark:to-purple-900/50', iconColor: 'text-violet-600 dark:text-violet-400', valueColor: 'text-violet-600 dark:text-violet-400' },
+                    { label: t('stats.total'), value: stats.total, icon: GitBranch, color: 'from-violet-100 to-purple-100 dark:from-violet-900/50 dark:to-purple-900/50', iconColor: 'text-violet-600 dark:text-violet-400' },
+                    { label: t('stats.active'), value: stats.active, icon: CheckCircle, color: 'from-violet-100 to-violet-100 dark:from-violet-900/50 dark:to-violet-900/50', iconColor: 'text-green-600 dark:text-green-400', valueColor: 'text-green-600 dark:text-green-400' },
+                    { label: t('stats.inactive'), value: stats.inactive, icon: Pause, color: 'from-slate-100 to-slate-50 dark:from-slate-800/50 dark:to-slate-700/50', iconColor: 'text-slate-600 dark:text-slate-400', valueColor: 'text-slate-600 dark:text-slate-400' },
+                    { label: t('stats.executions'), value: stats.totalExecutions, icon: Activity, color: 'from-violet-100 to-purple-100 dark:from-violet-900/50 dark:to-purple-900/50', iconColor: 'text-violet-600 dark:text-violet-400', valueColor: 'text-violet-600 dark:text-violet-400' },
                   ].map((stat) => (
                     <Card key={stat.label} className="bg-white/70 dark:bg-slate-800/70 backdrop-blur border-0 dark:border dark:border-slate-700/50 shadow-md hover:shadow-lg transition-all motion-reduce:transition-none">
                       <CardContent className="p-5">
@@ -463,7 +466,7 @@ function WorkflowsPageContent() {
                   <Card className="shadow-xl border-0 dark:border dark:border-slate-700/50 bg-white/80 dark:bg-slate-800/80">
                     <CardContent className="p-5 text-center">
                       <RefreshCw className="h-12 w-12 mx-auto motion-safe:animate-spin text-violet-600 dark:text-violet-400 mb-4" aria-hidden="true" />
-                      <p className="text-gray-600 dark:text-gray-300">Loading workflows...</p>
+                      <p className="text-gray-600 dark:text-gray-300">{t('loading')}</p>
                     </CardContent>
                   </Card>
                 ) : workflows.length === 0 ? (
@@ -472,18 +475,18 @@ function WorkflowsPageContent() {
                       <div className="w-20 h-20 bg-gradient-to-br from-violet-100 to-purple-100 dark:from-violet-900/50 dark:to-purple-900/50 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
                         <GitBranch className="h-10 w-10 text-violet-600 dark:text-violet-400" aria-hidden="true" />
                       </div>
-                      <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">No workflows yet</h3>
+                      <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">{t('empty.title')}</h3>
                       <p className="text-gray-600 dark:text-gray-400 mb-6 max-w-md mx-auto">
-                        Create your first automated workflow to streamline contract approvals.
+                        {t('empty.description')}
                       </p>
                       <div className="flex flex-col sm:flex-row items-center justify-center gap-2.5">
                         <Button onClick={createNew} className="bg-gradient-to-r from-violet-600 to-purple-600 gap-2 h-8">
                           <Plus className="h-3.5 w-3.5" aria-hidden="true" />
-                          Create Workflow
+                          {t('empty.createWorkflow')}
                         </Button>
                         <Button variant="outline" onClick={() => setActiveTab('templates')} className="gap-2 h-8 dark:border-slate-600 dark:hover:bg-slate-700">
                           <FileText className="h-3.5 w-3.5" aria-hidden="true" />
-                          Use Template
+                          {t('empty.useTemplate')}
                         </Button>
                       </div>
                     </CardContent>
@@ -505,7 +508,7 @@ function WorkflowsPageContent() {
                                 <div className="flex items-center gap-3 mb-2">
                                   <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">{workflow.name}</h3>
                                   <Badge className={workflow.isActive ? 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 px-3 py-1' : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 px-3 py-1'}>
-                                    {workflow.isActive ? 'Active' : 'Inactive'}
+                                    {workflow.isActive ? t('stats.active') : t('stats.inactive')}
                                   </Badge>
                                 </div>
                                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">{workflow.description || 'No description'}</p>
@@ -527,15 +530,15 @@ function WorkflowsPageContent() {
                             </div>
                             <div className="flex items-center gap-2.5 pt-4 border-t dark:border-slate-700">
                               <Button variant="outline" size="sm" onClick={() => editWorkflow(workflow)} className="gap-1 h-8 dark:border-slate-600 dark:hover:bg-slate-700">
-                                <Edit className="h-3.5 w-3.5" aria-hidden="true" /> Edit
+                                <Edit className="h-3.5 w-3.5" aria-hidden="true" /> {tCommon('edit')}
                               </Button>
                               <Button variant="outline" size="sm" onClick={() => duplicateWorkflow(workflow)} className="gap-1 h-8 dark:border-slate-600 dark:hover:bg-slate-700">
-                                <Copy className="h-3.5 w-3.5" aria-hidden="true" /> Copy
+                                <Copy className="h-3.5 w-3.5" aria-hidden="true" /> {t('copy')}
                               </Button>
                               <Button variant="outline" size="sm" onClick={() => toggleWorkflow(workflow.id, !workflow.isActive)} className="gap-1 h-8 dark:border-slate-600 dark:hover:bg-slate-700">
-                                {workflow.isActive ? <><Pause className="h-3.5 w-3.5" aria-hidden="true" /> Pause</> : <><Play className="h-3.5 w-3.5" aria-hidden="true" /> Activate</>}
+                                {workflow.isActive ? <><Pause className="h-3.5 w-3.5" aria-hidden="true" /> {t('pause')}</> : <><Play className="h-3.5 w-3.5" aria-hidden="true" /> {t('activate')}</>}
                               </Button>
-                              <Button variant="outline" size="sm" onClick={() => openDeleteModal(workflow)} className="hover:bg-red-50 dark:hover:bg-red-900/30 hover:border-red-300 dark:hover:border-red-700 ml-auto h-8 dark:border-slate-600" aria-label={`Delete ${workflow.name}`}>
+                              <Button variant="outline" size="sm" onClick={() => openDeleteModal(workflow)} className="hover:bg-red-50 dark:hover:bg-red-900/30 hover:border-red-300 dark:hover:border-red-700 ml-auto h-8 dark:border-slate-600" aria-label={`${tCommon('delete')} ${workflow.name}`}>
                                 <Trash2 className="h-3.5 w-3.5 text-red-600 dark:text-red-400" aria-hidden="true" />
                               </Button>
                             </div>
@@ -558,11 +561,11 @@ function WorkflowsPageContent() {
                 className="space-y-6"
               >
                 <div className="text-center mb-8">
-                  <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 mb-2">Quick Start Templates</h2>
-                  <p className="text-slate-500 dark:text-slate-400">Choose a template to get started quickly, or seed all templates to your database</p>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
+                  <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 mb-2">{t('templatesTab.heading')}</h2>
+                  <p className="text-slate-500 dark:text-slate-400">{t('templatesTab.subtitle')}</p>
+                  <Button
+                    variant="outline"
+                    size="sm"
                     className="mt-3 gap-2 dark:border-slate-600 dark:hover:bg-slate-700"
                     onClick={async () => {
                       toast.info('Seeding templates...', { description: 'Creating all workflow templates in database' })
@@ -587,7 +590,7 @@ function WorkflowsPageContent() {
                     }}
                   >
                     <Sparkles className="h-4 w-4" />
-                    Seed All Templates to Database
+                    {t('templatesTab.seedAll')}
                   </Button>
                 </div>
 
@@ -627,10 +630,10 @@ function WorkflowsPageContent() {
                 </div>
                 
                 <div className="mt-8 text-center">
-                  <p className="text-gray-500 dark:text-gray-400 mb-4">Need something custom?</p>
+                  <p className="text-gray-500 dark:text-gray-400 mb-4">{t('templatesTab.needCustom')}</p>
                   <Button onClick={createNew} variant="outline" size="lg" className="gap-2 h-8 dark:border-slate-600 dark:hover:bg-slate-700">
                     <Plus className="h-3.5 w-3.5" aria-hidden="true" />
-                    Create from Scratch
+                    {t('templatesTab.createFromScratch')}
                   </Button>
                 </div>
               </motion.div>

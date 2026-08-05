@@ -8,6 +8,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { getTenantId } from '@/lib/tenant';
 import { 
   Settings, 
@@ -84,6 +85,7 @@ const SETTINGS_SECTIONS = [
 ];
 
 export default function MetadataSettingsPage() {
+  const t = useTranslations('settingsPages');
   const [activeSection, setActiveSection] = useState('metadata');
   const [schemaVersion, setSchemaVersion] = useState<number>(1);
 
@@ -96,22 +98,22 @@ export default function MetadataSettingsPage() {
             <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
               <Link href="/settings" className="hover:text-gray-700">Settings</Link>
               <ChevronRight className="h-4 w-4" />
-              <span className="text-gray-900 dark:text-white">Metadata Configuration</span>
+              <span className="text-gray-900 dark:text-white">{t('metadata.breadcrumbCurrent')}</span>
             </div>
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
                   <Settings className="h-7 w-7" />
-                  Settings
+                  {t('metadata.title')}
                 </h1>
                 <p className="text-gray-500 mt-1">
-                  Configure your contract management settings
+                  {t('metadata.subtitle')}
                 </p>
               </div>
               {schemaVersion > 1 && (
                 <div className="flex items-center gap-2 text-sm text-green-600 bg-green-50 px-3 py-1.5 rounded-full">
                   <Check className="h-4 w-4" />
-                  Custom schema (v{schemaVersion})
+                  {t('metadata.customSchema', { version: schemaVersion })}
                 </div>
               )}
             </div>
@@ -146,12 +148,12 @@ export default function MetadataSettingsPage() {
                   >
                     <Icon className="h-5 w-5" />
                     <div>
-                      <div className="font-medium">{section.label}</div>
-                      <div className="text-xs text-gray-500">{section.description}</div>
+                      <div className="font-medium">{t(`metadata.sections.${section.id}.label`)}</div>
+                      <div className="text-xs text-gray-500">{t(`metadata.sections.${section.id}.description`)}</div>
                     </div>
                     {!section.active && (
                       <span className="ml-auto text-xs bg-gray-200 text-gray-500 px-2 py-0.5 rounded">
-                        Soon
+                        {t('metadata.soon')}
                       </span>
                     )}
                   </button>
@@ -161,7 +163,7 @@ export default function MetadataSettingsPage() {
 
             {/* Quick Stats */}
             <div className="mt-8 p-4 bg-white rounded-lg border">
-              <h3 className="text-sm font-medium text-gray-700 mb-3">Schema Stats</h3>
+              <h3 className="text-sm font-medium text-gray-700 mb-3">{t('metadata.schemaStats')}</h3>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-500">Categories</span>
@@ -197,9 +199,9 @@ export default function MetadataSettingsPage() {
                 <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <Settings className="h-8 w-8 text-gray-400" />
                 </div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Select a Section</h3>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">{t('metadata.selectSection')}</h3>
                 <p className="text-gray-500">
-                  Choose a settings section from the sidebar to configure.
+                  {t('metadata.selectSectionDesc')}
                 </p>
               </div>
             )}

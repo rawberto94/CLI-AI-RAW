@@ -8,9 +8,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Mail, ArrowLeft, CheckCircle2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { ConTigoLogo } from "../_components/AuthBranding";
 
 function ForgotPasswordForm() {
+  const t = useTranslations('auth');
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
@@ -102,10 +104,12 @@ function ForgotPasswordForm() {
               >
                 <CheckCircle2 className="h-8 w-8 text-white" />
               </motion.div>
-              <h1 className="text-2xl font-bold text-slate-900 mb-2">Check Your Email</h1>
+              <h1 className="text-2xl font-bold text-slate-900 mb-2">{t('checkYourEmail')}</h1>
               <p className="text-slate-500 text-sm mb-6">
-                If an account exists for <strong>{email}</strong>, we&apos;ve sent a password reset link.
-                Check your inbox and follow the instructions.
+                {t.rich('resetLinkSentMessage', {
+                  email,
+                  strong: (chunks) => <strong>{chunks}</strong>,
+                })}
               </p>
               <div className="space-y-3">
                 <Button
@@ -114,11 +118,11 @@ function ForgotPasswordForm() {
                   onClick={handleResend}
                   disabled={cooldown > 0 || loading}
                 >
-                  {cooldown > 0 ? `Resend in ${cooldown}s` : "Resend Email"}
+                  {cooldown > 0 ? t('resendIn', { seconds: cooldown }) : t('resendEmail')}
                 </Button>
                 <Button asChild variant="ghost" className="w-full">
-                  <Link href="/auth/signin"> 
-                    <ArrowLeft className="w-4 h-4 mr-2" /> Back to Sign In
+                  <Link href="/auth/signin">
+                    <ArrowLeft className="w-4 h-4 mr-2" /> {t('backToSignIn')}
                   </Link>
                 </Button>
               </div>
@@ -134,15 +138,15 @@ function ForgotPasswordForm() {
                 >
                   <Mail className="h-8 w-8 text-white" />
                 </motion.div>
-                <h1 className="text-2xl font-bold text-slate-900 mb-2">Forgot Password</h1>
+                <h1 className="text-2xl font-bold text-slate-900 mb-2">{t('resetPasswordTitle')}</h1>
                 <p className="text-slate-500 text-sm">
-                  Enter your email address and we&apos;ll send you a link to reset your password.
+                  {t('resetPasswordSubtitle')}
                 </p>
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-5">
                 <div>
-                  <Label htmlFor="email">Email Address</Label>
+                  <Label htmlFor="email">{t('emailAddress')}</Label>
                   <Input
                     id="email"
                     type="email"
@@ -166,13 +170,13 @@ function ForgotPasswordForm() {
                 )}
 
                 <Button type="submit" disabled={loading} className="w-full h-11 bg-gradient-to-r from-violet-600 via-purple-600 to-fuchsia-600">
-                  {loading ? "Sending..." : "Send Reset Link"}
+                  {loading ? t('sending') : t('sendResetLink')}
                 </Button>
               </form>
 
               <div className="mt-6 text-center">
                 <Link href="/auth/signin" className="text-sm text-violet-600 hover:text-violet-700 inline-flex items-center gap-1">
-                  <ArrowLeft className="w-3 h-3" /> Back to Sign In
+                  <ArrowLeft className="w-3 h-3" /> {t('backToSignIn')}
                 </Link>
               </div>
             </>

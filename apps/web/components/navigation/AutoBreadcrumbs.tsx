@@ -10,11 +10,30 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { ChevronRight, Home } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 
 // ============================================================================
 // Route Label Mappings
 // ============================================================================
+
+// Root-section labels translated via the `navigation` namespace at render time
+// (see TRANSLATED_ROOT_SECTIONS below); everything else in this map — deep
+// admin/rate-cards/reports sub-routes — is not yet translated.
+const TRANSLATED_ROOT_SECTIONS: Record<string, string> = {
+  admin: 'groups.admin',
+  contracts: 'nav.contracts.name',
+  analytics: 'nav.analytics.name',
+  governance: 'nav.governance.name',
+  settings: 'nav.settings.name',
+  workflows: 'nav.workflows.name',
+  search: 'search',
+  templates: 'nav.templates.name',
+  clauses: 'nav.clauses.name',
+  suppliers: 'nav.suppliersSpend.name',
+  requests: 'nav.requests.name',
+  generate: 'generate',
+};
 
 const ROUTE_LABELS: Record<string, string> = {
   // Root sections
@@ -38,7 +57,7 @@ const ROUTE_LABELS: Record<string, string> = {
   runs: 'Runs',
   jobs: 'Jobs',
   ai: 'AI',
-  
+
   // Admin sub-routes
   users: 'Users',
   groups: 'Groups',
@@ -178,7 +197,7 @@ interface AutoBreadcrumbsProps {
 // ============================================================================
 
 export function AutoBreadcrumbs({
-  homeLabel = 'Home',
+  homeLabel,
   homeHref = '/dashboard',
   labelOverrides = {},
   hideHome = false,
@@ -186,47 +205,52 @@ export function AutoBreadcrumbs({
   maxItems = 5,
 }: AutoBreadcrumbsProps) {
   const pathname = usePathname();
-  
+  const t = useTranslations('navigation');
+  const tCommon = useTranslations('common');
+  const resolvedHomeLabel = homeLabel ?? tCommon('home');
+
   // Parse pathname into breadcrumb items
   const items = React.useMemo(() => {
     const segments = pathname.split('/').filter(Boolean);
     const breadcrumbs: BreadcrumbItem[] = [];
-    
+
     // Add home
     if (!hideHome) {
       breadcrumbs.push({
-        label: homeLabel,
+        label: resolvedHomeLabel,
         href: homeHref,
         isCurrent: pathname === homeHref || pathname === '/',
       });
     }
-    
+
     // Build path progressively
     let currentPath = '';
     segments.forEach((segment, index) => {
       // Skip dynamic route patterns like [id]
       const isLast = index === segments.length - 1;
       currentPath += `/${segment}`;
-      
+
       // Skip route groups like (authenticated), (dashboard), (marketing)
       if (segment.startsWith('(') && segment.endsWith(')')) {
         return;
       }
-      
-      // Get label - check overrides first, then mappings, then format segment
-      const label = labelOverrides[segment] 
-        || ROUTE_LABELS[segment] 
+
+      // Get label - check overrides first, then translated root sections, then mappings, then format segment
+      const translationKey = TRANSLATED_ROOT_SECTIONS[segment];
+      const label = labelOverrides[segment]
+        || (translationKey ? t(translationKey) : undefined)
+        || ROUTE_LABELS[segment]
         || formatSegment(segment);
-      
+
       breadcrumbs.push({
         label,
         href: currentPath,
         isCurrent: isLast,
       });
     });
-    
+
     return breadcrumbs;
-  }, [pathname, homeLabel, homeHref, hideHome, labelOverrides]);
+  }, [pathname, resolvedHomeLabel, homeHref, hideHome, labelOverrides, t]);
   
   // Don't render if only home or less
   if (items.length <= 1) {

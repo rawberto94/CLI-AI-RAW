@@ -32,6 +32,7 @@ import {
 import { PageBreadcrumb } from '@/components/navigation';
 import { formatCurrency } from '@/components/ui/design-system';
 import { cn } from '@/lib/utils';
+import { useTranslations } from 'next-intl';
 
 interface RenewalItem {
   id: string;
@@ -86,12 +87,13 @@ interface DashboardData {
 }
 
 function UrgencyBadge({ urgency }: { urgency: string }) {
+  const t = useTranslations('obligations');
   const config: Record<string, { color: string; icon: React.ElementType; label: string }> = {
-    expired: { color: 'bg-red-100 text-red-700 border-red-200', icon: ShieldAlert, label: 'Expired' },
-    critical: { color: 'bg-red-50 text-red-600 border-red-200', icon: AlertCircle, label: 'Critical' },
-    urgent: { color: 'bg-amber-50 text-amber-600 border-amber-200', icon: Timer, label: 'Urgent' },
-    high: { color: 'bg-orange-50 text-orange-600 border-orange-200', icon: AlertTriangle, label: 'High' },
-    medium: { color: 'bg-blue-50 text-blue-600 border-blue-200', icon: Clock, label: 'Medium' },
+    expired: { color: 'bg-red-100 text-red-700 border-red-200', icon: ShieldAlert, label: t('combined.urgency.expired') },
+    critical: { color: 'bg-red-50 text-red-600 border-red-200', icon: AlertCircle, label: t('combined.urgency.critical') },
+    urgent: { color: 'bg-amber-50 text-amber-600 border-amber-200', icon: Timer, label: t('combined.urgency.urgent') },
+    high: { color: 'bg-orange-50 text-orange-600 border-orange-200', icon: AlertTriangle, label: t('combined.urgency.high') },
+    medium: { color: 'bg-blue-50 text-blue-600 border-blue-200', icon: Clock, label: t('combined.urgency.medium') },
   };
   const c = config[urgency] || config.medium;
   const Icon = c.icon;
@@ -134,6 +136,8 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 export default function RenewalsObligationsDashboard() {
+  const t = useTranslations('obligations');
+  const tCommon = useTranslations('common');
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -182,9 +186,9 @@ export default function RenewalsObligationsDashboard() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold mb-2">Failed to load dashboard</h2>
+          <h2 className="text-xl font-semibold mb-2">{t('combined.failedToLoad')}</h2>
           <p className="text-slate-500 mb-4">{error}</p>
-          <Button onClick={fetchData}><RefreshCw className="h-4 w-4 mr-2" /> Retry</Button>
+          <Button onClick={fetchData}><RefreshCw className="h-4 w-4 mr-2" /> {t('actions.retry')}</Button>
         </div>
       </div>
     );
@@ -202,9 +206,9 @@ export default function RenewalsObligationsDashboard() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">Renewals & Obligations</h1>
+            <h1 className="text-2xl font-bold tracking-tight">{t('combined.title')}</h1>
             <p className="text-sm text-slate-500 mt-1">
-              Track expiring contracts and upcoming obligations — your daily value dashboard
+              {t('combined.subtitle')}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -232,11 +236,11 @@ export default function RenewalsObligationsDashboard() {
               URL.revokeObjectURL(url);
             }}>
               <Download className="h-4 w-4 mr-2" />
-              Export
+              {tCommon('export')}
             </Button>
             <Button variant="outline" size="sm" onClick={fetchData}>
               <RefreshCw className="h-4 w-4 mr-2" />
-              Refresh
+              {tCommon('refresh')}
             </Button>
           </div>
         </div>
@@ -248,10 +252,10 @@ export default function RenewalsObligationsDashboard() {
               <CardContent className="p-5">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-slate-500">Expiring &lt;30 Days</p>
+                    <p className="text-sm text-slate-500">{t('combined.kpi.expiringUnder30')}</p>
                     <p className="text-3xl font-bold mt-1">{metrics.renewals.expiring30d}</p>
                     {metrics.renewals.expired > 0 && (
-                      <p className="text-xs text-red-600 mt-1">{metrics.renewals.expired} already expired</p>
+                      <p className="text-xs text-red-600 mt-1">{t('combined.kpi.alreadyExpired', { count: metrics.renewals.expired })}</p>
                     )}
                   </div>
                   <div className="p-3 bg-red-50 rounded-lg">
@@ -267,11 +271,11 @@ export default function RenewalsObligationsDashboard() {
               <CardContent className="p-5">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-slate-500">Value at Risk (90d)</p>
+                    <p className="text-sm text-slate-500">{t('combined.kpi.valueAtRisk')}</p>
                     <p className="text-3xl font-bold mt-1">
                       {formatCurrency(metrics.renewals.totalValueAtRisk, 'CHF')}
                     </p>
-                    <p className="text-xs text-slate-400 mt-1">{metrics.renewals.totalExpiring90d} contracts</p>
+                    <p className="text-xs text-slate-400 mt-1">{t('combined.kpi.contractsCount', { count: metrics.renewals.totalExpiring90d })}</p>
                   </div>
                   <div className="p-3 bg-amber-50 rounded-lg">
                     <DollarSign className="h-6 w-6 text-amber-600" />
@@ -286,9 +290,9 @@ export default function RenewalsObligationsDashboard() {
               <CardContent className="p-5">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-slate-500">Urgent Obligations</p>
+                    <p className="text-sm text-slate-500">{t('combined.kpi.urgentObligations')}</p>
                     <p className="text-3xl font-bold mt-1">{metrics.obligations.urgent30d}</p>
-                    <p className="text-xs text-slate-400 mt-1">{metrics.obligations.overdue} overdue</p>
+                    <p className="text-xs text-slate-400 mt-1">{t('combined.kpi.overdueCount', { count: metrics.obligations.overdue })}</p>
                   </div>
                   <div className="p-3 bg-violet-50 rounded-lg">
                     <CheckCircle2 className="h-6 w-6 text-violet-600" />
@@ -303,9 +307,9 @@ export default function RenewalsObligationsDashboard() {
               <CardContent className="p-5">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-slate-500">Completed (30d)</p>
+                    <p className="text-sm text-slate-500">{t('combined.kpi.completed30d')}</p>
                     <p className="text-3xl font-bold mt-1">{metrics.obligations.completed30d}</p>
-                    <p className="text-xs text-slate-400 mt-1">{metrics.obligations.totalUpcoming90d} upcoming (90d)</p>
+                    <p className="text-xs text-slate-400 mt-1">{t('combined.kpi.upcoming90d', { count: metrics.obligations.totalUpcoming90d })}</p>
                   </div>
                   <div className="p-3 bg-green-50 rounded-lg">
                     <TrendingUp className="h-6 w-6 text-green-600" />
@@ -319,9 +323,9 @@ export default function RenewalsObligationsDashboard() {
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="bg-white dark:bg-slate-800 border">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="overview">{t('combined.tabs.overview')}</TabsTrigger>
             <TabsTrigger value="renewals">
-              Expiring Contracts
+              {t('combined.tabs.renewals')}
               {metrics.renewals.expiring30d > 0 && (
                 <span className="ml-1.5 px-1.5 py-0.5 bg-red-100 text-red-700 text-[10px] rounded-full">
                   {metrics.renewals.expiring30d}
@@ -329,7 +333,7 @@ export default function RenewalsObligationsDashboard() {
               )}
             </TabsTrigger>
             <TabsTrigger value="obligations">
-              Obligations
+              {t('combined.tabs.obligations')}
               {metrics.obligations.overdue > 0 && (
                 <span className="ml-1.5 px-1.5 py-0.5 bg-red-100 text-red-700 text-[10px] rounded-full">
                   {metrics.obligations.overdue}
@@ -346,11 +350,11 @@ export default function RenewalsObligationsDashboard() {
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-base flex items-center gap-2">
                       <Calendar className="h-4 w-4 text-red-500" />
-                      Top Renewals
+                      {t('combined.sections.topRenewals')}
                     </CardTitle>
                     <Link href="/renewals">
                       <Button variant="ghost" size="sm" className="text-xs">
-                        View all <ArrowRight className="h-3 w-3 ml-1" />
+                        {t('combined.sections.viewAll')} <ArrowRight className="h-3 w-3 ml-1" />
                       </Button>
                     </Link>
                   </div>
@@ -377,7 +381,7 @@ export default function RenewalsObligationsDashboard() {
                     </div>
                   ))}
                   {renewals.length === 0 && (
-                    <p className="text-sm text-slate-500 text-center py-6">No expiring contracts found</p>
+                    <p className="text-sm text-slate-500 text-center py-6">{t('combined.empty.noExpiringContracts')}</p>
                   )}
                 </CardContent>
               </Card>
@@ -388,11 +392,11 @@ export default function RenewalsObligationsDashboard() {
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-base flex items-center gap-2">
                       <CheckCircle2 className="h-4 w-4 text-violet-500" />
-                      Top Obligations
+                      {t('combined.sections.topObligations')}
                     </CardTitle>
                     <Link href="/obligations">
                       <Button variant="ghost" size="sm" className="text-xs">
-                        View all <ArrowRight className="h-3 w-3 ml-1" />
+                        {t('combined.sections.viewAll')} <ArrowRight className="h-3 w-3 ml-1" />
                       </Button>
                     </Link>
                   </div>
@@ -413,7 +417,7 @@ export default function RenewalsObligationsDashboard() {
                     </div>
                   ))}
                   {obligations.length === 0 && (
-                    <p className="text-sm text-slate-500 text-center py-6">No urgent obligations found</p>
+                    <p className="text-sm text-slate-500 text-center py-6">{t('combined.empty.noUrgentObligations')}</p>
                   )}
                 </CardContent>
               </Card>
@@ -423,8 +427,8 @@ export default function RenewalsObligationsDashboard() {
           <TabsContent value="renewals" className="mt-4">
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">All Expiring Contracts (Next 90 Days)</CardTitle>
-                <CardDescription>{renewals.length} contracts require attention</CardDescription>
+                <CardTitle className="text-base">{t('combined.allExpiringContracts.title')}</CardTitle>
+                <CardDescription>{t('combined.allExpiringContracts.description', { count: renewals.length })}</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="overflow-x-auto">
@@ -478,7 +482,7 @@ export default function RenewalsObligationsDashboard() {
                     </tbody>
                   </table>
                   {renewals.length === 0 && (
-                    <p className="text-sm text-slate-500 text-center py-12">No contracts expiring in the next 90 days</p>
+                    <p className="text-sm text-slate-500 text-center py-12">{t('combined.empty.noContractsExpiring90')}</p>
                   )}
                 </div>
               </CardContent>
@@ -488,8 +492,8 @@ export default function RenewalsObligationsDashboard() {
           <TabsContent value="obligations" className="mt-4">
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Urgent Obligations</CardTitle>
-                <CardDescription>{obligations.length} obligations due within 30 days or overdue</CardDescription>
+                <CardTitle className="text-base">{t('combined.urgentObligationsTable.title')}</CardTitle>
+                <CardDescription>{t('combined.urgentObligationsTable.description', { count: obligations.length })}</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="overflow-x-auto">
@@ -533,7 +537,7 @@ export default function RenewalsObligationsDashboard() {
                     </tbody>
                   </table>
                   {obligations.length === 0 && (
-                    <p className="text-sm text-slate-500 text-center py-12">No urgent obligations found</p>
+                    <p className="text-sm text-slate-500 text-center py-12">{t('combined.empty.noUrgentObligations')}</p>
                   )}
                 </div>
               </CardContent>

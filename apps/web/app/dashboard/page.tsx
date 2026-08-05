@@ -37,6 +37,7 @@ import { DashboardSkeleton } from "@/components/ui/skeletons";
 import { useRealTimeEvents } from "@/contexts/RealTimeContext";
 import { type DashboardWidget } from "@/components/dashboard/CustomDashboardBuilder";
 import { useDemoMode } from "@/hooks/useDemoMode";
+import { useTranslations } from "next-intl";
 
 const CustomDashboardBuilder = lazy(() => import("@/components/dashboard/CustomDashboardBuilder"));
 
@@ -144,63 +145,56 @@ type QuickAction = {
   demo?: 'hide';
 };
 
-const quickActions: QuickAction[] = [
+// `key` resolves to messages/{locale}.json under dashboard.quickActions.<key>.{name,desc}
+const quickActionsConfig: Array<Omit<QuickAction, 'label' | 'description'> & { key: string }> = [
   {
+    key: 'upload',
     icon: Upload,
-    label: "Upload Contract",
-    description: "Add new contracts",
     href: "/upload",
     color: "bg-violet-100 dark:bg-violet-900/40 text-violet-600 dark:text-violet-400",
     demo: 'hide',
   },
   {
+    key: 'generate',
     icon: Zap,
-    label: "Generate Contract",
-    description: "Create with AI",
     href: "/drafting",
     color: "bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400",
     demo: 'hide',
   },
   {
+    key: 'obligations',
     icon: Target,
-    label: "Obligations",
-    description: "Track compliance",
     href: "/obligations",
     color: "bg-rose-100 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400",
   },
   {
+    key: 'renewals',
     icon: RefreshCw,
-    label: "Renewals",
-    description: "Track renewals",
     href: "/renewals",
     color: "bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400",
   },
   {
+    key: 'deadlines',
     icon: Clock,
-    label: "Deadlines",
-    description: "Critical dates",
     href: "/deadlines",
     color: "bg-orange-100 dark:bg-orange-900/40 text-orange-600 dark:text-orange-400",
   },
   {
+    key: 'contracts',
     icon: FolderOpen,
-    label: "Contracts",
-    description: "Browse repository",
     href: "/contracts",
     color: "bg-violet-100 dark:bg-violet-900/40 text-violet-600 dark:text-violet-400",
   },
   {
+    key: 'aiAssistant',
     icon: MessageSquare,
-    label: "AI Assistant",
-    description: "Ask about contracts",
     href: "/contigo-labs?tab=chat",
     color: "bg-pink-100 dark:bg-pink-900/40 text-pink-600 dark:text-pink-400",
     demo: 'hide',
   },
   {
+    key: 'search',
     icon: Search,
-    label: "Search",
-    description: "Find contracts",
     href: "/search",
     color: "bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400",
     demo: 'hide',
@@ -210,9 +204,19 @@ const quickActions: QuickAction[] = [
 export default function DashboardPage() {
   const queryClient = useQueryClient();
   const isDemo = useDemoMode();
+  const t = useTranslations('dashboard');
+  const tCommon = useTranslations('common');
+  const quickActions: QuickAction[] = useMemo(
+    () => quickActionsConfig.map(({ key, ...rest }) => ({
+      ...rest,
+      label: t(`quickActions.${key}.name`),
+      description: t(`quickActions.${key}.desc`),
+    })),
+    [t],
+  );
   const visibleQuickActions = useMemo(
     () => quickActions.filter((a) => !(isDemo && a.demo === 'hide')),
-    [isDemo],
+    [quickActions, isDemo],
   );
   const [customizerOpen, setCustomizerOpen] = useState(false);
   const [dashboardWidgets, setDashboardWidgets] = useState<DashboardWidget[]>(() => {
@@ -303,8 +307,8 @@ export default function DashboardPage() {
   if (isLoading) {
     return (
       <DashboardLayout
-        title="Dashboard"
-        description="Your contract management overview"
+        title={t('title')}
+        description={t('description')}
       >
         <DashboardSkeleton />
       </DashboardLayout>
@@ -314,13 +318,13 @@ export default function DashboardPage() {
   if (!dashboardData) {
     return (
       <DashboardLayout
-        title="Dashboard"
-        description="Your contract management overview"
+        title={t('title')}
+        description={t('description')}
       >
         <div className="flex flex-col items-center justify-center py-20 gap-4">
           <div className="text-center space-y-2">
             <h2 className="text-lg font-semibold text-slate-700 dark:text-slate-300">
-              Unable to load dashboard
+              {t('unableToLoad')}
             </h2>
             <p className="text-sm text-slate-500 dark:text-slate-400 max-w-md">
               {fetchError || 'Could not connect to the server. Please check your connection and try again.'}
@@ -332,7 +336,7 @@ export default function DashboardPage() {
             className="mt-2"
           >
             <RefreshCw className="h-4 w-4 mr-2" />
-            Retry
+            {t('retry')}
           </Button>
         </div>
       </DashboardLayout>
@@ -341,8 +345,8 @@ export default function DashboardPage() {
 
   return (
     <DashboardLayout
-      title="Dashboard"
-      description="Your contract management command center"
+      title={t('title')}
+      description={t('description')}
       actions={
         <motion.div 
           className="flex gap-3"
@@ -357,7 +361,7 @@ export default function DashboardPage() {
             aria-label="Customize dashboard layout"
           >
             <LayoutGrid className="h-4 w-4 mr-2" aria-hidden="true" />
-            Customize
+            {t('customize')}
           </Button>
           <Button 
             size="sm" 
@@ -367,7 +371,7 @@ export default function DashboardPage() {
             aria-label="Refresh dashboard data"
           >
             <RefreshCw className="h-4 w-4 mr-2" aria-hidden="true" />
-            Refresh
+            {t('refresh')}
           </Button>
           <Button 
             size="sm" 
@@ -377,12 +381,12 @@ export default function DashboardPage() {
             {isDemo ? (
               <Link href="/contracts">
                 <FolderOpen className="h-4 w-4 mr-2" />
-                Browse Contracts
+                {t('browseContracts')}
               </Link>
             ) : (
               <Link href="/upload">
                 <Plus className="h-4 w-4 mr-2" />
-                Add Contract
+                {t('addContract')}
               </Link>
             )}
           </Button>
@@ -402,7 +406,7 @@ export default function DashboardPage() {
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
                   <Zap className="h-4 w-4 text-amber-500" />
-                  Get started in 2 minutes
+                  {t('empty.title')}
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-0">
@@ -413,11 +417,11 @@ export default function DashboardPage() {
                         <FileUp className="h-4 w-4 text-slate-700 dark:text-slate-200" />
                       </div>
                       <div className="min-w-0">
-                        <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">Upload your first contract</div>
-                        <div className="text-xs text-muted-foreground">PDF or text — we’ll extract metadata automatically.</div>
+                        <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{t('empty.uploadFirst')}</div>
+                        <div className="text-xs text-muted-foreground">{t('empty.uploadDescription')}</div>
                         <div className="mt-3">
                           <Button asChild size="sm">
-                            <Link href="/upload">Upload</Link>
+                            <Link href="/upload">{tCommon('upload')}</Link>
                           </Button>
                         </div>
                       </div>
@@ -478,7 +482,7 @@ export default function DashboardPage() {
                   </Link>
                 </div>
                 <div className="space-y-1 mt-auto">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Total Contracts</p>
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('kpi.totalContracts')}</p>
                   <p className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
                     {dashboardData.overview.totalContracts.toLocaleString()}
                   </p>
@@ -510,7 +514,7 @@ export default function DashboardPage() {
                     </div>
                   </div>
                   <div className="space-y-1 mt-auto">
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Renewals Due</p>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('kpi.renewalsDue')}</p>
                     <p className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
                       {dashboardData.renewals.expiringIn30Days}
                     </p>
@@ -537,7 +541,7 @@ export default function DashboardPage() {
                   </div>
                 </div>
                 <div className="space-y-1 mt-auto">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Portfolio Value</p>
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('kpi.portfolioValue')}</p>
                   <p className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
                     {formatCurrency(dashboardData.overview.portfolioValue)}
                   </p>
@@ -562,12 +566,12 @@ export default function DashboardPage() {
                   </Link>
                 </div>
                 <div className="space-y-1 mt-auto">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Recently Added</p>
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('kpi.recentlyAdded')}</p>
                   <p className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
                     {dashboardData.overview.recentlyAdded > 0 ? `+${dashboardData.overview.recentlyAdded}` : '—'}
                   </p>
                   <p className="text-xs text-muted-foreground pt-1">
-                    {dashboardData.overview.recentlyAdded > 0 ? 'This month' : 'None this month'}
+                    {dashboardData.overview.recentlyAdded > 0 ? t('obligationsSection.thisMonth') : t('recentContracts.noneYet')}
                   </p>
                 </div>
               </CardContent>
@@ -583,10 +587,10 @@ export default function DashboardPage() {
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base font-semibold text-slate-900 dark:text-white flex items-center gap-2">
                   <RefreshCw className="h-4 w-4 text-orange-500" />
-                  Renewals & Upcoming Deadlines
+                  {t('renewalsSection.title')}
                 </CardTitle>
                 <Button variant="ghost" size="sm" asChild className="text-muted-foreground hover:text-slate-900 dark:hover:text-white">
-                  <Link href="/renewals">View All <ArrowRight className="h-3.5 w-3.5 ml-1" /></Link>
+                  <Link href="/renewals">{t('viewAll')} <ArrowRight className="h-3.5 w-3.5 ml-1" /></Link>
                 </Button>
               </div>
             </CardHeader>
@@ -594,7 +598,7 @@ export default function DashboardPage() {
               {dashboardData.renewals.expiringIn90Days === 0 ? (
                 <div className="flex items-center justify-center py-6 text-muted-foreground gap-3">
                   <CheckCircle className="h-5 w-5 text-green-500" />
-                  <span className="text-sm">No contracts expiring in the next 90 days</span>
+                  <span className="text-sm">{t('renewalsSection.noneIn90')}</span>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -610,7 +614,7 @@ export default function DashboardPage() {
                         <span className={cn(
                           "text-xs font-semibold uppercase tracking-wide",
                           dashboardData.renewals.expiringIn30Days > 0 ? "text-red-600 dark:text-red-400" : "text-muted-foreground"
-                        )}>Critical</span>
+                        )}>{t('renewalsSection.critical')}</span>
                         {dashboardData.renewals.urgentCount > 0 && (
                           <span className="relative flex h-2 w-2">
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
@@ -624,7 +628,7 @@ export default function DashboardPage() {
                       )}>
                         {dashboardData.renewals.expiringIn30Days}
                       </p>
-                      <p className="text-xs text-muted-foreground mt-1">Expiring within 30 days</p>
+                      <p className="text-xs text-muted-foreground mt-1">{t('renewalsSection.expiring30')}</p>
                     </div>
                   </Link>
 
@@ -642,7 +646,7 @@ export default function DashboardPage() {
                           (dashboardData.renewals.expiringIn90Days - dashboardData.renewals.expiringIn30Days) > 0
                             ? "text-amber-600 dark:text-amber-400"
                             : "text-muted-foreground"
-                        )}>Upcoming</span>
+                        )}>{t('renewalsSection.upcoming')}</span>
                       </div>
                       <p className={cn(
                         "text-3xl font-bold",
@@ -652,7 +656,7 @@ export default function DashboardPage() {
                       )}>
                         {dashboardData.renewals.expiringIn90Days - dashboardData.renewals.expiringIn30Days}
                       </p>
-                      <p className="text-xs text-muted-foreground mt-1">Expiring in 31–90 days</p>
+                      <p className="text-xs text-muted-foreground mt-1">{t('renewalsSection.expiring3190')}</p>
                     </div>
                   </Link>
 
@@ -660,12 +664,12 @@ export default function DashboardPage() {
                   <Link href="/renewals">
                     <div className="group rounded-xl border border-slate-200/60 dark:border-slate-700/60 bg-slate-50/40 dark:bg-slate-800/30 p-4 transition-all duration-200 hover:shadow-md hover:border-slate-300 dark:hover:border-slate-600 cursor-pointer">
                       <div className="mb-3">
-                        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Total Window</span>
+                        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t('renewalsSection.totalWindow')}</span>
                       </div>
                       <p className="text-3xl font-bold text-slate-700 dark:text-slate-200">
                         {dashboardData.renewals.expiringIn90Days}
                       </p>
-                      <p className="text-xs text-muted-foreground mt-1">Expiring within 90 days</p>
+                      <p className="text-xs text-muted-foreground mt-1">{t('renewalsSection.expiring90')}</p>
                     </div>
                   </Link>
                 </div>
@@ -681,10 +685,10 @@ export default function DashboardPage() {
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base font-semibold text-slate-900 dark:text-white flex items-center gap-2">
                   <Target className="h-4 w-4 text-rose-500" />
-                  Obligations
+                  {t('obligationsSection.title')}
                 </CardTitle>
                 <Button variant="ghost" size="sm" asChild className="text-muted-foreground hover:text-slate-900 dark:hover:text-white">
-                  <Link href="/obligations">View All <ArrowRight className="h-3.5 w-3.5 ml-1" /></Link>
+                  <Link href="/obligations">{t('viewAll')} <ArrowRight className="h-3.5 w-3.5 ml-1" /></Link>
                 </Button>
               </div>
             </CardHeader>
@@ -692,14 +696,14 @@ export default function DashboardPage() {
               {!obligationsMetrics || obligationsMetrics.totalObligations === 0 ? (
                 <div className="flex items-center justify-center py-6 text-muted-foreground gap-3">
                   <CheckCircle className="h-5 w-5 text-green-500" />
-                  <span className="text-sm">No obligations tracked yet</span>
+                  <span className="text-sm">{t('obligationsSection.none')}</span>
                 </div>
               ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                   <div className="rounded-xl border border-slate-200/60 dark:border-slate-700/60 bg-slate-50/40 dark:bg-slate-800/30 p-4">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Total</p>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">{t('obligationsSection.total')}</p>
                     <p className="text-3xl font-bold text-slate-700 dark:text-slate-200">{obligationsMetrics.totalObligations}</p>
-                    <p className="text-xs text-muted-foreground mt-1">tracked</p>
+                    <p className="text-xs text-muted-foreground mt-1">{t('obligationsSection.tracked')}</p>
                   </div>
                   <Link href="/obligations?status=overdue">
                     <div className={cn(
@@ -710,11 +714,11 @@ export default function DashboardPage() {
                     )}>
                       <p className={cn("text-xs font-semibold uppercase tracking-wide mb-2",
                         obligationsMetrics.overdueCount > 0 ? "text-red-600 dark:text-red-400" : "text-muted-foreground"
-                      )}>Overdue</p>
+                      )}>{t('obligationsSection.overdue')}</p>
                       <p className={cn("text-3xl font-bold",
                         obligationsMetrics.overdueCount > 0 ? "text-red-700 dark:text-red-300" : "text-slate-400 dark:text-slate-500"
                       )}>{obligationsMetrics.overdueCount}</p>
-                      <p className="text-xs text-muted-foreground mt-1">need action</p>
+                      <p className="text-xs text-muted-foreground mt-1">{t('obligationsSection.needAction')}</p>
                     </div>
                   </Link>
                   <Link href="/obligations?status=at_risk">
@@ -726,15 +730,15 @@ export default function DashboardPage() {
                     )}>
                       <p className={cn("text-xs font-semibold uppercase tracking-wide mb-2",
                         obligationsMetrics.dueSoon > 0 ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"
-                      )}>Due Soon</p>
+                      )}>{t('obligationsSection.dueSoon')}</p>
                       <p className={cn("text-3xl font-bold",
                         obligationsMetrics.dueSoon > 0 ? "text-amber-700 dark:text-amber-300" : "text-slate-400 dark:text-slate-500"
                       )}>{obligationsMetrics.dueSoon}</p>
-                      <p className="text-xs text-muted-foreground mt-1">within 7 days</p>
+                      <p className="text-xs text-muted-foreground mt-1">{t('obligationsSection.within7Days')}</p>
                     </div>
                   </Link>
                   <div className="rounded-xl border border-emerald-200 dark:border-emerald-800/60 bg-emerald-50/40 dark:bg-emerald-950/20 p-4">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-400 mb-2">Done</p>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-400 mb-2">{t('obligationsSection.done')}</p>
                     <p className="text-3xl font-bold text-emerald-700 dark:text-emerald-300">{obligationsMetrics.completedThisMonth}</p>
                     <p className="text-xs text-muted-foreground mt-1">this month</p>
                   </div>
@@ -787,9 +791,9 @@ export default function DashboardPage() {
             <Card className="flex-1 bg-white dark:bg-slate-900 border-slate-200/60 dark:border-slate-700/60 shadow-sm">
               <CardHeader className="pb-4">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-base font-semibold text-slate-900 dark:text-white">Recent Contracts</CardTitle>
+                  <CardTitle className="text-base font-semibold text-slate-900 dark:text-white">{t('recentContracts.title')}</CardTitle>
                   <Button variant="ghost" size="sm" asChild className="text-muted-foreground hover:text-slate-900 dark:hover:text-white">
-                    <Link href="/contracts">View All</Link>
+                    <Link href="/contracts">{t('viewAll')}</Link>
                   </Button>
                 </div>
               </CardHeader>
@@ -812,20 +816,27 @@ export default function DashboardPage() {
                           </p>
                           <p className="text-xs text-muted-foreground flex items-center gap-2">
                             <Clock className="h-3 w-3" />
-                            {contract.createdAt ? new Date(contract.createdAt).toLocaleDateString() : 'Recently added'}
+                            {contract.createdAt ? new Date(contract.createdAt).toLocaleDateString() : t('recentContracts.recentlyAdded')}
                           </p>
                         </div>
                         <Badge variant="outline" className="px-3 py-1 text-xs bg-violet-50 text-violet-700 border-violet-200">
-                          {{ completed: 'Active', processing: 'Processing', uploaded: 'Uploaded', queued: 'Queued', error: 'Error', draft: 'Draft' }[contract.status || ''] || contract.status || 'Active'}
+                          {{
+                            completed: t('recentContracts.statuses.active'),
+                            processing: t('recentContracts.statuses.processing'),
+                            uploaded: t('recentContracts.statuses.uploaded'),
+                            queued: t('recentContracts.statuses.queued'),
+                            error: t('recentContracts.statuses.error'),
+                            draft: t('recentContracts.statuses.draft'),
+                          }[contract.status || ''] || contract.status || t('recentContracts.statuses.active')}
                         </Badge>
                       </motion.div>
                     </Link>
                   )) : (
                     <div className="text-center py-8 text-muted-foreground">
                       <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                      <p className="text-sm">No contracts yet</p>
+                      <p className="text-sm">{t('recentContracts.noneYet')}</p>
                       <p className="text-xs mt-1">
-                        {isDemo ? 'Demo data will appear here once seeded' : 'Upload your first contract to get started'}
+                        {isDemo ? t('recentContracts.demoHint') : t('recentContracts.uploadHint')}
                       </p>
                     </div>
                   )}
@@ -837,7 +848,7 @@ export default function DashboardPage() {
                 >
                   <Link href="/contracts">
                     <Eye className="h-4 w-4 mr-2" />
-                    Browse All Contracts
+                    {t('recentContracts.browseAll')}
                   </Link>
                 </Button>
               </CardContent>
@@ -850,20 +861,20 @@ export default function DashboardPage() {
             <Card className="flex-1 bg-white dark:bg-slate-900 border-slate-200/60 dark:border-slate-700/60 shadow-sm">
               <CardHeader className="pb-4">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-base font-semibold text-slate-900 dark:text-white">AI Assistant</CardTitle>
+                  <CardTitle className="text-base font-semibold text-slate-900 dark:text-white">{t('aiAssistant.title')}</CardTitle>
                   <Button variant="ghost" size="sm" asChild className="text-muted-foreground hover:text-slate-900 dark:hover:text-white">
-                    <Link href="/ai/chat">Open Chat</Link>
+                    <Link href="/ai/chat">{t('aiAssistant.openChat')}</Link>
                   </Button>
                 </div>
               </CardHeader>
               <CardContent className="p-5">
                 <div className="space-y-3">
-                  <p className="text-sm text-muted-foreground">Example questions:</p>
+                  <p className="text-sm text-muted-foreground">{t('aiAssistant.exampleQuestions')}</p>
                   <div className="space-y-2">
                     {[
-                      "What contracts are expiring soon?",
-                      "Summarize the key terms of my latest contract",
-                      "Find contracts with auto-renewal clauses",
+                      t('aiAssistant.q1'),
+                      t('aiAssistant.q2'),
+                      t('aiAssistant.q3'),
                     ].map((suggestion, idx) => (
                       <Link
                         key={idx}
@@ -891,10 +902,10 @@ export default function DashboardPage() {
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-base font-semibold text-slate-900 dark:text-white flex items-center gap-2">
                     <CalendarDays className="h-4 w-4 text-blue-500" />
-                    Upcoming Deadlines
+                    {t('deadlinesSection.title')}
                   </CardTitle>
                   <Button variant="ghost" size="sm" asChild className="text-muted-foreground hover:text-slate-900 dark:hover:text-white">
-                    <Link href="/deadlines">View All <ArrowRight className="h-3.5 w-3.5 ml-1" /></Link>
+                    <Link href="/deadlines">{t('viewAll')} <ArrowRight className="h-3.5 w-3.5 ml-1" /></Link>
                   </Button>
                 </div>
               </CardHeader>
@@ -902,7 +913,7 @@ export default function DashboardPage() {
                 {!upcomingDeadlines || upcomingDeadlines.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-8 text-muted-foreground gap-2">
                     <CalendarDays className="h-8 w-8 opacity-30" />
-                    <p className="text-sm">No upcoming deadlines</p>
+                    <p className="text-sm">{t('deadlinesSection.none')}</p>
                   </div>
                 ) : (
                   <div className="space-y-2">
@@ -917,7 +928,11 @@ export default function DashboardPage() {
                         : isSoon
                         ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
                         : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300";
-                      const typeLabel: Record<string, string> = { expiration: "Expires", renewal: "Renewal", milestone: "Milestone" };
+                      const typeLabel: Record<string, string> = {
+                        expiration: t('deadlinesSection.typeExpires'),
+                        renewal: t('deadlinesSection.typeRenewal'),
+                        milestone: t('deadlinesSection.typeMilestone'),
+                      };
                       return (
                         <Link key={d.id} href={`/contracts/${d.contractId}`}>
                           <div className="flex items-center gap-3 p-3 rounded-lg border border-slate-200/60 dark:border-slate-700/60 bg-slate-50/50 dark:bg-slate-800/30 hover:bg-white dark:hover:bg-slate-800 hover:shadow-sm transition-all">
@@ -926,7 +941,7 @@ export default function DashboardPage() {
                               <p className="text-xs text-muted-foreground">{typeLabel[d.type] ?? d.type} · {new Date(d.date).toLocaleDateString()}</p>
                             </div>
                             <span className={cn("text-xs font-semibold px-2 py-0.5 rounded-full whitespace-nowrap", chipClass)}>
-                              {d.daysUntil === 0 ? "Today" : `${d.daysUntil}d`}
+                              {d.daysUntil === 0 ? t('deadlinesSection.today') : `${d.daysUntil}d`}
                             </span>
                           </div>
                         </Link>
@@ -945,10 +960,10 @@ export default function DashboardPage() {
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-base font-semibold text-slate-900 dark:text-white flex items-center gap-2">
                     <Activity className="h-4 w-4 text-violet-500" />
-                    Recent Activity
+                    {t('activitySection.title')}
                   </CardTitle>
                   <Button variant="ghost" size="sm" asChild className="text-muted-foreground hover:text-slate-900 dark:hover:text-white">
-                    <Link href="/contracts">View All <ArrowRight className="h-3.5 w-3.5 ml-1" /></Link>
+                    <Link href="/contracts">{t('viewAll')} <ArrowRight className="h-3.5 w-3.5 ml-1" /></Link>
                   </Button>
                 </div>
               </CardHeader>
@@ -956,7 +971,7 @@ export default function DashboardPage() {
                 {!activityFeed || activityFeed.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-8 text-muted-foreground gap-2">
                     <Activity className="h-8 w-8 opacity-30" />
-                    <p className="text-sm">No recent activity</p>
+                    <p className="text-sm">{t('activitySection.none')}</p>
                   </div>
                 ) : (
                   <div className="space-y-2">
@@ -972,7 +987,13 @@ export default function DashboardPage() {
                       };
                       const { icon: Icon, color } = iconMap[item.type] ?? { icon: FileText, color: "text-slate-400" };
                       const elapsed = Math.floor((Date.now() - new Date(item.timestamp).getTime()) / 60000);
-                      const timeAgo = elapsed < 1 ? "just now" : elapsed < 60 ? `${elapsed}m ago` : elapsed < 1440 ? `${Math.floor(elapsed / 60)}h ago` : `${Math.floor(elapsed / 1440)}d ago`;
+                      const timeAgo = elapsed < 1
+                        ? t('activitySection.justNow')
+                        : elapsed < 60
+                        ? t('activitySection.minutesAgo', { n: elapsed })
+                        : elapsed < 1440
+                        ? t('activitySection.hoursAgo', { n: Math.floor(elapsed / 60) })
+                        : t('activitySection.daysAgo', { n: Math.floor(elapsed / 1440) });
                       return (
                         <div key={item.id} className="flex items-start gap-3 p-3 rounded-lg border border-slate-200/60 dark:border-slate-700/60 bg-slate-50/50 dark:bg-slate-800/30">
                           <Icon className={cn("h-4 w-4 mt-0.5 shrink-0", color)} />
@@ -998,10 +1019,10 @@ export default function DashboardPage() {
           <Card className="bg-white dark:bg-slate-900 border-slate-200/60 dark:border-slate-700/60 shadow-sm">
             <CardHeader className="pb-4">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-base font-semibold text-slate-900 dark:text-white">Contract Overview</CardTitle>
+                <CardTitle className="text-base font-semibold text-slate-900 dark:text-white">{t('overviewSection.title')}</CardTitle>
                 {!isDemo && (
                   <Button variant="ghost" size="sm" asChild className="text-muted-foreground hover:text-slate-900 dark:hover:text-white">
-                    <Link href="/analytics">Full Analytics</Link>
+                    <Link href="/analytics">{t('overviewSection.fullAnalytics')}</Link>
                   </Button>
                 )}
               </div>

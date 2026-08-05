@@ -35,6 +35,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { ApiError, apiDelete, apiFetch, apiPost } from '@/lib/api-fetch';
+import { useTranslations } from 'next-intl';
 
 // Types for database connections
 interface DatabaseConnection {
@@ -114,6 +115,9 @@ const CONNECTION_TYPES = [
 ];
 
 export default function DataConnectionsPage() {
+  const t = useTranslations('admin');
+  const tCommon = useTranslations('common');
+  const tSso = useTranslations('sso');
   const confirm = useConfirm();
   const [connections, setConnections] = useState<DatabaseConnection[]>([]);
   const [showNewConnection, setShowNewConnection] = useState(false);
@@ -298,29 +302,29 @@ export default function DataConnectionsPage() {
               <div className="p-2 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl shadow-lg">
                 <Database className="h-6 w-6 text-white" />
               </div>
-              Data Connections
+              {t('integrations.title')}
             </h1>
             <p className="text-gray-500 mt-1">
-              Connect external databases and document stores to sync contracts
+              {t('integrations.subtitle')}
             </p>
           </div>
-          
+
           <Button
             onClick={() => setShowNewConnection(true)}
             className="bg-gradient-to-r from-violet-600 to-purple-600 text-white shadow-lg"
           >
             <Plus className="h-4 w-4 mr-2" />
-            Add Connection
+            {t('integrations.addConnection')}
           </Button>
         </div>
-        
+
         {/* Info Banner */}
         <Card className="border-0 shadow-sm bg-gradient-to-r from-violet-50 to-purple-50 border-l-4 border-l-violet-500">
           <CardContent className="py-4">
             <div className="flex items-start gap-3">
               <HelpCircle className="h-5 w-5 text-violet-500 mt-0.5" />
               <div>
-                <h3 className="font-semibold text-violet-900">How Data Connections Work</h3>
+                <h3 className="font-semibold text-violet-900">{t('integrations.howItWorksTitle')}</h3>
                 <p className="text-sm text-violet-700 mt-1">
                   Connect your existing databases or document stores. ConTigo can either <strong>import</strong> contracts 
                   (copy files to ConTigo) or <strong>reference</strong> them (extract data while keeping original files in your system).
@@ -388,7 +392,7 @@ export default function DataConnectionsPage() {
                     </div>
                     <Button variant="ghost" size="sm" onClick={() => setSelectedType(null)}>
                       <ChevronRight className="h-4 w-4 rotate-180 mr-1" />
-                      Back
+                      {tCommon('back')}
                     </Button>
                   </div>
                   
@@ -702,7 +706,7 @@ export default function DataConnectionsPage() {
                   {/* Actions */}
                   <div className="flex justify-between pt-4 border-t">
                     <Button variant="outline" onClick={resetForm}>
-                      Cancel
+                      {tCommon('cancel')}
                     </Button>
                     <div className="flex gap-2">
                       <Button
@@ -713,12 +717,12 @@ export default function DataConnectionsPage() {
                         {isTesting ? (
                           <>
                             <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            Testing...
+                            {t('integrations.testing')}
                           </>
                         ) : (
                           <>
                             <TestTube className="h-4 w-4 mr-2" />
-                            Test Connection
+                            {tSso('testConnection')}
                           </>
                         )}
                       </Button>
@@ -730,12 +734,12 @@ export default function DataConnectionsPage() {
                         {isSaving ? (
                           <>
                             <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            Saving...
+                            {t('integrations.saving')}
                           </>
                         ) : (
                           <>
                             <Check className="h-4 w-4 mr-2" />
-                            Save Connection
+                            {t('integrations.saveConnection')}
                           </>
                         )}
                       </Button>
@@ -752,7 +756,7 @@ export default function DataConnectionsPage() {
           <Card className="border-0 shadow-md">
             <CardContent className="py-12 text-center">
               <Loader2 className="h-8 w-8 mx-auto text-violet-500 animate-spin" />
-              <p className="text-gray-500 mt-3">Loading connections...</p>
+              <p className="text-gray-500 mt-3">{t('integrations.loadingConnections')}</p>
             </CardContent>
           </Card>
         )}
@@ -765,18 +769,17 @@ export default function DataConnectionsPage() {
                 <Database className="h-8 w-8 text-gray-400" />
               </div>
               <h3 className="text-lg font-medium text-gray-900 mb-2">
-                No Data Connections
+                {t('integrations.noConnectionsTitle')}
               </h3>
               <p className="text-gray-500 max-w-md mx-auto mb-6">
-                Connect your external databases or document stores to sync contracts. 
-                ConTigo can reference files without moving them from your system.
+                {t('integrations.noConnectionsDescription')}
               </p>
               <Button
                 onClick={() => setShowNewConnection(true)}
                 className="bg-gradient-to-r from-violet-600 to-purple-600"
               >
                 <Plus className="h-4 w-4 mr-2" />
-                Add Your First Connection
+                {t('integrations.addFirstConnection')}
               </Button>
             </CardContent>
           </Card>
@@ -786,7 +789,7 @@ export default function DataConnectionsPage() {
         {!isLoading && connections.length > 0 && (
           <div className="space-y-4">
             <h2 className="text-lg font-semibold text-gray-900">
-              Active Connections ({connections.length})
+              {t('integrations.activeConnectionsTitle')} ({connections.length})
             </h2>
             
             {connections.map((connection) => {
@@ -814,7 +817,7 @@ export default function DataConnectionsPage() {
                               )}
                             >
                               {connection.status === 'syncing' && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}
-                              {connection.status}
+                              {t(`integrations.status.${connection.status}`)}
                             </Badge>
                             <Badge variant="outline" className="text-xs">
                               {connection.syncMode === 'reference' ? (
@@ -873,7 +876,7 @@ export default function DataConnectionsPage() {
             <div className="flex items-start gap-3">
               <Shield className="h-5 w-5 text-slate-500 mt-0.5" />
               <div>
-                <h3 className="font-medium text-slate-700">Security & Encryption</h3>
+                <h3 className="font-medium text-slate-700">{t('integrations.securityTitle')}</h3>
                 <p className="text-sm text-slate-500 mt-1">
                   All connection credentials are encrypted at rest using AES-256. Data transfers use TLS 1.3.
                   Reference mode keeps your original files in place - ConTigo only extracts metadata and text for analysis.

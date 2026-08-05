@@ -13,6 +13,7 @@ import { getTenantId } from '@/lib/tenant';
  */
 
 import React, { useState, useEffect, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronRight,
@@ -374,6 +375,8 @@ function CategoryFormModal({
   isEditing: boolean;
   isLoading: boolean;
 }) {
+  const t = useTranslations('settingsPages');
+  const tCommon = useTranslations('common');
   const [formData, setFormData] = useState<CategoryFormData>(
     initialData || { ...DEFAULT_FORM_DATA, parentId: parentCategory?.id || null }
   );
@@ -415,7 +418,7 @@ function CategoryFormModal({
               </div>
               <div>
                 <h3 className="font-semibold text-lg text-slate-900">
-                  {isEditing ? "Edit Category" : "New Category"}
+                  {isEditing ? t('taxonomy.editCategory') : t('taxonomy.newCategory')}
                 </h3>
                 {parentCategory && (
                   <p className="text-sm text-slate-500">
@@ -568,7 +571,7 @@ function CategoryFormModal({
               onClick={onClose}
               className="px-4 py-2 text-slate-600 hover:text-slate-900 transition-colors"
             >
-              Cancel
+              {tCommon('cancel')}
             </button>
             <button
               type="submit"
@@ -582,7 +585,7 @@ function CategoryFormModal({
               ) : (
                 <Save className="w-4 h-4" />
               )}
-              {isEditing ? "Update" : "Create"} Category
+              {isEditing ? t('taxonomy.updateCategory') : t('taxonomy.createCategory')}
             </button>
           </div>
         </form>
@@ -608,6 +611,8 @@ function DeleteConfirmModal({
   onConfirm: (deleteChildren: boolean) => Promise<void>;
   isLoading: boolean;
 }) {
+  const t = useTranslations('settingsPages');
+  const tCommon = useTranslations('common');
   const hasChildren = Array.isArray(category?.children) && category.children.length > 0;
 
   if (!isOpen || !category) return null;
@@ -625,7 +630,7 @@ function DeleteConfirmModal({
             <AlertCircle className="w-6 h-6 text-red-600" />
           </div>
           <div className="flex-1">
-            <h3 className="font-semibold text-lg text-slate-900">Delete Category</h3>
+            <h3 className="font-semibold text-lg text-slate-900">{t('taxonomy.deleteCategory')}</h3>
             <p className="text-slate-600 mt-1">
               Are you sure you want to delete &ldquo;{category.name}&rdquo;?
             </p>
@@ -647,7 +652,7 @@ function DeleteConfirmModal({
             onClick={onClose}
             className="px-4 py-2 text-slate-600 hover:text-slate-900 transition-colors"
           >
-            Cancel
+            {tCommon('cancel')}
           </button>
           {hasChildren && (
             <button
@@ -658,7 +663,7 @@ function DeleteConfirmModal({
                        disabled:opacity-50"
             >
               {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
-              Delete All
+              {t('taxonomy.deleteAll')}
             </button>
           )}
           <button
@@ -669,7 +674,7 @@ function DeleteConfirmModal({
                      disabled:opacity-50"
           >
             {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
-            Delete
+            {tCommon('delete')}
           </button>
         </div>
       </motion.div>
@@ -694,6 +699,8 @@ function SavePresetModal({
   isLoading: boolean;
   categoryCount: number;
 }) {
+  const t = useTranslations('settingsPages');
+  const tCommon = useTranslations('common');
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [isShared, setIsShared] = useState(false);
@@ -725,7 +732,7 @@ function SavePresetModal({
                   <Save className="w-5 h-5 text-violet-600" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-lg text-slate-900">Save as Preset</h3>
+                  <h3 className="font-semibold text-lg text-slate-900">{t('taxonomy.savePresetTitle')}</h3>
                   <p className="text-sm text-slate-500">
                     Save your {categoryCount} categories as a reusable preset
                   </p>
@@ -797,7 +804,7 @@ function SavePresetModal({
               onClick={onClose}
               className="px-4 py-2 text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
             >
-              Cancel
+              {tCommon('cancel')}
             </button>
             <button
               type="submit"
@@ -807,7 +814,7 @@ function SavePresetModal({
                        flex items-center gap-2"
             >
               {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
-              Save Preset
+              {t('taxonomy.savePresetButton')}
             </button>
           </div>
         </form>
@@ -821,6 +828,7 @@ function SavePresetModal({
 // ============================================================================
 
 export default function TaxonomyPage() {
+  const t = useTranslations('settingsPages');
   const [categories, setCategories] = useState<TaxonomyCategory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -1196,9 +1204,9 @@ export default function TaxonomyPage() {
                 <FolderTree className="w-5 h-5 text-violet-600" />
               </div>
               <div>
-                <h1 className="text-xl font-semibold text-slate-900">Taxonomy Management</h1>
+                <h1 className="text-xl font-semibold text-slate-900">{t('taxonomy.title')}</h1>
                 <p className="text-slate-500 text-sm">
-                  Define categories for automatic contract classification
+                  {t('taxonomy.subtitle')}
                 </p>
               </div>
             </div>
@@ -1210,7 +1218,7 @@ export default function TaxonomyPage() {
                          rounded-lg transition-colors text-sm text-slate-700"
               >
                 <BarChart3 className="w-4 h-4" />
-                Analytics
+                {t('taxonomy.analytics')}
               </Link>
               
               {/* Export Dropdown */}
@@ -1232,23 +1240,23 @@ export default function TaxonomyPage() {
                       className="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 
                                hover:bg-slate-50 rounded-t-lg"
                     >
-                      Export as JSON
+                      {t('taxonomy.exportJson')}
                     </a>
                     <a
                       href="/api/taxonomy/export?format=csv"
                       download
-                      className="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 
+                      className="flex items-center gap-2 px-4 py-2 text-sm text-slate-700
                                hover:bg-slate-50"
                     >
-                      Export as CSV
+                      {t('taxonomy.exportCsv')}
                     </a>
                     <button
                       onClick={() => setShowSavePresetModal(true)}
-                      className="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 
+                      className="flex items-center gap-2 px-4 py-2 text-sm text-slate-700
                                hover:bg-slate-50 rounded-b-lg w-full text-left border-t border-slate-100"
                     >
                       <Save className="w-4 h-4" />
-                      Save as Preset
+                      {t('taxonomy.saveAsPreset')}
                     </button>
                   </div>
                 </div>
@@ -1260,9 +1268,9 @@ export default function TaxonomyPage() {
                          rounded-lg transition-colors text-sm text-slate-700"
               >
                 <Sparkles className="w-4 h-4" />
-                Load Preset
+                {t('taxonomy.loadPreset')}
               </button>
-              
+
               <button
                 onClick={() => {
                   setEditingCategory(null);
@@ -1273,7 +1281,7 @@ export default function TaxonomyPage() {
                          text-white font-medium rounded-lg transition-colors"
               >
                 <Plus className="w-4 h-4" />
-                Add Category
+                {t('taxonomy.addCategory')}
               </button>
             </div>
           </div>
@@ -1323,25 +1331,25 @@ export default function TaxonomyPage() {
                       onClick={fetchCategories}
                       className="mt-4 px-4 py-2 bg-slate-100 rounded-lg hover:bg-slate-200 text-slate-700"
                     >
-                      Retry
+                      {t('taxonomy.retry')}
                     </button>
                   </div>
                 ) : filteredCategories.length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-64 text-slate-500">
                     <FolderTree className="w-12 h-12 mb-4 text-slate-300" />
-                    <p className="font-medium text-slate-700">No categories yet</p>
+                    <p className="font-medium text-slate-700">{t('taxonomy.emptyTitle')}</p>
                     <p className="text-sm mt-1 text-center max-w-sm">
-                      Start with a preset template or create your own categories
+                      {t('taxonomy.emptyDesc')}
                     </p>
                     <div className="flex gap-3 mt-4">
                       <button
                         onClick={() => setShowPresetsModal(true)}
-                        className="px-4 py-2 bg-violet-600 
+                        className="px-4 py-2 bg-violet-600
                                  text-white rounded-lg hover:bg-violet-700 transition-colors
                                  flex items-center gap-2"
                       >
                         <Sparkles className="w-4 h-4" />
-                        Use a Template
+                        {t('taxonomy.useTemplate')}
                       </button>
                       <button
                         onClick={() => {
@@ -1353,7 +1361,7 @@ export default function TaxonomyPage() {
                                  hover:bg-slate-200 transition-colors"
                       >
                         <Plus className="w-4 h-4 inline mr-2" />
-                        Create Custom
+                        {t('taxonomy.createCustom')}
                       </button>
                     </div>
                   </div>
@@ -1382,7 +1390,7 @@ export default function TaxonomyPage() {
             <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
               <h3 className="font-semibold mb-4 flex items-center gap-2 text-slate-900">
                 <Settings2 className="w-5 h-5 text-violet-600" />
-                Taxonomy Stats
+                {t('taxonomy.taxonomyStats')}
               </h3>
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
@@ -1401,7 +1409,7 @@ export default function TaxonomyPage() {
                           rounded-xl border border-amber-200 p-5">
               <h3 className="font-semibold mb-3 flex items-center gap-2 text-slate-900">
                 <Lightbulb className="w-5 h-5 text-amber-500" />
-                How Auto-Categorization Works
+                {t('taxonomy.howItWorks')}
               </h3>
               <div className="space-y-3 text-sm text-slate-600">
                 <div className="flex gap-2">
@@ -1551,7 +1559,7 @@ export default function TaxonomyPage() {
                       <Sparkles className="w-5 h-5 text-violet-600" />
                     </div>
                     <div>
-                      <h3 className="font-semibold text-lg text-slate-900">Choose a Template</h3>
+                      <h3 className="font-semibold text-lg text-slate-900">{t('taxonomy.chooseTemplate')}</h3>
                       <p className="text-sm text-slate-500">
                         Start with pre-configured categories or use a saved preset
                       </p>
@@ -1571,7 +1579,7 @@ export default function TaxonomyPage() {
                 {Array.isArray(customPresets) && customPresets.length > 0 && (
                   <div className="mb-6">
                     <h4 className="text-sm font-medium text-slate-500 mb-3 uppercase tracking-wider">
-                      Your Saved Presets
+                      {t('taxonomy.yourSavedPresets')}
                     </h4>
                     <div className="grid grid-cols-2 gap-3">
                       {customPresets.map((preset) => (
@@ -1603,7 +1611,7 @@ export default function TaxonomyPage() {
                               className="flex-1 text-xs px-3 py-1.5 bg-violet-600 text-white rounded-lg
                                        hover:bg-violet-700 transition-colors disabled:opacity-50"
                             >
-                              {isApplyingPreset ? "Applying..." : "Apply"}
+                              {isApplyingPreset ? t('taxonomy.applying') : t('taxonomy.apply')}
                             </button>
                             {preset.isOwn && (
                               <button
@@ -1624,7 +1632,7 @@ export default function TaxonomyPage() {
                 {/* Built-in Presets Section */}
                 <div>
                   <h4 className="text-sm font-medium text-slate-500 mb-3 uppercase tracking-wider">
-                    Industry Templates
+                    {t('taxonomy.industryTemplates')}
                   </h4>
                   <div className="grid grid-cols-2 gap-4">
                     {Array.isArray(presets) && presets.map((preset) => (
@@ -1651,7 +1659,7 @@ export default function TaxonomyPage() {
                           ) : (
                             <Plus className="w-4 h-4" />
                           )}
-                          Apply Template
+                          {t('taxonomy.applyTemplate')}
                         </div>
                       </motion.button>
                     ))}

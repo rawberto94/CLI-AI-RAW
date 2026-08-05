@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { WebhooksManager } from "@/components/settings";
@@ -12,16 +13,19 @@ import {
 
 export default function WebhooksSettingsPage() {
   const { loading, isAdmin, error } = useAdminSettingsAccess();
+  const t = useTranslations('settingsPages');
+  const tSettings = useTranslations('settings');
+  const tSecurity = useTranslations('settings.security');
 
   if (loading) {
-    return <SettingsAccessLoadingState label="Checking webhook settings access…" />;
+    return <SettingsAccessLoadingState label={t('webhooks.checkingAccess')} />;
   }
 
   if (error) {
     return (
       <AdminOnlySettingsState
-        title="Unable to load webhook settings"
-        description="We couldn't verify whether you can manage outbound webhooks right now."
+        title={t('webhooks.unableToLoadTitle')}
+        description={t('webhooks.unableToLoadDesc')}
         errorMessage={error}
       />
     );
@@ -30,8 +34,8 @@ export default function WebhooksSettingsPage() {
   if (!isAdmin) {
     return (
       <AdminOnlySettingsState
-        title="Admin Access Required"
-        description="Webhook endpoint management is limited to organization admins and owners."
+        title={tSettings('adminAccessRequired')}
+        description={t('webhooks.adminRequiredDesc')}
       />
     );
   }
@@ -40,31 +44,29 @@ export default function WebhooksSettingsPage() {
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">Webhook Endpoints</h1>
+          <h1 className="text-2xl font-semibold">{t('webhooks.title')}</h1>
           <p className="text-sm text-muted-foreground">
-            Configure outbound webhook subscribers, then drill into delivery history and the
-            durable integration event log when a receiver needs recovery.
+            {t('webhooks.subtitle')}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button asChild variant="outline" size="sm">
-            <Link href="/settings/webhook-deliveries">Deliveries</Link>
+            <Link href="/settings/webhook-deliveries">{t('webhooks.deliveries')}</Link>
           </Button>
           <Button asChild variant="outline" size="sm">
-            <Link href="/settings/integration-events">Event Log</Link>
+            <Link href="/settings/integration-events">{t('webhooks.eventLog')}</Link>
           </Button>
           <Button asChild variant="outline" size="sm">
-            <Link href="/settings/api-tokens">API Tokens</Link>
+            <Link href="/settings/api-tokens">{tSecurity('apiTokens')}</Link>
           </Button>
         </div>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Outbound Surface</CardTitle>
+          <CardTitle className="text-base">{t('webhooks.outboundSurface')}</CardTitle>
           <CardDescription>
-            Webhook endpoint configuration lives here. Use deliveries for retry and DLQ recovery,
-            and the event log for durable replay.
+            {t('webhooks.outboundSurfaceDesc')}
           </CardDescription>
         </CardHeader>
         <CardContent>

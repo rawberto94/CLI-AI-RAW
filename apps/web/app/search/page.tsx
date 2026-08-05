@@ -6,6 +6,7 @@ import { PageBreadcrumb } from '@/components/navigation'
 import { Card, CardContent } from '@/components/ui/card'
 import { motion } from 'framer-motion'
 import { Sparkles, Zap, Target, Search } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 
@@ -29,12 +30,13 @@ const itemVariants = {
 };
 
 function SearchPage() {
+  const t = useTranslations('search');
   return (
     <div className="max-w-[1600px] mx-auto p-6 space-y-6">
       <PageBreadcrumb />
-      
+
       {/* Header */}
-      <motion.div 
+      <motion.div
         className="space-y-4"
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -46,10 +48,10 @@ function SearchPage() {
           </div>
           <div>
             <h1 className="text-4xl font-bold bg-gradient-to-r from-violet-600 via-purple-600 to-violet-600 bg-clip-text text-transparent">
-              Smart Search
+              {t('title')}
             </h1>
             <p className="text-muted-foreground text-lg mt-1">
-              AI-powered semantic search across all contracts and artifacts
+              {t('subtitle')}
             </p>
           </div>
         </div>

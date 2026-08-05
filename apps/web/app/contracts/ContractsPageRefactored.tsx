@@ -13,6 +13,7 @@ import React, { useState, useCallback, useMemo, useEffect, memo } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
+import { useTranslations } from 'next-intl';
 
 // UI Components
 import { Card, CardContent } from '@/components/ui/card';
@@ -110,20 +111,22 @@ interface TaxonomyCategory {
 // Constants
 // ============================================================================
 
-const VIEW_MODES = [
-  { id: 'compact', label: 'List', icon: LayoutList },
-  { id: 'cards', label: 'Cards', icon: LayoutGrid },
-  { id: 'timeline', label: 'Timeline', icon: GanttChartSquare },
-  { id: 'kanban', label: 'Kanban', icon: Kanban },
+// `key` resolves to messages/{locale}.json under contracts.viewModes.<key>
+const VIEW_MODES_CONFIG = [
+  { id: 'compact', key: 'list', icon: LayoutList },
+  { id: 'cards', key: 'cards', icon: LayoutGrid },
+  { id: 'timeline', key: 'timeline', icon: GanttChartSquare },
+  { id: 'kanban', key: 'kanban', icon: Kanban },
 ] as const;
 
-const STATUS_FILTERS = [
-  { value: 'all', label: 'All' },
-  { value: 'completed', label: 'Active' },
-  { value: 'processing', label: 'Processing' },
-  { value: 'pending', label: 'Pending' },
-  { value: 'failed', label: 'Failed' },
-];
+// `key` resolves to contracts.status.<key> or contracts.filters.<key> (see resolveStatusFilterLabel)
+const STATUS_FILTERS_CONFIG = [
+  { value: 'all', key: 'all' },
+  { value: 'completed', key: 'active' },
+  { value: 'processing', key: 'processing' },
+  { value: 'pending', key: 'pending' },
+  { value: 'failed', key: 'failed' },
+] as const;
 
 const SORT_OPTIONS = [
   { value: 'createdAt', label: 'Date Created' },
@@ -178,7 +181,8 @@ const ContractRow = memo(function ContractRow({
   onDelete,
 }: ContractRowProps) {
   const router = useRouter();
-  
+  const t = useTranslations('contracts');
+
   const getStatusColor = (status: string) => {
     const colors: Record<string, string> = {
       completed: 'bg-green-100 text-green-800',
@@ -236,7 +240,7 @@ const ContractRow = memo(function ContractRow({
       )}
 
       <Badge className={getStatusColor(contract.status)}>
-        {contract.status === 'completed' ? 'Active' : contract.status}
+        {contract.status === 'completed' ? t('status.active') : contract.status}
       </Badge>
 
       <div className="hidden md:block text-sm font-medium min-w-[80px] text-right">
@@ -296,7 +300,9 @@ const ContractRow = memo(function ContractRow({
 export default function ContractsPageRefactored() {
   const router = useRouter();
   const { dataMode } = useDataMode();
-  
+  const t = useTranslations('contracts');
+  const tCommon = useTranslations('common');
+
   // Data fetching
   const { data: contractsData, isLoading, error, refetch } = useContracts();
   
@@ -347,6 +353,19 @@ export default function ContractsPageRefactored() {
     };
     fetchCategories();
   }, []);
+
+  // Resolve translated labels for the view-mode and status-filter configs
+  const VIEW_MODES = useMemo(
+    () => VIEW_MODES_CONFIG.map(({ key, ...rest }) => ({ ...rest, label: t(`viewModes.${key}`) })),
+    [t],
+  );
+  const STATUS_FILTERS = useMemo(
+    () => STATUS_FILTERS_CONFIG.map(({ key, ...rest }) => ({
+      ...rest,
+      label: key === 'all' ? tCommon('all') : key === 'active' || key === 'pending' ? t(`status.${key}`) : t(`filters.${key}`),
+    })),
+    [t, tCommon],
+  );
 
   // Filter and sort contracts
   const filteredContracts = useMemo(() => {
@@ -563,10 +582,10 @@ export default function ContractsPageRefactored() {
     return (
       <div className="max-w-[1600px] mx-auto p-6">
         <div className="text-center py-12">
-          <p className="text-destructive mb-4">Failed to load contracts</p>
+          <p className="text-destructive mb-4">{t('errorState.defaultMessage')}</p>
           <Button onClick={() => refetch()}>
             <RefreshCw className="h-4 w-4 mr-2" />
-            Retry
+            {t('errorState.retry')}
           </Button>
         </div>
       </div>
@@ -588,21 +607,21 @@ export default function ContractsPageRefactored() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold">Contracts</h1>
+            <h1 className="text-2xl font-bold">{t('title')}</h1>
             <p className="text-muted-foreground">
-              {filteredContracts.length} of {contracts.length} contracts
+              {t('countSummary', { filtered: filteredContracts.length, total: contracts.length })}
             </p>
           </div>
-          
+
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={() => refetch()}>
               <RefreshCw className="h-4 w-4 mr-2" />
-              Refresh
+              {tCommon('refresh')}
             </Button>
             <Button asChild>
               <Link href="/upload">
                 <Upload className="h-4 w-4 mr-2" />
-                Upload
+                {tCommon('upload')}
               </Link>
             </Button>
           </div>
@@ -760,7 +779,7 @@ export default function ContractsPageRefactored() {
           {hasActiveFilters && (
             <Button variant="ghost" size="sm" onClick={clearFilters}>
               <X className="h-4 w-4 mr-1" />
-              Clear
+              {t('clear')}
             </Button>
           )}
 
@@ -788,24 +807,24 @@ export default function ContractsPageRefactored() {
                   onCheckedChange={toggleSelectAll}
                 />
                 <span className="text-sm font-medium">
-                  {selectedIds.size} selected
+                  {t('bulkBar.selectedCount', { count: selectedIds.size })}
                 </span>
                 <Button variant="ghost" size="sm" onClick={clearSelection}>
-                  Clear
+                  {t('clear')}
                 </Button>
               </div>
               <div className="flex items-center gap-2">
                 <Button variant="outline" size="sm" onClick={handleBulkCategorize}>
                   <Sparkles className="h-4 w-4 mr-2" />
-                  Auto-categorize
+                  {t('bulkBar.autoCategorize')}
                 </Button>
                 <Button variant="outline" size="sm">
                   <Download className="h-4 w-4 mr-2" />
-                  Export
+                  {tCommon('export')}
                 </Button>
                 <Button variant="destructive" size="sm">
                   <Trash2 className="h-4 w-4 mr-2" />
-                  Delete
+                  {tCommon('delete')}
                 </Button>
               </div>
             </motion.div>
@@ -829,7 +848,7 @@ export default function ContractsPageRefactored() {
                 onCheckedChange={toggleSelectAll}
               />
               <span className="text-sm text-muted-foreground">
-                {paginatedItems.length} contracts
+                {t('contractsCount', { count: paginatedItems.length })}
               </span>
             </div>
 
@@ -886,7 +905,7 @@ export default function ContractsPageRefactored() {
                       contract.status === 'failed' ? 'bg-red-100 text-red-800' :
                       'bg-gray-100 text-gray-800'
                     )}>
-                      {contract.status === 'completed' ? 'Active' : contract.status}
+                      {contract.status === 'completed' ? t('status.active') : contract.status}
                     </Badge>
                     {contract.category && (
                       <CategoryBadge

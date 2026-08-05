@@ -49,6 +49,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
+import { useTranslations } from 'next-intl'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -206,6 +207,8 @@ const RISK_COLORS: Record<string, string> = {
 
 export default function PlaybooksPage() {
   const router = useRouter()
+  const t = useTranslations('drafting.playbooksPage')
+  const tCommon = useTranslations('common')
   const queryClient = useQueryClient()
   const { data: playbooks = [], isLoading, error: loadError, refetch } = usePlaybooks()
   const [search, setSearch] = useState('')
@@ -345,20 +348,20 @@ export default function PlaybooksPage() {
           <div>
             <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
               <BookOpen className="h-6 w-6 text-violet-600" />
-              Legal Playbooks
+              {t('title')}
             </h1>
             <p className="text-sm text-slate-500 mt-1">
-              Define preferred clauses, risk thresholds, and negotiation positions for automated contract review
+              {t('subtitle')}
             </p>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row">
             <Button variant="outline" onClick={() => setImportOpen(true)}>
               <Upload className="h-4 w-4 mr-2" />
-              Import Policy Pack
+              {t('importPolicyPack')}
             </Button>
             <Button onClick={() => setCreateOpen(true)} className="bg-violet-600 hover:bg-violet-700 text-white">
               <Plus className="h-4 w-4 mr-2" />
-              New Playbook
+              {t('newPlaybook')}
             </Button>
           </div>
         </div>
@@ -367,7 +370,7 @@ export default function PlaybooksPage() {
         <div className="relative max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
           <Input
-            placeholder="Search playbooks..."
+            placeholder={t('searchPlaceholder')}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-10"
@@ -379,25 +382,25 @@ export default function PlaybooksPage() {
           <Card className="border-slate-200">
             <CardContent className="p-4 flex items-center gap-3">
               <div className="p-2 bg-violet-100 rounded-lg"><BookOpen className="h-5 w-5 text-violet-600" /></div>
-              <div><p className="text-2xl font-bold">{playbooks.length}</p><p className="text-xs text-slate-500">Total Playbooks</p></div>
+              <div><p className="text-2xl font-bold">{playbooks.length}</p><p className="text-xs text-slate-500">{t('stats.total')}</p></div>
             </CardContent>
           </Card>
           <Card className="border-slate-200">
             <CardContent className="p-4 flex items-center gap-3">
               <div className="p-2 bg-green-100 rounded-lg"><Star className="h-5 w-5 text-green-600" /></div>
-              <div><p className="text-2xl font-bold">{playbooks.filter(p => p.isDefault).length}</p><p className="text-xs text-slate-500">Default</p></div>
+              <div><p className="text-2xl font-bold">{playbooks.filter(p => p.isDefault).length}</p><p className="text-xs text-slate-500">{t('stats.default')}</p></div>
             </CardContent>
           </Card>
           <Card className="border-slate-200">
             <CardContent className="p-4 flex items-center gap-3">
               <div className="p-2 bg-amber-100 rounded-lg"><Shield className="h-5 w-5 text-amber-600" /></div>
-              <div><p className="text-2xl font-bold">{playbooks.reduce((s, p) => s + (p._count?.clauses || p.clauses?.length || 0), 0)}</p><p className="text-xs text-slate-500">Total Clauses</p></div>
+              <div><p className="text-2xl font-bold">{playbooks.reduce((s, p) => s + (p._count?.clauses || p.clauses?.length || 0), 0)}</p><p className="text-xs text-slate-500">{t('stats.totalClauses')}</p></div>
             </CardContent>
           </Card>
           <Card className="border-slate-200">
             <CardContent className="p-4 flex items-center gap-3">
               <div className="p-2 bg-red-100 rounded-lg"><AlertTriangle className="h-5 w-5 text-red-600" /></div>
-              <div><p className="text-2xl font-bold">{playbooks.reduce((s, p) => s + (p._count?.redFlags || p.redFlags?.length || 0), 0)}</p><p className="text-xs text-slate-500">Red Flags</p></div>
+              <div><p className="text-2xl font-bold">{playbooks.reduce((s, p) => s + (p._count?.redFlags || p.redFlags?.length || 0), 0)}</p><p className="text-xs text-slate-500">{t('stats.redFlags')}</p></div>
             </CardContent>
           </Card>
         </div>
@@ -411,12 +414,12 @@ export default function PlaybooksPage() {
           <Card className="border-rose-200 bg-rose-50/50">
             <CardContent className="flex flex-col items-center justify-center py-16">
               <AlertTriangle className="h-12 w-12 text-rose-400 mb-4" />
-              <h3 className="font-semibold text-rose-900 mb-1">Couldn&apos;t load playbooks</h3>
+              <h3 className="font-semibold text-rose-900 mb-1">{t('error.title')}</h3>
               <p className="text-sm text-rose-700/80 mb-4 max-w-md text-center">
                 {loadError instanceof Error ? loadError.message : 'The server returned an error. Please try again.'}
               </p>
               <Button variant="outline" onClick={() => refetch()} className="gap-2">
-                <RefreshCw className="h-4 w-4" /> Retry
+                <RefreshCw className="h-4 w-4" /> {t('error.retry')}
               </Button>
             </CardContent>
           </Card>
@@ -425,14 +428,14 @@ export default function PlaybooksPage() {
             <CardContent className="flex flex-col items-center justify-center py-16">
               <BookOpen className="h-12 w-12 text-slate-300 mb-4" />
               <h3 className="font-semibold text-slate-700 mb-1">
-                {search ? 'No playbooks match your search' : 'No playbooks yet'}
+                {search ? t('empty.titleFiltered') : t('empty.titleEmpty')}
               </h3>
               <p className="text-sm text-slate-500 mb-4">
-                {search ? 'Try a different search term' : 'Create your first legal playbook to standardize contract review'}
+                {search ? t('empty.descFiltered') : t('empty.descEmpty')}
               </p>
               {!search && (
                 <Button onClick={() => setCreateOpen(true)} variant="outline">
-                  <Plus className="h-4 w-4 mr-2" /> Create Playbook
+                  <Plus className="h-4 w-4 mr-2" /> {t('empty.cta')}
                 </Button>
               )}
             </CardContent>
@@ -673,13 +676,13 @@ export default function PlaybooksPage() {
 
                 <DialogFooter className="mt-6">
                   <Button variant="outline" onClick={() => setEditId(detailPlaybook.id)}>
-                    <Pencil className="h-4 w-4 mr-2" /> Edit
+                    <Pencil className="h-4 w-4 mr-2" /> {tCommon('edit')}
                   </Button>
                   <Button
                     className="bg-violet-600 hover:bg-violet-700 text-white"
                     onClick={() => router.push(`/drafting/copilot?mode=blank&playbook=${detailPlaybook.id}`)}
                   >
-                    Use In Drafting
+                    {t('detailDialog.useInDrafting')}
                   </Button>
                 </DialogFooter>
               </>
@@ -693,20 +696,20 @@ export default function PlaybooksPage() {
         <Dialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}>
           <DialogContent className="max-w-sm">
             <DialogHeader>
-              <DialogTitle>Delete Playbook</DialogTitle>
+              <DialogTitle>{t('deleteDialog.title')}</DialogTitle>
               <DialogDescription>
-                Are you sure you want to delete &quot;{deleteTarget?.name}&quot;? This action cannot be undone.
+                {t('deleteDialog.description', { name: deleteTarget?.name || '' })}
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setDeleteTarget(null)}>Cancel</Button>
+              <Button variant="outline" onClick={() => setDeleteTarget(null)}>{tCommon('cancel')}</Button>
               <Button
                 variant="destructive"
                 disabled={deleteMutation.isPending}
                 onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}
               >
                 {deleteMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                Delete
+                {tCommon('delete')}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -732,6 +735,8 @@ function PlaybookFormDialog({
   isSubmitting: boolean
 }) {
   const { data: existingPlaybook } = usePlaybook(editId)
+  const t = useTranslations('drafting.playbooksPage')
+  const tCommon = useTranslations('common')
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [selectedTypes, setSelectedTypes] = useState<string[]>([])
@@ -789,9 +794,9 @@ function PlaybookFormDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{editId ? 'Edit Playbook' : 'Create New Playbook'}</DialogTitle>
+          <DialogTitle>{editId ? t('formDialog.editTitle') : t('formDialog.createTitle')}</DialogTitle>
           <DialogDescription>
-            {editId ? 'Update playbook settings and thresholds' : 'Define a legal playbook for standardized contract review'}
+            {editId ? t('formDialog.editDescription') : t('formDialog.createDescription')}
           </DialogDescription>
         </DialogHeader>
 
@@ -862,14 +867,14 @@ function PlaybookFormDialog({
         </div>
 
         <DialogFooter className="mt-4">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>{tCommon('cancel')}</Button>
           <Button
             onClick={handleSubmit}
             disabled={isSubmitting || !name.trim()}
             className="bg-violet-600 hover:bg-violet-700 text-white"
           >
             {isSubmitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            {editId ? 'Save Changes' : 'Create Playbook'}
+            {editId ? t('formDialog.editSubmit') : t('formDialog.createSubmit')}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -888,6 +893,7 @@ function PolicyPackImportDialog({
   onImport: (payload: Record<string, unknown>) => void
   isSubmitting: boolean
 }) {
+  const t = useTranslations('drafting.playbooksPage')
   const [fileName, setFileName] = useState('')
   const [payload, setPayload] = useState<Record<string, unknown> | null>(null)
   const [summary, setSummary] = useState<{
@@ -958,9 +964,9 @@ function PolicyPackImportDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-xl">
         <DialogHeader>
-          <DialogTitle>Import Policy Pack</DialogTitle>
+          <DialogTitle>{t('importDialog.title')}</DialogTitle>
           <DialogDescription>
-            Upload a standardized JSON policy pack and convert it into a reusable drafting playbook.
+            {t('importDialog.description')}
           </DialogDescription>
         </DialogHeader>
 
@@ -1006,7 +1012,7 @@ function PolicyPackImportDialog({
 
         <DialogFooter>
           <Button variant="outline" onClick={downloadTemplate}>
-            <FileText className="h-4 w-4 mr-2" /> Sample JSON
+            <FileText className="h-4 w-4 mr-2" /> {t('importDialog.sampleJson')}
           </Button>
           <Button
             onClick={() => payload && onImport(payload)}
@@ -1014,7 +1020,7 @@ function PolicyPackImportDialog({
             className="bg-violet-600 hover:bg-violet-700 text-white"
           >
             {isSubmitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            Import Policy Pack
+            {t('importDialog.submit')}
           </Button>
         </DialogFooter>
       </DialogContent>

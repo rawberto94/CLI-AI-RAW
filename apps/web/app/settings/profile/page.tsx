@@ -7,6 +7,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { PageBreadcrumb } from "@/components/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -135,6 +136,7 @@ function useUserProfile() {
 }
 
 export default function ProfileSettingsPage() {
+  const t = useTranslations('settingsPages');
   const { user, isLoading, error, setUser, updateProfile, refresh } = useUserProfile();
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -278,9 +280,9 @@ export default function ProfileSettingsPage() {
                 </Button>
               </Link>
               <div>
-                <h1 className="font-semibold text-lg">Profile Settings</h1>
+                <h1 className="font-semibold text-lg">{t('profile.title')}</h1>
                 <p className="text-xs text-muted-foreground">
-                  Manage your account information
+                  {t('profile.subtitle')}
                 </p>
               </div>
             </div>
@@ -294,7 +296,7 @@ export default function ProfileSettingsPage() {
               ) : saveSuccess ? (
                 <>
                   <CheckCircle2 className="h-4 w-4 mr-2 text-green-500" />
-                  Saved!
+                  {t('profile.saved')}
                 </>
               ) : saveError ? (
                 <>
@@ -304,7 +306,7 @@ export default function ProfileSettingsPage() {
               ) : (
                 <>
                   <Save className="h-4 w-4 mr-2" />
-                  Save Changes
+                  {t('profile.saveChanges')}
                 </>
               )}
             </Button>
@@ -315,9 +317,9 @@ export default function ProfileSettingsPage() {
       <main className="max-w-4xl mx-auto px-4 py-6">
         <Tabs defaultValue="profile" className="space-y-6">
           <TabsList className="p-1 bg-slate-100/80 dark:bg-slate-800/80 backdrop-blur-sm border border-slate-200/50 dark:border-slate-700/50 rounded-xl">
-            <TabsTrigger value="profile" className="rounded-lg data-[state=active]:bg-white data-[state=active]:dark:bg-slate-700 data-[state=active]:text-violet-700 data-[state=active]:dark:text-violet-300 data-[state=active]:shadow-sm transition-all duration-200">Profile</TabsTrigger>
-            <TabsTrigger value="security" className="rounded-lg data-[state=active]:bg-white data-[state=active]:dark:bg-slate-700 data-[state=active]:text-violet-700 data-[state=active]:dark:text-violet-300 data-[state=active]:shadow-sm transition-all duration-200">Security</TabsTrigger>
-            <TabsTrigger value="preferences" className="rounded-lg data-[state=active]:bg-white data-[state=active]:dark:bg-slate-700 data-[state=active]:text-violet-700 data-[state=active]:dark:text-violet-300 data-[state=active]:shadow-sm transition-all duration-200">Preferences</TabsTrigger>
+            <TabsTrigger value="profile" className="rounded-lg data-[state=active]:bg-white data-[state=active]:dark:bg-slate-700 data-[state=active]:text-violet-700 data-[state=active]:dark:text-violet-300 data-[state=active]:shadow-sm transition-all duration-200">{t('profile.tabs.profile')}</TabsTrigger>
+            <TabsTrigger value="security" className="rounded-lg data-[state=active]:bg-white data-[state=active]:dark:bg-slate-700 data-[state=active]:text-violet-700 data-[state=active]:dark:text-violet-300 data-[state=active]:shadow-sm transition-all duration-200">{t('profile.tabs.security')}</TabsTrigger>
+            <TabsTrigger value="preferences" className="rounded-lg data-[state=active]:bg-white data-[state=active]:dark:bg-slate-700 data-[state=active]:text-violet-700 data-[state=active]:dark:text-violet-300 data-[state=active]:shadow-sm transition-all duration-200">{t('profile.tabs.preferences')}</TabsTrigger>
           </TabsList>
 
           {/* Profile Tab */}
@@ -330,9 +332,9 @@ export default function ProfileSettingsPage() {
                     <User className="h-5 w-5" />
                   </div>
                   <div>
-                    <CardTitle>Profile Photo</CardTitle>
+                    <CardTitle>{t('profile.profilePhoto')}</CardTitle>
                     <CardDescription>
-                      This will be displayed on your profile and in comments.
+                      {t('profile.profilePhotoDesc')}
                     </CardDescription>
                   </div>
                 </div>
@@ -364,9 +366,9 @@ export default function ProfileSettingsPage() {
                     <Mail className="h-5 w-5" />
                   </div>
                   <div>
-                    <CardTitle>Basic Information</CardTitle>
+                    <CardTitle>{t('profile.basicInformation')}</CardTitle>
                     <CardDescription>
-                      Update your personal information.
+                      {t('profile.basicInformationDesc')}
                     </CardDescription>
                   </div>
                 </div>
@@ -475,9 +477,9 @@ export default function ProfileSettingsPage() {
                     <Lock className="h-5 w-5" />
                   </div>
                   <div>
-                    <CardTitle>Password</CardTitle>
+                    <CardTitle>{t('profile.password')}</CardTitle>
                     <CardDescription>
-                      Change your password or enable additional security measures.
+                      {t('profile.passwordDesc')}
                     </CardDescription>
                   </div>
                 </div>
@@ -559,7 +561,7 @@ export default function ProfileSettingsPage() {
                   }}
                 >
                   {isUpdatingPassword && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                  Update Password
+                  {t('profile.updatePassword')}
                 </Button>
               </CardContent>
             </Card>
@@ -571,9 +573,9 @@ export default function ProfileSettingsPage() {
                     <Shield className="h-5 w-5" />
                   </div>
                   <div>
-                    <CardTitle>Two-Factor Authentication</CardTitle>
+                    <CardTitle>{t('profile.twoFactorAuth')}</CardTitle>
                     <CardDescription>
-                      Add an extra layer of security to your account.
+                      {t('profile.twoFactorAuthDesc')}
                     </CardDescription>
                   </div>
                 </div>
@@ -627,7 +629,7 @@ export default function ProfileSettingsPage() {
                     <User className="h-5 w-5" />
                   </div>
                   <div>
-                    <CardTitle>Account Details</CardTitle>
+                    <CardTitle>{t('profile.accountDetails')}</CardTitle>
                   </div>
                 </div>
               </CardHeader>
@@ -661,9 +663,9 @@ export default function ProfileSettingsPage() {
                     <Globe className="h-5 w-5" />
                   </div>
                   <div>
-                    <CardTitle>Regional Settings</CardTitle>
+                    <CardTitle>{t('profile.regionalSettings')}</CardTitle>
                     <CardDescription>
-                      Configure your timezone and language preferences.
+                      {t('profile.regionalSettingsDesc')}
                     </CardDescription>
                   </div>
                 </div>
@@ -722,9 +724,9 @@ export default function ProfileSettingsPage() {
                     <Mail className="h-5 w-5" />
                   </div>
                   <div>
-                    <CardTitle>Email Preferences</CardTitle>
+                    <CardTitle>{t('profile.emailPreferences')}</CardTitle>
                     <CardDescription>
-                      Manage your email notification preferences.
+                      {t('profile.emailPreferencesDesc')}
                     </CardDescription>
                   </div>
                 </div>

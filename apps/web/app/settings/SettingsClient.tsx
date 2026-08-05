@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useDemoMode } from '@/hooks/useDemoMode';
 import { PageBreadcrumb } from '@/components/navigation';
 import { unwrapApiResponseData } from '@/lib/api-fetch';
@@ -10,7 +11,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
-import { Toggle } from "@/components/toggle";
+import { useTranslations } from "next-intl";
+import { Toggle, ToggleGroup } from "@/components/toggle";
+
+// Must match LOCALE_COOKIE in i18n/request.ts
+const LOCALE_COOKIE = 'NEXT_LOCALE';
 import { Alert } from "@/components/alert";
 import {
   Settings,
@@ -111,11 +116,22 @@ interface OutboundOverview {
 }
 
 export default function SettingsClient({ initialTab = "general" }: SettingsClientProps) {
+  const router = useRouter();
+  const t = useTranslations('settings');
+  const tCommon = useTranslations('common');
   const [activeTab, setActiveTab] = React.useState(initialTab);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
   const isDemo = useDemoMode();
+  // The app's live locale, driven by the NEXT_LOCALE cookie (not the persisted
+  // "preference" in systemSettings.language, which only affects future page loads
+  // until the cookie is set below).
+  const [uiLocale, setUiLocale] = useState<'en' | 'de'>('en');
+  useEffect(() => {
+    const match = document.cookie.match(new RegExp(`(?:^|;\\s*)${LOCALE_COOKIE}=([^;]+)`));
+    if (match?.[1] === 'de') setUiLocale('de');
+  }, []);
   const [requeueingIssueId, setRequeueingIssueId] = useState<string | null>(null);
   const [bulkRequeueingIssues, setBulkRequeueingIssues] = useState(false);
   
@@ -262,6 +278,15 @@ export default function SettingsClient({ initialTab = "general" }: SettingsClien
     setDirty(true);
   }, []);
 
+  // Switches the live app locale immediately (cookie + router.refresh), in addition
+  // to tracking it as a dirty setting like the other preferences below.
+  const handleLanguageChange = useCallback((locale: 'en' | 'de') => {
+    setUiLocale(locale);
+    document.cookie = `${LOCALE_COOKIE}=${locale}; path=/; max-age=31536000; SameSite=Lax`;
+    updateSystem({ language: locale });
+    router.refresh();
+  }, [router, updateSystem]);
+
   const updateNotifications = useCallback((updates: Partial<typeof DEFAULT_SETTINGS.notifications>) => {
     setNotificationSettings(prev => ({ ...prev, ...updates }));
     setDirty(true);
@@ -335,52 +360,52 @@ export default function SettingsClient({ initialTab = "general" }: SettingsClien
   }, []);
 
   const tabs = [
-    { id: "general", name: "General", icon: <Settings className="w-4 h-4" /> },
-    ...(!isDemo ? [{ id: "security", name: "Security", icon: <Shield className="w-4 h-4" /> }] : []),
+    { id: "general", name: t('tabs.general'), icon: <Settings className="w-4 h-4" /> },
+    ...(!isDemo ? [{ id: "security", name: t('tabs.security'), icon: <Shield className="w-4 h-4" /> }] : []),
     {
       id: "notifications",
-      name: "Notifications",
+      name: t('tabs.notifications'),
       icon: <Bell className="w-4 h-4" />,
     },
-    ...(!isDemo ? [{ id: "processing", name: "Processing", icon: <Zap className="w-4 h-4" /> }] : []),
+    ...(!isDemo ? [{ id: "processing", name: t('tabs.processing'), icon: <Zap className="w-4 h-4" /> }] : []),
     ...(!isDemo ? [{
       id: "integrations",
-      name: "Integrations",
+      name: t('tabs.integrations'),
       icon: <Globe className="w-4 h-4" />,
     }] : []),
     ...(!isDemo ? [{
       id: "contract-sources",
-      name: "Contract Sources",
+      name: t('tabs.contractSources'),
       icon: <FolderSync className="w-4 h-4" />,
       href: "/settings/contract-sources",
     }] : []),
     ...(!isDemo ? [{
       id: "metadata",
-      name: "Metadata Schema",
+      name: t('tabs.metadata'),
       icon: <FileText className="w-4 h-4" />,
       href: "/settings/metadata",
     }] : []),
     {
       id: "tags",
-      name: "Tags",
+      name: t('tabs.tags'),
       icon: <Tag className="w-4 h-4" />,
       href: "/settings/tags",
     },
     ...(!isDemo ? [{
       id: "contract-groups",
-      name: "Contract Groups",
+      name: t('tabs.contractGroups'),
       icon: <FolderTree className="w-4 h-4" />,
       href: "/settings/contract-groups",
     }] : []),
     ...(!isDemo ? [{
       id: "tag-rules",
-      name: "Tag Rules",
+      name: t('tabs.tagRules'),
       icon: <Zap className="w-4 h-4" />,
       href: "/settings/tag-rules",
     }] : []),
     ...(!isDemo ? [{
       id: "taxonomy",
-      name: "Taxonomy",
+      name: t('tabs.taxonomy'),
       icon: <FolderTree className="w-4 h-4" />,
       href: "/settings/taxonomy",
     }] : []),
@@ -466,12 +491,12 @@ export default function SettingsClient({ initialTab = "general" }: SettingsClien
         <PageBreadcrumb />
         
         {/* Security Notice Banner */}
-        <Alert 
-          type="info" 
-          title="Settings are synced across devices"
+        <Alert
+          type="info"
+          title={t('syncedTitle')}
           dismissible
         >
-          Changes you make here will be reflected on all devices where you&apos;re signed in. Some changes may require a page refresh to take effect.
+          {t('syncedDescription')}
         </Alert>
         
         {/* Header */}
@@ -491,10 +516,10 @@ export default function SettingsClient({ initialTab = "general" }: SettingsClien
             </motion.div>
             <div>
               <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 dark:from-white dark:to-slate-200 bg-clip-text text-transparent">
-                System Settings
+                {t('pageTitle')}
               </h1>
               <p className="text-slate-600 dark:text-slate-400 mt-1">
-                Configure system parameters and preferences
+                {t('pageDescription')}
               </p>
             </div>
           </div>
@@ -507,7 +532,7 @@ export default function SettingsClient({ initialTab = "general" }: SettingsClien
                 className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-slate-200/60 dark:border-slate-700/60 hover:bg-white dark:hover:bg-slate-800 shadow-sm"
               >
                 <RefreshCw className="w-4 h-4 mr-2" />
-                Reset to Defaults
+                {t('resetToDefaults')}
               </Button>
             </motion.div>
             <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="motion-reduce:transform-none">
@@ -521,7 +546,7 @@ export default function SettingsClient({ initialTab = "general" }: SettingsClien
                 ) : (
                   <Save className="w-4 h-4 mr-2" />
                 )}
-                {saving ? 'Saving...' : dirty ? 'Save Changes' : 'Saved'}
+                {saving ? t('saving') : dirty ? t('saveChanges') : t('saved')}
               </Button>
             </motion.div>
           </div>
@@ -611,14 +636,14 @@ export default function SettingsClient({ initialTab = "general" }: SettingsClien
                     <div className="p-2 bg-gradient-to-br from-violet-500 to-purple-500 rounded-lg shadow-lg shadow-violet-500/25">
                       <User className="w-5 h-5 text-white" />
                     </div>
-                    User Profile
+                    {t('userProfile')}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label htmlFor="fullName" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                        Full Name
+                        {t('fullName')}
                       </label>
                       <input
                         id="fullName"
@@ -628,12 +653,12 @@ export default function SettingsClient({ initialTab = "general" }: SettingsClien
                         className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400"
                       />
                       <p className="mt-1 text-xs text-slate-400">
-                        <Link href="/settings/profile" className="text-violet-500 hover:underline">Edit in Profile Settings →</Link>
+                        <Link href="/settings/profile" className="text-violet-500 hover:underline">{t('editInProfile')}</Link>
                       </p>
                     </div>
                     <div>
                       <label htmlFor="emailAddress" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                        Email Address
+                        {t('emailAddress')}
                       </label>
                       <input
                         id="emailAddress"
@@ -647,7 +672,7 @@ export default function SettingsClient({ initialTab = "general" }: SettingsClien
 
                   <div>
                     <label htmlFor="userRole" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                      Role
+                      {t('role')}
                     </label>
                     <input
                       id="userRole"
@@ -666,14 +691,14 @@ export default function SettingsClient({ initialTab = "general" }: SettingsClien
                     <div className="p-2 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-lg shadow-lg shadow-blue-500/25">
                       <Globe className="w-5 h-5 text-white" />
                     </div>
-                    System Preferences
+                    {t('systemPreferences')}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                        Timezone
+                        {t('timezone')}
                       </label>
                       <select
                         value={systemSettings.timezone}
@@ -692,26 +717,23 @@ export default function SettingsClient({ initialTab = "general" }: SettingsClien
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                        Language
+                        {t('language')}
                       </label>
-                      <select
-                        value={systemSettings.language}
-                        onChange={(e) => updateSystem({ language: e.target.value })}
-                        className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-violet-500 focus:border-transparent"
-                      >
-                        <option value="en">English (US)</option>
-                        <option value="en-GB">English (UK)</option>
-                        <option value="de">German</option>
-                        <option value="fr">French</option>
-                        <option value="es">Spanish</option>
-                      </select>
+                      <ToggleGroup
+                        options={[
+                          { value: 'en', label: 'English' },
+                          { value: 'de', label: 'Deutsch' },
+                        ]}
+                        value={uiLocale}
+                        onChange={(value) => handleLanguageChange(value as 'en' | 'de')}
+                      />
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                        Date Format
+                        {t('dateFormat')}
                       </label>
                       <select
                         value={systemSettings.dateFormat}
@@ -725,7 +747,7 @@ export default function SettingsClient({ initialTab = "general" }: SettingsClien
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                        Currency
+                        {t('currency')}
                       </label>
                       <select
                         value={systemSettings.currency}
@@ -750,15 +772,15 @@ export default function SettingsClient({ initialTab = "general" }: SettingsClien
                     <div className="p-2 bg-gradient-to-br from-violet-500 to-pink-500 rounded-lg shadow-lg shadow-violet-500/25">
                       <HelpCircle className="w-5 h-5 text-white" />
                     </div>
-                    Help & Support
+                    {t('helpSupport')}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="flex items-center justify-between p-4 bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-900/20 dark:to-purple-900/20 rounded-lg border border-violet-200 dark:border-violet-800">
                     <div>
-                      <h4 className="font-medium text-violet-900 dark:text-violet-200">App Tour & Learning Center</h4>
+                      <h4 className="font-medium text-violet-900 dark:text-violet-200">{t('appTour')}</h4>
                       <p className="text-sm text-violet-700 dark:text-violet-400">
-                        Interactive walkthrough and feature guides
+                        {t('appTourDesc')}
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
@@ -818,7 +840,7 @@ export default function SettingsClient({ initialTab = "general" }: SettingsClien
                       <div className="p-2 bg-gradient-to-br from-red-500 to-rose-500 rounded-lg shadow-lg shadow-red-500/25">
                         <Lock className="w-5 h-5 text-white" />
                       </div>
-                      Authentication & Security
+                      {t('security.title')}
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
@@ -827,10 +849,10 @@ export default function SettingsClient({ initialTab = "general" }: SettingsClien
                         <Shield className="w-5 h-5 text-slate-600 dark:text-slate-400" />
                         <div>
                           <h4 className="font-medium text-slate-800 dark:text-slate-200">
-                            Two-Factor Authentication
+                            {t('security.twoFactor')}
                           </h4>
                           <p className="text-sm text-slate-500 dark:text-slate-400">
-                            {securitySettings.requireMFA ? 'Required for all users' : 'Optional'}
+                            {securitySettings.requireMFA ? t('security.mfaRequired') : t('security.mfaOptional')}
                           </p>
                         </div>
                       </div>
@@ -844,7 +866,7 @@ export default function SettingsClient({ initialTab = "general" }: SettingsClien
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                          Session Timeout (hours)
+                          {t('security.sessionTimeout')}
                         </label>
                         <select
                           value={securitySettings.sessionTimeout}
@@ -859,7 +881,7 @@ export default function SettingsClient({ initialTab = "general" }: SettingsClien
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                          Min Password Length
+                          {t('security.minPasswordLength')}
                         </label>
                         <select
                           value={securitySettings.passwordMinLength}
@@ -877,14 +899,14 @@ export default function SettingsClient({ initialTab = "general" }: SettingsClien
                     <Link href="/settings/profile">
                       <Button variant="outline">
                         <Key className="w-4 h-4 mr-2" />
-                        Change Password
+                        {t('security.changePassword')}
                       </Button>
                     </Link>
 
                     <Link href="/admin/security">
                       <Button variant="ghost">
                         <Shield className="w-4 h-4 mr-2" />
-                        Advanced Security Policies
+                        {t('security.advancedPolicies')}
                       </Button>
                     </Link>
                   </CardContent>
@@ -896,17 +918,17 @@ export default function SettingsClient({ initialTab = "general" }: SettingsClien
                       <div className="p-2 bg-gradient-to-br from-violet-500 to-purple-500 rounded-lg shadow-lg shadow-violet-500/25">
                         <Key className="w-5 h-5 text-white" />
                       </div>
-                      API Access
+                      {t('security.apiAccess')}
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="flex items-center justify-between gap-4 p-4 bg-slate-50 dark:bg-slate-700/30 rounded-lg border border-slate-200 dark:border-slate-700">
                       <div>
                         <h4 className="font-medium text-slate-800 dark:text-slate-200">
-                          API Tokens
+                          {t('security.apiTokens')}
                         </h4>
                         <p className="text-sm text-slate-500 dark:text-slate-400">
-                          Issue, revoke, and monitor scoped credentials for <span className="font-mono">/api/v1</span> consumers.
+                          {t('security.apiTokensDesc')} <span className="font-mono">/api/v1</span> {t('security.apiTokensDescSuffix')}
                         </p>
                         {outboundOverview && (
                           <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
@@ -916,7 +938,7 @@ export default function SettingsClient({ initialTab = "general" }: SettingsClien
                       </div>
                       <Link href="/settings/api-tokens">
                         <Button variant="outline" size="sm">
-                          Manage Tokens
+                          {t('security.manageTokens')}
                         </Button>
                       </Link>
                     </div>
@@ -926,11 +948,11 @@ export default function SettingsClient({ initialTab = "general" }: SettingsClien
             ) : (
               <Card className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border-white/50 dark:border-slate-700/50 shadow-lg">
                 <CardHeader>
-                  <CardTitle>Admin Access Required</CardTitle>
+                  <CardTitle>{t('adminAccessRequired')}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm text-slate-600 dark:text-slate-300">
-                    Tenant-wide security policies are managed by organization admins from the admin security surface.
+                    {t('security.adminRequiredDesc')}
                   </p>
                 </CardContent>
               </Card>
@@ -945,21 +967,21 @@ export default function SettingsClient({ initialTab = "general" }: SettingsClien
                   <div className="p-2 bg-gradient-to-br from-yellow-500 to-amber-500 rounded-lg shadow-lg shadow-yellow-500/25">
                     <Bell className="w-5 h-5 text-white" />
                   </div>
-                  Notification Preferences
+                  {t('notifications.title')}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div>
                   <h4 className="font-medium text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2">
                     <Mail className="w-5 h-5 text-violet-600" />
-                    Email Notifications
+                    {t('notifications.emailSection')}
                   </h4>
                   <div className="space-y-3">
                     {([
-                      ['contractAlerts', 'Contract Updates'],
-                      ['renewalReminders', 'Renewal Reminders'],
-                      ['complianceAlerts', 'Compliance Alerts'],
-                      ['weeklyDigest', 'Weekly Digest'],
+                      ['contractAlerts', t('notifications.contractUpdates')],
+                      ['renewalReminders', t('notifications.renewalReminders')],
+                      ['complianceAlerts', t('notifications.complianceAlerts')],
+                      ['weeklyDigest', t('notifications.weeklyDigest')],
                     ] as const).map(([key, label]) => (
                       <div key={key} className="flex items-center justify-between">
                         <span className="text-sm text-slate-700 dark:text-slate-300">{label}</span>
@@ -976,12 +998,12 @@ export default function SettingsClient({ initialTab = "general" }: SettingsClien
                 <div>
                   <h4 className="font-medium text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2">
                     <Smartphone className="w-5 h-5 text-green-600" />
-                    Push Notifications
+                    {t('notifications.pushSection')}
                   </h4>
                   <div className="space-y-3">
                     {([
-                      ['emailEnabled', 'Email Notifications'],
-                      ['pushEnabled', 'Push Notifications'],
+                      ['emailEnabled', t('notifications.emailSection')],
+                      ['pushEnabled', t('notifications.pushSection')],
                     ] as const).map(([key, label]) => (
                       <div key={key} className="flex items-center justify-between">
                         <span className="text-sm text-slate-700 dark:text-slate-300">{label}</span>
@@ -996,7 +1018,7 @@ export default function SettingsClient({ initialTab = "general" }: SettingsClien
                 </div>
 
                 <p className="text-xs text-slate-400">
-                  Granular notification controls are not exposed on a separate page yet. The toggles above are the supported settings.
+                  {t('notifications.granularNote')}
                 </p>
               </CardContent>
             </Card>
@@ -1011,21 +1033,21 @@ export default function SettingsClient({ initialTab = "general" }: SettingsClien
                     <div className="p-2 bg-gradient-to-br from-violet-500 to-pink-500 rounded-lg shadow-lg shadow-violet-500/25">
                       <Zap className="w-5 h-5 text-white" />
                     </div>
-                    Processing Configuration
+                    {t('processing.title')}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                       <h4 className="font-medium text-slate-900 dark:text-slate-100 mb-4">
-                        Automated Processing
+                        {t('processing.automated')}
                       </h4>
                       <div className="space-y-3">
                         {([
-                          ['autoProcessing', 'Auto-process uploads'],
-                          ['aiAnalysis', 'AI Analysis'],
-                          ['riskAssessment', 'Risk Assessment'],
-                          ['ocrEnabled', 'OCR Processing'],
+                          ['autoProcessing', t('processing.autoProcess')],
+                          ['aiAnalysis', t('processing.aiAnalysis')],
+                          ['riskAssessment', t('processing.riskAssessment')],
+                          ['ocrEnabled', t('processing.ocr')],
                         ] as const).map(([key, label]) => (
                           <div key={key} className="flex items-center justify-between">
                             <span className="text-sm text-slate-700 dark:text-slate-300">{label}</span>
@@ -1041,12 +1063,12 @@ export default function SettingsClient({ initialTab = "general" }: SettingsClien
 
                     <div>
                       <h4 className="font-medium text-slate-900 dark:text-slate-100 mb-4">
-                        Data Management
+                        {t('processing.dataManagement')}
                       </h4>
                       <div className="space-y-4">
                         <div>
                           <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                            Retention Period
+                            {t('processing.retentionPeriod')}
                           </label>
                           <select
                             value={(processingSettings as unknown as Record<string, string>).retentionPeriod ?? '7'}
@@ -1061,7 +1083,7 @@ export default function SettingsClient({ initialTab = "general" }: SettingsClien
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                            Backup Frequency
+                            {t('processing.backupFrequency')}
                           </label>
                           <select
                             value={(processingSettings as unknown as Record<string, string>).backupFrequency ?? 'daily'}
@@ -1081,11 +1103,11 @@ export default function SettingsClient({ initialTab = "general" }: SettingsClien
             ) : (
               <Card className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border-white/50 dark:border-slate-700/50 shadow-lg">
                 <CardHeader>
-                  <CardTitle>Admin Access Required</CardTitle>
+                  <CardTitle>{t('adminAccessRequired')}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm text-slate-600 dark:text-slate-300">
-                    Processing defaults affect the whole tenant and can only be changed by an organization admin.
+                    {t('processing.adminRequiredDesc')}
                   </p>
                 </CardContent>
               </Card>
@@ -1100,27 +1122,27 @@ export default function SettingsClient({ initialTab = "general" }: SettingsClien
                     <div className="p-2 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-lg shadow-lg shadow-emerald-500/25">
                     <Globe className="w-5 h-5 text-white" />
                   </div>
-                  Third-Party Integrations
+                  {t('integrationsTab.title')}
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 {loading ? (
                   <div className="p-8 flex items-center justify-center">
                     <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
-                    <span className="ml-2 text-slate-500">Loading integrations...</span>
+                    <span className="ml-2 text-slate-500">{t('integrationsTab.loadingText')}</span>
                   </div>
                 ) : !canManageTenantSettings ? (
                   <p className="text-sm text-slate-600 dark:text-slate-300">
-                    Webhook endpoints, delivery recovery, durable event replay, and API token management are limited to organization admins and owners.
+                    {t('integrationsTab.adminOnlyDesc')}
                   </p>
                 ) : (
                 <div className="space-y-4">
                   {outboundOverview && (
                     <div className="space-y-3">
                       <div>
-                        <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Live Outbound Overview</h4>
+                        <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{t('integrationsTab.liveOverview')}</h4>
                         <p className="text-sm text-slate-500 dark:text-slate-400">
-                          Current tenant health across webhook subscribers, delivery backlog, event volume, and token traffic.
+                          {t('integrationsTab.liveOverviewDesc')}
                         </p>
                       </div>
                       <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
@@ -1128,48 +1150,48 @@ export default function SettingsClient({ initialTab = "general" }: SettingsClien
                           href="/settings/webhooks"
                           className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900/30 p-4 transition-colors hover:bg-slate-100 dark:hover:bg-slate-900/50"
                         >
-                          <div className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Webhooks</div>
+                          <div className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">{t('integrationsTab.webhooks')}</div>
                           <div className="mt-2 text-2xl font-semibold text-slate-900 dark:text-slate-100">{outboundOverview.webhooks.active}</div>
                           <div className="text-xs text-slate-500 dark:text-slate-400">{outboundOverview.webhooks.total} total subscribers</div>
-                          <div className="mt-2 text-xs font-medium text-violet-600 dark:text-violet-400">Open endpoints →</div>
+                          <div className="mt-2 text-xs font-medium text-violet-600 dark:text-violet-400">{t('integrationsTab.openEndpoints')}</div>
                         </Link>
                         <Link
                           href={deliveryOverviewHref}
                           className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900/30 p-4 transition-colors hover:bg-slate-100 dark:hover:bg-slate-900/50"
                         >
-                          <div className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">{deliveryOverviewState?.title ?? 'Retries / DLQ'}</div>
+                          <div className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">{deliveryOverviewState?.title ?? t('integrationsTab.retriesDlq')}</div>
                           <div className="mt-2 text-2xl font-semibold text-slate-900 dark:text-slate-100">{deliveryOverviewState?.count ?? 0}</div>
-                          <div className="text-xs text-slate-500 dark:text-slate-400">{deliveryOverviewState?.detail ?? 'No delivery backlog'}</div>
+                          <div className="text-xs text-slate-500 dark:text-slate-400">{deliveryOverviewState?.detail ?? t('integrationsTab.noBacklog')}</div>
                           <div className="mt-2 text-xs font-medium text-violet-600 dark:text-violet-400">
-                            {deliveryOverviewState?.cta ?? 'Open deliveries →'}
+                            {deliveryOverviewState?.cta ?? t('integrationsTab.openDeliveriesArrow')}
                           </div>
                         </Link>
                         <Link
                           href="/settings/integration-events"
                           className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900/30 p-4 transition-colors hover:bg-slate-100 dark:hover:bg-slate-900/50"
                         >
-                          <div className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Events 24h</div>
+                          <div className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">{t('integrationsTab.events24h')}</div>
                           <div className="mt-2 text-2xl font-semibold text-slate-900 dark:text-slate-100">{outboundOverview.events.last24h}</div>
                           <div className="text-xs text-slate-500 dark:text-slate-400">Last event {outboundOverview.events.lastAt ? new Date(outboundOverview.events.lastAt).toLocaleString() : '—'}</div>
-                          <div className="mt-2 text-xs font-medium text-violet-600 dark:text-violet-400">Open event log →</div>
+                          <div className="mt-2 text-xs font-medium text-violet-600 dark:text-violet-400">{t('integrationsTab.openEventLog')}</div>
                         </Link>
                         <Link
                           href="/settings/api-tokens"
                           className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900/30 p-4 transition-colors hover:bg-slate-100 dark:hover:bg-slate-900/50"
                         >
-                          <div className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">API Tokens</div>
+                          <div className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">{t('security.apiTokens')}</div>
                           <div className="mt-2 text-2xl font-semibold text-slate-900 dark:text-slate-100">{outboundOverview.apiTokens.active}</div>
                           <div className="text-xs text-slate-500 dark:text-slate-400">{outboundOverview.apiTokens.requestsLast24h} requests in 24h</div>
-                          <div className="mt-2 text-xs font-medium text-violet-600 dark:text-violet-400">Open tokens →</div>
+                          <div className="mt-2 text-xs font-medium text-violet-600 dark:text-violet-400">{t('integrationsTab.openTokens')}</div>
                         </Link>
                       </div>
 
                       <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900/30 p-4">
                         <div className="flex items-center justify-between gap-3">
                           <div>
-                            <h5 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Recent Outbound Issues</h5>
+                            <h5 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{t('integrationsTab.recentIssues')}</h5>
                             <p className="text-sm text-slate-500 dark:text-slate-400">
-                              Latest failed or dead-lettered deliveries across all webhook subscribers.
+                              {t('integrationsTab.recentIssuesDesc')}
                             </p>
                           </div>
                           <div className="flex items-center gap-2">
@@ -1179,17 +1201,17 @@ export default function SettingsClient({ initialTab = "general" }: SettingsClien
                               onClick={requeueDeadIssues}
                               disabled={bulkRequeueingIssues || outboundOverview.deliveries.dead === 0}
                             >
-                              {bulkRequeueingIssues ? 'Requeueing…' : 'Requeue Dead'}
+                              {bulkRequeueingIssues ? t('integrationsTab.requeueing') : t('integrationsTab.requeueDead')}
                             </Button>
                             <Button asChild variant="outline" size="sm">
-                              <Link href={deliveryOverviewHref}>Open deliveries</Link>
+                              <Link href={deliveryOverviewHref}>{t('integrationsTab.openDeliveries')}</Link>
                             </Button>
                           </div>
                         </div>
 
                         {outboundOverview.recentIssues.length === 0 ? (
                           <div className="mt-4 rounded-lg border border-emerald-200 dark:border-emerald-900/50 bg-emerald-50/70 dark:bg-emerald-950/20 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-300">
-                            No recent failed or dead-lettered deliveries.
+                            {t('integrationsTab.noRecentIssues')}
                           </div>
                         ) : (
                           <div className="mt-4 space-y-3">
@@ -1228,7 +1250,7 @@ export default function SettingsClient({ initialTab = "general" }: SettingsClien
                                   </div>
                                   <div className="flex items-center gap-2">
                                     <Button asChild variant="outline" size="sm">
-                                      <Link href={issueHref}>Inspect</Link>
+                                      <Link href={issueHref}>{t('integrationsTab.inspect')}</Link>
                                     </Button>
                                     <Button
                                       variant="outline"
@@ -1237,10 +1259,10 @@ export default function SettingsClient({ initialTab = "general" }: SettingsClien
                                       onClick={() => requeueIssue(issue.id)}
                                     >
                                       {requeueingIssueId === issue.id
-                                        ? 'Retrying…'
+                                        ? t('integrationsTab.retrying')
                                         : isRetrying
-                                          ? 'Retry now'
-                                          : 'Requeue'}
+                                          ? t('integrationsTab.retryNow')
+                                          : t('integrationsTab.requeue')}
                                     </Button>
                                   </div>
                                 </div>
@@ -1253,11 +1275,11 @@ export default function SettingsClient({ initialTab = "general" }: SettingsClien
                   )}
 
                   {([
-                    { key: 'sharepoint', label: 'SharePoint', icon: FileText, description: 'Document management' },
-                    { key: 'salesforce', label: 'Salesforce', icon: BarChart3, description: 'CRM integration' },
-                    { key: 'slack', label: 'Slack', icon: Bell, description: 'Team notifications' },
-                    { key: 'teams', label: 'Microsoft Teams', icon: Users, description: 'Collaboration' },
-                  ] as const).map((integration) => {
+                    { key: 'sharepoint', label: t('integrationsTab.apps.sharepoint.label'), icon: FileText, description: t('integrationsTab.apps.sharepoint.desc') },
+                    { key: 'salesforce', label: t('integrationsTab.apps.salesforce.label'), icon: BarChart3, description: t('integrationsTab.apps.salesforce.desc') },
+                    { key: 'slack', label: t('integrationsTab.apps.slack.label'), icon: Bell, description: t('integrationsTab.apps.slack.desc') },
+                    { key: 'teams', label: t('integrationsTab.apps.teams.label'), icon: Users, description: t('integrationsTab.apps.teams.desc') },
+                  ]).map((integration) => {
                     const Icon = integration.icon;
                     return (
                       <div
@@ -1283,7 +1305,7 @@ export default function SettingsClient({ initialTab = "general" }: SettingsClien
                           disabled
                           className="opacity-60"
                         >
-                          Coming Soon
+                          {t('integrationsTab.comingSoon')}
                         </Button>
                       </div>
                     );
@@ -1291,19 +1313,19 @@ export default function SettingsClient({ initialTab = "general" }: SettingsClien
 
                   <div className="border-t border-slate-200 dark:border-slate-700 pt-4">
                     <div className="mb-3">
-                      <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Outbound Integrations</h4>
+                      <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{t('integrationsTab.outboundTitle')}</h4>
                       <p className="text-sm text-slate-500 dark:text-slate-400">
                         {canManageTenantSettings
-                          ? 'Manage webhook subscribers, delivery recovery, durable event replay, and API tokens.'
-                          : 'Webhook subscribers, delivery recovery, durable event replay, and API tokens are limited to organization admins and owners.'}
+                          ? t('integrationsTab.outboundDescAdmin')
+                          : t('integrationsTab.outboundDescNonAdmin')}
                       </p>
                     </div>
                     {([
-                    { key: 'webhook-config', label: 'Webhook Endpoints', icon: Globe, description: 'Manage subscribers and secrets', href: '/settings/webhooks', cta: 'Open' },
-                    { key: 'webhook-deliveries', label: 'Webhook Deliveries', icon: RefreshCw, description: 'Inspect retries, DLQ, and requeue', href: '/settings/webhook-deliveries', cta: 'Open' },
-                    { key: 'integration-events', label: 'Integration Events', icon: Play, description: 'Browse durable events and replay them', href: '/settings/integration-events', cta: 'Open' },
-                    { key: 'api-tokens', label: 'API Tokens', icon: Key, description: 'Issue scoped tokens for /api/v1 access', href: '/settings/api-tokens', cta: 'Open' },
-                  ] as const).map((integration) => {
+                    { key: 'webhook-config', label: t('integrationsTab.links.webhookConfig.label'), icon: Globe, description: t('integrationsTab.links.webhookConfig.desc'), href: '/settings/webhooks', cta: t('integrationsTab.open') },
+                    { key: 'webhook-deliveries', label: t('integrationsTab.links.webhookDeliveries.label'), icon: RefreshCw, description: t('integrationsTab.links.webhookDeliveries.desc'), href: '/settings/webhook-deliveries', cta: t('integrationsTab.open') },
+                    { key: 'integration-events', label: t('integrationsTab.links.integrationEvents.label'), icon: Play, description: t('integrationsTab.links.integrationEvents.desc'), href: '/settings/integration-events', cta: t('integrationsTab.open') },
+                    { key: 'api-tokens', label: t('integrationsTab.links.apiTokens.label'), icon: Key, description: t('integrationsTab.links.apiTokens.desc'), href: '/settings/api-tokens', cta: t('integrationsTab.open') },
+                  ]).map((integration) => {
                     const Icon = integration.icon;
                     return (
                       <div
@@ -1338,7 +1360,7 @@ export default function SettingsClient({ initialTab = "general" }: SettingsClien
                           </Button>
                         ) : (
                           <Button variant="outline" size="sm" disabled>
-                            Admin only
+                            {t('integrationsTab.adminOnly')}
                           </Button>
                         )}
                       </div>

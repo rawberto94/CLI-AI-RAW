@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
+import { useTranslations } from 'next-intl';
 import {
   Shield,
   AlertTriangle,
@@ -148,6 +149,8 @@ const getDecisionColor = (decision: string) => {
 };
 
 export function AIGuardrails() {
+  const t = useTranslations('governance');
+  const tCommon = useTranslations('common');
   const [activeTab, setActiveTab] = useState<'policies' | 'flags' | 'audit' | 'thresholds'>('policies');
   const [selectedPolicy, setSelectedPolicy] = useState<string | null>(null);
   const [showPolicyModal, setShowPolicyModal] = useState(false);
@@ -330,7 +333,7 @@ export function AIGuardrails() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-8 h-8 text-violet-500 animate-spin mx-auto mb-3" />
-          <p className="text-slate-600">Loading governance data...</p>
+          <p className="text-slate-600">{t('loading')}</p>
         </div>
       </div>
     );
@@ -346,8 +349,8 @@ export function AIGuardrails() {
               <Shield className="h-8 w-8 text-white" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">AI Guardrails & Governance</h1>
-              <p className="text-gray-500">Policy enforcement, risk management, and audit controls</p>
+              <h1 className="text-3xl font-bold text-gray-900">{t('title')}</h1>
+              <p className="text-gray-500">{t('subtitle')}</p>
             </div>
           </div>
           <button
@@ -359,7 +362,7 @@ export function AIGuardrails() {
             className="flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 text-sm"
           >
             <Brain className="h-4 w-4" />
-            Ask AI
+            {t('askAi')}
           </button>
         </div>
 
@@ -456,10 +459,10 @@ export function AIGuardrails() {
             <div className="flex items-center justify-between px-6">
               <nav className="flex space-x-8">
                 {[
-                  { id: 'policies', label: 'Policies', icon: FileCheck, count: policies.length },
-                  { id: 'flags', label: 'Risk Flags', icon: Flag, count: openFlags },
-                  { id: 'audit', label: 'Audit Log', icon: History },
-                  { id: 'thresholds', label: 'Thresholds', icon: Sliders },
+                  { id: 'policies', label: t('tabs.policies'), icon: FileCheck, count: policies.length },
+                  { id: 'flags', label: t('tabs.flags'), icon: Flag, count: openFlags },
+                  { id: 'audit', label: t('tabs.audit'), icon: History },
+                  { id: 'thresholds', label: t('tabs.thresholds'), icon: Sliders },
                 ].map((tab) => (
                   <button
                     key={tab.id}
@@ -484,7 +487,7 @@ export function AIGuardrails() {
               </nav>
               <button onClick={handleConfigure} className="flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 text-sm">
                 <Settings className="h-4 w-4" />
-                Configure
+                {t('configure')}
               </button>
             </div>
           </div>
@@ -576,11 +579,11 @@ export function AIGuardrails() {
                           <div className="flex items-center gap-2 mt-4">
                             <button onClick={() => handleViewRules(policy.id, policy.name)} className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-violet-50 text-violet-600 rounded-lg hover:bg-violet-100 text-sm">
                               <Eye className="h-4 w-4" />
-                              View Rules
+                              {t('viewRules')}
                             </button>
                             <button onClick={() => handleEditPolicy(policy.id, policy.name)} className="flex-1 flex items-center justify-center gap-2 px-3 py-2 border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 text-sm">
                               <Settings className="h-4 w-4" />
-                              Edit Policy
+                              {t('editPolicy')}
                             </button>
                             <button onClick={() => handleToggleLock(policy.id, policy.status)} className="flex items-center justify-center gap-2 px-3 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 text-sm">
                               {policy.status === 'active' ? (
@@ -614,7 +617,7 @@ export function AIGuardrails() {
                   </div>
                   <button onClick={handleExportFlags} className="flex items-center gap-2 px-3 py-1.5 border border-gray-200 rounded-lg text-sm hover:bg-gray-50">
                     <Download className="h-4 w-4" />
-                    Export
+                    {tCommon('export')}
                   </button>
                 </div>
 
@@ -673,10 +676,10 @@ export function AIGuardrails() {
                       {flag.status !== 'resolved' && (
                         <div className="flex flex-col gap-2">
                           <button onClick={() => handleResolveFlag(flag.id)} className="px-3 py-1.5 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700">
-                            Resolve
+                            {t('resolveFlag')}
                           </button>
                           <button onClick={() => handleDismissFlag(flag.id)} className="px-3 py-1.5 border border-gray-200 text-gray-600 rounded-lg text-sm hover:bg-gray-50">
-                            Dismiss
+                            {t('dismissFlag')}
                           </button>
                         </div>
                       )}
@@ -700,11 +703,11 @@ export function AIGuardrails() {
                   <div className="flex items-center gap-2">
                     <button onClick={() => toast.info('Opening filter options...')} className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-lg text-sm hover:bg-gray-50">
                       <Filter className="h-4 w-4" />
-                      Filter
+                      {tCommon('filter')}
                     </button>
                     <button onClick={handleExportAuditLog} className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-lg text-sm hover:bg-gray-50">
                       <Download className="h-4 w-4" />
-                      Export
+                      {tCommon('export')}
                     </button>
                   </div>
                 </div>
@@ -725,8 +728,8 @@ export function AIGuardrails() {
                         <tr>
                           <td colSpan={5} className="px-4 py-12 text-center text-gray-400">
                             <History className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                            <p>No audit log entries found</p>
-                            <p className="text-xs mt-1">Activity will appear here as actions are performed</p>
+                            <p>{t('emptyAudit.title')}</p>
+                            <p className="text-xs mt-1">{t('emptyAudit.description')}</p>
                           </td>
                         </tr>
                       ) : auditLogs.map((log: any) => (
@@ -757,10 +760,10 @@ export function AIGuardrails() {
             {activeTab === 'thresholds' && (
               <div className="space-y-4">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-semibold text-gray-900">Automated Thresholds</h3>
+                  <h3 className="font-semibold text-gray-900">{t('automatedThresholds')}</h3>
                   <button className="flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 text-sm">
                     <Sliders className="h-4 w-4" />
-                    Add Threshold
+                    {t('addThreshold')}
                   </button>
                 </div>
 

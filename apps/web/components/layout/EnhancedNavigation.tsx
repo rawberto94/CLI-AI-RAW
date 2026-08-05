@@ -10,6 +10,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { signOut, useSession } from 'next-auth/react';
+import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -94,104 +95,123 @@ interface NavigationGroup {
   requiresAdmin?: boolean;
 }
 
+// Static config: `key`/`groupKey` resolve to messages/{locale}.json under
+// `navigation.nav.<key>.{name,desc}` and `navigation.groups.<groupKey>`.
+// The translated NavigationItem/NavigationGroup shapes above are built from
+// this at render time via resolveNavigationConfig().
+interface NavigationItemConfig {
+  key: string;
+  href?: string;
+  icon: React.ComponentType<{ className?: string }>;
+  audiences?: NavigationAudience[];
+  badge?: string | number;
+  badgeVariant?: 'default' | 'success' | 'warning' | 'error';
+  children?: NavigationItemConfig[];
+  isNew?: boolean;
+  action?: 'openAIChatbot';
+  requiresAdmin?: boolean;
+  demo?: 'hide';
+}
+
+interface NavigationGroupConfig {
+  id: string;
+  groupKey: string;
+  audiences?: NavigationAudience[];
+  items: NavigationItemConfig[];
+  requiresAdmin?: boolean;
+}
+
 // Enterprise navigation: keep the primary rail job-based, not page-based.
 // Deep or specialized destinations stay one level down or inside their local pages.
-const navigationGroups: NavigationGroup[] = [
+const navigationConfig: NavigationGroupConfig[] = [
   {
     id: 'workspace',
-    label: 'Workspace',
+    groupKey: 'workspace',
     items: [
-      { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, description: 'Overview & insights', audiences: ['all'] },
+      { key: 'dashboard', href: '/dashboard', icon: LayoutDashboard, audiences: ['all'] },
       {
-        name: 'Contracts',
+        key: 'contracts',
         href: '/contracts',
         icon: FileText,
-        description: 'Repository of executed and in-flight contracts',
         audiences: ['all'],
         children: [
-          { name: 'Upload', href: '/upload', icon: Upload, description: 'Ingest documents', audiences: ['operator'] },
-          { name: 'Clauses', href: '/clauses', icon: BookOpen, description: 'Clause library', audiences: ['legal'], demo: 'hide' },
+          { key: 'upload', href: '/upload', icon: Upload, audiences: ['operator'] },
+          { key: 'clauses', href: '/clauses', icon: BookOpen, audiences: ['legal'], demo: 'hide' },
         ],
       },
       {
-        name: 'Drafting Studio',
+        key: 'draftingStudio',
         href: '/drafting',
         icon: PenTool,
-        description: 'Author new contracts with templates, AI, and playbooks',
         audiences: ['operator'],
         demo: 'hide',
         children: [
-          { name: 'Templates', href: '/templates', icon: FolderKanban, description: 'Approved starting points', audiences: ['legal'], demo: 'hide' },
-          { name: 'Playbooks', href: '/playbooks', icon: Gavel, description: 'Legal standards and fallbacks', audiences: ['legal'], demo: 'hide' },
+          { key: 'templates', href: '/templates', icon: FolderKanban, audiences: ['legal'], demo: 'hide' },
+          { key: 'playbooks', href: '/playbooks', icon: Gavel, audiences: ['legal'], demo: 'hide' },
         ],
       }
     ],
   },
   {
     id: 'execution',
-    label: 'Execution',
+    groupKey: 'execution',
     items: [
       {
-        name: 'Workflows',
+        key: 'workflows',
         href: '/workflows',
         icon: GitBranch,
-        description: 'Requests, approvals, and automation',
         audiences: ['operator'],
         demo: 'hide',
         children: [
-          { name: 'Approvals', href: '/approvals', icon: CheckCircle2, description: 'Pending approvals', audiences: ['oversight'], demo: 'hide' },
-          { name: 'Requests', href: '/requests', icon: Zap, description: 'Contract intake pipeline', audiences: ['operator'], demo: 'hide' },
-          { name: 'My Tasks', href: '/self-service/my-requests', icon: CheckSquare, description: 'Assigned work', audiences: ['operator'], demo: 'hide' },
+          { key: 'approvals', href: '/approvals', icon: CheckCircle2, audiences: ['oversight'], demo: 'hide' },
+          { key: 'requests', href: '/requests', icon: Zap, audiences: ['operator'], demo: 'hide' },
+          { key: 'myTasks', href: '/self-service/my-requests', icon: CheckSquare, audiences: ['operator'], demo: 'hide' },
         ],
       },
       {
-        name: 'Obligations & Renewals',
+        key: 'obligationsRenewals',
         href: '/renewals-obligations',
         icon: Calendar,
-        description: 'Post-signature commitments and milestones',
         audiences: ['all'],
         children: [
-          { name: 'Obligations', href: '/obligations', icon: Target, description: 'Post-signature commitments', audiences: ['all'] },
-          { name: 'Renewals', href: '/renewals', icon: RefreshCcw, description: 'Upcoming renewals', audiences: ['all'] },
-          { name: 'Deadlines', href: '/deadlines', icon: Clock, description: 'Critical dates', audiences: ['all'] },
+          { key: 'obligations', href: '/obligations', icon: Target, audiences: ['all'] },
+          { key: 'renewals', href: '/renewals', icon: RefreshCcw, audiences: ['all'] },
+          { key: 'deadlines', href: '/deadlines', icon: Clock, audiences: ['all'] },
         ],
       },
       {
-        name: 'Suppliers & Spend',
+        key: 'suppliersSpend',
         href: '/suppliers',
         icon: Truck,
-        description: 'Supplier performance and commercials',
         audiences: ['commercial'],
         demo: 'hide',
         children: [
-          { name: 'Rate Cards', href: '/rate-cards/dashboard', icon: Receipt, description: 'Rate monitoring', audiences: ['commercial'], demo: 'hide' },
-          { name: 'Spend Analysis', href: '/spend', icon: Wallet, description: 'Spend visibility', audiences: ['commercial'], demo: 'hide' },
+          { key: 'rateCards', href: '/rate-cards/dashboard', icon: Receipt, audiences: ['commercial'], demo: 'hide' },
+          { key: 'spendAnalysis', href: '/spend', icon: Wallet, audiences: ['commercial'], demo: 'hide' },
         ],
       }
     ],
   },
   {
     id: 'insights',
-    label: 'Insights',
+    groupKey: 'insights',
     items: [
       {
-        name: 'Intelligence',
+        key: 'intelligence',
         href: '/intelligence',
         icon: Lightbulb,
-        description: 'AI insights, portfolio health, and risk signals',
         audiences: ['all'],
         demo: 'hide',
         children: [
-          { name: 'Contract Health', href: '/intelligence/health', icon: ShieldCheck, description: 'Portfolio health scores', audiences: ['all'], demo: 'hide' },
-          { name: 'Risk', href: '/risk', icon: AlertTriangle, description: 'Risk analysis', audiences: ['all'], demo: 'hide' },
-          { name: 'Compliance', href: '/compliance', icon: ClipboardCheck, description: 'Compliance tracking', audiences: ['legal'], demo: 'hide' },
+          { key: 'contractHealth', href: '/intelligence/health', icon: ShieldCheck, audiences: ['all'], demo: 'hide' },
+          { key: 'risk', href: '/risk', icon: AlertTriangle, audiences: ['all'], demo: 'hide' },
+          { key: 'compliance', href: '/compliance', icon: ClipboardCheck, audiences: ['legal'], demo: 'hide' },
         ],
       },
       {
-        name: 'Analytics',
+        key: 'analytics',
         href: '/analytics',
         icon: BarChart3,
-        description: 'Dashboards and reporting',
         audiences: ['oversight'],
         demo: 'hide',
       }
@@ -199,37 +219,56 @@ const navigationGroups: NavigationGroup[] = [
   },
   {
     id: 'platform',
-    label: 'Platform',
+    groupKey: 'platform',
     items: [
-      { name: 'Governance', href: '/governance', icon: Shield, description: 'Policies, routing, and controls', audiences: ['legal'], demo: 'hide' },
-      { name: 'Contract Migration', href: '/migration', icon: Upload, description: 'Bulk import existing contracts', audiences: ['all'], isNew: true },
-      { name: 'Settings', href: '/settings', icon: Settings, description: 'Personal and platform settings', audiences: ['all'] },
+      { key: 'governance', href: '/governance', icon: Shield, audiences: ['legal'], demo: 'hide' },
+      { key: 'contractMigration', href: '/migration', icon: Upload, audiences: ['all'], isNew: true },
+      { key: 'settings', href: '/settings', icon: Settings, audiences: ['all'] },
     ],
   },
   {
     id: 'admin',
-    label: 'Administration',
+    groupKey: 'admin',
     audiences: ['admin'],
     requiresAdmin: true,
     items: [
-      { name: 'Organization', href: '/admin', icon: Building2, description: 'Tenant and organization setup', audiences: ['admin'], requiresAdmin: true },
+      { key: 'organization', href: '/admin', icon: Building2, audiences: ['admin'], requiresAdmin: true },
       {
-        name: 'System',
+        key: 'system',
         href: '/audit-logs',
         icon: ScrollText,
-        description: 'Audit, queues, and integrations',
         audiences: ['admin'],
         requiresAdmin: true,
         children: [
-          { name: 'Audit Logs', href: '/audit-logs', icon: ScrollText, description: 'Audit trail', audiences: ['admin'], demo: 'hide' },
-          { name: 'SSO', href: '/admin/sso', icon: Key, description: 'SAML & OIDC providers', audiences: ['admin'], demo: 'hide' },
-          { name: 'Queue', href: '/admin/queue', icon: Activity, description: 'Processing queues', audiences: ['admin'], demo: 'hide' },
-          { name: 'Integrations', href: '/admin/integrations', icon: Database, description: 'Data connections', audiences: ['admin'], demo: 'hide' },
+          { key: 'auditLogs', href: '/audit-logs', icon: ScrollText, audiences: ['admin'], demo: 'hide' },
+          { key: 'sso', href: '/admin/sso', icon: Key, audiences: ['admin'], demo: 'hide' },
+          { key: 'queue', href: '/admin/queue', icon: Activity, audiences: ['admin'], demo: 'hide' },
+          { key: 'integrations', href: '/admin/integrations', icon: Database, audiences: ['admin'], demo: 'hide' },
         ],
       },
     ],
   },
 ];
+
+// Resolves the static key-based config above into the translated NavigationGroup[]
+// shape the rest of this file renders, using the given next-intl translator.
+function resolveNavigationConfig(t: (key: string) => string): NavigationGroup[] {
+  const resolveItem = (item: NavigationItemConfig): NavigationItem => {
+    const { key, children, ...rest } = item;
+    return {
+      ...rest,
+      name: t(`nav.${key}.name`),
+      description: t(`nav.${key}.desc`),
+      children: children?.map(resolveItem),
+    };
+  };
+
+  return navigationConfig.map(({ groupKey, items, ...rest }) => ({
+    ...rest,
+    label: t(`groups.${groupKey}`),
+    items: items.map(resolveItem),
+  }));
+}
 
 // Demo mode toggle button — reads localStorage directly, no hooks needed
 function DemoModeToggle() {
@@ -505,6 +544,9 @@ function EnhancedNavigation() {
 
   const isDemo = useDemoMode();
 
+  const tNav = useTranslations('navigation');
+  const navigationGroups = useMemo(() => resolveNavigationConfig(tNav), [tNav]);
+
   const filteredNavigationGroups = useMemo(() => {
     const filterItem = (item: NavigationItem): NavigationItem | null => {
       const visibleChildren = item.children
@@ -541,7 +583,7 @@ function EnhancedNavigation() {
           .filter((item): item is NavigationItem => item !== null),
       }))
       .filter((group) => group.items.length > 0);
-  }, [activeAudiences, isAdmin, isDemo]);
+  }, [navigationGroups, activeAudiences, isAdmin, isDemo]);
 
   // Keyboard shortcut for search (Cmd/Ctrl + K)
   useEffect(() => {

@@ -44,6 +44,9 @@ import {
 } from 'lucide-react';
 import { useDataMode } from '@/contexts/DataModeContext';
 import { Input } from '@/components/ui/input';
+import { useTranslations } from 'next-intl';
+
+type TFunc = (key: string, values?: Record<string, string | number>) => string;
 
 // ============================================================================
 // Types
@@ -555,9 +558,10 @@ interface HealthFactorCardProps {
   expanded: boolean;
   onToggle: () => void;
   onRefresh?: () => void;
+  t: TFunc;
 }
 
-const HealthFactorCard: React.FC<HealthFactorCardProps> = ({ factor, expanded, onToggle, onRefresh }) => {
+const HealthFactorCard: React.FC<HealthFactorCardProps> = ({ factor, expanded, onToggle, onRefresh, t }) => {
   const Icon = getCategoryIcon(factor.category);
   const colors = getScoreColor(factor.score);
   const trend = getTrendIcon(factor.trend);
@@ -611,7 +615,7 @@ const HealthFactorCard: React.FC<HealthFactorCardProps> = ({ factor, expanded, o
                 <div className="space-y-3">
                   <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wide flex items-center gap-1.5">
                     <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                    AI Recommendations
+                    {t('health.aiRecommendations')}
                   </h4>
                   <div className="space-y-2">
                     {factor.recommendations.map((rec, idx) => (
@@ -629,14 +633,14 @@ const HealthFactorCard: React.FC<HealthFactorCardProps> = ({ factor, expanded, o
               <div className="flex items-center justify-between pt-2 border-t border-slate-100">
                 <span className="text-xs text-slate-400 flex items-center gap-1.5">
                   <Clock className="w-3.5 h-3.5" />
-                  Last updated: {factor.lastUpdated}
+                  {t('health.lastUpdated')}: {factor.lastUpdated}
                 </span>
-                <button 
-                  onClick={(e) => { e.stopPropagation(); onRefresh?.(); }} 
+                <button
+                  onClick={(e) => { e.stopPropagation(); onRefresh?.(); }}
                   className="text-violet-600 hover:text-violet-700 font-medium flex items-center gap-1.5 text-sm hover:bg-violet-50 px-3 py-1.5 rounded-lg transition-colors"
                 >
                   <RefreshCw className="w-3.5 h-3.5" />
-                  Refresh Analysis
+                  {t('health.refreshAnalysis')}
                 </button>
               </div>
             </div>
@@ -653,9 +657,11 @@ const HealthFactorCard: React.FC<HealthFactorCardProps> = ({ factor, expanded, o
 
 interface ActionItemCardProps {
   item: ActionItem;
+  t: TFunc;
+  tCommon: TFunc;
 }
 
-const ActionItemCard: React.FC<ActionItemCardProps> = ({ item }) => {
+const ActionItemCard: React.FC<ActionItemCardProps> = ({ item, t, tCommon }) => {
   const [showActions, setShowActions] = useState(false);
   
   const typeStyles = {
@@ -691,24 +697,24 @@ const ActionItemCard: React.FC<ActionItemCardProps> = ({ item }) => {
     const title = item.title.toLowerCase();
     
     if (title.includes('renewal') || title.includes('termination')) {
-      links.push({ href: '/renewals', label: 'Manage Renewal', icon: Calendar });
+      links.push({ href: '/renewals', label: t('health.actionLinks.manageRenewal'), icon: Calendar });
     }
     if (title.includes('liability') || title.includes('clause') || title.includes('policy')) {
-      links.push({ href: '/governance', label: 'Review Policies', icon: Shield });
+      links.push({ href: '/governance', label: t('health.actionLinks.reviewPolicies'), icon: Shield });
     }
     if (title.includes('approval') || title.includes('decision')) {
-      links.push({ href: '/approvals', label: 'Request Approval', icon: CheckCircle2 });
+      links.push({ href: '/approvals', label: t('health.actionLinks.requestApproval'), icon: CheckCircle2 });
     }
     if (title.includes('sla') || title.includes('performance')) {
-      links.push({ href: '/drafting', label: 'Edit Contract', icon: Edit3 });
+      links.push({ href: '/drafting', label: t('health.actionLinks.editContract'), icon: Edit3 });
     }
     if (title.includes('supplier') || title.includes('vendor')) {
-      links.push({ href: '/portal', label: 'Contact Supplier', icon: Building2 });
+      links.push({ href: '/portal', label: t('health.actionLinks.contactSupplier'), icon: Building2 });
     }
-    
+
     // Always add a fallback if no specific links matched
     if (links.length === 0) {
-      links.push({ href: '/approvals', label: 'Request Approval', icon: CheckCircle2 });
+      links.push({ href: '/approvals', label: t('health.actionLinks.requestApproval'), icon: CheckCircle2 });
     }
     
     return links;
@@ -760,7 +766,7 @@ const ActionItemCard: React.FC<ActionItemCardProps> = ({ item }) => {
               >
                 <p className="text-xs font-medium text-slate-500 mb-3 flex items-center gap-1.5">
                   <Sparkles className="w-3.5 h-3.5 text-violet-500" />
-                  Quick Actions
+                  {t('health.quickActions')}
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {getActionLinks().map((link, linkIndex) => {
@@ -790,7 +796,7 @@ const ActionItemCard: React.FC<ActionItemCardProps> = ({ item }) => {
               : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300'
           }`}
         >
-          {showActions ? 'Close' : 'Take Action'}
+          {showActions ? tCommon('close') : t('health.takeAction')}
         </button>
       </div>
     </motion.div>
@@ -878,6 +884,8 @@ const ContractHealthCard: React.FC<ContractHealthCardProps> = ({ health, onSelec
 // ============================================================================
 
 export const ContractHealthScore: React.FC = () => {
+  const t = useTranslations('intelligence');
+  const tCommon = useTranslations('common');
   const { isMockData } = useDataMode();
   const [healthData, setHealthData] = useState<ContractHealth[]>([]);
   const [selectedContract, setSelectedContract] = useState<ContractHealth | null>(null);
@@ -1046,8 +1054,8 @@ export const ContractHealthScore: React.FC = () => {
               transition={{ duration: 2, repeat: Infinity }}
             />
           </div>
-          <p className="text-slate-600 font-medium">Analyzing contract health...</p>
-          <p className="text-sm text-slate-400 mt-1">This may take a moment</p>
+          <p className="text-slate-600 font-medium">{t('health.loadingTitle')}</p>
+          <p className="text-sm text-slate-400 mt-1">{t('health.loadingSubtitle')}</p>
         </motion.div>
       </div>
     );
@@ -1064,39 +1072,39 @@ export const ContractHealthScore: React.FC = () => {
             </div>
             <div>
               <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-                Contract Health Dashboard
+                {t('health.title')}
                 <span className="px-2 py-0.5 bg-violet-100 text-violet-700 text-xs font-semibold rounded-full">
-                  AI-Powered
+                  {t('health.aiPowered')}
                 </span>
               </h2>
               <p className="text-sm text-slate-500 mt-0.5">
-                Monitor and optimize contract performance across your entire portfolio
+                {t('health.subtitle')}
               </p>
             </div>
           </div>
           <div className="flex items-center gap-3">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <Input 
-                placeholder="Search contracts..." 
+              <Input
+                placeholder={`${tCommon('search')}...`}
                 className="pl-10 w-64 bg-white/80"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
-            <button 
-              onClick={handleRefreshAll} 
+            <button
+              onClick={handleRefreshAll}
               className="px-4 py-2.5 text-sm font-semibold bg-white border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 hover:border-slate-300 transition-all flex items-center gap-2 shadow-sm"
             >
               <RefreshCw className="w-4 h-4" />
-              Refresh All
+              {t('health.refreshAll')}
             </button>
-            <button 
-              onClick={handleExportReport} 
+            <button
+              onClick={handleExportReport}
               className="px-4 py-2.5 text-sm font-semibold bg-gradient-to-r from-violet-600 to-purple-600 text-white rounded-xl hover:from-violet-700 hover:to-purple-700 transition-all flex items-center gap-2 shadow-lg shadow-violet-200/50"
             >
               <Download className="w-4 h-4" />
-              Export Report
+              {t('health.exportReport')}
             </button>
           </div>
         </div>
@@ -1114,7 +1122,7 @@ export const ContractHealthScore: React.FC = () => {
               </div>
               <div>
                 <div className="text-2xl font-bold text-slate-900">{portfolioStats.avgScore}</div>
-                <div className="text-xs text-slate-500 font-medium">Avg Health Score</div>
+                <div className="text-xs text-slate-500 font-medium">{t('health.stats.avgScore')}</div>
               </div>
             </div>
           </motion.div>
@@ -1130,7 +1138,7 @@ export const ContractHealthScore: React.FC = () => {
               </div>
               <div>
                 <div className="text-2xl font-bold text-violet-700">{portfolioStats.total}</div>
-                <div className="text-xs text-violet-600 font-medium">Total Contracts</div>
+                <div className="text-xs text-violet-600 font-medium">{t('health.stats.totalContracts')}</div>
               </div>
             </div>
           </motion.div>
@@ -1146,7 +1154,7 @@ export const ContractHealthScore: React.FC = () => {
               </div>
               <div>
                 <div className="text-2xl font-bold text-violet-700">{portfolioStats.healthy}</div>
-                <div className="text-xs text-violet-600 font-medium">Healthy</div>
+                <div className="text-xs text-violet-600 font-medium">{t('health.stats.healthy')}</div>
               </div>
             </div>
           </motion.div>
@@ -1162,7 +1170,7 @@ export const ContractHealthScore: React.FC = () => {
               </div>
               <div>
                 <div className="text-2xl font-bold text-amber-700">{portfolioStats.atRisk}</div>
-                <div className="text-xs text-amber-600 font-medium">At Risk</div>
+                <div className="text-xs text-amber-600 font-medium">{t('health.stats.atRisk')}</div>
               </div>
             </div>
           </motion.div>
@@ -1178,7 +1186,7 @@ export const ContractHealthScore: React.FC = () => {
               </div>
               <div>
                 <div className="text-2xl font-bold text-rose-700">{portfolioStats.critical}</div>
-                <div className="text-xs text-rose-600 font-medium">Critical</div>
+                <div className="text-xs text-rose-600 font-medium">{t('health.stats.critical')}</div>
               </div>
             </div>
           </motion.div>
@@ -1196,7 +1204,7 @@ export const ContractHealthScore: React.FC = () => {
               </div>
               <div>
                 <div className="text-2xl font-bold text-rose-700">{portfolioStats.urgentActions}</div>
-                <div className="text-xs text-rose-600 font-medium">Urgent Actions</div>
+                <div className="text-xs text-rose-600 font-medium">{t('health.stats.urgentActions')}</div>
               </div>
             </div>
           </motion.div>
@@ -1211,7 +1219,7 @@ export const ContractHealthScore: React.FC = () => {
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wide flex items-center gap-2">
                 <FileText className="w-4 h-4 text-slate-400" />
-                Contracts
+                {t('health.contractsList')}
               </h3>
               <span className="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
                 {healthData.length} total
@@ -1253,8 +1261,8 @@ export const ContractHealthScore: React.FC = () => {
             {healthData.length === 0 && (
               <div className="text-center py-12">
                 <FileText className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-                <p className="text-slate-500 font-medium">No contracts found</p>
-                <p className="text-sm text-slate-400">Upload contracts to see health analysis</p>
+                <p className="text-slate-500 font-medium">{t('health.emptyTitle')}</p>
+                <p className="text-sm text-slate-400">{t('health.emptySubtitle')}</p>
               </div>
             )}
           </div>
@@ -1316,19 +1324,19 @@ export const ContractHealthScore: React.FC = () => {
                   </div>
                 </div>
                 <div className="flex flex-col gap-2">
-                  <button 
-                    onClick={() => handleViewContract(selectedContract.contractId)} 
+                  <button
+                    onClick={() => handleViewContract(selectedContract.contractId)}
                     className="px-5 py-2.5 text-sm font-semibold bg-gradient-to-r from-violet-600 to-purple-600 text-white rounded-xl hover:from-violet-700 hover:to-purple-700 transition-all flex items-center gap-2 shadow-lg shadow-violet-200/50"
                   >
                     <Eye className="w-4 h-4" />
-                    View Contract
+                    {t('health.viewContract')}
                   </button>
-                  <button 
-                    onClick={() => handleReassess(selectedContract.contractId, selectedContract.contractName)} 
+                  <button
+                    onClick={() => handleReassess(selectedContract.contractId, selectedContract.contractName)}
                     className="px-5 py-2.5 text-sm font-semibold bg-white border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 hover:border-slate-300 transition-all flex items-center gap-2"
                   >
                     <RefreshCw className="w-4 h-4" />
-                    Reassess Now
+                    {t('health.reassessNow')}
                   </button>
                 </div>
               </div>
@@ -1349,7 +1357,7 @@ export const ContractHealthScore: React.FC = () => {
                   {v === 'overview' && <PieChart className="w-4 h-4 inline mr-2" />}
                   {v === 'factors' && <Activity className="w-4 h-4 inline mr-2" />}
                   {v === 'actions' && <Zap className="w-4 h-4 inline mr-2" />}
-                  {v}
+                  {t(`health.tabs.${v}`)}
                 </button>
               ))}
             </div>
@@ -1369,7 +1377,7 @@ export const ContractHealthScore: React.FC = () => {
                     <div className="flex items-center justify-between mb-5">
                       <h4 className="text-lg font-bold text-slate-900 flex items-center gap-2">
                         <PieChart className="w-5 h-5 text-violet-500" />
-                        Health Factor Breakdown
+                        {t('health.factorBreakdown')}
                       </h4>
                       <span className="text-xs text-slate-400 bg-slate-100 px-3 py-1 rounded-full">
                         {(Array.isArray(selectedContract.factors) ? selectedContract.factors : []).length} factors analyzed
@@ -1413,7 +1421,7 @@ export const ContractHealthScore: React.FC = () => {
                     <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-sm">
                       <h4 className="text-lg font-bold text-slate-900 mb-5 flex items-center gap-2">
                         <AlertCircle className="w-5 h-5 text-rose-500" />
-                        Urgent Actions Required
+                        {t('health.urgentActionsRequired')}
                         <span className="ml-2 px-2 py-0.5 bg-rose-100 text-rose-700 text-xs font-semibold rounded-full">
                           {(Array.isArray(selectedContract.actionItems) ? selectedContract.actionItems : []).filter(a => a.type === 'urgent').length}
                         </span>
@@ -1422,7 +1430,7 @@ export const ContractHealthScore: React.FC = () => {
                         {(Array.isArray(selectedContract.actionItems) ? selectedContract.actionItems : [])
                           .filter(a => a.type === 'urgent')
                           .map(item => (
-                            <ActionItemCard key={item.id} item={item} />
+                            <ActionItemCard key={item.id} item={item} t={t} tCommon={tCommon} />
                           ))}
                       </div>
                     </div>
@@ -1450,6 +1458,7 @@ export const ContractHealthScore: React.FC = () => {
                         expanded={expandedFactors.has(factor.id)}
                         onToggle={() => toggleFactor(factor.id)}
                         onRefresh={() => toast.info(`Refreshing ${factor.name}...`)}
+                        t={t}
                       />
                     </motion.div>
                   ))}
@@ -1471,11 +1480,11 @@ export const ContractHealthScore: React.FC = () => {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.05 }}
                     >
-                      <ActionItemCard item={item} />
+                      <ActionItemCard item={item} t={t} tCommon={tCommon} />
                     </motion.div>
                   ))}
                   {(Array.isArray(selectedContract.actionItems) ? selectedContract.actionItems : []).length === 0 && (
-                    <motion.div 
+                    <motion.div
                       className="text-center py-16 bg-white rounded-2xl border border-slate-200/80 shadow-sm"
                       initial={{ opacity: 0, scale: 0.95 }}
                       animate={{ opacity: 1, scale: 1 }}
@@ -1483,8 +1492,8 @@ export const ContractHealthScore: React.FC = () => {
                       <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-100 to-violet-100 flex items-center justify-center mx-auto mb-4">
                         <CheckCircle2 className="w-8 h-8 text-violet-600" />
                       </div>
-                      <h4 className="text-xl font-bold text-slate-900 mb-2">All Clear!</h4>
-                      <p className="text-slate-500">No action items for this contract. Great job maintaining it!</p>
+                      <h4 className="text-xl font-bold text-slate-900 mb-2">{t('health.allClear')}</h4>
+                      <p className="text-slate-500">{t('health.allClearSubtitle')}</p>
                     </motion.div>
                   )}
                 </motion.div>

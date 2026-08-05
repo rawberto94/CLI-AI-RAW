@@ -15,7 +15,7 @@ export default function ReportsLayout({
   return (
     <div className="min-h-screen">
       <div className="px-6 pt-4">
-        <AutoBreadcrumbs homeHref="/dashboard" homeLabel="Dashboard" />
+        <AutoBreadcrumbs />
       </div>
       {children}
     </div>

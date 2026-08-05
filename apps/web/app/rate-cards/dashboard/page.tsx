@@ -16,9 +16,11 @@ import { useRealTimeEvents } from '@/contexts/RealTimeContext';
 import { Button } from '@/components/ui/button';
 import { Upload, Plus, RefreshCw, DollarSign } from 'lucide-react';
 import { useRateCardDashboardMetrics } from '@/hooks/use-queries';
+import { useTranslations } from 'next-intl';
 
 export default function RateCardDashboardPage() {
   const router = useRouter();
+  const t = useTranslations('suppliers.rateCardsDashboard');
 
   // Use React Query for data fetching with caching
   const { 
@@ -72,10 +74,10 @@ export default function RateCardDashboardPage() {
           </motion.div>
           <div>
             <h1 className="text-3xl font-bold bg-gradient-to-r from-violet-600 via-green-600 to-violet-600 dark:from-violet-400 dark:via-green-400 dark:to-violet-400 bg-clip-text text-transparent">
-              Rate Card Dashboard
+              {t('title')}
             </h1>
             <p className="text-muted-foreground">
-              Monitor portfolio health and identify savings opportunities
+              {t('subtitle')}
             </p>
           </div>
         </div>
@@ -87,7 +89,7 @@ export default function RateCardDashboardPage() {
               className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-slate-200/60 dark:border-slate-700/60 hover:bg-white dark:hover:bg-slate-700 shadow-sm"
             >
               <Upload className="h-4 w-4 mr-2" aria-hidden="true" />
-              Import Rate Cards
+              {t('actions.importRateCards')}
             </Button>
           </motion.div>
           <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="motion-reduce:transform-none">
@@ -96,7 +98,7 @@ export default function RateCardDashboardPage() {
               className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-lg shadow-violet-500/25"
             >
               <Plus className="h-4 w-4 mr-2" aria-hidden="true" />
-              Add Rate Card
+              {t('actions.addRateCard')}
             </Button>
           </motion.div>
         </div>
@@ -111,23 +113,23 @@ export default function RateCardDashboardPage() {
       >
         <h2 className="text-xl font-semibold mb-4 flex items-center gap-2 dark:text-slate-100">
           <span className="w-1.5 h-6 rounded-full bg-gradient-to-b from-violet-500 to-purple-500" aria-hidden="true" />
-          Client & Negotiation Overview
+          {t('sections.clientNegotiation')}
         </h2>
         <div className="grid gap-6 lg:grid-cols-3">
           {clientMetrics ? (
             <ClientOverviewWidget metrics={clientMetrics} loading={loading} />
           ) : !loading ? (
             <div className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 p-6 flex flex-col items-center justify-center text-center">
-              <p className="text-sm text-muted-foreground">No client data yet</p>
-              <p className="text-xs text-muted-foreground mt-1">Import rate cards to see client overview</p>
+              <p className="text-sm text-muted-foreground">{t('empty.noClientData')}</p>
+              <p className="text-xs text-muted-foreground mt-1">{t('empty.noClientDataDesc')}</p>
             </div>
           ) : null}
           {baselineMetrics ? (
             <BaselineTrackingWidget metrics={baselineMetrics} loading={loading} />
           ) : !loading ? (
             <div className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 p-6 flex flex-col items-center justify-center text-center">
-              <p className="text-sm text-muted-foreground">No baseline data yet</p>
-              <p className="text-xs text-muted-foreground mt-1">Set baselines to track changes</p>
+              <p className="text-sm text-muted-foreground">{t('empty.noBaselineData')}</p>
+              <p className="text-xs text-muted-foreground mt-1">{t('empty.noBaselineDataDesc')}</p>
             </div>
           ) : null}
           {negotiationMetrics ? (
@@ -138,8 +140,8 @@ export default function RateCardDashboardPage() {
             />
           ) : !loading ? (
             <div className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 p-6 flex flex-col items-center justify-center text-center">
-              <p className="text-sm text-muted-foreground">No negotiation data yet</p>
-              <p className="text-xs text-muted-foreground mt-1">Start a benchmark to see status</p>
+              <p className="text-sm text-muted-foreground">{t('empty.noNegotiationData')}</p>
+              <p className="text-xs text-muted-foreground mt-1">{t('empty.noNegotiationDataDesc')}</p>
             </div>
           ) : null}
         </div>
@@ -154,7 +156,7 @@ export default function RateCardDashboardPage() {
       >
         <h2 className="text-xl font-semibold mb-4 flex items-center gap-2 dark:text-slate-100">
           <span className="w-1.5 h-6 rounded-full bg-gradient-to-b from-violet-500 to-purple-500" aria-hidden="true" />
-          Portfolio Overview
+          {t('sections.portfolioOverview')}
         </h2>
         <DashboardKPICards />
       </motion.section>
@@ -168,7 +170,7 @@ export default function RateCardDashboardPage() {
       >
         <h2 className="text-xl font-semibold mb-4 flex items-center gap-2 dark:text-slate-100">
           <span className="w-1.5 h-6 rounded-full bg-gradient-to-b from-amber-500 to-orange-500" aria-hidden="true" />
-          Financial Performance
+          {t('sections.financialPerformance')}
         </h2>
         <FinancialMetricsCards />
       </motion.section>
@@ -182,7 +184,7 @@ export default function RateCardDashboardPage() {
       >
         <h2 className="text-xl font-semibold mb-4 flex items-center gap-2 dark:text-slate-100">
           <span className="w-1.5 h-6 rounded-full bg-gradient-to-b from-violet-500 to-pink-500" aria-hidden="true" />
-          Performance Indicators
+          {t('sections.performanceIndicators')}
         </h2>
         <PerformanceIndicators />
       </motion.section>

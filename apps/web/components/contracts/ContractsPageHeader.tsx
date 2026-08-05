@@ -26,6 +26,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { PageBreadcrumb } from '@/components/navigation';
+import { useTranslations } from 'next-intl';
 import {
   FileText,
   RefreshCw,
@@ -72,6 +73,8 @@ export const ContractsPageHeader = memo(function ContractsPageHeader({
 }: ContractsPageHeaderProps) {
   const isDemo = useDemoMode();
   const router = useRouter();
+  const t = useTranslations('contracts');
+  const tCommon = useTranslations('common');
   const [showRefreshSuccess, setShowRefreshSuccess] = useState(false);
   const [showQuickUpload, setShowQuickUpload] = useState(false);
   
@@ -116,10 +119,10 @@ export const ContractsPageHeader = memo(function ContractsPageHeader({
               <div className="p-2.5 bg-white/10 backdrop-blur-sm rounded-xl">
                 <FileText className="h-7 w-7 text-white" />
               </div>
-              <h1 className="text-3xl font-bold text-white tracking-tight">Contracts</h1>
+              <h1 className="text-3xl font-bold text-white tracking-tight">{t('title')}</h1>
             </div>
             <p className="text-slate-300 max-w-xl">
-              Manage your contract portfolio with AI-powered insights and analysis
+              {t('hero.subtitle')}
             </p>
           </div>
           
@@ -145,7 +148,7 @@ export const ContractsPageHeader = memo(function ContractsPageHeader({
                       className="flex items-center"
                     >
                       <CheckCircle className="h-4 w-4 mr-2 text-violet-400" />
-                      <span className="text-violet-400">Updated</span>
+                      <span className="text-violet-400">{t('hero.updated')}</span>
                     </motion.div>
                   ) : (
                     <>
@@ -153,14 +156,14 @@ export const ContractsPageHeader = memo(function ContractsPageHeader({
                         "h-4 w-4 mr-2 transition-transform",
                         isRefreshing && "animate-spin"
                       )} />
-                      {isRefreshing ? "Refreshing..." : "Refresh"}
+                      {isRefreshing ? t('hero.refreshing') : tCommon('refresh')}
                     </>
                   )}
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
                 <div className="flex items-center gap-2">
-                  Refresh list
+                  {t('hero.refreshList')}
                   <kbd className="px-1.5 py-0.5 text-xs bg-slate-100 rounded">R</kbd>
                 </div>
               </TooltipContent>
@@ -174,7 +177,7 @@ export const ContractsPageHeader = memo(function ContractsPageHeader({
               className="bg-white/10 border-white/20 text-white hover:bg-white/20 backdrop-blur-sm"
             >
               <SlidersHorizontal className="h-4 w-4 mr-2" />
-              Advanced
+              {t('hero.advanced')}
             </Button>
             )}
             
@@ -187,82 +190,82 @@ export const ContractsPageHeader = memo(function ContractsPageHeader({
               >
                 <Link href="/settings/taxonomy">
                   <Tag className="h-4 w-4 mr-2" />
-                  Taxonomy
+                  {t('hero.taxonomy')}
                 </Link>
               </Button>
             )}
-            
+
             {/* New Contract Dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button 
-                  size="sm" 
+                <Button
+                  size="sm"
                   className="bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600 text-white border-0 shadow-lg shadow-violet-500/25"
                 >
                   <Plus className="h-4 w-4 mr-2" />
-                  New Contract
+                  {t('hero.newContract')}
                   <ChevronDown className="h-4 w-4 ml-2" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel>Create Contract</DropdownMenuLabel>
+                <DropdownMenuLabel>{t('hero.createContract')}</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                
+
                 <DropdownMenuItem onClick={() => setShowQuickUpload(true)}>
                   <FileUp className="h-4 w-4 mr-2 text-blue-500" />
                   <div>
-                    <p className="font-medium">Quick Upload</p>
-                    <p className="text-xs text-slate-500">Upload files without leaving</p>
+                    <p className="font-medium">{t('hero.quickUpload')}</p>
+                    <p className="text-xs text-slate-500">{t('hero.quickUploadDesc')}</p>
                   </div>
                 </DropdownMenuItem>
-                
+
                 {!isDemo && (
                   <DropdownMenuItem asChild>
                     <Link href="/upload">
                       <Upload className="h-4 w-4 mr-2 text-indigo-500" />
                       <div>
-                        <p className="font-medium">Advanced Upload</p>
-                        <p className="text-xs text-slate-500">Full upload with AI analysis</p>
+                        <p className="font-medium">{t('hero.advancedUpload')}</p>
+                        <p className="text-xs text-slate-500">{t('hero.advancedUploadDesc')}</p>
                       </div>
                     </Link>
                   </DropdownMenuItem>
                 )}
-                
+
                 {!isDemo && <DropdownMenuSeparator />}
-                
+
                 {!isDemo && (
                   <DropdownMenuItem asChild>
                     <Link href="/contracts/new">
                       <FilePlus className="h-4 w-4 mr-2 text-slate-500" />
                       <div>
-                        <p className="font-medium">Create Manually</p>
-                        <p className="text-xs text-slate-500">Enter contract details by hand</p>
+                        <p className="font-medium">{t('hero.createManually')}</p>
+                        <p className="text-xs text-slate-500">{t('hero.createManuallyDesc')}</p>
                       </div>
                     </Link>
                   </DropdownMenuItem>
                 )}
-                
+
                 {!isDemo && (
                   <DropdownMenuItem asChild>
                     <Link href="/contracts/generate">
                       <LayoutTemplate className="h-4 w-4 mr-2 text-teal-500" />
                       <div>
-                        <p className="font-medium">Generate from Template</p>
-                        <p className="text-xs text-slate-500">Use a contract template</p>
+                        <p className="font-medium">{t('hero.generateFromTemplate')}</p>
+                        <p className="text-xs text-slate-500">{t('hero.generateFromTemplateDesc')}</p>
                       </div>
                     </Link>
                   </DropdownMenuItem>
                 )}
-                
+
                 {!isDemo && <DropdownMenuSeparator />}
-                
+
                 {!isDemo && (
                   <DropdownMenuItem asChild>
                     <Link href="/contracts/ai-draft">
                       <Sparkles className="h-4 w-4 mr-2 text-amber-500" />
                       <div>
-                        <p className="font-medium">AI Draft Assistant</p>
-                        <p className="text-xs text-slate-500">Let AI help you draft</p>
+                        <p className="font-medium">{t('hero.aiDraftAssistant')}</p>
+                        <p className="text-xs text-slate-500">{t('hero.aiDraftAssistantDesc')}</p>
                       </div>
                     </Link>
                   </DropdownMenuItem>

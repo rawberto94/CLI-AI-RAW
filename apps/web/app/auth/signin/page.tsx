@@ -8,6 +8,7 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useTranslations } from "next-intl";
 import {
   Shield,
   Mail,
@@ -58,6 +59,7 @@ const features = [
 /* ------------------------------------------------------------------ */
 function SignInForm() {
   const router = useRouter();
+  const t = useTranslations('auth');
   const searchParams = useSearchParams();
   const rawCallbackUrl = searchParams.get("callbackUrl") || "/dashboard";
   // Prevent open redirect: only allow relative paths on the same origin
@@ -237,14 +239,10 @@ function SignInForm() {
               <Lock className="h-5 w-5 text-white" />
             </div>
             <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-              Welcome back
+              {t('welcomeBack')}
             </h1>
             <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-              Sign in to your{" "}
-              <span className="font-medium text-violet-600 dark:text-violet-400">
-                ConTigo
-              </span>{" "}
-              account
+              {t('signInToAccount', { app: 'ConTigo' })}
             </p>
           </div>
 
@@ -350,7 +348,7 @@ function SignInForm() {
                 htmlFor="email"
                 className="text-sm font-medium text-slate-700 dark:text-slate-300"
               >
-                Email
+                {t('email')}
               </Label>
               <div className="relative mt-1.5">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -379,13 +377,13 @@ function SignInForm() {
                   htmlFor="password"
                   className="text-sm font-medium text-slate-700 dark:text-slate-300"
                 >
-                  Password
+                  {t('password')}
                 </Label>
                 <Link
                   href="/auth/forgot-password"
                   className="text-xs text-violet-600 hover:text-violet-700 dark:text-violet-400"
                 >
-                  Forgot password?
+                  {t('forgotPassword')}
                 </Link>
               </div>
               <div className="relative mt-1.5">
@@ -469,11 +467,11 @@ function SignInForm() {
                       d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                     />
                   </svg>
-                  Signing in…
+                  {t('signingIn')}
                 </span>
               ) : (
                 <span className="flex items-center justify-center gap-2">
-                  Sign in
+                  {t('signIn')}
                   <ArrowRight className="h-4 w-4" />
                 </span>
               )}
@@ -482,12 +480,12 @@ function SignInForm() {
 
           {/* Footer links */}
           <p className="mt-6 text-center text-sm text-slate-500 dark:text-slate-400">
-            Don&apos;t have an account?{" "}
+            {t('dontHaveAccount')}{" "}
             <Link
               href="/auth/signup"
               className="font-semibold text-violet-600 hover:text-violet-700 dark:text-violet-400"
             >
-              Sign up
+              {t('signUp')}
             </Link>
           </p>
 

@@ -13,6 +13,7 @@ import { ClipboardList, Plus, Filter, Clock, AlertTriangle, CheckCircle2, XCircl
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { EmptyState } from '@/components/shared/EmptyState';
+import { useTranslations } from 'next-intl';
 
 interface ContractRequest {
   id: string;
@@ -47,7 +48,19 @@ const urgencyColors: Record<string, string> = {
   LOW: 'bg-gray-400 text-white',
 };
 
+// Maps raw request status enum values to workflows.requestStatus.<key> translation keys
+const statusLabelKey: Record<string, string> = {
+  SUBMITTED: 'submitted',
+  IN_TRIAGE: 'inTriage',
+  APPROVED: 'approved',
+  IN_PROGRESS: 'inProgress',
+  COMPLETED: 'completed',
+  REJECTED: 'rejected',
+  CANCELLED: 'cancelled',
+};
+
 export default function ContractRequestsHub() {
+  const t = useTranslations('workflows');
   const [requests, setRequests] = useState<ContractRequest[]>([]);
   const [metrics, setMetrics] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -111,23 +124,23 @@ export default function ContractRequestsHub() {
     <div className="max-w-[1600px] mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2"><ClipboardList className="h-8 w-8" /> Contract Requests</h1>
-          <p className="text-muted-foreground mt-1">Intake, triage, and track contract requests</p>
+          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2"><ClipboardList className="h-8 w-8" /> {t('requestsHub.title')}</h1>
+          <p className="text-muted-foreground mt-1">{t('requestsHub.subtitle')}</p>
         </div>
-        <Button asChild><a href="/requests/new"><Plus className="h-4 w-4 mr-2" /> New Request</a></Button>
+        <Button asChild><a href="/requests/new"><Plus className="h-4 w-4 mr-2" /> {t('requestsHub.newRequest')}</a></Button>
       </div>
 
       {/* Metrics */}
       {metrics && (
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
           {[
-            { label: 'Total', value: metrics.total, icon: BarChart3, color: 'text-blue-600' },
-            { label: 'Submitted', value: metrics.submitted, icon: ClipboardList, color: 'text-blue-500' },
-            { label: 'In Triage', value: metrics.in_triage, icon: Filter, color: 'text-yellow-500' },
-            { label: 'Approved', value: metrics.approved, icon: CheckCircle2, color: 'text-green-500' },
-            { label: 'In Progress', value: metrics.in_progress, icon: ArrowRight, color: 'text-purple-500' },
-            { label: 'SLA Breached', value: metrics.sla_breached, icon: AlertTriangle, color: 'text-red-500' },
-            { label: 'Escalated', value: metrics.escalated, icon: Users, color: 'text-orange-500' },
+            { label: t('requestsHub.metrics.total'), value: metrics.total, icon: BarChart3, color: 'text-blue-600' },
+            { label: t('requestStatus.submitted'), value: metrics.submitted, icon: ClipboardList, color: 'text-blue-500' },
+            { label: t('requestStatus.inTriage'), value: metrics.in_triage, icon: Filter, color: 'text-yellow-500' },
+            { label: t('requestStatus.approved'), value: metrics.approved, icon: CheckCircle2, color: 'text-green-500' },
+            { label: t('requestStatus.inProgress'), value: metrics.in_progress, icon: ArrowRight, color: 'text-purple-500' },
+            { label: t('requestsHub.metrics.slaBreached'), value: metrics.sla_breached, icon: AlertTriangle, color: 'text-red-500' },
+            { label: t('requestsHub.metrics.escalated'), value: metrics.escalated, icon: Users, color: 'text-orange-500' },
           ].map((m) => (
             <Card key={m.label} className="p-3">
               <div className="flex items-center gap-2 text-sm text-muted-foreground"><m.icon className={cn('h-4 w-4', m.color)} />{m.label}</div>
@@ -140,20 +153,20 @@ export default function ContractRequestsHub() {
       <Tabs value={tab} onValueChange={(v) => { setTab(v); setLoading(true); }}>
         <div className="flex items-center justify-between">
           <TabsList>
-            <TabsTrigger value="triage">Triage Inbox</TabsTrigger>
-            <TabsTrigger value="all">All Requests</TabsTrigger>
-            <TabsTrigger value="my-requests">My Requests</TabsTrigger>
+            <TabsTrigger value="triage">{t('requestsHub.tabs.triage')}</TabsTrigger>
+            <TabsTrigger value="all">{t('requestsHub.tabs.all')}</TabsTrigger>
+            <TabsTrigger value="my-requests">{t('requestsHub.tabs.myRequests')}</TabsTrigger>
           </TabsList>
           <Select value={filterStatus} onValueChange={setFilterStatus}>
             <SelectTrigger className="w-[160px]"><SelectValue placeholder="Filter status" /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value="SUBMITTED">Submitted</SelectItem>
-              <SelectItem value="IN_TRIAGE">In Triage</SelectItem>
-              <SelectItem value="APPROVED">Approved</SelectItem>
-              <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
-              <SelectItem value="COMPLETED">Completed</SelectItem>
-              <SelectItem value="REJECTED">Rejected</SelectItem>
+              <SelectItem value="all">{t('requestStatus.allStatuses')}</SelectItem>
+              <SelectItem value="SUBMITTED">{t('requestStatus.submitted')}</SelectItem>
+              <SelectItem value="IN_TRIAGE">{t('requestStatus.inTriage')}</SelectItem>
+              <SelectItem value="APPROVED">{t('requestStatus.approved')}</SelectItem>
+              <SelectItem value="IN_PROGRESS">{t('requestStatus.inProgress')}</SelectItem>
+              <SelectItem value="COMPLETED">{t('requestStatus.completed')}</SelectItem>
+              <SelectItem value="REJECTED">{t('requestStatus.rejected')}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -162,10 +175,10 @@ export default function ContractRequestsHub() {
           {requests.length === 0 ? (
             <EmptyState
               variant="no-results"
-              title="No requests found"
-              description={filterStatus !== 'all' ? 'Try adjusting your filters to see more results.' : 'Create a new contract request to get started.'}
+              title={t('requestsHub.emptyTitle')}
+              description={filterStatus !== 'all' ? t('requestsHub.emptyDescriptionFiltered') : t('requestsHub.emptyDescriptionDefault')}
               primaryAction={{
-                label: 'New Request',
+                label: t('requestsHub.newRequest'),
                 href: '/requests/new',
                 icon: Plus,
               }}
@@ -177,7 +190,7 @@ export default function ContractRequestsHub() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <h3 className="font-semibold truncate">{req.title}</h3>
-                      <Badge className={cn('text-xs', statusColors[req.status])}>{req.status.replace(/_/g, ' ')}</Badge>
+                      <Badge className={cn('text-xs', statusColors[req.status])}>{t(`requestStatus.${statusLabelKey[req.status] ?? 'submitted'}`)}</Badge>
                       <Badge className={cn('text-xs', urgencyColors[req.urgency])}>{req.urgency}</Badge>
                     </div>
                     <div className="flex items-center gap-4 text-sm text-muted-foreground">
@@ -189,18 +202,18 @@ export default function ContractRequestsHub() {
                     {req.sla_deadline && (
                       <div className={cn('flex items-center gap-1 mt-1 text-xs', isOverdue(req.sla_deadline) && req.status !== 'COMPLETED' ? 'text-red-500' : 'text-muted-foreground')}>
                         <Clock className="h-3 w-3" /> SLA: {new Date(req.sla_deadline).toLocaleDateString()}
-                        {isOverdue(req.sla_deadline) && req.status !== 'COMPLETED' && <Badge variant="destructive" className="text-[10px] ml-1">OVERDUE</Badge>}
+                        {isOverdue(req.sla_deadline) && req.status !== 'COMPLETED' && <Badge variant="destructive" className="text-[10px] ml-1">{t('overdue')}</Badge>}
                       </div>
                     )}
                   </div>
                   <div className="flex gap-2 shrink-0">
                     {req.status === 'SUBMITTED' && (
-                      <Button size="sm" variant="outline" onClick={() => { setTriageDialog({ open: true, request: req }); }}>Triage</Button>
+                      <Button size="sm" variant="outline" onClick={() => { setTriageDialog({ open: true, request: req }); }}>{t('requestsHub.triageAction')}</Button>
                     )}
                     {req.status === 'IN_TRIAGE' && (
                       <>
-                        <Button size="sm" variant="default" onClick={() => handleAction(req.id, 'approve')}>Approve</Button>
-                        <Button size="sm" variant="destructive" onClick={() => handleAction(req.id, 'reject', { reason: 'Rejected by reviewer' })}>Reject</Button>
+                        <Button size="sm" variant="default" onClick={() => handleAction(req.id, 'approve')}>{t('requestsHub.approveAction')}</Button>
+                        <Button size="sm" variant="destructive" onClick={() => handleAction(req.id, 'reject', { reason: 'Rejected by reviewer' })}>{t('requestsHub.rejectAction')}</Button>
                       </>
                     )}
                   </div>

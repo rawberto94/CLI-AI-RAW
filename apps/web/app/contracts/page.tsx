@@ -57,6 +57,7 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 import { useDataMode } from "@/contexts/DataModeContext";
 import { useDemoMode } from "@/hooks/useDemoMode";
 import { useContracts, useContractStats, useCrossModuleInvalidation, useTaxonomyCategories, type Contract } from "@/hooks/use-queries";
@@ -104,6 +105,8 @@ import { applyContractFilters } from "@/lib/contracts/apply-filters";
 export default function ContractsPage() {
   const router = useRouter();
   const { dataMode } = useDataMode();
+  const t = useTranslations('contracts');
+  const tCommon = useTranslations('common');
 
   // Preserve list scroll position and search query when navigating to contract details and back
   // Note: setSearchQuery comes from useContractsPageFilters below — useEffect runs
@@ -871,42 +874,42 @@ export default function ContractsPage() {
   const quickFilters = useMemo(() => [
     {
       id: 'expiring' as const,
-      label: 'Expiring soon',
+      label: t('quickFilters.expiringSoon'),
       icon: Clock,
       active: filterState.expirationFilters.includes('expiring-30'),
     },
     {
       id: 'signature' as const,
-      label: 'Needs signature',
+      label: t('quickFilters.needsSignature'),
       icon: PenLine,
       active: filterState.signatureFilters.includes('unsigned') || filterState.signatureFilters.includes('partially_signed'),
     },
     {
       id: 'risk' as const,
-      label: 'High risk',
+      label: t('quickFilters.highRisk'),
       icon: ShieldAlert,
       active: filterState.riskLevels.includes('high'),
     },
     {
       id: 'sow' as const,
-      label: 'SOWs under MSA',
+      label: t('quickFilters.sowUnderMsa'),
       icon: GitBranch,
       active: filterState.relationshipType?.includes('SOW_UNDER_MSA') ?? false,
     },
     {
       id: 'high-value' as const,
-      label: 'High value',
+      label: t('quickFilters.highValue'),
       icon: DollarSign,
       active: filterState.valueRangePreset === 'over500k' || filterState.valueRange.min >= 500000,
     },
-  ], [filterState]);
+  ], [filterState, t]);
 
   // Surface list-fetch failures — previously `useContracts`' error field was
   // unused, so a failed GET /api/contracts (500, network, auth drop) left the
   // page stuck on the loading skeleton forever with no way to recover
   // short of a full reload.
   if (listError && !contractsData) {
-    const errorMsg = listError instanceof Error ? listError.message : 'Failed to load contracts';
+    const errorMsg = listError instanceof Error ? listError.message : t('errorState.defaultMessage');
     return (
       <TooltipProvider>
         <div className="min-h-screen bg-slate-50">
@@ -918,11 +921,11 @@ export default function ContractsPage() {
             <div className="flex flex-col items-center justify-center gap-4 rounded-lg border border-red-200 bg-red-50 p-10 text-center">
               <AlertCircle className="h-10 w-10 text-red-500" />
               <div>
-                <h2 className="text-lg font-semibold text-red-900">Couldn&apos;t load contracts</h2>
+                <h2 className="text-lg font-semibold text-red-900">{t('errorState.title')}</h2>
                 <p className="mt-1 text-sm text-red-700">{errorMsg}</p>
               </div>
               <Button onClick={() => refetch()} variant="outline">
-                Retry
+                {t('errorState.retry')}
               </Button>
             </div>
           </div>
@@ -1055,7 +1058,7 @@ export default function ContractsPage() {
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-semibold text-sm text-violet-700 flex items-center gap-2">
                   <Sparkles className="h-4 w-4" />
-                  AI Search Results
+                  {t('aiSearch.heading')}
                   {aiSearchResults && <Badge variant="secondary" className="text-[10px]">{aiSearchResults.length}</Badge>}
                 </h3>
                 <Button
@@ -1070,7 +1073,7 @@ export default function ContractsPage() {
               {isAISearching ? (
                 <div className="flex items-center gap-2 text-sm text-violet-600 py-2">
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Searching with AI...
+                  {t('aiSearch.searching')}
                 </div>
               ) : aiSearchResults && aiSearchResults.length > 0 ? (
                 <div className="space-y-2 max-h-64 overflow-y-auto">
@@ -1089,7 +1092,7 @@ export default function ContractsPage() {
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-slate-500 py-2">No results found. Try rephrasing your query.</p>
+                <p className="text-sm text-slate-500 py-2">{t('aiSearch.noResults')}</p>
               )}
             </CardContent>
           </Card>
@@ -1107,7 +1110,7 @@ export default function ContractsPage() {
 
         <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-sm">
           <span className="mr-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-            Quick filters
+            {t('quickFilters.label')}
           </span>
           {quickFilters.map((filter) => {
             const Icon = filter.icon;
@@ -1138,7 +1141,7 @@ export default function ContractsPage() {
               onClick={clearFilters}
               className="ml-auto h-8 rounded-full px-3 text-xs text-slate-500 hover:bg-slate-100 hover:text-slate-800"
             >
-              Clear filters
+              {t('clearFilters')}
             </Button>
           )}
         </div>
@@ -1232,8 +1235,8 @@ export default function ContractsPage() {
             {/* View Mode */}
             <div data-tour="view-modes" className="flex items-center border border-slate-200 rounded-xl overflow-hidden shadow-sm bg-white">
               {[
-                { mode: 'compact' as const, icon: LayoutList, label: 'List' },
-                { mode: 'cards' as const, icon: LayoutGrid, label: 'Cards' },
+                { mode: 'compact' as const, icon: LayoutList, label: t('viewModes.list') },
+                { mode: 'cards' as const, icon: LayoutGrid, label: t('viewModes.cards') },
               ].map((view, idx) => (
                 <Tooltip key={view.mode}>
                   <TooltipTrigger asChild>
@@ -1723,7 +1726,7 @@ export default function ContractsPage() {
                       {selectedContracts.size}
                     </Badge>
                     <span className="text-sm text-slate-300">
-                      selected
+                      {t('bulkBar.selected')}
                     </span>
                     <Button
                       variant="ghost"
@@ -1750,7 +1753,7 @@ export default function ContractsPage() {
                             disabled={isProcessingBulk}
                           >
                             {isProcessingBulk ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
-                            <span className="ml-1.5 text-xs font-medium">Export</span>
+                            <span className="ml-1.5 text-xs font-medium">{tCommon('export')}</span>
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent side="top">Export selected</TooltipContent>
@@ -1770,7 +1773,7 @@ export default function ContractsPage() {
                             disabled={isProcessingBulk}
                           >
                             <ArrowLeftRight className="h-3.5 w-3.5" />
-                            <span className="ml-1.5 text-xs font-medium">Compare</span>
+                            <span className="ml-1.5 text-xs font-medium">{t('bulkBar.compare')}</span>
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent side="top">Compare side-by-side</TooltipContent>
@@ -1788,7 +1791,7 @@ export default function ContractsPage() {
                             disabled={isProcessingBulk}
                           >
                             <Share2 className="h-3.5 w-3.5" />
-                            <span className="ml-1.5 text-xs font-medium">Share</span>
+                            <span className="ml-1.5 text-xs font-medium">{t('bulkBar.share')}</span>
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent side="top">Share selected</TooltipContent>
@@ -1806,7 +1809,7 @@ export default function ContractsPage() {
                             disabled={isProcessingBulk}
                           >
                             <Tag className="h-3.5 w-3.5" />
-                            <span className="ml-1.5 text-xs font-medium">Tag</span>
+                            <span className="ml-1.5 text-xs font-medium">{t('bulkBar.tag')}</span>
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent side="top">Tag selected</TooltipContent>
@@ -1824,7 +1827,7 @@ export default function ContractsPage() {
                             disabled={isProcessingBulk}
                           >
                             <Users className="h-3.5 w-3.5" />
-                            <span className="ml-1.5 text-xs font-medium">Access</span>
+                            <span className="ml-1.5 text-xs font-medium">{t('bulkBar.access')}</span>
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent side="top">Manage access</TooltipContent>
@@ -1842,7 +1845,7 @@ export default function ContractsPage() {
                           disabled={isProcessingBulk}
                         >
                           <Trash2 className="h-3.5 w-3.5" />
-                          <span className="ml-1.5 text-xs font-medium">Delete</span>
+                          <span className="ml-1.5 text-xs font-medium">{tCommon('delete')}</span>
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent side="top">Delete selected</TooltipContent>

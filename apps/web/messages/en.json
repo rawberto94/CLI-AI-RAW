@@ -10,6 +10,7 @@
     "filter": "Filter",
     "export": "Export",
     "import": "Import",
+    "upload": "Upload",
     "refresh": "Refresh",
     "back": "Back",
     "next": "Next",
@@ -30,7 +31,8 @@
     "description": "Description",
     "noResults": "No results found",
     "error": "An error occurred",
-    "success": "Operation successful"
+    "success": "Operation successful",
+    "home": "Home"
   },
   "navigation": {
     "dashboard": "Dashboard",
@@ -48,7 +50,144 @@
     "admin": "Admin",
     "settings": "Settings",
     "sso": "SSO / SAML",
-    "governance": "Governance"
+    "governance": "Governance",
+    "groups": {
+      "workspace": "Workspace",
+      "execution": "Execution",
+      "insights": "Insights",
+      "platform": "Platform",
+      "admin": "Administration"
+    },
+    "nav": {
+      "dashboard": {
+        "name": "Dashboard",
+        "desc": "Overview & insights"
+      },
+      "contracts": {
+        "name": "Contracts",
+        "desc": "Repository of executed and in-flight contracts"
+      },
+      "upload": {
+        "name": "Upload",
+        "desc": "Ingest documents"
+      },
+      "clauses": {
+        "name": "Clauses",
+        "desc": "Clause library"
+      },
+      "draftingStudio": {
+        "name": "Drafting Studio",
+        "desc": "Author new contracts with templates, AI, and playbooks"
+      },
+      "templates": {
+        "name": "Templates",
+        "desc": "Approved starting points"
+      },
+      "playbooks": {
+        "name": "Playbooks",
+        "desc": "Legal standards and fallbacks"
+      },
+      "workflows": {
+        "name": "Workflows",
+        "desc": "Requests, approvals, and automation"
+      },
+      "approvals": {
+        "name": "Approvals",
+        "desc": "Pending approvals"
+      },
+      "requests": {
+        "name": "Requests",
+        "desc": "Contract intake pipeline"
+      },
+      "myTasks": {
+        "name": "My Tasks",
+        "desc": "Assigned work"
+      },
+      "obligationsRenewals": {
+        "name": "Obligations & Renewals",
+        "desc": "Post-signature commitments and milestones"
+      },
+      "obligations": {
+        "name": "Obligations",
+        "desc": "Post-signature commitments"
+      },
+      "renewals": {
+        "name": "Renewals",
+        "desc": "Upcoming renewals"
+      },
+      "deadlines": {
+        "name": "Deadlines",
+        "desc": "Critical dates"
+      },
+      "suppliersSpend": {
+        "name": "Suppliers & Spend",
+        "desc": "Supplier performance and commercials"
+      },
+      "rateCards": {
+        "name": "Rate Cards",
+        "desc": "Rate monitoring"
+      },
+      "spendAnalysis": {
+        "name": "Spend Analysis",
+        "desc": "Spend visibility"
+      },
+      "intelligence": {
+        "name": "Intelligence",
+        "desc": "AI insights, portfolio health, and risk signals"
+      },
+      "contractHealth": {
+        "name": "Contract Health",
+        "desc": "Portfolio health scores"
+      },
+      "risk": {
+        "name": "Risk",
+        "desc": "Risk analysis"
+      },
+      "compliance": {
+        "name": "Compliance",
+        "desc": "Compliance tracking"
+      },
+      "analytics": {
+        "name": "Analytics",
+        "desc": "Dashboards and reporting"
+      },
+      "governance": {
+        "name": "Governance",
+        "desc": "Policies, routing, and controls"
+      },
+      "contractMigration": {
+        "name": "Contract Migration",
+        "desc": "Bulk import existing contracts"
+      },
+      "settings": {
+        "name": "Settings",
+        "desc": "Personal and platform settings"
+      },
+      "organization": {
+        "name": "Organization",
+        "desc": "Tenant and organization setup"
+      },
+      "system": {
+        "name": "System",
+        "desc": "Audit, queues, and integrations"
+      },
+      "auditLogs": {
+        "name": "Audit Logs",
+        "desc": "Audit trail"
+      },
+      "sso": {
+        "name": "SSO",
+        "desc": "SAML & OIDC providers"
+      },
+      "queue": {
+        "name": "Queue",
+        "desc": "Processing queues"
+      },
+      "integrations": {
+        "name": "Integrations",
+        "desc": "Data connections"
+      }
+    }
   },
   "dashboard": {
     "title": "Dashboard",
@@ -56,6 +195,76 @@
     "customize": "Customize",
     "refresh": "Refresh",
     "addContract": "Add Contract",
+    "browseContracts": "Browse Contracts",
+    "retry": "Retry",
+    "unableToLoad": "Unable to load dashboard",
+    "viewAll": "View All",
+    "renewalsSection": {
+      "title": "Renewals & Upcoming Deadlines",
+      "noneIn90": "No contracts expiring in the next 90 days",
+      "critical": "Critical",
+      "expiring30": "Expiring within 30 days",
+      "upcoming": "Upcoming",
+      "expiring3190": "Expiring in 31–90 days",
+      "totalWindow": "Total Window",
+      "expiring90": "Expiring within 90 days"
+    },
+    "obligationsSection": {
+      "title": "Obligations",
+      "none": "No obligations tracked yet",
+      "total": "Total",
+      "tracked": "tracked",
+      "overdue": "Overdue",
+      "needAction": "need action",
+      "dueSoon": "Due Soon",
+      "within7Days": "within 7 days",
+      "done": "Done",
+      "thisMonth": "this month"
+    },
+    "recentContracts": {
+      "title": "Recent Contracts",
+      "noneYet": "No contracts yet",
+      "demoHint": "Demo data will appear here once seeded",
+      "uploadHint": "Upload your first contract to get started",
+      "recentlyAdded": "Recently added",
+      "browseAll": "Browse All Contracts",
+      "statuses": {
+        "active": "Active",
+        "processing": "Processing",
+        "uploaded": "Uploaded",
+        "queued": "Queued",
+        "error": "Error",
+        "draft": "Draft"
+      }
+    },
+    "aiAssistant": {
+      "title": "AI Assistant",
+      "openChat": "Open Chat",
+      "exampleQuestions": "Example questions:",
+      "q1": "What contracts are expiring soon?",
+      "q2": "Summarize the key terms of my latest contract",
+      "q3": "Find contracts with auto-renewal clauses"
+    },
+    "deadlinesSection": {
+      "title": "Upcoming Deadlines",
+      "none": "No upcoming deadlines",
+      "today": "Today",
+      "typeExpires": "Expires",
+      "typeRenewal": "Renewal",
+      "typeMilestone": "Milestone"
+    },
+    "activitySection": {
+      "title": "Recent Activity",
+      "none": "No recent activity",
+      "justNow": "just now",
+      "minutesAgo": "{n}m ago",
+      "hoursAgo": "{n}h ago",
+      "daysAgo": "{n}d ago"
+    },
+    "overviewSection": {
+      "title": "Contract Overview",
+      "fullAnalytics": "Full Analytics"
+    },
     "kpi": {
       "totalContracts": "Total Contracts",
       "activeContracts": "Active Contracts",
@@ -64,12 +273,38 @@
       "renewalsDue": "Renewals Due"
     },
     "quickActions": {
-      "upload": "Upload Contract",
-      "generate": "Generate Contract",
-      "obligations": "Obligations",
-      "renewals": "Renewals",
-      "aiAssistant": "AI Assistant",
-      "search": "Search"
+      "upload": {
+        "name": "Upload Contract",
+        "desc": "Add new contracts"
+      },
+      "generate": {
+        "name": "Generate Contract",
+        "desc": "Create with AI"
+      },
+      "obligations": {
+        "name": "Obligations",
+        "desc": "Track compliance"
+      },
+      "renewals": {
+        "name": "Renewals",
+        "desc": "Track renewals"
+      },
+      "deadlines": {
+        "name": "Deadlines",
+        "desc": "Critical dates"
+      },
+      "contracts": {
+        "name": "Contracts",
+        "desc": "Browse repository"
+      },
+      "aiAssistant": {
+        "name": "AI Assistant",
+        "desc": "Ask about contracts"
+      },
+      "search": {
+        "name": "Search",
+        "desc": "Find contracts"
+      }
     },
     "empty": {
       "title": "Get started in 2 minutes",
@@ -83,6 +318,26 @@
     "create": "Create Contract",
     "upload": "Upload Contract",
     "esign": "E-Signature",
+    "hero": {
+      "subtitle": "Manage your contract portfolio with AI-powered insights and analysis",
+      "refreshing": "Refreshing...",
+      "updated": "Updated",
+      "refreshList": "Refresh list",
+      "advanced": "Advanced",
+      "taxonomy": "Taxonomy",
+      "newContract": "New Contract",
+      "createContract": "Create Contract",
+      "quickUpload": "Quick Upload",
+      "quickUploadDesc": "Upload files without leaving",
+      "advancedUpload": "Advanced Upload",
+      "advancedUploadDesc": "Full upload with AI analysis",
+      "createManually": "Create Manually",
+      "createManuallyDesc": "Enter contract details by hand",
+      "generateFromTemplate": "Generate from Template",
+      "generateFromTemplateDesc": "Use a contract template",
+      "aiDraftAssistant": "AI Draft Assistant",
+      "aiDraftAssistantDesc": "Let AI help you draft"
+    },
     "status": {
       "draft": "Draft",
       "active": "Active",
@@ -98,6 +353,143 @@
       "startDate": "Start Date",
       "endDate": "End Date",
       "type": "Type"
+    },
+    "errorState": {
+      "title": "Couldn't load contracts",
+      "retry": "Retry",
+      "defaultMessage": "Failed to load contracts"
+    },
+    "quickFilters": {
+      "label": "Quick filters",
+      "expiringSoon": "Expiring soon",
+      "needsSignature": "Needs signature",
+      "highRisk": "High risk",
+      "sowUnderMsa": "SOWs under MSA",
+      "highValue": "High value"
+    },
+    "clearFilters": "Clear filters",
+    "clear": "Clear",
+    "viewModes": {
+      "list": "List",
+      "cards": "Cards",
+      "timeline": "Timeline",
+      "kanban": "Kanban"
+    },
+    "filters": {
+      "processing": "Processing",
+      "failed": "Failed"
+    },
+    "aiSearch": {
+      "heading": "AI Search Results",
+      "searching": "Searching with AI...",
+      "noResults": "No results found. Try rephrasing your query."
+    },
+    "bulkBar": {
+      "selected": "selected",
+      "selectedCount": "{count} selected",
+      "compare": "Compare",
+      "share": "Share",
+      "tag": "Tag",
+      "access": "Access",
+      "autoCategorize": "Auto-categorize"
+    },
+    "countSummary": "{filtered} of {total, plural, one {# contract} other {# contracts}}",
+    "contractsCount": "{count, plural, one {# contract} other {# contracts}}",
+    "bulkOperationsPage": {
+      "title": "Bulk Operations",
+      "subtitle": "Process multiple contracts at once with AI-powered automation"
+    },
+    "detail": {
+      "notFoundTitle": "Contract Not Found",
+      "errorTitle": "Error Loading Contract",
+      "retry": "Retry",
+      "backToContracts": "Back to Contracts",
+      "processingTitle": "Processing Contract...",
+      "analyzingDocument": "Analyzing document",
+      "tabs": {
+        "summary": "Summary",
+        "details": "Details",
+        "activity": "Activity",
+        "analysis": "Analysis"
+      },
+      "autoCategorize": "Auto-categorize",
+      "categorizing": "Categorizing…",
+      "requestSignature": "Request Signature",
+      "downloadSigned": "Download Signed",
+      "aiNotAvailableTitle": "AI Analysis Not Available",
+      "aiNotAvailableDescription": "This contract hasn't been processed by AI yet.",
+      "runAnalysis": "Run Analysis",
+      "chatWithAI": "Chat with AI",
+      "evidenceFocus": "Evidence focus",
+      "spanExact": "Exact span",
+      "spanMatched": "Matched excerpt",
+      "spanFallback": "Fallback excerpt",
+      "contractEvidenceFallback": "Contract evidence",
+      "sourceContext": "Source context",
+      "noExcerptAvailable": "No excerpt available for this citation.",
+      "fullTextNotAvailable": "Full contract text is not available on this record, so this preview is using the citation excerpt only.",
+      "copyEvidenceLink": "Copy evidence link",
+      "selectCategoryTitle": "Select Category",
+      "uploadSignedCopyTitle": "Upload Signed Copy",
+      "extendContractTitle": "Extend Contract",
+      "deleteContractTitle": "Delete Contract",
+      "deleteContractDescription": "Are you sure you want to permanently delete \"{filename}\"? This action cannot be undone and all associated artifacts, notes, and history will be removed.",
+      "aiRecommendationLoading": "Generating AI recommendation...",
+      "suggestedMonths": "Suggested: {months} months"
+    },
+    "uploadPage": {
+      "title": "Upload Contracts",
+      "subtitle": "Drop files to start AI-powered analysis",
+      "allContracts": "All Contracts",
+      "queueTitle": "Upload queue",
+      "uploadAll": "Upload All ({count})",
+      "stopAfterCurrent": "Stop after current files",
+      "resume": "Resume",
+      "clearDone": "Clear Done",
+      "retryAll": "Retry All",
+      "reviewNext": "Review next",
+      "skipReviews": "Skip reviews",
+      "metadataReviewReady": "{count, plural, one {# metadata review ready} other {# metadata reviews ready}}",
+      "metadataReviewDescription": "Analysis has finished. Review extracted parties, dates, value, and signature details when you are ready.",
+      "queueHelper": {
+        "processing": "Extraction, AI analysis, and indexing are running now.",
+        "pending": "Review the files in queue, then start the pipeline when ready.",
+        "error": "Retry failed uploads or remove them from the current batch.",
+        "completed": "Processed contracts stay here until you clear them from the queue.",
+        "empty": "Add files to get started."
+      }
+    },
+    "newPage": {
+      "title": "Create New Contract",
+      "stepProgress": "Step {current} of {total}: {stepTitle}",
+      "showPreview": "Show Preview",
+      "hidePreview": "Hide Preview",
+      "saveDraft": "Save Draft",
+      "creating": "Creating...",
+      "addAnotherParty": "Add Another Party",
+      "livePreview": "Live Preview",
+      "steps": {
+        "basic": {
+          "title": "Basic Info",
+          "description": "Title, type, and description"
+        },
+        "parties": {
+          "title": "Parties",
+          "description": "Add contract parties"
+        },
+        "terms": {
+          "title": "Terms",
+          "description": "Dates and renewal"
+        },
+        "financials": {
+          "title": "Financials",
+          "description": "Value and payment terms"
+        },
+        "additional": {
+          "title": "Additional",
+          "description": "Tags, priority, and notes"
+        }
+      }
     }
   },
   "esignature": {
@@ -147,7 +539,147 @@
     "metadataSchema": "Metadata Schema",
     "fieldDependencies": "Field Dependencies",
     "conditionalLogic": "Conditional Logic",
-    "validationRules": "Validation Rules"
+    "validationRules": "Validation Rules",
+    "pageTitle": "System Settings",
+    "pageDescription": "Configure system parameters and preferences",
+    "syncedTitle": "Settings are synced across devices",
+    "syncedDescription": "Changes you make here will be reflected on all devices where you're signed in. Some changes may require a page refresh to take effect.",
+    "resetToDefaults": "Reset to Defaults",
+    "saving": "Saving...",
+    "saveChanges": "Save Changes",
+    "saved": "Saved",
+    "tabs": {
+      "general": "General",
+      "security": "Security",
+      "notifications": "Notifications",
+      "processing": "Processing",
+      "integrations": "Integrations",
+      "contractSources": "Contract Sources",
+      "metadata": "Metadata Schema",
+      "tags": "Tags",
+      "contractGroups": "Contract Groups",
+      "tagRules": "Tag Rules",
+      "taxonomy": "Taxonomy"
+    },
+    "systemPreferences": "System Preferences",
+    "timezone": "Timezone",
+    "language": "Language",
+    "dateFormat": "Date Format",
+    "currency": "Currency",
+    "userProfile": "User Profile",
+    "fullName": "Full Name",
+    "editInProfile": "Edit in Profile Settings →",
+    "emailAddress": "Email Address",
+    "role": "Role",
+    "helpSupport": "Help & Support",
+    "appTour": "App Tour & Learning Center",
+    "appTourDesc": "Interactive walkthrough and feature guides",
+    "adminAccessRequired": "Admin Access Required",
+    "security": {
+      "title": "Authentication & Security",
+      "twoFactor": "Two-Factor Authentication",
+      "mfaRequired": "Required for all users",
+      "mfaOptional": "Optional",
+      "sessionTimeout": "Session Timeout (hours)",
+      "minPasswordLength": "Min Password Length",
+      "changePassword": "Change Password",
+      "advancedPolicies": "Advanced Security Policies",
+      "apiAccess": "API Access",
+      "apiTokens": "API Tokens",
+      "apiTokensDesc": "Issue, revoke, and monitor scoped credentials for",
+      "apiTokensDescSuffix": "consumers.",
+      "manageTokens": "Manage Tokens",
+      "adminRequiredDesc": "Tenant-wide security policies are managed by organization admins from the admin security surface."
+    },
+    "notifications": {
+      "title": "Notification Preferences",
+      "emailSection": "Email Notifications",
+      "pushSection": "Push Notifications",
+      "contractUpdates": "Contract Updates",
+      "renewalReminders": "Renewal Reminders",
+      "complianceAlerts": "Compliance Alerts",
+      "weeklyDigest": "Weekly Digest",
+      "granularNote": "Granular notification controls are not exposed on a separate page yet. The toggles above are the supported settings."
+    },
+    "processing": {
+      "title": "Processing Configuration",
+      "automated": "Automated Processing",
+      "autoProcess": "Auto-process uploads",
+      "aiAnalysis": "AI Analysis",
+      "riskAssessment": "Risk Assessment",
+      "ocr": "OCR Processing",
+      "dataManagement": "Data Management",
+      "retentionPeriod": "Retention Period",
+      "backupFrequency": "Backup Frequency",
+      "adminRequiredDesc": "Processing defaults affect the whole tenant and can only be changed by an organization admin."
+    },
+    "integrationsTab": {
+      "title": "Third-Party Integrations",
+      "loadingText": "Loading integrations...",
+      "adminOnlyDesc": "Webhook endpoints, delivery recovery, durable event replay, and API token management are limited to organization admins and owners.",
+      "liveOverview": "Live Outbound Overview",
+      "liveOverviewDesc": "Current tenant health across webhook subscribers, delivery backlog, event volume, and token traffic.",
+      "webhooks": "Webhooks",
+      "openEndpoints": "Open endpoints →",
+      "retriesDlq": "Retries / DLQ",
+      "noBacklog": "No delivery backlog",
+      "openDeliveriesArrow": "Open deliveries →",
+      "events24h": "Events 24h",
+      "openEventLog": "Open event log →",
+      "openTokens": "Open tokens →",
+      "recentIssues": "Recent Outbound Issues",
+      "recentIssuesDesc": "Latest failed or dead-lettered deliveries across all webhook subscribers.",
+      "requeueDead": "Requeue Dead",
+      "requeueing": "Requeueing…",
+      "openDeliveries": "Open deliveries",
+      "noRecentIssues": "No recent failed or dead-lettered deliveries.",
+      "inspect": "Inspect",
+      "retryNow": "Retry now",
+      "requeue": "Requeue",
+      "retrying": "Retrying…",
+      "comingSoon": "Coming Soon",
+      "adminOnly": "Admin only",
+      "outboundTitle": "Outbound Integrations",
+      "outboundDescAdmin": "Manage webhook subscribers, delivery recovery, durable event replay, and API tokens.",
+      "outboundDescNonAdmin": "Webhook subscribers, delivery recovery, durable event replay, and API tokens are limited to organization admins and owners.",
+      "open": "Open",
+      "apps": {
+        "sharepoint": {
+          "label": "SharePoint",
+          "desc": "Document management"
+        },
+        "salesforce": {
+          "label": "Salesforce",
+          "desc": "CRM integration"
+        },
+        "slack": {
+          "label": "Slack",
+          "desc": "Team notifications"
+        },
+        "teams": {
+          "label": "Microsoft Teams",
+          "desc": "Collaboration"
+        }
+      },
+      "links": {
+        "webhookConfig": {
+          "label": "Webhook Endpoints",
+          "desc": "Manage subscribers and secrets"
+        },
+        "webhookDeliveries": {
+          "label": "Webhook Deliveries",
+          "desc": "Inspect retries, DLQ, and requeue"
+        },
+        "integrationEvents": {
+          "label": "Integration Events",
+          "desc": "Browse durable events and replay them"
+        },
+        "apiTokens": {
+          "label": "API Tokens",
+          "desc": "Issue scoped tokens for /api/v1 access"
+        }
+      }
+    }
   },
   "auth": {
     "signIn": "Sign In",
@@ -157,6 +689,1126 @@
     "password": "Password",
     "forgotPassword": "Forgot Password?",
     "rememberMe": "Remember me",
-    "mfa": "Multi-Factor Authentication"
+    "mfa": "Multi-Factor Authentication",
+    "welcomeBack": "Welcome back",
+    "signInToAccount": "Sign in to your {app} account",
+    "signingIn": "Signing in…",
+    "dontHaveAccount": "Don't have an account?",
+    "firstName": "First Name",
+    "lastName": "Last Name",
+    "confirmPassword": "Confirm Password",
+    "organizationName": "Organization Name",
+    "organizationUrl": "Organization URL",
+    "createAccount": "Create Account",
+    "organizationSetup": "Organization Setup",
+    "invitedToJoin": "You've been invited to join {tenant}",
+    "startManagingContracts": "Start managing your contracts with AI",
+    "setUpOrganization": "Set up your organization",
+    "stepAccountLabel": "Account",
+    "stepOrganizationLabel": "Organization",
+    "continueButton": "Continue",
+    "creatingAccount": "Creating Account...",
+    "createAccountAndJoin": "Create Account & Join",
+    "createOrganization": "Create Organization",
+    "creatingOrganization": "Creating...",
+    "alreadyHaveAccount": "Already have an account?",
+    "accountCreated": "Account Created!",
+    "accountCreatedMessage": "Your account has been created successfully.",
+    "continueToSignIn": "Continue to Sign In",
+    "resetPasswordTitle": "Forgot Password",
+    "resetPasswordSubtitle": "Enter your email address and we'll send you a link to reset your password.",
+    "emailAddress": "Email Address",
+    "sendResetLink": "Send Reset Link",
+    "sending": "Sending...",
+    "checkYourEmail": "Check Your Email",
+    "resetLinkSentMessage": "If an account exists for <strong>{email}</strong>, we've sent a password reset link. Check your inbox and follow the instructions.",
+    "resendEmail": "Resend Email",
+    "resendIn": "Resend in {seconds}s",
+    "backToSignIn": "Back to Sign In"
+  },
+  "intelligence": {
+    "title": "Contract Intelligence",
+    "subtitle": "AI-powered insights and analysis for your contract portfolio",
+    "askAi": "Ask AI",
+    "view": "View",
+    "activeRiskInsights": "Active Risk Insights",
+    "ragSearch": "RAG Search",
+    "recentActivity": "Recent Activity",
+    "stats": {
+      "avgHealthScore": "Avg Health Score",
+      "complianceRate": "Compliance Rate",
+      "aiInsights": "AI Insights",
+      "actionsRequired": "Actions Required"
+    },
+    "aiAssistantBanner": {
+      "title": "AI Contract Assistant",
+      "subtitle": "Ask about health scores, risks, insights, or anything across your portfolio"
+    },
+    "features": {
+      "graph": {
+        "title": "Contract Knowledge Graph",
+        "description": "Visualize relationships between contracts, suppliers, clauses, and risks in an interactive graph explorer."
+      },
+      "health": {
+        "title": "Contract Health Scores",
+        "description": "Monitor contract performance with AI-powered health scoring across risk, compliance, financial, and operational dimensions."
+      },
+      "search": {
+        "title": "Universal RAG Search",
+        "description": "Ask questions in natural language and get AI-powered answers with evidence links from across your contract portfolio."
+      },
+      "negotiate": {
+        "title": "Negotiation Co-Pilot",
+        "description": "AI-assisted redline analysis with playbook matching, risk assessment, and counter-proposal suggestions."
+      }
+    },
+    "featureStats": {
+      "graph": "{total} contracts • {needAttention} need attention",
+      "health": "{avg} avg score • {atRisk} at risk • {critical} critical",
+      "search": "{total} contracts indexed • AI-powered Q&A",
+      "negotiate": "{highPriority} high priority • {total} total insights"
+    },
+    "health": {
+      "loadingTitle": "Analyzing contract health...",
+      "loadingSubtitle": "This may take a moment",
+      "title": "Contract Health Dashboard",
+      "aiPowered": "AI-Powered",
+      "subtitle": "Monitor and optimize contract performance across your entire portfolio",
+      "refreshAll": "Refresh All",
+      "exportReport": "Export Report",
+      "contractsList": "Contracts",
+      "emptyTitle": "No contracts found",
+      "emptySubtitle": "Upload contracts to see health analysis",
+      "viewContract": "View Contract",
+      "reassessNow": "Reassess Now",
+      "tabs": {
+        "overview": "Overview",
+        "factors": "Factors",
+        "actions": "Actions"
+      },
+      "factorBreakdown": "Health Factor Breakdown",
+      "urgentActionsRequired": "Urgent Actions Required",
+      "allClear": "All Clear!",
+      "allClearSubtitle": "No action items for this contract. Great job maintaining it!",
+      "aiRecommendations": "AI Recommendations",
+      "lastUpdated": "Last updated",
+      "refreshAnalysis": "Refresh Analysis",
+      "actionLinks": {
+        "manageRenewal": "Manage Renewal",
+        "reviewPolicies": "Review Policies",
+        "requestApproval": "Request Approval",
+        "editContract": "Edit Contract",
+        "contactSupplier": "Contact Supplier"
+      },
+      "quickActions": "Quick Actions",
+      "takeAction": "Take Action",
+      "stats": {
+        "avgScore": "Avg Health Score",
+        "totalContracts": "Total Contracts",
+        "healthy": "Healthy",
+        "atRisk": "At Risk",
+        "critical": "Critical",
+        "urgentActions": "Urgent Actions"
+      }
+    },
+    "risk": {
+      "title": "Risk Management",
+      "subtitle": "Monitor, assess, and mitigate contract portfolio risks",
+      "loadingSubtitle": "Portfolio risk analysis & mitigation",
+      "distribution": "Risk Distribution",
+      "noRisksDetected": "No risks detected",
+      "flagsCount": "Risk Flags ({count})",
+      "emptyTitle": "No risks found",
+      "emptyHealthy": "Your contract portfolio looks healthy!",
+      "emptyFiltered": "No risks match the current filters",
+      "riskLevel": "{level} Risk",
+      "severity": {
+        "critical": "Critical",
+        "high": "High",
+        "medium": "Medium",
+        "low": "Low"
+      },
+      "level": {
+        "high": "High",
+        "medium": "Medium",
+        "low": "Low"
+      },
+      "stats": {
+        "overallRiskScore": "Overall Risk Score",
+        "criticalIssues": "Critical Issues",
+        "requireImmediateAction": "Require immediate action",
+        "highSeverity": "High Severity",
+        "openRiskFlags": "Open risk flags",
+        "contractsAnalyzed": "Contracts Analyzed",
+        "activePolicies": "{count} active policies"
+      }
+    },
+    "compliance": {
+      "subtitle": "Monitor policy adherence and regulatory compliance",
+      "loadingSubtitle": "Policy & regulatory compliance",
+      "scoreHeading": "Compliance Score",
+      "scoreDescription": "Based on {total} contracts analyzed against {active} active policies",
+      "compliant": "Compliant",
+      "violations": "Violations",
+      "totalIssues": "Total Issues",
+      "policyComplianceCount": "Policy Compliance ({count})",
+      "emptyPolicies": "No policies found",
+      "violationsCount": "{count} violations",
+      "scoreLabel": {
+        "excellent": "Excellent",
+        "needsAttention": "Needs Attention",
+        "atRisk": "At Risk"
+      },
+      "stats": {
+        "activePolicies": "Active Policies",
+        "openFlags": "Open Flags",
+        "criticalIssues": "Critical Issues",
+        "contractsCovered": "Contracts Covered"
+      }
+    }
+  },
+  "analytics": {
+    "title": "Analytics Hub",
+    "subtitle": "Comprehensive insights into your contract portfolio",
+    "detailedAnalytics": "Detailed Analytics",
+    "modulesCount": "{count} modules",
+    "modules": {
+      "documents": {
+        "title": "Documents",
+        "description": "Document classification & signature trends"
+      },
+      "artifacts": {
+        "title": "Artifacts",
+        "description": "Artifact extraction analytics"
+      },
+      "savings": {
+        "title": "Cost Savings",
+        "description": "Savings opportunities"
+      },
+      "renewals": {
+        "title": "Renewals",
+        "description": "Contract renewals"
+      },
+      "suppliers": {
+        "title": "Suppliers",
+        "description": "Supplier analytics"
+      },
+      "negotiation": {
+        "title": "Negotiation",
+        "description": "Negotiation prep"
+      },
+      "procurement": {
+        "title": "Procurement",
+        "description": "Procurement intelligence"
+      },
+      "portfolio": {
+        "title": "Portfolio",
+        "description": "Portfolio risk heatmap & exposure"
+      }
+    }
+  },
+  "settingsPages": {
+    "profile": {
+      "title": "Profile Settings",
+      "subtitle": "Manage your account information",
+      "tabs": {
+        "profile": "Profile",
+        "security": "Security",
+        "preferences": "Preferences"
+      },
+      "saveChanges": "Save Changes",
+      "saved": "Saved!",
+      "profilePhoto": "Profile Photo",
+      "profilePhotoDesc": "This will be displayed on your profile and in comments.",
+      "basicInformation": "Basic Information",
+      "basicInformationDesc": "Update your personal information.",
+      "password": "Password",
+      "passwordDesc": "Change your password or enable additional security measures.",
+      "updatePassword": "Update Password",
+      "twoFactorAuth": "Two-Factor Authentication",
+      "twoFactorAuthDesc": "Add an extra layer of security to your account.",
+      "accountDetails": "Account Details",
+      "regionalSettings": "Regional Settings",
+      "regionalSettingsDesc": "Configure your timezone and language preferences.",
+      "emailPreferences": "Email Preferences",
+      "emailPreferencesDesc": "Manage your email notification preferences."
+    },
+    "tags": {
+      "title": "Tag Management",
+      "subtitle": "Create and manage tags for organizing contracts",
+      "createTag": "Create Tag",
+      "editTag": "Edit Tag",
+      "createNewTag": "Create New Tag",
+      "emptyTitle": "No tags found",
+      "emptyDescSearch": "Try a different search term",
+      "emptyDescNoSearch": "Create your first tag to get started",
+      "updateTag": "Update Tag",
+      "tagsHeading": "Tags"
+    },
+    "contractGroups": {
+      "subtitle": "Organize contracts with static or dynamic groups",
+      "newGroup": "New Group",
+      "createGroup": "Create Group",
+      "emptyTitle": "No groups found",
+      "emptyDescSearch": "Try a different search term",
+      "emptyDescNoSearch": "Create your first group to get started",
+      "groupsHeading": "Groups"
+    },
+    "tagRules": {
+      "title": "Tag Rules & Automation",
+      "subtitle": "Create rules to automatically tag contracts based on conditions",
+      "newRule": "New Rule",
+      "createRule": "Create Rule",
+      "emptyTitle": "No rules found",
+      "emptyDescSearch": "Try a different search term",
+      "emptyDescNoSearch": "Create your first rule to get started",
+      "rulesHeading": "Rules"
+    },
+    "taxonomy": {
+      "title": "Taxonomy Management",
+      "subtitle": "Define categories for automatic contract classification",
+      "analytics": "Analytics",
+      "loadPreset": "Load Preset",
+      "addCategory": "Add Category",
+      "exportJson": "Export as JSON",
+      "exportCsv": "Export as CSV",
+      "saveAsPreset": "Save as Preset",
+      "emptyTitle": "No categories yet",
+      "emptyDesc": "Start with a preset template or create your own categories",
+      "useTemplate": "Use a Template",
+      "createCustom": "Create Custom",
+      "retry": "Retry",
+      "taxonomyStats": "Taxonomy Stats",
+      "howItWorks": "How Auto-Categorization Works",
+      "editCategory": "Edit Category",
+      "newCategory": "New Category",
+      "updateCategory": "Update Category",
+      "createCategory": "Create Category",
+      "deleteCategory": "Delete Category",
+      "deleteAll": "Delete All",
+      "savePresetTitle": "Save as Preset",
+      "savePresetButton": "Save Preset",
+      "chooseTemplate": "Choose a Template",
+      "yourSavedPresets": "Your Saved Presets",
+      "industryTemplates": "Industry Templates",
+      "applyTemplate": "Apply Template",
+      "apply": "Apply",
+      "applying": "Applying..."
+    },
+    "contractSources": {
+      "subtitle": "Connect to external systems to automatically sync contracts",
+      "addSource": "Add Source",
+      "configuredSources": "Configured Sources",
+      "configuredSourcesDesc": "Manage your contract source connections and sync settings",
+      "emptyTitle": "No sources configured",
+      "emptyDesc": "Connect to SharePoint, S3, or other storage to start syncing contracts",
+      "addFirstSource": "Add Your First Source",
+      "addContractSource": "Add Contract Source",
+      "addContractSourceDesc": "Connect to an external system to automatically sync contracts",
+      "createSource": "Create Source",
+      "noSyncHistory": "No sync history yet"
+    },
+    "apiTokens": {
+      "title": "API Tokens",
+      "subtitlePart1": "Tokens authenticate consumers of",
+      "subtitlePart2": "Use",
+      "subtitlePart3": "to query contracts and obligations from warehouses, BI tools, or other systems.",
+      "newToken": "New token",
+      "activeTokens": "Active tokens",
+      "activeTokensDesc": "Only token prefixes are shown. The full token is visible once at creation.",
+      "loading": "Loading…",
+      "noTokensYet": "No tokens yet.",
+      "tokenCreatedTitle": "Token created",
+      "createApiTokenTitle": "Create API token",
+      "tokenCreatedDesc": "Copy this token now. It will not be shown again.",
+      "createTokenDesc": "Pick a name and scopes. The token is shown once.",
+      "copyToken": "Copy token",
+      "done": "Done",
+      "creating": "Creating…",
+      "createTokenButton": "Create token"
+    },
+    "webhooks": {
+      "checkingAccess": "Checking webhook settings access…",
+      "unableToLoadTitle": "Unable to load webhook settings",
+      "unableToLoadDesc": "We couldn't verify whether you can manage outbound webhooks right now.",
+      "adminRequiredDesc": "Webhook endpoint management is limited to organization admins and owners.",
+      "title": "Webhook Endpoints",
+      "subtitle": "Configure outbound webhook subscribers, then drill into delivery history and the durable integration event log when a receiver needs recovery.",
+      "deliveries": "Deliveries",
+      "eventLog": "Event Log",
+      "outboundSurface": "Outbound Surface",
+      "outboundSurfaceDesc": "Webhook endpoint configuration lives here. Use deliveries for retry and DLQ recovery, and the event log for durable replay."
+    },
+    "webhookDeliveries": {
+      "checkingAccess": "Checking webhook deliveries access…",
+      "unableToLoadTitle": "Unable to load webhook deliveries",
+      "unableToLoadDesc": "We couldn't verify whether you can inspect delivery retries and DLQ state right now.",
+      "adminRequiredDesc": "Webhook delivery inspection and recovery are limited to organization admins and owners.",
+      "title": "Webhook Deliveries",
+      "subtitlePart1": "Inspect outbound webhook attempts. Failed deliveries retry with exponential backoff; after",
+      "subtitlePart2": "attempts they move to the dead-letter queue and can be requeued manually.",
+      "eventLog": "Event Log",
+      "requeueDead": "Requeue Dead",
+      "filters": "Filters",
+      "deliveriesHeading": "Deliveries",
+      "loading": "Loading…",
+      "noDeliveriesMatch": "No deliveries match the current filters.",
+      "requeue": "Requeue"
+    },
+    "integrationEvents": {
+      "checkingAccess": "Checking integration event access…",
+      "unableToLoadTitle": "Unable to load integration events",
+      "unableToLoadDesc": "We couldn't verify whether you can browse and replay durable outbound events right now.",
+      "adminRequiredDesc": "Durable event browsing and replay are limited to organization admins and owners.",
+      "title": "Integration Events",
+      "subtitle": "Browse the durable outbound event log that backs `/api/v1/events`. Use this to confirm an event was recorded even if downstream webhooks failed.",
+      "deliveries": "Deliveries",
+      "filters": "Filters",
+      "eventLogHeading": "Event Log",
+      "loading": "Loading…",
+      "noEventsMatch": "No events match the current filters.",
+      "loadOlderEvents": "Load older events",
+      "replay": "Replay"
+    },
+    "metadata": {
+      "title": "Settings",
+      "subtitle": "Configure your contract management settings",
+      "breadcrumbCurrent": "Metadata Configuration",
+      "customSchema": "Custom schema (v{version})",
+      "schemaStats": "Schema Stats",
+      "selectSection": "Select a Section",
+      "selectSectionDesc": "Choose a settings section from the sidebar to configure.",
+      "soon": "Soon",
+      "sections": {
+        "metadata": {
+          "label": "Metadata Fields",
+          "description": "Define custom fields for contracts"
+        },
+        "templates": {
+          "label": "Contract Templates",
+          "description": "Manage contract templates"
+        },
+        "categories": {
+          "label": "Categories & Tags",
+          "description": "Configure categorization"
+        },
+        "ai": {
+          "label": "AI Settings",
+          "description": "Configure AI extraction"
+        },
+        "team": {
+          "label": "Team & Permissions",
+          "description": "Manage team access"
+        },
+        "notifications": {
+          "label": "Notifications",
+          "description": "Alert preferences"
+        },
+        "security": {
+          "label": "Security",
+          "description": "Security settings"
+        },
+        "branding": {
+          "label": "Branding",
+          "description": "Customize appearance"
+        }
+      }
+    }
+  },
+  "workflows": {
+    "title": "Workflows",
+    "subtitle": "Manage approvals and automation in one place",
+    "unified": "Unified",
+    "tabs": {
+      "queue": "Queue",
+      "automation": "Automation",
+      "templates": "Templates"
+    },
+    "stats": {
+      "total": "Total",
+      "pending": "Pending",
+      "active": "Active",
+      "inactive": "Inactive",
+      "executions": "Executions"
+    },
+    "newWorkflow": "New Workflow",
+    "backToWorkflows": "Back to Workflows",
+    "loading": "Loading workflows...",
+    "empty": {
+      "title": "No workflows yet",
+      "description": "Create your first automated workflow to streamline contract approvals.",
+      "createWorkflow": "Create Workflow",
+      "useTemplate": "Use Template"
+    },
+    "copy": "Copy",
+    "pause": "Pause",
+    "activate": "Activate",
+    "templatesTab": {
+      "heading": "Quick Start Templates",
+      "subtitle": "Choose a template to get started quickly, or seed all templates to your database",
+      "seedAll": "Seed All Templates to Database",
+      "needCustom": "Need something custom?",
+      "createFromScratch": "Create from Scratch"
+    },
+    "overdue": "OVERDUE",
+    "requestStatus": {
+      "all": "All",
+      "allStatuses": "All Statuses",
+      "submitted": "Submitted",
+      "inTriage": "In Triage",
+      "approved": "Approved",
+      "inProgress": "In Progress",
+      "completed": "Completed",
+      "rejected": "Rejected",
+      "cancelled": "Cancelled"
+    },
+    "requestsHub": {
+      "title": "Contract Requests",
+      "subtitle": "Intake, triage, and track contract requests",
+      "newRequest": "New Request",
+      "tabs": {
+        "triage": "Triage Inbox",
+        "all": "All Requests",
+        "myRequests": "My Requests"
+      },
+      "metrics": {
+        "total": "Total",
+        "slaBreached": "SLA Breached",
+        "escalated": "Escalated"
+      },
+      "triageAction": "Triage",
+      "approveAction": "Approve",
+      "rejectAction": "Reject",
+      "emptyTitle": "No requests found",
+      "emptyDescriptionFiltered": "Try adjusting your filters to see more results.",
+      "emptyDescriptionDefault": "Create a new contract request to get started."
+    },
+    "myRequestsPage": {
+      "hub": "Hub",
+      "title": "My Requests",
+      "subtitle": "Track the status of your contract requests",
+      "clearFilter": "Clear filter",
+      "emptyDescriptionFiltered": "Try clearing your filter",
+      "emptyDescriptionDefault": "Submit your first contract request to get started"
+    }
+  },
+  "obligations": {
+    "tracker": {
+      "title": "Obligation Tracker",
+      "subtitle": "AI-powered contract obligation monitoring and compliance tracking"
+    },
+    "tabs": {
+      "overview": "Overview",
+      "all": "All Obligations",
+      "calendar": "Calendar"
+    },
+    "actions": {
+      "addObligation": "Add Obligation",
+      "adding": "Adding...",
+      "complete": "Complete",
+      "retry": "Retry"
+    },
+    "dialog": {
+      "addTitle": "Add New Obligation",
+      "addDescription": "Create a manual obligation to track. You can also have obligations auto-extracted from contracts."
+    },
+    "confirmComplete": {
+      "title": "Mark Obligation Complete",
+      "description": "Are you sure you want to mark this obligation as completed? This records the completion timestamp.",
+      "confirmLabel": "Mark Complete"
+    },
+    "loading": "Loading obligations dashboard...",
+    "loadError": {
+      "title": "Couldn't load your obligations"
+    },
+    "kpi": {
+      "total": "Total Obligations",
+      "complianceRate": "Compliance Rate",
+      "overdue": "Overdue",
+      "completedThisWeek": "Completed This Week"
+    },
+    "sections": {
+      "criticalItems": {
+        "title": "Critical Items",
+        "description": "Obligations requiring immediate attention"
+      },
+      "upcomingDeadlines": {
+        "title": "Upcoming Deadlines",
+        "description": "Next 7 days"
+      },
+      "statusBreakdown": {
+        "title": "Status Breakdown"
+      }
+    },
+    "empty": {
+      "noCriticalItems": "No critical items!",
+      "noUpcomingDeadlines": "No upcoming deadlines",
+      "noObligationsFound": "No obligations found",
+      "tryAdjustingFilters": "Try adjusting your filters to find obligations",
+      "autoExtractHint": "Obligations are automatically extracted from your contracts using AI. Upload a contract to get started."
+    },
+    "combined": {
+      "title": "Renewals & Obligations",
+      "subtitle": "Track expiring contracts and upcoming obligations — your daily value dashboard",
+      "failedToLoad": "Failed to load dashboard",
+      "tabs": {
+        "overview": "Overview",
+        "renewals": "Expiring Contracts",
+        "obligations": "Obligations"
+      },
+      "kpi": {
+        "expiringUnder30": "Expiring <30 Days",
+        "alreadyExpired": "{count} already expired",
+        "valueAtRisk": "Value at Risk (90d)",
+        "contractsCount": "{count} contracts",
+        "urgentObligations": "Urgent Obligations",
+        "overdueCount": "{count} overdue",
+        "completed30d": "Completed (30d)",
+        "upcoming90d": "{count} upcoming (90d)"
+      },
+      "sections": {
+        "topRenewals": "Top Renewals",
+        "topObligations": "Top Obligations",
+        "viewAll": "View all"
+      },
+      "allExpiringContracts": {
+        "title": "All Expiring Contracts (Next 90 Days)",
+        "description": "{count} contracts require attention"
+      },
+      "urgentObligationsTable": {
+        "title": "Urgent Obligations",
+        "description": "{count} obligations due within 30 days or overdue"
+      },
+      "empty": {
+        "noExpiringContracts": "No expiring contracts found",
+        "noUrgentObligations": "No urgent obligations found",
+        "noContractsExpiring90": "No contracts expiring in the next 90 days"
+      },
+      "urgency": {
+        "expired": "Expired",
+        "critical": "Critical",
+        "urgent": "Urgent",
+        "high": "High",
+        "medium": "Medium"
+      }
+    },
+    "renewalManager": {
+      "title": "Renewal Manager",
+      "subtitle": "Track and manage upcoming contract renewals",
+      "loading": "Loading renewals...",
+      "actions": {
+        "export": "Export",
+        "refresh": "Refresh",
+        "initiateRenewal": "Initiate Renewal",
+        "viewApprovals": "View Approvals",
+        "sendReminders": "Send Reminders",
+        "bulkActions": "Bulk Actions"
+      },
+      "stats": {
+        "totalRenewals": "Total Renewals",
+        "dueIn30Days": "Due in 30 Days",
+        "autoRenewal": "Auto-Renewal",
+        "actionNeeded": "Action Needed",
+        "totalValue": "Total Value",
+        "savingsIdentified": "Savings Identified"
+      },
+      "status": {
+        "upcoming": "Upcoming",
+        "urgent": "Urgent",
+        "inNegotiation": "In Negotiation",
+        "pendingReview": "Pending Review",
+        "completed": "Completed",
+        "expired": "Expired",
+        "unknown": "Unknown"
+      },
+      "recommendation": {
+        "renew": "Renew",
+        "renegotiate": "Renegotiate",
+        "terminate": "Terminate",
+        "review": "Review",
+        "unknown": "Unknown"
+      },
+      "approvalStatus": {
+        "pending": "Pending Approval",
+        "approved": "Approved",
+        "rejected": "Rejected"
+      },
+      "empty": {
+        "title": "No Renewals Found",
+        "filtered": "No renewals match your current filters. Try adjusting your search or filter criteria.",
+        "none": "No contracts with upcoming renewal dates were found. Upload contracts with expiration dates to see them here."
+      },
+      "initiateModal": {
+        "title": "Initiate Renewal",
+        "subtitle": "Start the renewal process",
+        "chooseNextStep": "Choose the next step",
+        "description": "Initiating the renewal marks the workflow as active, then takes you into either the guided renewal wizard or AI Copilot with the source contract loaded.",
+        "openCopilot": "Open AI Copilot",
+        "openWizard": "Open Renewal Wizard"
+      },
+      "bulkMenu": {
+        "initiateSelected": "Initiate Selected",
+        "toggleAutoRenewal": "Toggle Auto-Renewal",
+        "markComplete": "Mark Complete",
+        "selectAllVisible": "Select All Visible",
+        "clearSelection": "Clear Selection"
+      }
+    },
+    "deadlineDashboard": {
+      "title": "Deadline & Obligation Dashboard",
+      "subtitle": "Track contract deadlines, renewals, and key milestones",
+      "loading": "Loading deadlines...",
+      "actions": {
+        "refresh": "Refresh",
+        "configureAlerts": "Configure Alerts",
+        "viewContract": "View Contract"
+      },
+      "stats": {
+        "overdue": "Overdue",
+        "dueSoon": "Due Soon",
+        "upcoming": "Upcoming",
+        "total": "Total"
+      },
+      "views": {
+        "timeline": "Timeline",
+        "list": "List",
+        "calendar": "Calendar"
+      },
+      "resultsTitle": {
+        "timeline": "Timeline View",
+        "list": "List View",
+        "calendar": "Calendar View"
+      },
+      "status": {
+        "overdue": "Overdue",
+        "dueSoon": "Due Soon",
+        "upcoming": "Upcoming",
+        "completed": "Completed",
+        "unknown": "Unknown"
+      },
+      "empty": "No deadlines found matching your filters",
+      "notifications": {
+        "title": "Automatic Notifications",
+        "description": "Configure email alerts for upcoming deadlines. Get notified 30, 14, and 7 days before any deadline.",
+        "setupAlerts": "Setup Email Alerts",
+        "exportToCalendar": "Export to Calendar"
+      }
+    }
+  },
+  "suppliers": {
+    "title": "Vendor Management",
+    "description": "View and manage supplier profiles, risk assessments, and contracts",
+    "loadingDescription": "Manage supplier profiles and risk",
+    "actions": {
+      "analytics": "Analytics",
+      "addVendor": "Add Vendor"
+    },
+    "kpi": {
+      "totalVendors": "Total Vendors",
+      "highRisk": "High Risk",
+      "compliant": "Compliant",
+      "pendingReview": "Pending Review"
+    },
+    "list": {
+      "title": "Vendors ({count})"
+    },
+    "empty": {
+      "noVendors": "No vendors yet — add your first vendor",
+      "noMatch": "No vendors match the current filters"
+    },
+    "rateCardsDashboard": {
+      "title": "Rate Card Dashboard",
+      "subtitle": "Monitor portfolio health and identify savings opportunities",
+      "actions": {
+        "importRateCards": "Import Rate Cards",
+        "addRateCard": "Add Rate Card"
+      },
+      "sections": {
+        "clientNegotiation": "Client & Negotiation Overview",
+        "portfolioOverview": "Portfolio Overview",
+        "financialPerformance": "Financial Performance",
+        "performanceIndicators": "Performance Indicators"
+      },
+      "empty": {
+        "noClientData": "No client data yet",
+        "noClientDataDesc": "Import rate cards to see client overview",
+        "noBaselineData": "No baseline data yet",
+        "noBaselineDataDesc": "Set baselines to track changes",
+        "noNegotiationData": "No negotiation data yet",
+        "noNegotiationDataDesc": "Start a benchmark to see status"
+      }
+    },
+    "spend": {
+      "title": "Spend Management",
+      "subtitle": "Purchase orders, invoices, 3-way matching, and budget tracking",
+      "actions": {
+        "newPO": "New PO",
+        "newInvoice": "New Invoice"
+      },
+      "tabs": {
+        "overview": "Overview",
+        "purchaseOrders": "Purchase Orders",
+        "invoices": "Invoices",
+        "exceptions": "Exceptions"
+      },
+      "kpi": {
+        "totalPOs": "Total POs",
+        "totalInvoices": "Total Invoices",
+        "matched": "Matched",
+        "discrepancies": "Discrepancies"
+      },
+      "empty": {
+        "noPurchaseOrders": "No purchase orders",
+        "noInvoices": "No invoices",
+        "noExceptions": "No exceptions"
+      }
+    }
+  },
+  "drafting": {
+    "hero": {
+      "wordDraft": "Draft",
+      "wordNegotiate": "Negotiate",
+      "wordRedline": "Redline",
+      "wordClose": "Close",
+      "headlineSuffix": "at the speed",
+      "headlineEnd": "of thought.",
+      "subtitle": "Describe the contract you need. Contigo drafts it with your playbook, your language, and your approved clauses — in seconds.",
+      "promptPlaceholder": "Draft an NDA for a software consulting engagement, 2-year term, mutual…",
+      "generate": "Generate",
+      "startBlank": "Start blank",
+      "popular": "Popular",
+      "recent": "Recent"
+    },
+    "continueCard": {
+      "eyebrow": "Continue where you left off",
+      "resume": "Resume"
+    },
+    "tabs": {
+      "drafts": "Drafts",
+      "pickUpTitle": "Pick up where you left off",
+      "pickUpSubtitle": "Switch between recent drafts and approved templates."
+    },
+    "search": {
+      "drafts": "Search drafts...",
+      "templates": "Search templates..."
+    },
+    "draftsTab": {
+      "loadError": "Couldn't load your drafts",
+      "empty": {
+        "titleFiltered": "No drafts found",
+        "titleEmpty": "No drafts yet",
+        "descFiltered": "No drafts match \"{query}\". Try a different search.",
+        "descEmpty": "Start your first contract draft from scratch, a template, or let AI generate one for you.",
+        "blankDocument": "Blank Document",
+        "fromTemplate": "From Template"
+      }
+    },
+    "templatesTab": {
+      "emptyTitleFiltered": "No templates found",
+      "emptyTitleEmpty": "No active templates",
+      "emptyDescFiltered": "No templates match \"{query}\".",
+      "emptyDescEmpty": "Create templates in the Templates page to use them here.",
+      "goToTemplates": "Go to Templates",
+      "viewAll": "View all templates"
+    },
+    "previewDialog": {
+      "useTemplate": "Use Template"
+    },
+    "templatesPage": {
+      "title": "Contract Templates",
+      "subtitle": "Reusable contracts with variables and clauses. Start from a template to draft in seconds.",
+      "createTemplate": "Create template",
+      "searchPlaceholder": "Search templates by name, description, or tag…",
+      "use": "Use",
+      "stats": {
+        "total": "Total templates",
+        "active": "Active",
+        "drafts": "Drafts",
+        "totalUses": "Total uses"
+      },
+      "empty": {
+        "title": "Start your template library",
+        "description": "Turn your most-used contracts into reusable templates with variables and clause blocks. Save hours on every new deal.",
+        "cta": "Create your first template"
+      },
+      "noResults": {
+        "description": "No templates match your current filters.",
+        "clearFilters": "Clear filters"
+      },
+      "error": {
+        "title": "Couldn't load templates.",
+        "description": "Check your connection and try again. If this keeps happening, refresh the page.",
+        "retry": "Retry"
+      },
+      "deleteDialog": {
+        "title": "Delete template?",
+        "description": "\"{name}\" will be permanently removed. This cannot be undone."
+      }
+    },
+    "playbooksPage": {
+      "title": "Legal Playbooks",
+      "subtitle": "Define preferred clauses, risk thresholds, and negotiation positions for automated contract review",
+      "importPolicyPack": "Import Policy Pack",
+      "newPlaybook": "New Playbook",
+      "searchPlaceholder": "Search playbooks...",
+      "stats": {
+        "total": "Total Playbooks",
+        "default": "Default",
+        "totalClauses": "Total Clauses",
+        "redFlags": "Red Flags"
+      },
+      "error": {
+        "title": "Couldn't load playbooks",
+        "retry": "Retry"
+      },
+      "empty": {
+        "titleFiltered": "No playbooks match your search",
+        "titleEmpty": "No playbooks yet",
+        "descFiltered": "Try a different search term",
+        "descEmpty": "Create your first legal playbook to standardize contract review",
+        "cta": "Create Playbook"
+      },
+      "detailDialog": {
+        "useInDrafting": "Use In Drafting"
+      },
+      "deleteDialog": {
+        "title": "Delete Playbook",
+        "description": "Are you sure you want to delete \"{name}\"? This action cannot be undone."
+      },
+      "formDialog": {
+        "createTitle": "Create New Playbook",
+        "editTitle": "Edit Playbook",
+        "createDescription": "Define a legal playbook for standardized contract review",
+        "editDescription": "Update playbook settings and thresholds",
+        "createSubmit": "Create Playbook",
+        "editSubmit": "Save Changes"
+      },
+      "importDialog": {
+        "title": "Import Policy Pack",
+        "description": "Upload a standardized JSON policy pack and convert it into a reusable drafting playbook.",
+        "sampleJson": "Sample JSON",
+        "submit": "Import Policy Pack"
+      }
+    },
+    "clausesLibrary": {
+      "title": "Clauses Library",
+      "subtitle": "Standard contract clauses for quick insertion",
+      "uploadClauses": "Upload Clauses",
+      "newClause": "New Clause",
+      "searchPlaceholder": "Search clauses...",
+      "stats": {
+        "clauses": "{count} clauses",
+        "favorites": "{count} favorites"
+      },
+      "empty": {
+        "title": "No clauses found",
+        "description": "Try adjusting your filters, create a clause, or upload a clause library"
+      },
+      "detailDialog": {
+        "copyToClipboard": "Copy to Clipboard",
+        "insertClause": "Insert Clause"
+      },
+      "newClauseDialog": {
+        "title": "Create New Clause",
+        "description": "Add a new standard clause to your library",
+        "submit": "Create Clause"
+      }
+    }
+  },
+  "governance": {
+    "title": "AI Guardrails & Governance",
+    "subtitle": "Policy enforcement, risk management, and audit controls",
+    "askAi": "Ask AI",
+    "configure": "Configure",
+    "tabs": {
+      "policies": "Policies",
+      "flags": "Risk Flags",
+      "audit": "Audit Log",
+      "thresholds": "Thresholds"
+    },
+    "viewRules": "View Rules",
+    "editPolicy": "Edit Policy",
+    "resolveFlag": "Resolve",
+    "dismissFlag": "Dismiss",
+    "addThreshold": "Add Threshold",
+    "automatedThresholds": "Automated Thresholds",
+    "loading": "Loading governance data...",
+    "emptyAudit": {
+      "title": "No audit log entries found",
+      "description": "Activity will appear here as actions are performed"
+    }
+  },
+  "migration": {
+    "subtitle": "Bulk import your existing contract portfolio from CSV or Excel.",
+    "steps": {
+      "mapping": "Map Columns",
+      "review": "Review",
+      "complete": "Complete"
+    },
+    "upload": {
+      "dropTitle": "Drop your file here",
+      "dropDescription": "CSV or Excel up to 1000 rows"
+    },
+    "selectFile": "Select File",
+    "downloadTemplate": "Download Template",
+    "mapping": {
+      "requiredFields": "Required Fields",
+      "optionalFields": "Optional Fields"
+    },
+    "importContracts": "Import Contracts",
+    "complete": {
+      "title": "Migration Complete",
+      "imported": "Imported",
+      "skipped": "Skipped",
+      "errors": "Errors",
+      "validationIssues": "Validation Issues",
+      "importedContracts": "Imported Contracts",
+      "importAnother": "Import Another File",
+      "viewContracts": "View Contracts"
+    }
+  },
+  "admin": {
+    "title": "Organization Settings",
+    "subtitle": "Manage your organization, team members, and settings",
+    "inviteMember": "Invite Member",
+    "sendInvitation": "Send Invitation",
+    "sendingInvitation": "Sending...",
+    "createAccount": "Create Account",
+    "creatingAccount": "Creating...",
+    "noPendingInvitations": "No pending invitations",
+    "upgradePlan": "Upgrade Plan",
+    "deletionUnavailable": "Deletion Unavailable In-App",
+    "tenantRemovalDisabled": "Tenant removal is intentionally disabled here because there is no matching self-service backend route.",
+    "saving": "Saving...",
+    "tabs": {
+      "team": "Team",
+      "invitations": "Invitations",
+      "accessGroups": "Access Groups",
+      "aiAccuracy": "AI Accuracy"
+    },
+    "stats": {
+      "teamMembers": "Team Members",
+      "contracts": "Contracts",
+      "storageUsed": "Storage Used",
+      "plan": "Plan"
+    },
+    "sections": {
+      "teamMembersTitle": "Team Members",
+      "teamMembersDescription": "Manage your team and their permissions",
+      "pendingInvitationsTitle": "Pending Invitations",
+      "pendingInvitationsDescription": "Track and manage pending team invitations",
+      "organizationDetailsTitle": "Organization Details",
+      "organizationDetailsDescription": "Update your organization information",
+      "subscriptionTitle": "Subscription",
+      "subscriptionDescription": "Your current plan and usage",
+      "dangerZoneTitle": "Danger Zone",
+      "dangerZoneDescription": "Irreversible actions - proceed with caution"
+    },
+    "roles": {
+      "owner": "Owner",
+      "admin": "Admin",
+      "member": "Member",
+      "viewer": "Viewer"
+    },
+    "aiAccuracy": {
+      "overallAccuracy": "Overall Accuracy",
+      "correctExtractions": "Correct Extractions",
+      "correctionsMade": "Corrections Made",
+      "totalFeedback": "Total Feedback",
+      "fieldAccuracyTitle": "Field Accuracy",
+      "fieldAccuracyDescription": "Accuracy by extracted field - lowest accuracy fields shown first",
+      "noDataYet": "No extraction data yet. Accuracy tracking begins when users provide feedback on extracted fields.",
+      "noFieldData": "No field-level data yet",
+      "recommendationsTitle": "AI Recommendations",
+      "quality": {
+        "excellent": "Excellent",
+        "good": "Good",
+        "needsImprovement": "Needs Improvement",
+        "poor": "Poor"
+      }
+    },
+    "audit": {
+      "unableToLoadTitle": "Unable to load audit logs",
+      "unableToLoadDescription": "We could not verify whether you can view tenant-wide audit activity right now.",
+      "adminAccessRequiredTitle": "Admin Access Required",
+      "adminAccessRequiredDescription": "Tenant-wide audit logs and compliance activity are limited to organization admins and owners.",
+      "subtitle": "System activity and compliance tracking",
+      "backToDashboard": "Back to Dashboard",
+      "retry": "Retry",
+      "liveMonitoring": "Live Monitoring",
+      "compliance": "Compliance",
+      "fadpCompliant": "FADP Compliant"
+    },
+    "queue": {
+      "title": "Import Queue Manager",
+      "subtitle": "Monitor and manage contract processing jobs",
+      "autoRefreshOn": "Auto-refresh ON",
+      "autoRefreshOff": "Auto-refresh OFF",
+      "retry": "Retry",
+      "configureLimits": "Configure Limits",
+      "dataConnections": "Data Connections",
+      "noQueues": "No queues available",
+      "noQueuesHint": "Queue system may be initializing...",
+      "noJobs": "No recent jobs",
+      "paused": "Paused",
+      "sections": {
+        "activeImportBatches": "Active Import Batches",
+        "processingQueues": "Processing Queues",
+        "recentJobs": "Recent Jobs",
+        "processingConfiguration": "Processing Configuration"
+      },
+      "overview": {
+        "waiting": "Waiting",
+        "processing": "Processing",
+        "completed": "Completed",
+        "failed": "Failed"
+      },
+      "miniStats": {
+        "waiting": "Waiting",
+        "active": "Active",
+        "done": "Done",
+        "failed": "Failed",
+        "delayed": "Delayed"
+      },
+      "jobStatus": {
+        "waiting": "waiting",
+        "active": "active",
+        "completed": "completed",
+        "failed": "failed",
+        "delayed": "delayed"
+      },
+      "batchStatus": {
+        "pending": "pending",
+        "processing": "processing",
+        "completed": "completed",
+        "paused": "paused",
+        "failed": "failed"
+      }
+    },
+    "integrations": {
+      "title": "Data Connections",
+      "subtitle": "Connect external databases and document stores to sync contracts",
+      "howItWorksTitle": "How Data Connections Work",
+      "addConnection": "Add Connection",
+      "addFirstConnection": "Add Your First Connection",
+      "saveConnection": "Save Connection",
+      "saving": "Saving...",
+      "testing": "Testing...",
+      "loadingConnections": "Loading connections...",
+      "noConnectionsTitle": "No Data Connections",
+      "noConnectionsDescription": "Connect your external databases or document stores to sync contracts. ConTigo can reference files without moving them from your system.",
+      "activeConnectionsTitle": "Active Connections",
+      "securityTitle": "Security & Encryption",
+      "status": {
+        "connected": "connected",
+        "disconnected": "disconnected",
+        "error": "error",
+        "syncing": "syncing"
+      }
+    }
+  },
+  "search": {
+    "title": "Smart Search",
+    "subtitle": "AI-powered semantic search across all contracts and artifacts"
   }
 }

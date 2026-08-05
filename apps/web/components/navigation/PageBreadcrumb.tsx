@@ -4,6 +4,7 @@ import React, { useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
+import { useTranslations } from 'next-intl';
 import {
   ChevronRight,
   Home,
@@ -115,8 +116,19 @@ const ROUTE_CONFIG: Record<string, { label: string; icon: React.ComponentType<{ 
 // Component
 // ============================================================================
 
+// Routes covered by the translated nav (see EnhancedNavigation.tsx); everything
+// else in ROUTE_CONFIG stays English until the rest of the app is translated.
+const TRANSLATED_ROUTE_KEYS: Record<string, string> = {
+  '/': 'dashboard',
+  '/contracts': 'contracts',
+  '/upload': 'upload',
+  '/settings': 'settings',
+};
+
 export function PageBreadcrumb({ items, showHome = true, className = '' }: PageBreadcrumbProps) {
   const pathname = usePathname();
+  const t = useTranslations('navigation');
+  const tCommon = useTranslations('common');
 
   // Auto-generate breadcrumbs from pathname if not provided
   const breadcrumbs = useMemo<BreadcrumbItem[]>(() => {
@@ -127,7 +139,7 @@ export function PageBreadcrumb({ items, showHome = true, className = '' }: PageB
 
     if (showHome && pathname !== '/') {
       crumbs.push({
-        label: 'Home',
+        label: tCommon('home'),
         href: '/',
         icon: Home,
         current: false,
@@ -138,10 +150,11 @@ export function PageBreadcrumb({ items, showHome = true, className = '' }: PageB
     pathParts.forEach((part, index) => {
       currentPath += `/${part}`;
       const config = ROUTE_CONFIG[currentPath];
-      
+
       if (config) {
+        const translationKey = TRANSLATED_ROUTE_KEYS[currentPath];
         crumbs.push({
-          label: config.label,
+          label: translationKey ? t(`nav.${translationKey}.name`) : config.label,
           href: currentPath,
           icon: config.icon,
           current: index === pathParts.length - 1,
@@ -158,7 +171,7 @@ export function PageBreadcrumb({ items, showHome = true, className = '' }: PageB
     });
 
     return crumbs;
-  }, [pathname, items, showHome]);
+  }, [pathname, items, showHome, t, tCommon]);
 
   if (breadcrumbs.length === 0) return null;
 

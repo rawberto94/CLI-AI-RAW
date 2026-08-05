@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -45,6 +46,9 @@ const SCOPE_OPTIONS = [
 ];
 
 export default function ApiTokensPage() {
+  const t = useTranslations('settingsPages');
+  const tSettings = useTranslations('settings');
+  const tCommon = useTranslations('common');
   const { loading: accessLoading, isAdmin, error: accessError } = useAdminSettingsAccess();
   const [tokens, setTokens] = useState<ApiTokenRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -145,7 +149,7 @@ export default function ApiTokensPage() {
   if (!isAdmin) {
     return (
       <AdminOnlySettingsState
-        title="Admin Access Required"
+        title={tSettings('adminAccessRequired')}
         description="API token issuance and revocation are limited to organization admins and owners."
       />
     );
@@ -168,29 +172,28 @@ export default function ApiTokensPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
-            <KeyRound className="h-6 w-6" /> API Tokens
+            <KeyRound className="h-6 w-6" /> {t('apiTokens.title')}
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Tokens authenticate consumers of <code>/api/v1/*</code>. Use{" "}
-            <code>Authorization: Bearer ctg_…</code> to query contracts and obligations from
-            warehouses, BI tools, or other systems.
+            {t('apiTokens.subtitlePart1')} <code>/api/v1/*</code>. {t('apiTokens.subtitlePart2')}{" "}
+            <code>Authorization: Bearer ctg_…</code> {t('apiTokens.subtitlePart3')}
           </p>
         </div>
         <Button onClick={() => setShowDialog(true)}>
-          <Plus className="h-4 w-4 mr-2" /> New token
+          <Plus className="h-4 w-4 mr-2" /> {t('apiTokens.newToken')}
         </Button>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Active tokens</CardTitle>
-          <CardDescription>Only token prefixes are shown. The full token is visible once at creation.</CardDescription>
+          <CardTitle>{t('apiTokens.activeTokens')}</CardTitle>
+          <CardDescription>{t('apiTokens.activeTokensDesc')}</CardDescription>
         </CardHeader>
         <CardContent>
           {loading ? (
-            <p className="text-sm text-muted-foreground">Loading…</p>
+            <p className="text-sm text-muted-foreground">{t('apiTokens.loading')}</p>
           ) : tokens.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No tokens yet.</p>
+            <p className="text-sm text-muted-foreground">{t('apiTokens.noTokensYet')}</p>
           ) : (
             <div className="space-y-2">
               {tokens.map((t) => (
@@ -230,11 +233,11 @@ export default function ApiTokensPage() {
       <Dialog open={showDialog} onOpenChange={(o) => { if (!o) closeDialog(); }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{newToken ? "Token created" : "Create API token"}</DialogTitle>
+            <DialogTitle>{newToken ? t('apiTokens.tokenCreatedTitle') : t('apiTokens.createApiTokenTitle')}</DialogTitle>
             <DialogDescription>
               {newToken
-                ? "Copy this token now. It will not be shown again."
-                : "Pick a name and scopes. The token is shown once."}
+                ? t('apiTokens.tokenCreatedDesc')
+                : t('apiTokens.createTokenDesc')}
             </DialogDescription>
           </DialogHeader>
 
@@ -244,7 +247,7 @@ export default function ApiTokensPage() {
                 <code className="text-xs break-all">{newToken}</code>
               </div>
               <Button variant="outline" className="w-full" onClick={() => copy(newToken)}>
-                <Copy className="h-4 w-4 mr-2" /> Copy token
+                <Copy className="h-4 w-4 mr-2" /> {t('apiTokens.copyToken')}
               </Button>
             </div>
           ) : (
@@ -289,12 +292,12 @@ export default function ApiTokensPage() {
 
           <DialogFooter>
             {newToken ? (
-              <Button onClick={closeDialog}>Done</Button>
+              <Button onClick={closeDialog}>{t('apiTokens.done')}</Button>
             ) : (
               <>
-                <Button variant="outline" onClick={closeDialog}>Cancel</Button>
+                <Button variant="outline" onClick={closeDialog}>{tCommon('cancel')}</Button>
                 <Button onClick={onCreate} disabled={creating}>
-                  {creating ? "Creating…" : "Create token"}
+                  {creating ? t('apiTokens.creating') : t('apiTokens.createTokenButton')}
                 </Button>
               </>
             )}

@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import { useTranslations } from 'next-intl';
 
 interface Policy {
   id: string;
@@ -51,6 +52,9 @@ const STATUS_MAP: Record<string, { color: string; icon: React.ElementType }> = {
 };
 
 export default function ComplianceDashboardClient() {
+  const t = useTranslations('intelligence');
+  const tCommon = useTranslations('common');
+  const tNav = useTranslations('navigation');
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('overview');
 
@@ -74,7 +78,7 @@ export default function ComplianceDashboardClient() {
   );
 
   const scoreColor = complianceScore >= 80 ? 'text-green-600' : complianceScore >= 60 ? 'text-amber-600' : 'text-red-600';
-  const scoreLabel = complianceScore >= 80 ? 'Excellent' : complianceScore >= 60 ? 'Needs Attention' : 'At Risk';
+  const scoreLabel = complianceScore >= 80 ? t('compliance.scoreLabel.excellent') : complianceScore >= 60 ? t('compliance.scoreLabel.needsAttention') : t('compliance.scoreLabel.atRisk');
   const scoreBg = complianceScore >= 80 ? 'bg-green-50' : complianceScore >= 60 ? 'bg-amber-50' : 'bg-red-50';
 
   const compliantPolicies = policies.filter(p => p.status === 'active' && p.violations === 0).length;
@@ -82,7 +86,7 @@ export default function ComplianceDashboardClient() {
 
   if (isLoading) {
     return (
-      <DashboardLayout title="Compliance" description="Policy & regulatory compliance">
+      <DashboardLayout title={tNav('nav.compliance.name')} description={t('compliance.loadingSubtitle')}>
         <div className="flex items-center justify-center min-h-[60vh]">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600" />
         </div>
@@ -92,11 +96,11 @@ export default function ComplianceDashboardClient() {
 
   return (
     <DashboardLayout
-      title="Compliance"
-      description="Monitor policy adherence and regulatory compliance"
+      title={tNav('nav.compliance.name')}
+      description={t('compliance.subtitle')}
       actions={
         <Button size="sm" variant="outline" onClick={() => refetch()}>
-          <RefreshCw className="h-4 w-4 mr-2" /> Refresh
+          <RefreshCw className="h-4 w-4 mr-2" /> {tCommon('refresh')}
         </Button>
       }
     >
@@ -127,22 +131,22 @@ export default function ComplianceDashboardClient() {
                   </div>
                 </div>
                 <div className="flex-1">
-                  <h2 className="text-xl font-semibold">Compliance Score</h2>
+                  <h2 className="text-xl font-semibold">{t('compliance.scoreHeading')}</h2>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Based on {stats?.totalContracts ?? 0} contracts analyzed against {stats?.activePolicies ?? 0} active policies
+                    {t('compliance.scoreDescription', { total: stats?.totalContracts ?? 0, active: stats?.activePolicies ?? 0 })}
                   </p>
                   <div className="grid grid-cols-3 gap-4 mt-4">
                     <div className="bg-green-50 rounded-lg p-3 text-center">
                       <p className="text-2xl font-bold text-green-600">{compliantPolicies}</p>
-                      <p className="text-xs text-green-600/80">Compliant</p>
+                      <p className="text-xs text-green-600/80">{t('compliance.compliant')}</p>
                     </div>
                     <div className="bg-red-50 rounded-lg p-3 text-center">
                       <p className="text-2xl font-bold text-red-600">{violatingPolicies}</p>
-                      <p className="text-xs text-red-600/80">Violations</p>
+                      <p className="text-xs text-red-600/80">{t('compliance.violations')}</p>
                     </div>
                     <div className="bg-violet-50 rounded-lg p-3 text-center">
                       <p className="text-2xl font-bold text-violet-600">{stats?.totalViolations ?? 0}</p>
-                      <p className="text-xs text-violet-600/80">Total Issues</p>
+                      <p className="text-xs text-violet-600/80">{t('compliance.totalIssues')}</p>
                     </div>
                   </div>
                 </div>
@@ -154,12 +158,12 @@ export default function ComplianceDashboardClient() {
         {/* KPI Row */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {[
-            { label: 'Active Policies', value: stats?.activePolicies ?? 0, icon: ShieldCheck, color: 'text-green-600', bg: 'bg-green-100' },
-            { label: 'Open Flags', value: stats?.openFlags ?? 0, icon: ShieldAlert, color: 'text-amber-600', bg: 'bg-amber-100' },
-            { label: 'Critical Issues', value: stats?.criticalFlags ?? 0, icon: ShieldX, color: 'text-red-600', bg: 'bg-red-100' },
-            { label: 'Contracts Covered', value: stats?.totalContracts ?? 0, icon: FileText, color: 'text-violet-600', bg: 'bg-violet-100' },
+            { key: 'activePolicies', label: t('compliance.stats.activePolicies'), value: stats?.activePolicies ?? 0, icon: ShieldCheck, color: 'text-green-600', bg: 'bg-green-100' },
+            { key: 'openFlags', label: t('compliance.stats.openFlags'), value: stats?.openFlags ?? 0, icon: ShieldAlert, color: 'text-amber-600', bg: 'bg-amber-100' },
+            { key: 'criticalIssues', label: t('compliance.stats.criticalIssues'), value: stats?.criticalFlags ?? 0, icon: ShieldX, color: 'text-red-600', bg: 'bg-red-100' },
+            { key: 'contractsCovered', label: t('compliance.stats.contractsCovered'), value: stats?.totalContracts ?? 0, icon: FileText, color: 'text-violet-600', bg: 'bg-violet-100' },
           ].map((kpi, i) => (
-            <motion.div key={kpi.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 * (i + 1) }}>
+            <motion.div key={kpi.key} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 * (i + 1) }}>
               <Card>
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between">
@@ -181,7 +185,7 @@ export default function ComplianceDashboardClient() {
         <Card>
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm">Policy Compliance ({filteredPolicies.length})</CardTitle>
+              <CardTitle className="text-sm">{t('compliance.policyComplianceCount', { count: filteredPolicies.length })}</CardTitle>
               <div className="relative">
                 <Search className="absolute left-2.5 top-2.5 h-3 w-3 text-muted-foreground" />
                 <Input
@@ -197,7 +201,7 @@ export default function ComplianceDashboardClient() {
             {filteredPolicies.length === 0 ? (
               <div className="py-12 text-center">
                 <Shield className="h-12 w-12 mx-auto mb-3 text-muted-foreground/20" />
-                <p className="text-sm text-muted-foreground">No policies found</p>
+                <p className="text-sm text-muted-foreground">{t('compliance.emptyPolicies')}</p>
               </div>
             ) : (
               <div className="space-y-2">
@@ -229,7 +233,7 @@ export default function ComplianceDashboardClient() {
                       <div className="text-right shrink-0">
                         <p className="text-xs text-muted-foreground">{policy.rules} rules</p>
                         <p className={cn('text-sm font-medium', hasViolations ? 'text-red-600' : 'text-green-600')}>
-                          {hasViolations ? `${policy.violations} violations` : 'Compliant'}
+                          {hasViolations ? t('compliance.violationsCount', { count: policy.violations }) : t('compliance.compliant')}
                         </p>
                       </div>
                     </div>

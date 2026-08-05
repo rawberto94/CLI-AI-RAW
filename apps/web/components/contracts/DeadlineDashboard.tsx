@@ -30,6 +30,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useDemoMode } from '@/hooks/useDemoMode'
+import { useTranslations } from 'next-intl'
 
 interface Deadline {
   id: string
@@ -60,6 +61,7 @@ export function DeadlineDashboard({
   typeFilter,
 }: DeadlineDashboardProps) {
   const isDemo = useDemoMode();
+  const t = useTranslations('obligations');
   const [deadlines, setDeadlines] = useState<Deadline[]>([])
   const [loading, setLoading] = useState(true)
   const [viewMode, setViewMode] = useState<'timeline' | 'list' | 'calendar'>('timeline')
@@ -97,34 +99,34 @@ export function DeadlineDashboard({
   const getStatusConfig = (status: string) => {
     switch (status) {
       case 'overdue':
-        return { 
+        return {
           color: 'bg-red-100 text-red-700 border-red-300',
           icon: AlertCircle,
-          label: 'Overdue'
+          label: t('deadlineDashboard.status.overdue')
         }
       case 'due-soon':
-        return { 
+        return {
           color: 'bg-yellow-100 text-yellow-700 border-yellow-300',
           icon: AlertTriangle,
-          label: 'Due Soon'
+          label: t('deadlineDashboard.status.dueSoon')
         }
       case 'upcoming':
-        return { 
+        return {
           color: 'bg-violet-100 text-violet-700 border-violet-300',
           icon: Clock,
-          label: 'Upcoming'
+          label: t('deadlineDashboard.status.upcoming')
         }
       case 'completed':
-        return { 
+        return {
           color: 'bg-green-100 text-green-700 border-green-300',
           icon: CheckCircle2,
-          label: 'Completed'
+          label: t('deadlineDashboard.status.completed')
         }
       default:
-        return { 
+        return {
           color: 'bg-gray-100 text-gray-700 border-gray-300',
           icon: Clock,
-          label: 'Unknown'
+          label: t('deadlineDashboard.status.unknown')
         }
     }
   }
@@ -170,7 +172,7 @@ export function DeadlineDashboard({
         <CardContent className="p-12 flex items-center justify-center">
           <div className="text-center">
             <RefreshCw className="h-12 w-12 mx-auto animate-spin text-violet-600 mb-4" />
-            <p className="text-gray-600">Loading deadlines...</p>
+            <p className="text-gray-600">{t('deadlineDashboard.loading')}</p>
           </div>
         </CardContent>
       </Card>
@@ -183,19 +185,19 @@ export function DeadlineDashboard({
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
-            Deadline & Obligation Dashboard
+            {t('deadlineDashboard.title')}
           </h1>
-          <p className="text-gray-600 mt-2">Track contract deadlines, renewals, and key milestones</p>
+          <p className="text-gray-600 mt-2">{t('deadlineDashboard.subtitle')}</p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" onClick={loadDeadlines} className="hover:bg-violet-50">
             <RefreshCw className="h-4 w-4 mr-2" />
-            Refresh
+            {t('deadlineDashboard.actions.refresh')}
           </Button>
           {!isDemo && (
             <Button className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700">
               <Bell className="h-4 w-4 mr-2" />
-              Configure Alerts
+              {t('deadlineDashboard.actions.configureAlerts')}
             </Button>
           )}
         </div>
@@ -212,7 +214,7 @@ export function DeadlineDashboard({
                   <AlertCircle className="h-6 w-6 text-white" />
                 </div>
               </div>
-              <p className="text-sm font-medium text-gray-600 uppercase tracking-wide">Overdue</p>
+              <p className="text-sm font-medium text-gray-600 uppercase tracking-wide">{t('deadlineDashboard.stats.overdue')}</p>
               <p className="text-4xl font-bold text-gray-900 mt-1">{stats.overdue}</p>
             </CardContent>
           </Card>
@@ -227,7 +229,7 @@ export function DeadlineDashboard({
                   <AlertTriangle className="h-6 w-6 text-white" />
                 </div>
               </div>
-              <p className="text-sm font-medium text-gray-600 uppercase tracking-wide">Due Soon</p>
+              <p className="text-sm font-medium text-gray-600 uppercase tracking-wide">{t('deadlineDashboard.stats.dueSoon')}</p>
               <p className="text-4xl font-bold text-gray-900 mt-1">{stats.dueSoon}</p>
             </CardContent>
           </Card>
@@ -242,7 +244,7 @@ export function DeadlineDashboard({
                   <Clock className="h-6 w-6 text-white" />
                 </div>
               </div>
-              <p className="text-sm font-medium text-gray-600 uppercase tracking-wide">Upcoming</p>
+              <p className="text-sm font-medium text-gray-600 uppercase tracking-wide">{t('deadlineDashboard.stats.upcoming')}</p>
               <p className="text-4xl font-bold text-gray-900 mt-1">{stats.upcoming}</p>
             </CardContent>
           </Card>
@@ -257,7 +259,7 @@ export function DeadlineDashboard({
                   <CalendarDays className="h-6 w-6 text-white" />
                 </div>
               </div>
-              <p className="text-sm font-medium text-gray-600 uppercase tracking-wide">Total</p>
+              <p className="text-sm font-medium text-gray-600 uppercase tracking-wide">{t('deadlineDashboard.stats.total')}</p>
               <p className="text-4xl font-bold text-gray-900 mt-1">{stats.total}</p>
             </CardContent>
           </Card>
@@ -323,7 +325,7 @@ export function DeadlineDashboard({
                 onClick={() => setViewMode('timeline')}
                 className={cn(viewMode === 'timeline' && 'bg-gradient-to-r from-violet-600 to-purple-600')}
               >
-                Timeline
+                {t('deadlineDashboard.views.timeline')}
               </Button>
               <Button
                 variant={viewMode === 'list' ? 'default' : 'outline'}
@@ -331,7 +333,7 @@ export function DeadlineDashboard({
                 onClick={() => setViewMode('list')}
                 className={cn(viewMode === 'list' && 'bg-gradient-to-r from-violet-600 to-purple-600')}
               >
-                List
+                {t('deadlineDashboard.views.list')}
               </Button>
               <Button
                 variant={viewMode === 'calendar' ? 'default' : 'outline'}
@@ -339,7 +341,7 @@ export function DeadlineDashboard({
                 onClick={() => setViewMode('calendar')}
                 className={cn(viewMode === 'calendar' && 'bg-gradient-to-r from-violet-600 to-purple-600')}
               >
-                Calendar
+                {t('deadlineDashboard.views.calendar')}
               </Button>
             </div>
           </div>
@@ -350,14 +352,14 @@ export function DeadlineDashboard({
       <Card className="shadow-2xl border-0">
         <CardHeader className="border-b">
           <CardTitle className="text-2xl bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
-            {viewMode === 'timeline' ? 'Timeline View' : viewMode === 'list' ? 'List View' : 'Calendar View'}
+            {viewMode === 'timeline' ? t('deadlineDashboard.resultsTitle.timeline') : viewMode === 'list' ? t('deadlineDashboard.resultsTitle.list') : t('deadlineDashboard.resultsTitle.calendar')}
           </CardTitle>
         </CardHeader>
         <CardContent className="p-6">
           {filteredDeadlines.length === 0 ? (
             <div className="text-center py-12">
               <CalendarDays className="h-16 w-16 mx-auto text-gray-400 mb-4" />
-              <p className="text-gray-600 text-lg">No deadlines found matching your filters</p>
+              <p className="text-gray-600 text-lg">{t('deadlineDashboard.empty')}</p>
             </div>
           ) : (
             <div className="space-y-4">
@@ -446,7 +448,7 @@ export function DeadlineDashboard({
                       
                       {!isDemo && (
                         <Button variant="outline" size="sm" className="hover:bg-violet-50">
-                          View Contract
+                          {t('deadlineDashboard.actions.viewContract')}
                         </Button>
                       )}
                     </div>
@@ -466,21 +468,21 @@ export function DeadlineDashboard({
               <Bell className="h-6 w-6 text-violet-600" />
             </div>
             <div className="flex-1">
-              <h3 className="font-semibold text-violet-900 mb-2">Automatic Notifications</h3>
+              <h3 className="font-semibold text-violet-900 mb-2">{t('deadlineDashboard.notifications.title')}</h3>
               <p className="text-sm text-violet-700 mb-4">
-                Configure email alerts for upcoming deadlines. Get notified 30, 14, and 7 days before any deadline.
+                {t('deadlineDashboard.notifications.description')}
               </p>
               <div className="flex items-center gap-3">
                 {!isDemo && (
                   <Button className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700">
                     <Mail className="h-4 w-4 mr-2" />
-                    Setup Email Alerts
+                    {t('deadlineDashboard.notifications.setupAlerts')}
                   </Button>
                 )}
                 {!isDemo && (
                   <Button variant="outline" className="hover:bg-white">
                     <Download className="h-4 w-4 mr-2" />
-                    Export to Calendar
+                    {t('deadlineDashboard.notifications.exportToCalendar')}
                   </Button>
                 )}
               </div>

@@ -64,6 +64,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { ObligationsCalendar } from '@/components/calendar/ObligationsCalendar';
+import { useTranslations } from 'next-intl';
 
 // Types
 interface Obligation {
@@ -129,6 +130,8 @@ const statusIcons = {
 
 export default function ObligationsDashboardPage() {
   const router = useRouter();
+  const t = useTranslations('obligations');
+  const tCommon = useTranslations('common');
   const [obligations, setObligations] = useState<Obligation[]>([]);
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [loading, setLoading] = useState(true);
@@ -411,7 +414,7 @@ export default function ObligationsDashboardPage() {
             <div className="w-16 h-16 border-4 border-violet-200 dark:border-violet-800 border-t-violet-600 dark:border-t-violet-400 rounded-full animate-spin" />
             <Target className="w-6 h-6 text-violet-600 dark:text-violet-400 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
           </div>
-          <p className="text-slate-600 dark:text-slate-300 font-medium">Loading obligations dashboard...</p>
+          <p className="text-slate-600 dark:text-slate-300 font-medium">{t('loading')}</p>
         </motion.div>
       </div>
     );
@@ -422,11 +425,11 @@ export default function ObligationsDashboardPage() {
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-pink-50/20 dark:from-slate-900 dark:via-purple-950/30 dark:to-pink-950/20 flex items-center justify-center px-6">
         <div className="max-w-md w-full rounded-xl border border-rose-200 bg-rose-50/80 backdrop-blur p-6 text-center">
           <AlertTriangle className="h-10 w-10 text-rose-500 mx-auto mb-3" />
-          <h2 className="text-lg font-semibold text-rose-900 mb-1">Couldn&apos;t load your obligations</h2>
+          <h2 className="text-lg font-semibold text-rose-900 mb-1">{t('loadError.title')}</h2>
           <p className="text-sm text-rose-700/80 mb-4">{loadError}</p>
           <Button onClick={handleRefresh} disabled={refreshing} className="gap-2">
             <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-            Retry
+            {t('actions.retry')}
           </Button>
         </div>
       </div>
@@ -442,10 +445,10 @@ export default function ObligationsDashboardPage() {
             <div>
               <PageBreadcrumb />
               <h1 className="text-2xl font-bold bg-gradient-to-r from-violet-600 to-pink-600 bg-clip-text text-transparent mt-1">
-                Obligation Tracker
+                {t('tracker.title')}
               </h1>
               <p className="text-sm text-slate-600 dark:text-slate-400 mt-0.5">
-                AI-powered contract obligation monitoring and compliance tracking
+                {t('tracker.subtitle')}
               </p>
             </div>
             <div className="flex items-center gap-3">
@@ -457,23 +460,23 @@ export default function ObligationsDashboardPage() {
                 className="gap-2"
               >
                 <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
-                Refresh
+                {tCommon('refresh')}
               </Button>
               <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
                 <DialogTrigger asChild>
                   <Button size="sm" className="gap-2 bg-gradient-to-r from-violet-600 to-pink-600 hover:from-violet-700 hover:to-pink-700">
                     <Plus className="w-4 h-4" />
-                    Add Obligation
+                    {t('actions.addObligation')}
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-[500px]">
                   <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                       <Target className="w-5 h-5 text-violet-600" />
-                      Add New Obligation
+                      {t('dialog.addTitle')}
                     </DialogTitle>
                     <DialogDescription>
-                      Create a manual obligation to track. You can also have obligations auto-extracted from contracts.
+                      {t('dialog.addDescription')}
                     </DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4 py-4">
@@ -575,9 +578,9 @@ export default function ObligationsDashboardPage() {
                   </div>
                   <DialogFooter>
                     <Button variant="outline" onClick={() => setShowAddDialog(false)}>
-                      Cancel
+                      {tCommon('cancel')}
                     </Button>
-                    <Button 
+                    <Button
                       onClick={handleAddObligation}
                       disabled={isSubmitting}
                       className="bg-gradient-to-r from-violet-600 to-pink-600 hover:from-violet-700 hover:to-pink-700"
@@ -585,12 +588,12 @@ export default function ObligationsDashboardPage() {
                       {isSubmitting ? (
                         <>
                           <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          Adding...
+                          {t('actions.adding')}
                         </>
                       ) : (
                         <>
                           <Plus className="w-4 h-4 mr-2" />
-                          Add Obligation
+                          {t('actions.addObligation')}
                         </>
                       )}
                     </Button>
@@ -611,21 +614,21 @@ export default function ObligationsDashboardPage() {
               className="gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-500 data-[state=active]:via-violet-500 data-[state=active]:to-pink-500 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-violet-500/30 rounded-lg transition-all duration-200"
             >
               <BarChart3 className="w-4 h-4" />
-              Overview
+              {t('tabs.overview')}
             </TabsTrigger>
-            <TabsTrigger 
-              value="obligations" 
+            <TabsTrigger
+              value="obligations"
               className="gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-500 data-[state=active]:via-violet-500 data-[state=active]:to-pink-500 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-violet-500/30 rounded-lg transition-all duration-200"
             >
               <FileText className="w-4 h-4" />
-              All Obligations
+              {t('tabs.all')}
             </TabsTrigger>
-            <TabsTrigger 
-              value="calendar" 
+            <TabsTrigger
+              value="calendar"
               className="gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-500 data-[state=active]:via-violet-500 data-[state=active]:to-pink-500 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-violet-500/30 rounded-lg transition-all duration-200"
             >
               <CalendarClock className="w-4 h-4" />
-              Calendar
+              {t('tabs.calendar')}
             </TabsTrigger>
           </TabsList>
 
@@ -639,7 +642,7 @@ export default function ObligationsDashboardPage() {
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">Total Obligations</p>
+                        <p className="text-sm text-slate-600 dark:text-slate-400">{t('kpi.total')}</p>
                         <p className="text-3xl font-bold text-slate-900 dark:text-slate-100 mt-1">{metrics?.total || 0}</p>
                       </div>
                       <div className="p-3 bg-gradient-to-br from-violet-400 to-purple-600 rounded-xl shadow-lg shadow-violet-500/30 group-hover:scale-110 transition-transform duration-300">
@@ -662,7 +665,7 @@ export default function ObligationsDashboardPage() {
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">Compliance Rate</p>
+                        <p className="text-sm text-slate-600 dark:text-slate-400">{t('kpi.complianceRate')}</p>
                         <p className="text-3xl font-bold text-slate-900 dark:text-slate-100 mt-1">
                           {((metrics?.complianceRate || 0) * 100).toFixed(1)}%
                         </p>
@@ -684,7 +687,7 @@ export default function ObligationsDashboardPage() {
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">Overdue</p>
+                        <p className="text-sm text-slate-600 dark:text-slate-400">{t('kpi.overdue')}</p>
                         <p className="text-3xl font-bold text-red-600 dark:text-red-400 mt-1">{metrics?.overdueCount || 0}</p>
                       </div>
                       <div className="p-3 bg-gradient-to-br from-red-400 to-rose-600 rounded-xl shadow-lg shadow-red-500/30 group-hover:scale-110 transition-transform duration-300">
@@ -705,7 +708,7 @@ export default function ObligationsDashboardPage() {
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">Completed This Week</p>
+                        <p className="text-sm text-slate-600 dark:text-slate-400">{t('kpi.completedThisWeek')}</p>
                         <p className="text-3xl font-bold text-slate-900 dark:text-slate-100 mt-1">
                           {metrics?.trends?.completedThisWeek || 0}
                         </p>
@@ -740,9 +743,9 @@ export default function ObligationsDashboardPage() {
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-lg text-slate-900 dark:text-slate-100">
                       <AlertTriangle className="w-5 h-5 text-red-500 dark:text-red-400" />
-                      Critical Items
+                      {t('sections.criticalItems.title')}
                     </CardTitle>
-                    <CardDescription className="dark:text-slate-400">Obligations requiring immediate attention</CardDescription>
+                    <CardDescription className="dark:text-slate-400">{t('sections.criticalItems.description')}</CardDescription>
                   </CardHeader>
                   <CardContent>
                     {metrics?.criticalItems?.length ? (
@@ -764,7 +767,7 @@ export default function ObligationsDashboardPage() {
                     ) : (
                       <div className="text-center py-8 text-slate-500 dark:text-slate-400">
                         <CheckCircle2 className="w-12 h-12 mx-auto mb-3 text-green-500 dark:text-green-400" />
-                        <p>No critical items!</p>
+                        <p>{t('empty.noCriticalItems')}</p>
                       </div>
                     )}
                   </CardContent>
@@ -777,9 +780,9 @@ export default function ObligationsDashboardPage() {
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-lg text-slate-900 dark:text-slate-100">
                       <Calendar className="w-5 h-5 text-violet-500 dark:text-violet-400" />
-                      Upcoming Deadlines
+                      {t('sections.upcomingDeadlines.title')}
                     </CardTitle>
-                    <CardDescription className="dark:text-slate-400">Next 7 days</CardDescription>
+                    <CardDescription className="dark:text-slate-400">{t('sections.upcomingDeadlines.description')}</CardDescription>
                   </CardHeader>
                   <CardContent>
                     {metrics?.upcomingDeadlines?.length ? (
@@ -804,7 +807,7 @@ export default function ObligationsDashboardPage() {
                     ) : (
                       <div className="text-center py-8 text-slate-500 dark:text-slate-400">
                         <Calendar className="w-12 h-12 mx-auto mb-3 text-slate-300 dark:text-slate-600" />
-                        <p>No upcoming deadlines</p>
+                        <p>{t('empty.noUpcomingDeadlines')}</p>
                       </div>
                     )}
                   </CardContent>
@@ -818,7 +821,7 @@ export default function ObligationsDashboardPage() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg text-slate-900 dark:text-slate-100">
                     <BarChart3 className="w-5 h-5 text-violet-500 dark:text-violet-400" />
-                    Status Breakdown
+                    {t('sections.statusBreakdown.title')}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -1012,7 +1015,7 @@ export default function ObligationsDashboardPage() {
                                     className="gap-1"
                                   >
                                     <CheckCircle2 className="w-4 h-4" />
-                                    Complete
+                                    {t('actions.complete')}
                                   </Button>
                                 )}
                                 
@@ -1054,11 +1057,11 @@ export default function ObligationsDashboardPage() {
                   <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-slate-200/50 dark:border-slate-700/50">
                     <CardContent className="py-12 text-center">
                       <Target className="w-16 h-16 mx-auto mb-4 text-violet-300 dark:text-violet-700" />
-                      <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-2">No obligations found</h3>
+                      <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-2">{t('empty.noObligationsFound')}</h3>
                       <p className="text-sm text-slate-600 dark:text-slate-400 max-w-md mx-auto mb-6">
                         {searchQuery || statusFilter !== 'all' || priorityFilter !== 'all' || typeFilter !== 'all'
-                          ? 'Try adjusting your filters to find obligations'
-                          : 'Obligations are automatically extracted from your contracts using AI. Upload a contract to get started.'}
+                          ? t('empty.tryAdjustingFilters')
+                          : t('empty.autoExtractHint')}
                       </p>
                       {!(searchQuery || statusFilter !== 'all' || priorityFilter !== 'all' || typeFilter !== 'all') && (
                         <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
@@ -1118,9 +1121,9 @@ export default function ObligationsDashboardPage() {
         <ConfirmDialog
           open={completeConfirmOpen}
           onOpenChange={setCompleteConfirmOpen}
-          title="Mark Obligation Complete"
-          description="Are you sure you want to mark this obligation as completed? This records the completion timestamp."
-          confirmLabel="Mark Complete"
+          title={t('confirmComplete.title')}
+          description={t('confirmComplete.description')}
+          confirmLabel={t('confirmComplete.confirmLabel')}
           onConfirm={handleConfirmComplete}
         />
       </div>

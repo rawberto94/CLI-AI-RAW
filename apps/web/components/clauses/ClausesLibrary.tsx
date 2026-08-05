@@ -64,6 +64,7 @@ import {
 } from '@/components/ui/card';
 import { ClauseUploadDialog } from './ClauseUploadDialog';
 import { toast } from 'sonner';
+import { useTranslations } from 'next-intl';
 
 type ClauseCategory = 
   | 'general' 
@@ -181,6 +182,8 @@ export const ClausesLibrary = memo(function ClausesLibrary({
   onInsertClause,
   className,
 }: ClausesLibraryProps) {
+  const t = useTranslations('drafting.clausesLibrary');
+  const tCommon = useTranslations('common');
   const [clauses, setClauses] = useState<Clause[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -389,20 +392,20 @@ export const ClausesLibrary = memo(function ClausesLibrary({
         <div>
           <h2 className="text-2xl font-bold flex items-center gap-2">
             <Library className="h-6 w-6 text-violet-600" />
-            Clauses Library
+            {t('title')}
           </h2>
           <p className="text-slate-600 mt-1">
-            Standard contract clauses for quick insertion
+            {t('subtitle')}
           </p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" onClick={() => setShowUploadDialog(true)}>
             <Upload className="h-4 w-4 mr-2" />
-            Upload Clauses
+            {t('uploadClauses')}
           </Button>
           <Button onClick={() => setShowNewClauseDialog(true)}>
             <Plus className="h-4 w-4 mr-2" />
-            New Clause
+            {t('newClause')}
           </Button>
         </div>
       </div>
@@ -412,7 +415,7 @@ export const ClausesLibrary = memo(function ClausesLibrary({
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
           <Input
-            placeholder="Search clauses..."
+            placeholder={t('searchPlaceholder')}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-10"
@@ -462,9 +465,9 @@ export const ClausesLibrary = memo(function ClausesLibrary({
 
       {/* Stats */}
       <div className="flex items-center gap-4 text-sm text-slate-600">
-        <span>{filteredClauses.length} clauses</span>
+        <span>{t('stats.clauses', { count: filteredClauses.length })}</span>
         <span>•</span>
-        <span>{clauses.filter(c => c.isFavorite).length} favorites</span>
+        <span>{t('stats.favorites', { count: clauses.filter(c => c.isFavorite).length })}</span>
       </div>
 
       {/* Clauses Grid */}
@@ -568,17 +571,17 @@ export const ClausesLibrary = memo(function ClausesLibrary({
       {filteredClauses.length === 0 && (
         <div className="text-center py-12 text-slate-500">
           <Library className="h-12 w-12 mx-auto mb-4 opacity-20" />
-          <p>No clauses found</p>
-          <p className="text-sm mt-1">Try adjusting your filters, create a clause, or upload a clause library</p>
+          <p>{t('empty.title')}</p>
+          <p className="text-sm mt-1">{t('empty.description')}</p>
           {clauses.length === 0 && (
             <div className="mt-4 flex justify-center gap-2">
               <Button variant="outline" size="sm" onClick={() => setShowUploadDialog(true)}>
                 <Upload className="h-4 w-4 mr-2" />
-                Upload Clauses
+                {t('uploadClauses')}
               </Button>
               <Button size="sm" onClick={() => setShowNewClauseDialog(true)}>
                 <Plus className="h-4 w-4 mr-2" />
-                New Clause
+                {t('newClause')}
               </Button>
             </div>
           )}
@@ -664,7 +667,7 @@ export const ClausesLibrary = memo(function ClausesLibrary({
 
               <DialogFooter>
                 <Button variant="outline" onClick={() => setSelectedClause(null)}>
-                  Close
+                  {tCommon('close')}
                 </Button>
                 <Button
                   onClick={() => {
@@ -678,7 +681,7 @@ export const ClausesLibrary = memo(function ClausesLibrary({
                   ) : (
                     <Copy className="h-4 w-4 mr-2" />
                   )}
-                  Copy to Clipboard
+                  {t('detailDialog.copyToClipboard')}
                 </Button>
                 {onInsertClause && (
                   <Button
@@ -688,7 +691,7 @@ export const ClausesLibrary = memo(function ClausesLibrary({
                       setSelectedClause(null);
                     }}
                   >
-                    Insert Clause
+                    {t('detailDialog.insertClause')}
                   </Button>
                 )}
               </DialogFooter>
@@ -701,9 +704,9 @@ export const ClausesLibrary = memo(function ClausesLibrary({
       <Dialog open={showNewClauseDialog} onOpenChange={setShowNewClauseDialog}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Create New Clause</DialogTitle>
+            <DialogTitle>{t('newClauseDialog.title')}</DialogTitle>
             <DialogDescription>
-              Add a new standard clause to your library
+              {t('newClauseDialog.description')}
             </DialogDescription>
           </DialogHeader>
 
@@ -792,11 +795,11 @@ export const ClausesLibrary = memo(function ClausesLibrary({
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowNewClauseDialog(false)}>
-              Cancel
+              {tCommon('cancel')}
             </Button>
             <Button onClick={createClause}>
               <Plus className="h-4 w-4 mr-2" />
-              Create Clause
+              {t('newClauseDialog.submit')}
             </Button>
           </DialogFooter>
         </DialogContent>

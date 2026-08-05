@@ -10,10 +10,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Building2, User, Mail, Lock, CheckCircle2, AlertCircle, ArrowRight, Sparkles, Shield, Zap, Eye, EyeOff, Check } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { AuthHeroArt, ConTigoLogo } from "../_components/AuthBranding";
 import { FloatingParticles, GradientOrbs, GoogleIcon, MicrosoftIcon, GitHubIcon } from "../_components/AuthShared";
 
 function SignUpForm() {
+  const t = useTranslations('auth');
+  const tc = useTranslations('common');
   const searchParams = useSearchParams();
   const router = useRouter();
   const inviteToken = searchParams.get("invite");
@@ -237,17 +240,17 @@ function SignUpForm() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
             >
-              Account Created!
+              {t('accountCreated')}
             </motion.h1>
-            <motion.p 
+            <motion.p
               className="text-slate-500 mb-4"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.4 }}
             >
-              Your account has been created successfully.
+              {t('accountCreatedMessage')}
             </motion.p>
-            <motion.div 
+            <motion.div
               className="flex justify-center"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -257,7 +260,7 @@ function SignUpForm() {
                 onClick={() => router.push('/auth/signin?registered=true')}
                 className="w-full h-11 bg-gradient-to-r from-violet-600 via-purple-600 to-fuchsia-600 text-white"
               >
-                Continue to Sign In
+                {t('continueToSignIn')}
               </Button>
             </motion.div>
           </Card>
@@ -411,14 +414,14 @@ function SignUpForm() {
                 )}
               </motion.div>
               <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white mb-2">
-                {step === "account" ? "Create Account" : "Organization Setup"}
+                {step === "account" ? t('createAccount') : t('organizationSetup')}
               </h1>
               <p className="text-slate-500 dark:text-slate-400 text-sm sm:text-base">
                 {inviteInfo
-                  ? `You've been invited to join ${inviteInfo.tenantName}`
+                  ? t('invitedToJoin', { tenant: inviteInfo.tenantName })
                   : step === "account"
-                    ? "Start managing your contracts with AI"
-                    : "Set up your organization"}
+                    ? t('startManagingContracts')
+                    : t('setUpOrganization')}
               </p>
             </motion.div>
           </div>
@@ -443,7 +446,7 @@ function SignUpForm() {
               >
                 <User className="h-4 w-4" />
               </motion.div>
-              <span className="text-sm font-medium">Account</span>
+              <span className="text-sm font-medium">{t('stepAccountLabel')}</span>
             </div>
             <div className={`w-8 h-px ${step === "organization" ? "bg-violet-500" : "bg-slate-200"} transition-colors`} />
             <div className={`flex items-center gap-2 ${step === "organization" ? "text-violet-700" : "text-slate-400"}`}>
@@ -458,7 +461,7 @@ function SignUpForm() {
               >
                 <Building2 className="h-4 w-4" />
               </motion.div>
-              <span className="text-sm font-medium">Organization</span>
+              <span className="text-sm font-medium">{t('stepOrganizationLabel')}</span>
             </div>
           </motion.div>
         )}
@@ -531,7 +534,7 @@ function SignUpForm() {
           <form onSubmit={handleStep1Submit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="firstName">First Name</Label>
+                <Label htmlFor="firstName">{t('firstName')}</Label>
                 <Input
                   id="firstName"
                   type="text"
@@ -544,7 +547,7 @@ function SignUpForm() {
                 />
               </div>
               <div>
-                <Label htmlFor="lastName">Last Name</Label>
+                <Label htmlFor="lastName">{t('lastName')}</Label>
                 <Input
                   id="lastName"
                   type="text"
@@ -559,7 +562,7 @@ function SignUpForm() {
             </div>
 
             <div>
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">{t('email')}</Label>
               <div className="relative mt-1">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -576,7 +579,7 @@ function SignUpForm() {
             </div>
 
             <div>
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">{t('password')}</Label>
               <div className="relative mt-1">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -661,7 +664,7 @@ function SignUpForm() {
             </div>
 
             <div>
-              <Label htmlFor="confirmPassword">Confirm Password</Label>
+              <Label htmlFor="confirmPassword">{t('confirmPassword')}</Label>
               <div className="relative mt-1">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -722,7 +725,7 @@ function SignUpForm() {
                 transition={{ duration: 2, repeat: Infinity, repeatDelay: 3, ease: "easeInOut" }}
               />
               <span className="relative z-10 flex items-center justify-center gap-2">
-                {inviteInfo ? (loading ? "Creating Account..." : "Create Account & Join") : "Continue"}
+                {inviteInfo ? (loading ? t('creatingAccount') : t('createAccountAndJoin')) : t('continueButton')}
                 {!loading && <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />}
               </span>
             </Button>
@@ -732,7 +735,7 @@ function SignUpForm() {
         {step === "organization" && (
           <form onSubmit={handleFinalSubmit} className="space-y-4">
             <div>
-              <Label htmlFor="organizationName">Organization Name</Label>
+              <Label htmlFor="organizationName">{t('organizationName')}</Label>
               <div className="relative mt-1">
                 <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -749,7 +752,7 @@ function SignUpForm() {
             </div>
 
             <div>
-              <Label htmlFor="organizationSlug">Organization URL</Label>
+              <Label htmlFor="organizationSlug">{t('organizationUrl')}</Label>
               <div className="flex items-center mt-1">
                 <span className="text-sm text-muted-foreground px-3 py-2 bg-muted rounded-l-md border border-r-0">
                   app.example.com/
@@ -778,7 +781,7 @@ function SignUpForm() {
                 disabled={loading}
                 className="hover:bg-slate-50"
               >
-                Back
+                {tc('back')}
               </Button>
               <Button 
                 type="submit" 
@@ -792,7 +795,7 @@ function SignUpForm() {
                   transition={{ duration: 2, repeat: Infinity, repeatDelay: 3, ease: "easeInOut" }}
                 />
                 <span className="relative z-10 flex items-center justify-center gap-2">
-                  {loading ? "Creating..." : "Create Organization"}
+                  {loading ? t('creatingOrganization') : t('createOrganization')}
                   {!loading && <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />}
                 </span>
               </Button>
@@ -806,9 +809,9 @@ function SignUpForm() {
           animate={{ opacity: 1 }}
           transition={{ delay: 0.5 }}
         >
-          Already have an account?{" "}
+          {t('alreadyHaveAccount')}{" "}
           <Link href="/auth/signin" className="text-violet-600 hover:text-violet-700 hover:underline font-semibold transition-colors underline-offset-2">
-            Sign in
+            {t('signIn')}
           </Link>
         </motion.div>
 

@@ -58,6 +58,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { useTranslations } from 'next-intl'
 
 // ============================================================================
 // Types
@@ -503,7 +504,8 @@ const RECENT_PROMPTS_STORAGE_KEY = 'drafting-recent-prompts'
 const RECENT_PROMPTS_MAX = 3
 
 // Rotating verbs in the hero headline — sets the tone of the studio.
-const HERO_ROTATING_WORDS = ['Draft', 'Negotiate', 'Redline', 'Close'] as const
+// `key` resolves to messages/{locale}.json under drafting.hero.<key>
+const HERO_ROTATING_WORD_KEYS = ['wordDraft', 'wordNegotiate', 'wordRedline', 'wordClose'] as const
 
 // Sample "activity ticker" items — what the AI has been doing across the tenant.
 // (Purely visual; no network calls — gives the studio a "living" feel.)
@@ -611,6 +613,13 @@ function countInsights(insights: HeroPromptInsights): number {
 
 export default function DraftingPage() {
   const router = useRouter()
+  const t = useTranslations('drafting')
+  const tCommon = useTranslations('common')
+  const tNav = useTranslations('navigation')
+  const heroRotatingWords = useMemo(
+    () => HERO_ROTATING_WORD_KEYS.map((key) => t(`hero.${key}`)),
+    [t],
+  )
   const [drafts, setDrafts] = useState<Draft[]>([])
   const [draftsLoading, setDraftsLoading] = useState(true)
   const [draftsError, setDraftsError] = useState<string | null>(null)
@@ -640,7 +649,7 @@ export default function DraftingPage() {
   // Rotating headline word — cycles every 2.6s.
   useEffect(() => {
     const id = window.setInterval(() => {
-      setHeroWordIndex((i) => (i + 1) % HERO_ROTATING_WORDS.length)
+      setHeroWordIndex((i) => (i + 1) % HERO_ROTATING_WORD_KEYS.length)
     }, 2600)
     return () => window.clearInterval(id)
   }, [])
@@ -1072,25 +1081,25 @@ export default function DraftingPage() {
                 <span className="relative inline-block min-w-[4.5ch] sm:min-w-[5ch]">
                   <AnimatePresence mode="wait">
                     <motion.span
-                      key={HERO_ROTATING_WORDS[heroWordIndex % HERO_ROTATING_WORDS.length]}
+                      key={heroRotatingWords[heroWordIndex % heroRotatingWords.length]}
                       initial={{ opacity: 0, y: 14 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -14 }}
                       transition={{ duration: 0.35, ease: 'easeOut' }}
                       className="inline-block bg-gradient-to-r from-violet-300 via-fuchsia-300 to-amber-200 bg-clip-text text-transparent"
                     >
-                      {HERO_ROTATING_WORDS[heroWordIndex % HERO_ROTATING_WORDS.length]}
+                      {heroRotatingWords[heroWordIndex % heroRotatingWords.length]}
                     </motion.span>
                   </AnimatePresence>
                 </span>
-                <span className="text-white/90">at the speed</span>
+                <span className="text-white/90">{t('hero.headlineSuffix')}</span>
               </span>
               <br />
-              <span className="text-white/70">of thought.</span>
+              <span className="text-white/70">{t('hero.headlineEnd')}</span>
             </h1>
 
             <p className="mt-4 max-w-2xl text-[15px] leading-[1.7] text-white/60">
-              Describe the contract you need. Contigo drafts it with your playbook, your language, and your approved clauses — in seconds.
+              {t('hero.subtitle')}
             </p>
 
             {/* Spotlight command bar */}
@@ -1120,7 +1129,7 @@ export default function DraftingPage() {
                     onChange={(e) => setAiPrompt(e.target.value)}
                     onFocus={() => setPromptFocused(true)}
                     onBlur={() => setPromptFocused(false)}
-                    placeholder='Draft an NDA for a software consulting engagement, 2-year term, mutual…'
+                    placeholder={t('hero.promptPlaceholder')}
                     className="h-auto w-full border-0 bg-transparent px-0 py-1 text-[17px] font-medium leading-[1.45] text-white placeholder:text-white/35 focus-visible:ring-0 focus-visible:ring-offset-0 sm:text-[19px]"
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && !e.shiftKey && aiPrompt.trim()) {
@@ -1177,7 +1186,7 @@ export default function DraftingPage() {
                     />
                   )}
                   <Sparkles className="relative z-10 h-4 w-4" />
-                  <span className="relative z-10">Generate</span>
+                  <span className="relative z-10">{t('hero.generate')}</span>
                 </Button>
               </div>
             </div>
@@ -1267,7 +1276,7 @@ export default function DraftingPage() {
                 <>
                   <div className="flex shrink-0 items-center gap-1.5 pr-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/35">
                     <History className="h-3 w-3" />
-                    Recent
+                    {t('hero.recent')}
                   </div>
                   {recentPrompts.map((suggestion) => (
                     <button
@@ -1285,7 +1294,7 @@ export default function DraftingPage() {
               {/* Quick-start rich chips */}
               <div className="flex shrink-0 items-center gap-1.5 pr-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/35">
                 <Sparkles className="h-3 w-3" />
-                Popular
+                {t('hero.popular')}
               </div>
               {DRAFTING_QUICK_STARTS.map((item) => (
                 <button
@@ -1319,7 +1328,7 @@ export default function DraftingPage() {
                 className="shrink-0 inline-flex items-center gap-1.5 rounded-full border border-dashed border-white/20 bg-transparent px-3.5 py-1.5 text-xs font-medium text-white/70 transition-all hover:border-white/50 hover:bg-white/5 hover:text-white"
               >
                 <Plus className="h-3 w-3" />
-                Start blank
+                {t('hero.startBlank')}
               </button>
             </div>
 
@@ -1434,7 +1443,7 @@ export default function DraftingPage() {
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="text-[10.5px] font-semibold uppercase tracking-[0.16em] text-violet-700">
-                          Continue where you left off
+                          {t('continueCard.eyebrow')}
                         </span>
                         <span className="inline-flex items-center gap-1 rounded-full bg-white/70 px-2 py-0.5 text-[10px] font-medium text-slate-600 backdrop-blur-sm">
                           <Clock className="h-2.5 w-2.5" />
@@ -1492,7 +1501,7 @@ export default function DraftingPage() {
                         Duplicate
                       </span>
                       <span className="inline-flex h-9 items-center gap-1.5 rounded-full bg-slate-950 px-4 text-xs font-semibold text-white shadow-sm transition-all group-hover:bg-violet-700">
-                        Resume
+                        {t('continueCard.resume')}
                         <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
                       </span>
                     </div>
@@ -1514,9 +1523,9 @@ export default function DraftingPage() {
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div className="space-y-2">
                 <div>
-                  <p className="text-sm font-medium text-slate-900">Pick up where you left off</p>
+                  <p className="text-sm font-medium text-slate-900">{t('tabs.pickUpTitle')}</p>
                   <p className="text-sm text-slate-500">
-                    Switch between recent drafts and approved templates.
+                    {t('tabs.pickUpSubtitle')}
                   </p>
                 </div>
                 <TabsList className="rounded-full bg-white p-1 shadow-sm ring-1 ring-slate-200">
@@ -1525,7 +1534,7 @@ export default function DraftingPage() {
                   className="gap-2 rounded-full px-4 data-[state=active]:bg-slate-950 data-[state=active]:text-white data-[state=active]:shadow-none"
                 >
                   <FileText className="h-4 w-4" />
-                  Drafts
+                  {t('tabs.drafts')}
                   {drafts.length > 0 && (
                     <Badge variant="secondary" className="text-[10px] px-1.5 py-0 ml-1">
                       {drafts.length}
@@ -1537,7 +1546,7 @@ export default function DraftingPage() {
                   className="gap-2 rounded-full px-4 data-[state=active]:bg-slate-950 data-[state=active]:text-white data-[state=active]:shadow-none"
                 >
                   <BookOpen className="h-4 w-4" />
-                  Templates
+                  {tNav('nav.templates.name')}
                   {templatesTotal > 0 && (
                     <Badge variant="secondary" className="text-[10px] px-1.5 py-0 ml-1">
                       {templatesTotal}
@@ -1558,8 +1567,8 @@ export default function DraftingPage() {
                       onChange={(e) => setSearchQuery(e.target.value)}
                       placeholder={
                         activeTab === 'drafts'
-                          ? 'Search drafts...'
-                          : 'Search templates...'
+                          ? t('search.drafts')
+                          : t('search.templates')
                       }
                       aria-label={activeTab === 'drafts' ? 'Search drafts' : 'Search templates'}
                       className="h-10 rounded-full border-slate-200 bg-white pl-9 pr-16 text-sm shadow-sm"
@@ -1644,10 +1653,10 @@ export default function DraftingPage() {
                     <div className="mx-auto w-14 h-14 rounded-2xl bg-rose-50 flex items-center justify-center mb-4">
                       <AlertTriangle className="h-7 w-7 text-rose-500" />
                     </div>
-                    <h3 className="text-lg font-semibold text-slate-900 mb-1">Couldn&apos;t load your drafts</h3>
+                    <h3 className="text-lg font-semibold text-slate-900 mb-1">{t('draftsTab.loadError')}</h3>
                     <p className="text-sm text-slate-500 mb-5 max-w-sm mx-auto">{draftsError}</p>
                     <Button onClick={() => void fetchDrafts()} variant="outline" className="rounded-xl gap-2">
-                      <RefreshCw className="h-4 w-4" /> Retry
+                      <RefreshCw className="h-4 w-4" /> {tCommon('refresh')}
                     </Button>
                   </CardContent>
                 </Card>
@@ -1658,12 +1667,12 @@ export default function DraftingPage() {
                       <FileText className="h-8 w-8 text-violet-400" />
                     </div>
                     <h3 className="text-lg font-semibold text-slate-900 mb-1">
-                      {searchQuery ? 'No drafts found' : 'No drafts yet'}
+                      {searchQuery ? t('draftsTab.empty.titleFiltered') : t('draftsTab.empty.titleEmpty')}
                     </h3>
                     <p className="text-sm text-slate-500 mb-6 max-w-sm mx-auto">
                       {searchQuery
-                        ? `No drafts match "${searchQuery}". Try a different search.`
-                        : 'Start your first contract draft from scratch, a template, or let AI generate one for you.'}
+                        ? t('draftsTab.empty.descFiltered', { query: searchQuery })
+                        : t('draftsTab.empty.descEmpty')}
                     </p>
                     {!searchQuery && (
                       <div className="flex items-center justify-center gap-3">
@@ -1671,14 +1680,14 @@ export default function DraftingPage() {
                           onClick={() => router.push('/drafting/copilot?mode=blank')}
                           className="bg-violet-600 hover:bg-violet-700 rounded-xl"
                         >
-                          <Plus className="h-4 w-4 mr-2" /> Blank Document
+                          <Plus className="h-4 w-4 mr-2" /> {t('draftsTab.empty.blankDocument')}
                         </Button>
                         <Button
                           variant="outline"
                           onClick={() => setActiveTab('templates')}
                           className="rounded-xl"
                         >
-                          <BookOpen className="h-4 w-4 mr-2" /> From Template
+                          <BookOpen className="h-4 w-4 mr-2" /> {t('draftsTab.empty.fromTemplate')}
                         </Button>
                       </div>
                     )}
@@ -1739,16 +1748,16 @@ export default function DraftingPage() {
                       <BookOpen className="h-8 w-8 text-violet-400" />
                     </div>
                     <h3 className="text-lg font-semibold text-slate-900 mb-1">
-                      {searchQuery ? 'No templates found' : 'No active templates'}
+                      {searchQuery ? t('templatesTab.emptyTitleFiltered') : t('templatesTab.emptyTitleEmpty')}
                     </h3>
                     <p className="text-sm text-slate-500 mb-6">
                       {searchQuery
-                        ? `No templates match "${searchQuery}".`
-                        : 'Create templates in the Templates page to use them here.'}
+                        ? t('templatesTab.emptyDescFiltered', { query: searchQuery })
+                        : t('templatesTab.emptyDescEmpty')}
                     </p>
                     <Link href="/templates">
                       <Button className="bg-violet-600 hover:bg-violet-700 rounded-xl">
-                        <BookOpen className="h-4 w-4 mr-2" /> Go to Templates
+                        <BookOpen className="h-4 w-4 mr-2" /> {t('templatesTab.goToTemplates')}
                       </Button>
                     </Link>
                   </CardContent>
@@ -1782,7 +1791,7 @@ export default function DraftingPage() {
                     <div className="text-center pt-2">
                       <Link href="/templates">
                         <Button variant="outline" className="rounded-xl">
-                          View all templates{' '}
+                          {t('templatesTab.viewAll')}{' '}
                           <ArrowRight className="h-4 w-4 ml-2" />
                         </Button>
                       </Link>
@@ -1830,7 +1839,7 @@ export default function DraftingPage() {
           </div>
           <div className="flex justify-end gap-3 pt-3 border-t">
             <Button variant="outline" onClick={() => setPreviewTemplate(null)}>
-              Close
+              {tCommon('close')}
             </Button>
             <Button
               className="bg-violet-600 hover:bg-violet-700"
@@ -1839,7 +1848,7 @@ export default function DraftingPage() {
               }}
             >
               <ArrowRight className="h-4 w-4 mr-2" />
-              Use Template
+              {t('previewDialog.useTemplate')}
             </Button>
           </div>
         </DialogContent>

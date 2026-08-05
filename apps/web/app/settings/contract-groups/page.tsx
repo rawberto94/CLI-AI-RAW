@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { getTenantId } from '@/lib/tenant';
 import { useConfirm, confirmPresets } from '@/components/dialogs/ConfirmDialog';
 import {
@@ -34,6 +35,8 @@ interface ContractGroup {
 }
 
 export default function ContractGroupsPage() {
+  const t = useTranslations('settingsPages');
+  const tCommon = useTranslations('common');
   const confirm = useConfirm();
   const [groups, setGroups] = useState<ContractGroup[]>([]);
   const [loading, setLoading] = useState(true);
@@ -106,13 +109,13 @@ export default function ContractGroupsPage() {
                 Contract Groups
               </h1>
               <p className="text-slate-600 dark:text-slate-400 mt-1">
-                Organize contracts with static or dynamic groups
+                {t('contractGroups.subtitle')}
               </p>
             </div>
             <Link href="/settings/contract-groups/new">
               <Button className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white">
                 <Plus className="w-4 h-4" />
-                New Group
+                {t('contractGroups.newGroup')}
               </Button>
             </Link>
           </div>
@@ -199,7 +202,7 @@ export default function ContractGroupsPage() {
                 className="flex items-center gap-2"
               >
                 <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-                Refresh
+                {tCommon('refresh')}
               </Button>
             </div>
           </CardContent>
@@ -210,7 +213,7 @@ export default function ContractGroupsPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <FolderOpen className="w-5 h-5" />
-              Groups ({filteredGroups.length})
+              {t('contractGroups.groupsHeading')} ({filteredGroups.length})
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -222,16 +225,16 @@ export default function ContractGroupsPage() {
               <div className="text-center py-12">
                 <FolderOpen className="w-12 h-12 mx-auto text-slate-300 dark:text-slate-600 mb-4" />
                 <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">
-                  No groups found
+                  {t('contractGroups.emptyTitle')}
                 </h3>
                 <p className="text-slate-600 dark:text-slate-400 mb-4">
-                  {searchQuery ? 'Try a different search term' : 'Create your first group to get started'}
+                  {searchQuery ? t('contractGroups.emptyDescSearch') : t('contractGroups.emptyDescNoSearch')}
                 </p>
                 {!searchQuery && (
                   <Link href="/settings/contract-groups/new">
                     <Button className="bg-blue-600 hover:bg-blue-700 text-white">
                       <Plus className="w-4 h-4 mr-2" />
-                      Create Group
+                      {t('contractGroups.createGroup')}
                     </Button>
                   </Link>
                 )}

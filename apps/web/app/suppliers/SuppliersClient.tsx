@@ -22,6 +22,7 @@ import {
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { useTranslations } from 'next-intl';
 
 
 interface VendorProfile {
@@ -57,6 +58,7 @@ const RISK_COLORS: Record<string, { text: string; bg: string }> = {
 };
 
 export default function SuppliersClient() {
+  const t = useTranslations('suppliers');
   const [searchTerm, setSearchTerm] = useState('');
   const [riskFilter, setRiskFilter] = useState('all');
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -93,7 +95,7 @@ export default function SuppliersClient() {
 
   if (isLoading) {
     return (
-      <DashboardLayout title="Vendor Management" description="Manage supplier profiles and risk">
+      <DashboardLayout title={t('title')} description={t('loadingDescription')}>
         <div className="flex items-center justify-center min-h-[60vh]">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600" />
         </div>
@@ -103,15 +105,15 @@ export default function SuppliersClient() {
 
   return (
     <DashboardLayout
-      title="Vendor Management"
-      description="View and manage supplier profiles, risk assessments, and contracts"
+      title={t('title')}
+      description={t('description')}
       actions={
         <div className="flex gap-2">
           <Link href="/analytics/suppliers">
-            <Button size="sm" variant="outline"><BarChart3 className="h-4 w-4 mr-2" /> Analytics</Button>
+            <Button size="sm" variant="outline"><BarChart3 className="h-4 w-4 mr-2" /> {t('actions.analytics')}</Button>
           </Link>
           <Button size="sm" onClick={() => setShowCreateDialog(true)}>
-            <Plus className="h-4 w-4 mr-2" /> Add Vendor
+            <Plus className="h-4 w-4 mr-2" /> {t('actions.addVendor')}
           </Button>
         </div>
       }
@@ -120,10 +122,10 @@ export default function SuppliersClient() {
         {/* KPI Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {[
-            { label: 'Total Vendors', value: metrics.totalVendors, icon: Building2, color: 'text-violet-600', bg: 'bg-violet-100' },
-            { label: 'High Risk', value: metrics.highRisk, icon: AlertTriangle, color: 'text-red-600', bg: 'bg-red-100' },
-            { label: 'Compliant', value: metrics.compliant, icon: CheckCircle2, color: 'text-green-600', bg: 'bg-green-100' },
-            { label: 'Pending Review', value: metrics.pendingReview, icon: Shield, color: 'text-amber-600', bg: 'bg-amber-100' },
+            { label: t('kpi.totalVendors'), value: metrics.totalVendors, icon: Building2, color: 'text-violet-600', bg: 'bg-violet-100' },
+            { label: t('kpi.highRisk'), value: metrics.highRisk, icon: AlertTriangle, color: 'text-red-600', bg: 'bg-red-100' },
+            { label: t('kpi.compliant'), value: metrics.compliant, icon: CheckCircle2, color: 'text-green-600', bg: 'bg-green-100' },
+            { label: t('kpi.pendingReview'), value: metrics.pendingReview, icon: Shield, color: 'text-amber-600', bg: 'bg-amber-100' },
           ].map((kpi, i) => (
             <motion.div key={kpi.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 * i }}>
               <Card>
@@ -147,7 +149,7 @@ export default function SuppliersClient() {
         <Card>
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm">Vendors ({filteredProfiles.length})</CardTitle>
+              <CardTitle className="text-sm">{t('list.title', { count: filteredProfiles.length })}</CardTitle>
               <div className="flex items-center gap-2">
                 <div className="relative">
                   <Search className="absolute left-2.5 top-2.5 h-3 w-3 text-muted-foreground" />
@@ -173,11 +175,11 @@ export default function SuppliersClient() {
               <div className="py-12 text-center">
                 <Building2 className="h-12 w-12 mx-auto mb-3 text-muted-foreground/20" />
                 <p className="text-sm text-muted-foreground">
-                  {profiles.length === 0 ? 'No vendors yet — add your first vendor' : 'No vendors match the current filters'}
+                  {profiles.length === 0 ? t('empty.noVendors') : t('empty.noMatch')}
                 </p>
                 {profiles.length === 0 && (
                   <Button size="sm" className="mt-3" onClick={() => setShowCreateDialog(true)}>
-                    <Plus className="h-4 w-4 mr-2" /> Add Vendor
+                    <Plus className="h-4 w-4 mr-2" /> {t('actions.addVendor')}
                   </Button>
                 )}
               </div>

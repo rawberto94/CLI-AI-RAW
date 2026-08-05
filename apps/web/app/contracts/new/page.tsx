@@ -70,6 +70,7 @@ import { Progress } from '@/components/ui/progress'
 import { cn } from '@/lib/utils'
 import { getTenantId } from '@/lib/tenant';
 import { toast } from 'sonner'
+import { useTranslations } from 'next-intl'
 
 // ============ SCHEMA ============
 
@@ -153,18 +154,21 @@ const PRIORITY_OPTIONS = [
   { value: 'high', label: 'High', color: 'bg-red-100 text-red-700' },
 ]
 
-const WIZARD_STEPS = [
-  { id: 'basic', title: 'Basic Info', icon: FileText, description: 'Title, type, and description' },
-  { id: 'parties', title: 'Parties', icon: Users, description: 'Add contract parties' },
-  { id: 'terms', title: 'Terms', icon: Calendar, description: 'Dates and renewal' },
-  { id: 'financials', title: 'Financials', icon: DollarSign, description: 'Value and payment terms' },
-  { id: 'additional', title: 'Additional', icon: Tags, description: 'Tags, priority, and notes' },
-]
+// `key` resolves to messages/{locale}.json under contracts.newPage.steps.<key>.{title,description}
+const WIZARD_STEPS_CONFIG = [
+  { id: 'basic', key: 'basic', icon: FileText },
+  { id: 'parties', key: 'parties', icon: Users },
+  { id: 'terms', key: 'terms', icon: Calendar },
+  { id: 'financials', key: 'financials', icon: DollarSign },
+  { id: 'additional', key: 'additional', icon: Tags },
+] as const
+
+type WizardStep = { id: string; icon: typeof FileText; title: string; description: string }
 
 // ============ COMPONENTS ============
 
 interface StepIndicatorProps {
-  steps: typeof WIZARD_STEPS
+  steps: WizardStep[]
   currentStep: number
   completedSteps: Set<number>
   onStepClick: (step: number) => void
@@ -234,7 +238,18 @@ function StepIndicator({ steps, currentStep, completedSteps, onStepClick }: Step
 
 export default function CreateContractPage() {
   const router = useRouter()
-  
+  const t = useTranslations('contracts')
+  const tCommon = useTranslations('common')
+
+  const WIZARD_STEPS: WizardStep[] = useMemo(
+    () => WIZARD_STEPS_CONFIG.map(({ key, ...rest }) => ({
+      ...rest,
+      title: t(`newPage.steps.${key}.title`),
+      description: t(`newPage.steps.${key}.description`),
+    })),
+    [t],
+  )
+
   // State
   const [currentStep, setCurrentStep] = useState(0)
   const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set())
@@ -317,7 +332,7 @@ export default function CreateContractPage() {
         setCurrentStep(currentStep + 1)
       }
     }
-  }, [currentStep, validateCurrentStep])
+  }, [currentStep, validateCurrentStep, WIZARD_STEPS.length])
   
   const handlePrevious = useCallback(() => {
     if (currentStep > 0) {
@@ -391,7 +406,7 @@ export default function CreateContractPage() {
   // Progress calculation
   const progress = useMemo(() => {
     return ((currentStep + 1) / WIZARD_STEPS.length) * 100
-  }, [currentStep])
+  }, [currentStep, WIZARD_STEPS.length])
   
   // Currency symbol
   const currencySymbol = useMemo(() => {
@@ -412,17 +427,21 @@ export default function CreateContractPage() {
                 className="gap-2"
               >
                 <ArrowLeft className="h-4 w-4" />
-                Back
+                {tCommon('back')}
               </Button>
               <Separator orientation="vertical" className="h-6" />
               <div>
-                <h1 className="text-xl font-semibold text-slate-900">Create New Contract</h1>
+                <h1 className="text-xl font-semibold text-slate-900">{t('newPage.title')}</h1>
                 <p className="text-sm text-slate-500">
-                  Step {currentStep + 1} of {WIZARD_STEPS.length}: {WIZARD_STEPS[currentStep].title}
+                  {t('newPage.stepProgress', {
+                    current: currentStep + 1,
+                    total: WIZARD_STEPS.length,
+                    stepTitle: WIZARD_STEPS[currentStep].title,
+                  })}
                 </p>
               </div>
             </div>
-            
+
             <div className="flex items-center gap-3">
               <Button
                 variant="outline"
@@ -431,7 +450,7 @@ export default function CreateContractPage() {
                 className="gap-2"
               >
                 <Eye className="h-4 w-4" />
-                {showPreview ? 'Hide' : 'Show'} Preview
+                {showPreview ? t('newPage.hidePreview') : t('newPage.showPreview')}
               </Button>
               <Button
                 variant="outline"
@@ -441,7 +460,7 @@ export default function CreateContractPage() {
                 className="gap-2"
               >
                 <Save className="h-4 w-4" />
-                Save Draft
+                {t('newPage.saveDraft')}
               </Button>
             </div>
           </div>
@@ -659,7 +678,7 @@ export default function CreateContractPage() {
                           className="w-full border-dashed"
                         >
                           <Plus className="h-4 w-4 mr-2" />
-                          Add Another Party
+                          {t('newPage.addAnotherParty')}
                         </Button>
                       </motion.div>
                     )}
@@ -988,16 +1007,16 @@ export default function CreateContractPage() {
                       disabled={currentStep === 0}
                     >
                       <ChevronLeft className="h-4 w-4 mr-2" />
-                      Previous
+                      {tCommon('previous')}
                     </Button>
-                    
+
                     {currentStep < WIZARD_STEPS.length - 1 ? (
                       <Button
                         type="button"
                         onClick={handleNext}
                         className="bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600"
                       >
-                        Next
+                        {tCommon('next')}
                         <ChevronRight className="h-4 w-4 ml-2" />
                       </Button>
                     ) : (
@@ -1010,12 +1029,12 @@ export default function CreateContractPage() {
                         {isSubmitting ? (
                           <>
                             <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            Creating...
+                            {t('newPage.creating')}
                           </>
                         ) : (
                           <>
                             <Sparkles className="h-4 w-4 mr-2" />
-                            Create Contract
+                            {t('create')}
                           </>
                         )}
                       </Button>
@@ -1039,7 +1058,7 @@ export default function CreateContractPage() {
                   <CardHeader className="pb-3">
                     <CardTitle className="text-sm flex items-center gap-2">
                       <Eye className="h-4 w-4 text-violet-500" />
-                      Live Preview
+                      {t('newPage.livePreview')}
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4 text-sm">

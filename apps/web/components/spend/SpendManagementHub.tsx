@@ -12,8 +12,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { DollarSign, Plus, FileText, Receipt, AlertTriangle, CheckCircle2, XCircle, BarChart3 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { useTranslations } from 'next-intl';
 
 export default function SpendManagementHub() {
+  const t = useTranslations('suppliers.spend');
   const [tab, setTab] = useState('overview');
   const [data, setData] = useState<any>({});
   const [loading, setLoading] = useState(true);
@@ -63,23 +65,23 @@ export default function SpendManagementHub() {
   return (
     <div className="max-w-[1600px] mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <div><h1 className="text-3xl font-bold tracking-tight flex items-center gap-2"><DollarSign className="h-8 w-8" /> Spend Management</h1><p className="text-muted-foreground mt-1">Purchase orders, invoices, 3-way matching, and budget tracking</p></div>
+        <div><h1 className="text-3xl font-bold tracking-tight flex items-center gap-2"><DollarSign className="h-8 w-8" /> {t('title')}</h1><p className="text-muted-foreground mt-1">{t('subtitle')}</p></div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setShowAddPO(true)}><FileText className="h-4 w-4 mr-2" /> New PO</Button>
-          <Button onClick={() => setShowAddInvoice(true)}><Receipt className="h-4 w-4 mr-2" /> New Invoice</Button>
+          <Button variant="outline" onClick={() => setShowAddPO(true)}><FileText className="h-4 w-4 mr-2" /> {t('actions.newPO')}</Button>
+          <Button onClick={() => setShowAddInvoice(true)}><Receipt className="h-4 w-4 mr-2" /> {t('actions.newInvoice')}</Button>
         </div>
       </div>
 
       <Tabs value={tab} onValueChange={(v) => { setTab(v); setLoading(true); }}>
-        <TabsList><TabsTrigger value="overview">Overview</TabsTrigger><TabsTrigger value="pos">Purchase Orders</TabsTrigger><TabsTrigger value="invoices">Invoices</TabsTrigger><TabsTrigger value="exceptions">Exceptions</TabsTrigger></TabsList>
+        <TabsList><TabsTrigger value="overview">{t('tabs.overview')}</TabsTrigger><TabsTrigger value="pos">{t('tabs.purchaseOrders')}</TabsTrigger><TabsTrigger value="invoices">{t('tabs.invoices')}</TabsTrigger><TabsTrigger value="exceptions">{t('tabs.exceptions')}</TabsTrigger></TabsList>
 
         <TabsContent value="overview" className="mt-4">
           {data.metrics && (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <Card className="p-4"><div className="text-sm text-muted-foreground flex items-center gap-1"><FileText className="h-4 w-4" /> Total POs</div><p className="text-2xl font-bold">{data.metrics.total_pos}</p><p className="text-sm text-muted-foreground">${Number(data.metrics.total_po_value).toLocaleString()}</p></Card>
-              <Card className="p-4"><div className="text-sm text-muted-foreground flex items-center gap-1"><Receipt className="h-4 w-4" /> Total Invoices</div><p className="text-2xl font-bold">{data.metrics.total_invoices}</p><p className="text-sm text-muted-foreground">${Number(data.metrics.total_invoice_value).toLocaleString()}</p></Card>
-              <Card className="p-4"><div className="text-sm text-muted-foreground flex items-center gap-1"><CheckCircle2 className="h-4 w-4 text-green-500" /> Matched</div><p className="text-2xl font-bold text-green-500">{data.metrics.matched}</p></Card>
-              <Card className="p-4"><div className="text-sm text-muted-foreground flex items-center gap-1"><AlertTriangle className="h-4 w-4 text-red-500" /> Discrepancies</div><p className="text-2xl font-bold text-red-500">{data.metrics.discrepant}</p></Card>
+              <Card className="p-4"><div className="text-sm text-muted-foreground flex items-center gap-1"><FileText className="h-4 w-4" /> {t('kpi.totalPOs')}</div><p className="text-2xl font-bold">{data.metrics.total_pos}</p><p className="text-sm text-muted-foreground">${Number(data.metrics.total_po_value).toLocaleString()}</p></Card>
+              <Card className="p-4"><div className="text-sm text-muted-foreground flex items-center gap-1"><Receipt className="h-4 w-4" /> {t('kpi.totalInvoices')}</div><p className="text-2xl font-bold">{data.metrics.total_invoices}</p><p className="text-sm text-muted-foreground">${Number(data.metrics.total_invoice_value).toLocaleString()}</p></Card>
+              <Card className="p-4"><div className="text-sm text-muted-foreground flex items-center gap-1"><CheckCircle2 className="h-4 w-4 text-green-500" /> {t('kpi.matched')}</div><p className="text-2xl font-bold text-green-500">{data.metrics.matched}</p></Card>
+              <Card className="p-4"><div className="text-sm text-muted-foreground flex items-center gap-1"><AlertTriangle className="h-4 w-4 text-red-500" /> {t('kpi.discrepancies')}</div><p className="text-2xl font-bold text-red-500">{data.metrics.discrepant}</p></Card>
             </div>
           )}
         </TabsContent>
@@ -91,7 +93,7 @@ export default function SpendManagementHub() {
               <div className="text-right"><p className="font-bold">${Number(po.total_amount).toLocaleString()}</p><Badge variant="outline">{po.status}</Badge></div>
             </CardContent></Card>
           ))}
-          {(!data.purchaseOrders || data.purchaseOrders.length === 0) && <Card className="p-12 text-center text-muted-foreground">No purchase orders</Card>}
+          {(!data.purchaseOrders || data.purchaseOrders.length === 0) && <Card className="p-12 text-center text-muted-foreground">{t('empty.noPurchaseOrders')}</Card>}
         </TabsContent>
 
         <TabsContent value="invoices" className="mt-4 space-y-3">
@@ -106,7 +108,7 @@ export default function SpendManagementHub() {
               </div>
             </CardContent></Card>
           ))}
-          {(!data.invoices || data.invoices.length === 0) && <Card className="p-12 text-center text-muted-foreground">No invoices</Card>}
+          {(!data.invoices || data.invoices.length === 0) && <Card className="p-12 text-center text-muted-foreground">{t('empty.noInvoices')}</Card>}
         </TabsContent>
 
         <TabsContent value="exceptions" className="mt-4 space-y-3">
@@ -116,7 +118,7 @@ export default function SpendManagementHub() {
               <Badge className={ex.status === 'OPEN' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}>{ex.status}</Badge>
             </CardContent></Card>
           ))}
-          {(!data.exceptions || data.exceptions.length === 0) && <Card className="p-12 text-center text-muted-foreground">No exceptions</Card>}
+          {(!data.exceptions || data.exceptions.length === 0) && <Card className="p-12 text-center text-muted-foreground">{t('empty.noExceptions')}</Card>}
         </TabsContent>
       </Tabs>
 

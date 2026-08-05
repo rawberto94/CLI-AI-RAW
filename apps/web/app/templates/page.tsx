@@ -38,6 +38,7 @@ import {
 } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 import { useTemplates, useDeleteTemplate } from '@/hooks/use-queries'
+import { useTranslations } from 'next-intl'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -112,6 +113,9 @@ function timeAgo(iso?: string): string {
 
 export default function TemplatesPage() {
   const router = useRouter()
+  const t = useTranslations('drafting.templatesPage')
+  const tCommon = useTranslations('common')
+  const tNav = useTranslations('navigation')
 
   // Data
   const { data, isLoading, isError, refetch } = useTemplates()
@@ -247,21 +251,21 @@ export default function TemplatesPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-slate-900 flex items-center gap-2">
             <FileText className="h-6 w-6 text-violet-600" />
-            Contract Templates
+            {t('title')}
           </h1>
           <p className="text-sm text-slate-500 mt-1">
-            Reusable contracts with variables and clauses. Start from a template to draft in seconds.
+            {t('subtitle')}
           </p>
         </div>
 
         <div className="flex items-center gap-2">
           <Button asChild variant="outline" size="sm">
-            <Link href="/clauses">Clause library</Link>
+            <Link href="/clauses">{tNav('nav.clauses.name')}</Link>
           </Button>
           <Button asChild size="sm" className="bg-violet-600 hover:bg-violet-700 text-white">
             <Link href="/templates/new">
               <Plus className="h-4 w-4 mr-1.5" />
-              Create template
+              {t('createTemplate')}
             </Link>
           </Button>
         </div>
@@ -269,11 +273,11 @@ export default function TemplatesPage() {
 
       {/* Stats — four, not twelve */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <StatTile label="Total templates"  value={stats.total}  accent="violet" />
-        <StatTile label="Active"           value={stats.active} accent="emerald" />
-        <StatTile label="Drafts"           value={stats.drafts} accent="amber"   />
+        <StatTile label={t('stats.total')}  value={stats.total}  accent="violet" />
+        <StatTile label={t('stats.active')}           value={stats.active} accent="emerald" />
+        <StatTile label={t('stats.drafts')}           value={stats.drafts} accent="amber"   />
         <StatTile
-          label="Total uses"
+          label={t('stats.totalUses')}
           value={stats.usage}
           accent="sky"
           icon={<TrendingUp className="h-4 w-4" />}
@@ -287,7 +291,7 @@ export default function TemplatesPage() {
           <Input
             value={query}
             onChange={e => setQuery(e.target.value)}
-            placeholder="Search templates by name, description, or tag…"
+            placeholder={t('searchPlaceholder')}
             className="pl-9"
           />
         </div>
@@ -423,13 +427,13 @@ export default function TemplatesPage() {
       <ConfirmDialog
         open={toDelete !== null}
         onOpenChange={open => { if (!open) setToDelete(null) }}
-        title="Delete template?"
+        title={t('deleteDialog.title')}
         description={
           toDelete
-            ? `"${toDelete.name}" will be permanently removed. This cannot be undone.`
+            ? t('deleteDialog.description', { name: toDelete.name })
             : ''
         }
-        confirmLabel="Delete"
+        confirmLabel={tCommon('delete')}
         variant="destructive"
         onConfirm={handleDelete}
         isLoading={deleteMutation.isPending}
@@ -550,6 +554,7 @@ function TemplateCard(props: {
 }) {
   const { template: t, isFavorite, onFavorite, onDuplicate, onDelete, onUse } = props
   const updated = t.updatedAt || t.lastModified || t.createdAt
+  const tPage = useTranslations('drafting.templatesPage')
 
   return (
     <motion.div
@@ -615,7 +620,7 @@ function TemplateCard(props: {
               onClick={onUse}
               className="text-violet-700 hover:text-violet-800 hover:bg-violet-50"
             >
-              Use →
+              {tPage('use')} →
             </Button>
           </div>
         </CardContent>
@@ -634,6 +639,7 @@ function TemplateRow(props: {
 }) {
   const { template: t, isFavorite, onFavorite, onDuplicate, onDelete, onUse } = props
   const updated = t.updatedAt || t.lastModified || t.createdAt
+  const tPage = useTranslations('drafting.templatesPage')
 
   return (
     <div className="flex items-center gap-4 p-3 hover:bg-slate-50 transition group">
@@ -674,7 +680,7 @@ function TemplateRow(props: {
         </span>
       </div>
 
-      <Button size="sm" variant="outline" onClick={onUse}>Use</Button>
+      <Button size="sm" variant="outline" onClick={onUse}>{tPage('use')}</Button>
       <RowMenu template={t} onDuplicate={onDuplicate} onDelete={onDelete} />
     </div>
   )
@@ -721,21 +727,21 @@ function LoadingState({ view }: { view: ViewMode }) {
 }
 
 function EmptyLibraryState() {
+  const t = useTranslations('drafting.templatesPage')
   return (
     <Card className="border-dashed border-2 border-slate-200">
       <CardContent className="p-12 text-center">
         <div className="mx-auto h-14 w-14 rounded-full bg-violet-50 flex items-center justify-center mb-4">
           <FileText className="h-6 w-6 text-violet-600" />
         </div>
-        <h3 className="text-lg font-semibold text-slate-900 mb-1">Start your template library</h3>
+        <h3 className="text-lg font-semibold text-slate-900 mb-1">{t('empty.title')}</h3>
         <p className="text-sm text-slate-500 max-w-md mx-auto mb-5">
-          Turn your most-used contracts into reusable templates with variables and clause blocks.
-          Save hours on every new deal.
+          {t('empty.description')}
         </p>
         <Button asChild className="bg-violet-600 hover:bg-violet-700 text-white">
           <Link href="/templates/new">
             <Plus className="h-4 w-4 mr-1.5" />
-            Create your first template
+            {t('empty.cta')}
           </Link>
         </Button>
       </CardContent>
@@ -744,28 +750,30 @@ function EmptyLibraryState() {
 }
 
 function NoResultsState({ onClear }: { onClear: () => void }) {
+  const t = useTranslations('drafting.templatesPage')
   return (
     <Card className="border-dashed border-slate-200">
       <CardContent className="p-10 text-center">
         <Filter className="h-8 w-8 text-slate-300 mx-auto mb-3" />
-        <p className="text-sm text-slate-600 mb-3">No templates match your current filters.</p>
-        <Button variant="outline" size="sm" onClick={onClear}>Clear filters</Button>
+        <p className="text-sm text-slate-600 mb-3">{t('noResults.description')}</p>
+        <Button variant="outline" size="sm" onClick={onClear}>{t('noResults.clearFilters')}</Button>
       </CardContent>
     </Card>
   )
 }
 
 function ErrorState({ onRetry }: { onRetry: () => void }) {
+  const t = useTranslations('drafting.templatesPage')
   return (
     <Card className="border-red-200 bg-red-50">
       <CardContent className="p-6 text-center space-y-2">
-        <p className="text-sm text-red-800 font-medium">Couldn&apos;t load templates.</p>
+        <p className="text-sm text-red-800 font-medium">{t('error.title')}</p>
         <p className="text-xs text-red-600">
-          Check your connection and try again. If this keeps happening, refresh the page.
+          {t('error.description')}
         </p>
         <Button size="sm" variant="outline" onClick={onRetry} className="mt-2">
           <Loader2 className="h-3.5 w-3.5 mr-1.5" />
-          Retry
+          {t('error.retry')}
         </Button>
       </CardContent>
     </Card>

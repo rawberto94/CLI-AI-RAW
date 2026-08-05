@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { getTenantId } from '@/lib/tenant';
 import { useConfirm, confirmPresets } from '@/components/dialogs/ConfirmDialog';
 import {
@@ -41,6 +42,8 @@ interface ExecutionResult {
 }
 
 export default function TagRulesPage() {
+  const t = useTranslations('settingsPages');
+  const tCommon = useTranslations('common');
   const confirm = useConfirm();
   const [rules, setRules] = useState<TagRule[]>([]);
   const [loading, setLoading] = useState(true);
@@ -176,16 +179,16 @@ export default function TagRulesPage() {
             <div>
               <h1 className="text-3xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
                 <Zap className="w-8 h-8 text-amber-600" />
-                Tag Rules & Automation
+                {t('tagRules.title')}
               </h1>
               <p className="text-slate-600 dark:text-slate-400 mt-1">
-                Create rules to automatically tag contracts based on conditions
+                {t('tagRules.subtitle')}
               </p>
             </div>
             <Link href="/settings/tag-rules/new">
               <Button className="flex items-center gap-2 bg-amber-600 hover:bg-amber-700 text-white">
                 <Plus className="w-4 h-4" />
-                New Rule
+                {t('tagRules.newRule')}
               </Button>
             </Link>
           </div>
@@ -293,7 +296,7 @@ export default function TagRulesPage() {
                 className="flex items-center gap-2"
               >
                 <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-                Refresh
+                {tCommon('refresh')}
               </Button>
             </div>
           </CardContent>
@@ -304,7 +307,7 @@ export default function TagRulesPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Zap className="w-5 h-5" />
-              Rules ({filteredRules.length})
+              {t('tagRules.rulesHeading')} ({filteredRules.length})
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -316,16 +319,16 @@ export default function TagRulesPage() {
               <div className="text-center py-12">
                 <Zap className="w-12 h-12 mx-auto text-slate-300 dark:text-slate-600 mb-4" />
                 <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">
-                  No rules found
+                  {t('tagRules.emptyTitle')}
                 </h3>
                 <p className="text-slate-600 dark:text-slate-400 mb-4">
-                  {searchQuery ? 'Try a different search term' : 'Create your first rule to get started'}
+                  {searchQuery ? t('tagRules.emptyDescSearch') : t('tagRules.emptyDescNoSearch')}
                 </p>
                 {!searchQuery && (
                   <Link href="/settings/tag-rules/new">
                     <Button className="bg-amber-600 hover:bg-amber-700 text-white">
                       <Plus className="w-4 h-4 mr-2" />
-                      Create Rule
+                      {t('tagRules.createRule')}
                     </Button>
                   </Link>
                 )}

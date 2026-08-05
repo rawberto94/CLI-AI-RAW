@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { PageBreadcrumb } from "@/components/navigation";
 import { useConfirm, confirmPresets } from "@/components/dialogs/ConfirmDialog";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -123,6 +124,7 @@ interface SyncHistory {
 }
 
 export default function ContractSourcesPage() {
+  const t = useTranslations('settingsPages');
   const confirm = useConfirm();
   const [sources, setSources] = useState<ContractSource[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -259,12 +261,12 @@ export default function ContractSourcesPage() {
               Contract Sources
             </h1>
             <p className="text-slate-600 dark:text-slate-400 mt-1">
-              Connect to external systems to automatically sync contracts
+              {t('contractSources.subtitle')}
             </p>
           </div>
           <Button onClick={() => setIsCreateDialogOpen(true)}>
             <Plus className="w-4 h-4 mr-2" />
-            Add Source
+            {t('contractSources.addSource')}
           </Button>
         </div>
 
@@ -333,9 +335,9 @@ export default function ContractSourcesPage() {
         {/* Sources Table */}
         <Card>
           <CardHeader>
-            <CardTitle>Configured Sources</CardTitle>
+            <CardTitle>{t('contractSources.configuredSources')}</CardTitle>
             <CardDescription>
-              Manage your contract source connections and sync settings
+              {t('contractSources.configuredSourcesDesc')}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -347,14 +349,14 @@ export default function ContractSourcesPage() {
               <div className="text-center py-12">
                 <FolderOpen className="w-12 h-12 mx-auto text-slate-400 mb-4" />
                 <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">
-                  No sources configured
+                  {t('contractSources.emptyTitle')}
                 </h3>
                 <p className="text-slate-500 mb-4">
-                  Connect to SharePoint, S3, or other storage to start syncing contracts
+                  {t('contractSources.emptyDesc')}
                 </p>
                 <Button onClick={() => setIsCreateDialogOpen(true)}>
                   <Plus className="w-4 h-4 mr-2" />
-                  Add Your First Source
+                  {t('contractSources.addFirstSource')}
                 </Button>
               </div>
             ) : (
@@ -523,6 +525,8 @@ function CreateSourceDialog({
   onOpenChange: (open: boolean) => void;
   onCreated: () => void;
 }) {
+  const t = useTranslations('settingsPages');
+  const tCommon = useTranslations('common');
   const [provider, setProvider] = useState<string>("");
   const [name, setName] = useState("");
   const [syncFolder, setSyncFolder] = useState("/");
@@ -1137,9 +1141,9 @@ function CreateSourceDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Add Contract Source</DialogTitle>
+          <DialogTitle>{t('contractSources.addContractSource')}</DialogTitle>
           <DialogDescription>
-            Connect to an external system to automatically sync contracts
+            {t('contractSources.addContractSourceDesc')}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
@@ -1194,11 +1198,11 @@ function CreateSourceDialog({
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
+            {tCommon('cancel')}
           </Button>
           <Button onClick={handleCreate} disabled={isCreating}>
             {isCreating && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-            Create Source
+            {t('contractSources.createSource')}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -1321,6 +1325,7 @@ function SourceSettingsDialog({
 
 // Sync History List Component
 function SyncHistoryList({ sourceId }: { sourceId: string }) {
+  const t = useTranslations('settingsPages');
   const [history, setHistory] = useState<SyncHistory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -1352,7 +1357,7 @@ function SyncHistoryList({ sourceId }: { sourceId: string }) {
   if (history.length === 0) {
     return (
       <div className="text-center py-8 text-slate-500">
-        No sync history yet
+        {t('contractSources.noSyncHistory')}
       </div>
     );
   }

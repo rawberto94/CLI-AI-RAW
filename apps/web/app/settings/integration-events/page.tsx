@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -51,6 +52,9 @@ function formatTime(iso: string): string {
 }
 
 export default function IntegrationEventsPage() {
+  const t = useTranslations('settingsPages');
+  const tSettings = useTranslations('settings');
+  const tCommon = useTranslations('common');
   const { loading: accessLoading, isAdmin, error: accessError } = useAdminSettingsAccess();
   const [rows, setRows] = useState<IntegrationEventRow[]>([]);
   const [eventTypeFilter, setEventTypeFilter] = useState("");
@@ -139,14 +143,14 @@ export default function IntegrationEventsPage() {
   };
 
   if (accessLoading) {
-    return <SettingsAccessLoadingState label="Checking integration event access…" />;
+    return <SettingsAccessLoadingState label={t('integrationEvents.checkingAccess')} />;
   }
 
   if (accessError) {
     return (
       <AdminOnlySettingsState
-        title="Unable to load integration events"
-        description="We couldn't verify whether you can browse and replay durable outbound events right now."
+        title={t('integrationEvents.unableToLoadTitle')}
+        description={t('integrationEvents.unableToLoadDesc')}
         errorMessage={accessError}
       />
     );
@@ -155,8 +159,8 @@ export default function IntegrationEventsPage() {
   if (!isAdmin) {
     return (
       <AdminOnlySettingsState
-        title="Admin Access Required"
-        description="Durable event browsing and replay are limited to organization admins and owners."
+        title={tSettings('adminAccessRequired')}
+        description={t('integrationEvents.adminRequiredDesc')}
       />
     );
   }
@@ -165,10 +169,9 @@ export default function IntegrationEventsPage() {
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold">Integration Events</h1>
+          <h1 className="text-2xl font-semibold">{t('integrationEvents.title')}</h1>
           <p className="text-sm text-muted-foreground">
-            Browse the durable outbound event log that backs `/api/v1/events`. Use this to confirm
-            an event was recorded even if downstream webhooks failed.
+            {t('integrationEvents.subtitle')}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -178,11 +181,11 @@ export default function IntegrationEventsPage() {
             onClick={() => window.location.assign("/settings/webhook-deliveries")}
           >
             <ArrowRightLeft className="w-4 h-4 mr-2" />
-            Deliveries
+            {t('integrationEvents.deliveries')}
           </Button>
           <Button variant="outline" size="sm" onClick={() => load()} disabled={loading || loadingMore}>
             <RefreshCw className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`} />
-            Refresh
+            {tCommon('refresh')}
           </Button>
         </div>
       </div>
@@ -216,7 +219,7 @@ export default function IntegrationEventsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Filters</CardTitle>
+          <CardTitle className="text-base">{t('integrationEvents.filters')}</CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div>
@@ -240,12 +243,12 @@ export default function IntegrationEventsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Event Log</CardTitle>
+          <CardTitle className="text-base">{t('integrationEvents.eventLogHeading')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {rows.length === 0 ? (
             <div className="py-8 text-center text-sm text-muted-foreground">
-              {loading ? "Loading…" : "No events match the current filters."}
+              {loading ? t('integrationEvents.loading') : t('integrationEvents.noEventsMatch')}
             </div>
           ) : (
             rows.map((row) => (
@@ -272,7 +275,7 @@ export default function IntegrationEventsPage() {
                         size="sm"
                         onClick={() => window.location.assign(`/settings/webhook-deliveries?event=${encodeURIComponent(row.eventType)}`)}
                       >
-                        Deliveries
+                        {t('integrationEvents.deliveries')}
                       </Button>
                       <Button
                         variant="outline"
@@ -281,7 +284,7 @@ export default function IntegrationEventsPage() {
                         disabled={replayingEventId === row.id}
                       >
                         <RotateCcw className={`w-4 h-4 mr-2 ${replayingEventId === row.id ? "animate-spin" : ""}`} />
-                        Replay
+                        {t('integrationEvents.replay')}
                       </Button>
                     </div>
                   </div>
@@ -304,7 +307,7 @@ export default function IntegrationEventsPage() {
                 onClick={() => nextCursor && load(nextCursor, true)}
                 disabled={loadingMore}
               >
-                {loadingMore ? "Loading…" : "Load older events"}
+                {loadingMore ? t('integrationEvents.loading') : t('integrationEvents.loadOlderEvents')}
               </Button>
             </div>
           )}

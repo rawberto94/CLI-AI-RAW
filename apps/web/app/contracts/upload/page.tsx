@@ -22,6 +22,7 @@ import { getTenantId } from '@/lib/tenant'
 import { toast } from 'sonner'
 import { logger } from '@/lib/logger'
 import Link from 'next/link'
+import { useTranslations } from 'next-intl'
 
 import { UploadDropZone } from './components'
 import { UploadMetadataReviewDialog } from './components'
@@ -76,6 +77,7 @@ function effectiveFileProgress(f: UploadFile): number {
 // ── Page Component ───────────────────────────────────────────────────────────
 
 export default function UploadPage() {
+  const t = useTranslations('contracts')
   const isDemo = useDemoMode()
   const router = useRouter()
   const { dataMode } = useDataMode()
@@ -477,14 +479,14 @@ export default function UploadPage() {
   const partialWarningCount = files.filter(f => f.status === 'completed' && f.partialWarning).length
   const hasFiles = files.length > 0
   const queueHelperText = processingCount > 0
-    ? 'Extraction, AI analysis, and indexing are running now.'
+    ? t('uploadPage.queueHelper.processing')
     : pendingCount > 0
-      ? 'Review the files in queue, then start the pipeline when ready.'
+      ? t('uploadPage.queueHelper.pending')
       : errorCount > 0
-        ? 'Retry failed uploads or remove them from the current batch.'
+        ? t('uploadPage.queueHelper.error')
         : completedCount > 0
-          ? 'Processed contracts stay here until you clear them from the queue.'
-          : 'Add files to get started.'
+          ? t('uploadPage.queueHelper.completed')
+          : t('uploadPage.queueHelper.empty')
   // Aggregate progress from per-file progress (including in-flight partials).
   // Failures are excluded from the green fill and shown as a red segment.
   const settledProgress = files.reduce((sum, f) => sum + effectiveFileProgress(f), 0)
@@ -544,12 +546,12 @@ export default function UploadPage() {
       <div className="border-b bg-white dark:bg-slate-800 dark:border-slate-700">
         <div className="max-w-4xl mx-auto px-6 py-5 flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Upload Contracts</h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Drop files to start AI-powered analysis</p>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{t('uploadPage.title')}</h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{t('uploadPage.subtitle')}</p>
           </div>
           <Link href="/contracts">
             <Button variant="outline" size="sm" className="gap-1">
-              All Contracts
+              {t('uploadPage.allContracts')}
               <ChevronRight className="h-4 w-4" />
             </Button>
           </Link>
@@ -567,10 +569,10 @@ export default function UploadPage() {
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 text-sm font-semibold text-blue-900 dark:text-blue-100">
                     <Sparkles className="h-4 w-4 text-blue-600 dark:text-blue-300" aria-hidden="true" />
-                    {reviewQueue.length} metadata review{reviewQueue.length === 1 ? '' : 's'} ready
+                    {t('uploadPage.metadataReviewReady', { count: reviewQueue.length })}
                   </div>
                   <p className="mt-1 text-sm text-blue-700 dark:text-blue-200">
-                    Analysis has finished. Review extracted parties, dates, value, and signature details when you are ready.
+                    {t('uploadPage.metadataReviewDescription')}
                   </p>
                   <div className="mt-2 flex flex-wrap gap-1.5">
                     {reviewQueue.slice(0, 3).map((item) => (
@@ -588,10 +590,10 @@ export default function UploadPage() {
 
                 <div className="flex shrink-0 flex-wrap items-center gap-2">
                   <Button variant="ghost" size="sm" onClick={handleSkipAllMetadataReview} className="text-blue-700 hover:bg-blue-100 dark:text-blue-200 dark:hover:bg-blue-900/40">
-                    Skip reviews
+                    {t('uploadPage.skipReviews')}
                   </Button>
                   <Button size="sm" onClick={startMetadataReview} className="bg-blue-700 text-white hover:bg-blue-800">
-                    Review next
+                    {t('uploadPage.reviewNext')}
                   </Button>
                 </div>
               </div>
@@ -606,7 +608,7 @@ export default function UploadPage() {
               <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div className="min-w-0">
                   <CardTitle className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-                    Upload queue
+                    {t('uploadPage.queueTitle')}
                   </CardTitle>
                   {/* Fixed stat strip — same place, same order, always */}
                   <div className="mt-1.5 flex flex-wrap items-center gap-x-1.5 text-sm" aria-live="polite">
@@ -633,25 +635,25 @@ export default function UploadPage() {
                   {!isDemo && completedCount > 0 && (
                     <Button variant="ghost" size="sm" onClick={clearCompleted} className="h-9 gap-1 px-3 text-slate-500 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
                       <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
-                      Clear Done
+                      {t('uploadPage.clearDone')}
                     </Button>
                   )}
                   {pendingCount > 0 && !isUploading && (
                     <Button onClick={handleUploadAll} size="sm" className="h-9 gap-1 px-4">
                       <Play className="h-3.5 w-3.5" aria-hidden="true" />
-                      Upload All ({pendingCount})
+                      {t('uploadPage.uploadAll', { count: pendingCount })}
                     </Button>
                   )}
                   {!isDemo && isUploading && !isPaused && (
                     <Button onClick={handlePauseAll} variant="outline" size="sm" className="h-9 gap-1 px-4">
                       <Pause className="h-3.5 w-3.5" aria-hidden="true" />
-                      Stop after current files
+                      {t('uploadPage.stopAfterCurrent')}
                     </Button>
                   )}
                   {!isDemo && isPaused && (
                     <Button onClick={handleUploadAll} size="sm" className="h-9 gap-1 px-4">
                       <Play className="h-3.5 w-3.5" aria-hidden="true" />
-                      Resume
+                      {t('uploadPage.resume')}
                     </Button>
                   )}
                 </div>
@@ -791,7 +793,7 @@ export default function UploadPage() {
                   </div>
                   <Button size="sm" variant="outline" onClick={retryAllErrors} className="gap-1 text-red-600 border-red-200 dark:border-red-700">
                     <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
-                    Retry All
+                    {t('uploadPage.retryAll')}
                   </Button>
                 </div>
               )}

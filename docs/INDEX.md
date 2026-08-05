@@ -12,6 +12,7 @@ This index organises all ConTigo documentation by audience and purpose.
 |---|---|---|
 | [TECHNICAL_DOCUMENTATION.md](TECHNICAL_DOCUMENTATION.md) | Stack, monorepo, DB, API, auth, AI, workers, observability, deployment | ~600 |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | System design, 5-layer architecture, data/AI/security design, 6 ADRs | ~700 |
+| [architecture/END_TO_END_ARCHITECTURE.md](architecture/END_TO_END_ARCHITECTURE.md) | Full-stack walkthrough: lakehouse layers, RAG, agents, queues, seamless data flow | ~700 |
 | [ROADMAP_SCALING.md](ROADMAP_SCALING.md) | 4-phase product roadmap + infrastructure scaling tiers | ~600 |
 | [API_VERSIONING_STRATEGY.md](API_VERSIONING_STRATEGY.md) | API versioning approach and deprecation policy | — |
 | [CONTRACTS_API_REFERENCE.md](CONTRACTS_API_REFERENCE.md) | Contracts API endpoint reference | — |

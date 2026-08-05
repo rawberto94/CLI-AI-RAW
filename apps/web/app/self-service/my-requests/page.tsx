@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 
 // ═══════════════════════════════════════════════════════════════════════
 // TYPES
@@ -52,14 +53,15 @@ interface Metrics {
 // CONSTANTS
 // ═══════════════════════════════════════════════════════════════════════
 
-const statusConfig: Record<string, { label: string; color: string; icon: React.ComponentType<{ className?: string }>; bg: string }> = {
-  SUBMITTED: { label: "Submitted", color: "text-blue-700", icon: Send, bg: "bg-blue-50 border-blue-200" },
-  IN_TRIAGE: { label: "In Triage", color: "text-amber-700", icon: Clock, bg: "bg-amber-50 border-amber-200" },
-  APPROVED: { label: "Approved", color: "text-emerald-700", icon: CheckCircle2, bg: "bg-emerald-50 border-emerald-200" },
-  IN_PROGRESS: { label: "In Progress", color: "text-violet-700", icon: ArrowRight, bg: "bg-violet-50 border-violet-200" },
-  COMPLETED: { label: "Completed", color: "text-emerald-700", icon: CheckCircle2, bg: "bg-emerald-50 border-emerald-200" },
-  REJECTED: { label: "Rejected", color: "text-red-700", icon: XCircle, bg: "bg-red-50 border-red-200" },
-  CANCELLED: { label: "Cancelled", color: "text-slate-500", icon: XCircle, bg: "bg-slate-50 border-slate-200" },
+// `key` resolves to messages/{locale}.json under workflows.requestStatus.<key>
+const statusMetaConfig: Record<string, { key: string; color: string; icon: React.ComponentType<{ className?: string }>; bg: string }> = {
+  SUBMITTED: { key: "submitted", color: "text-blue-700", icon: Send, bg: "bg-blue-50 border-blue-200" },
+  IN_TRIAGE: { key: "inTriage", color: "text-amber-700", icon: Clock, bg: "bg-amber-50 border-amber-200" },
+  APPROVED: { key: "approved", color: "text-emerald-700", icon: CheckCircle2, bg: "bg-emerald-50 border-emerald-200" },
+  IN_PROGRESS: { key: "inProgress", color: "text-violet-700", icon: ArrowRight, bg: "bg-violet-50 border-violet-200" },
+  COMPLETED: { key: "completed", color: "text-emerald-700", icon: CheckCircle2, bg: "bg-emerald-50 border-emerald-200" },
+  REJECTED: { key: "rejected", color: "text-red-700", icon: XCircle, bg: "bg-red-50 border-red-200" },
+  CANCELLED: { key: "cancelled", color: "text-slate-500", icon: XCircle, bg: "bg-slate-50 border-slate-200" },
 };
 
 const urgencyBadge: Record<string, string> = {
@@ -76,11 +78,21 @@ const STEPS = ["SUBMITTED", "IN_TRIAGE", "APPROVED", "IN_PROGRESS", "COMPLETED"]
 // ═══════════════════════════════════════════════════════════════════════
 
 export default function MyRequestsPage() {
+  const t = useTranslations('workflows');
+  const tCommon = useTranslations('common');
   const [requests, setRequests] = useState<ContractRequest[]>([]);
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
   const [expanded, setExpanded] = useState<string | null>(null);
+
+  const statusConfig = useMemo(() => {
+    const resolved: Record<string, { label: string; color: string; icon: React.ComponentType<{ className?: string }>; bg: string }> = {};
+    for (const [status, meta] of Object.entries(statusMetaConfig)) {
+      resolved[status] = { ...meta, label: t(`requestStatus.${meta.key}`) };
+    }
+    return resolved;
+  }, [t]);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -135,24 +147,24 @@ export default function MyRequestsPage() {
             <div className="flex items-center gap-3">
               <Link href="/self-service">
                 <Button variant="ghost" size="sm" className="gap-1.5">
-                  <ArrowLeft className="h-3.5 w-3.5" /> Hub
+                  <ArrowLeft className="h-3.5 w-3.5" /> {t('myRequestsPage.hub')}
                 </Button>
               </Link>
               <div>
                 <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2">
                   <ClipboardList className="h-5 w-5 text-violet-600" />
-                  My Requests
+                  {t('myRequestsPage.title')}
                 </h1>
-                <p className="text-xs text-slate-500">Track the status of your contract requests</p>
+                <p className="text-xs text-slate-500">{t('myRequestsPage.subtitle')}</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm" onClick={fetchData} className="gap-1.5">
-                <RefreshCw className="h-3.5 w-3.5" /> Refresh
+                <RefreshCw className="h-3.5 w-3.5" /> {tCommon('refresh')}
               </Button>
               <Link href="/requests/new">
                 <Button size="sm" className="gap-1.5">
-                  <Plus className="h-3.5 w-3.5" /> New Request
+                  <Plus className="h-3.5 w-3.5" /> {t('requestsHub.newRequest')}
                 </Button>
               </Link>
             </div>
@@ -164,12 +176,12 @@ export default function MyRequestsPage() {
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }}>
             <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
               {[
-                { key: "submitted", label: "Submitted", value: metrics.submitted, icon: Send, color: "text-blue-600", bg: "bg-blue-50" },
-                { key: "in_triage", label: "In Triage", value: metrics.in_triage, icon: Clock, color: "text-amber-600", bg: "bg-amber-50" },
-                { key: "approved", label: "Approved", value: metrics.approved, icon: CheckCircle2, color: "text-emerald-600", bg: "bg-emerald-50" },
-                { key: "in_progress", label: "In Progress", value: metrics.in_progress, icon: ArrowRight, color: "text-violet-600", bg: "bg-violet-50" },
-                { key: "completed", label: "Completed", value: metrics.completed, icon: CheckCircle2, color: "text-teal-600", bg: "bg-teal-50" },
-                { key: "sla_breached", label: "SLA Breached", value: metrics.sla_breached, icon: AlertTriangle, color: "text-red-600", bg: "bg-red-50" },
+                { key: "submitted", label: t('requestStatus.submitted'), value: metrics.submitted, icon: Send, color: "text-blue-600", bg: "bg-blue-50" },
+                { key: "in_triage", label: t('requestStatus.inTriage'), value: metrics.in_triage, icon: Clock, color: "text-amber-600", bg: "bg-amber-50" },
+                { key: "approved", label: t('requestStatus.approved'), value: metrics.approved, icon: CheckCircle2, color: "text-emerald-600", bg: "bg-emerald-50" },
+                { key: "in_progress", label: t('requestStatus.inProgress'), value: metrics.in_progress, icon: ArrowRight, color: "text-violet-600", bg: "bg-violet-50" },
+                { key: "completed", label: t('requestStatus.completed'), value: metrics.completed, icon: CheckCircle2, color: "text-teal-600", bg: "bg-teal-50" },
+                { key: "sla_breached", label: t('requestsHub.metrics.slaBreached'), value: metrics.sla_breached, icon: AlertTriangle, color: "text-red-600", bg: "bg-red-50" },
               ].map((m) => (
                 <Card key={m.key} className={cn("border cursor-pointer transition-all hover:shadow-md", filter === m.key.toUpperCase() && "ring-2 ring-violet-300")}
                   onClick={() => setFilter(f => f === m.key.toUpperCase() ? "all" : m.key.toUpperCase())}>
@@ -196,18 +208,18 @@ export default function MyRequestsPage() {
               <SelectValue placeholder="All statuses" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value="SUBMITTED">Submitted</SelectItem>
-              <SelectItem value="IN_TRIAGE">In Triage</SelectItem>
-              <SelectItem value="APPROVED">Approved</SelectItem>
-              <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
-              <SelectItem value="COMPLETED">Completed</SelectItem>
-              <SelectItem value="REJECTED">Rejected</SelectItem>
+              <SelectItem value="all">{t('requestStatus.allStatuses')}</SelectItem>
+              <SelectItem value="SUBMITTED">{t('requestStatus.submitted')}</SelectItem>
+              <SelectItem value="IN_TRIAGE">{t('requestStatus.inTriage')}</SelectItem>
+              <SelectItem value="APPROVED">{t('requestStatus.approved')}</SelectItem>
+              <SelectItem value="IN_PROGRESS">{t('requestStatus.inProgress')}</SelectItem>
+              <SelectItem value="COMPLETED">{t('requestStatus.completed')}</SelectItem>
+              <SelectItem value="REJECTED">{t('requestStatus.rejected')}</SelectItem>
             </SelectContent>
           </Select>
           {filter !== "all" && (
             <Button variant="ghost" size="sm" onClick={() => setFilter("all")} className="text-xs text-slate-500">
-              Clear filter
+              {t('myRequestsPage.clearFilter')}
             </Button>
           )}
           <span className="text-xs text-slate-400 ml-auto">
@@ -227,13 +239,13 @@ export default function MyRequestsPage() {
           <Card className="border-dashed border-slate-300">
             <CardContent className="flex flex-col items-center justify-center py-12">
               <Inbox className="h-10 w-10 text-slate-300 mb-3" />
-              <p className="text-sm text-slate-500 font-medium">No requests found</p>
+              <p className="text-sm text-slate-500 font-medium">{t('requestsHub.emptyTitle')}</p>
               <p className="text-xs text-slate-400 mt-1">
-                {filter !== "all" ? "Try clearing your filter" : "Submit your first contract request to get started"}
+                {filter !== "all" ? t('myRequestsPage.emptyDescriptionFiltered') : t('myRequestsPage.emptyDescriptionDefault')}
               </p>
               <Link href="/requests/new">
                 <Button size="sm" className="mt-4 gap-1.5">
-                  <Plus className="h-3.5 w-3.5" /> New Request
+                  <Plus className="h-3.5 w-3.5" /> {t('requestsHub.newRequest')}
                 </Button>
               </Link>
             </CardContent>
@@ -271,7 +283,7 @@ export default function MyRequestsPage() {
                               </Badge>
                               {overdue && (
                                 <Badge variant="destructive" className="text-[10px] gap-0.5">
-                                  <AlertTriangle className="h-2.5 w-2.5" /> OVERDUE
+                                  <AlertTriangle className="h-2.5 w-2.5" /> {t('overdue')}
                                 </Badge>
                               )}
                             </div>

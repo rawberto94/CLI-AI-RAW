@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -65,6 +66,9 @@ function formatTime(iso: string | null): string {
 }
 
 export default function WebhookDeliveriesPage() {
+  const t = useTranslations('settingsPages');
+  const tSettings = useTranslations('settings');
+  const tCommon = useTranslations('common');
   const { loading: accessLoading, isAdmin, error: accessError } = useAdminSettingsAccess();
   const searchParams = useSearchParams();
   const [rows, setRows] = useState<DeliveryRow[]>([]);
@@ -174,14 +178,14 @@ export default function WebhookDeliveriesPage() {
   };
 
   if (accessLoading) {
-    return <SettingsAccessLoadingState label="Checking webhook deliveries access…" />;
+    return <SettingsAccessLoadingState label={t('webhookDeliveries.checkingAccess')} />;
   }
 
   if (accessError) {
     return (
       <AdminOnlySettingsState
-        title="Unable to load webhook deliveries"
-        description="We couldn't verify whether you can inspect delivery retries and DLQ state right now."
+        title={t('webhookDeliveries.unableToLoadTitle')}
+        description={t('webhookDeliveries.unableToLoadDesc')}
         errorMessage={accessError}
       />
     );
@@ -190,8 +194,8 @@ export default function WebhookDeliveriesPage() {
   if (!isAdmin) {
     return (
       <AdminOnlySettingsState
-        title="Admin Access Required"
-        description="Webhook delivery inspection and recovery are limited to organization admins and owners."
+        title={tSettings('adminAccessRequired')}
+        description={t('webhookDeliveries.adminRequiredDesc')}
       />
     );
   }
@@ -200,11 +204,9 @@ export default function WebhookDeliveriesPage() {
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">Webhook Deliveries</h1>
+          <h1 className="text-2xl font-semibold">{t('webhookDeliveries.title')}</h1>
           <p className="text-sm text-muted-foreground">
-            Inspect outbound webhook attempts. Failed deliveries retry with exponential backoff;
-            after {/* default */}8 attempts they move to the dead-letter queue and can be requeued
-            manually.
+            {t('webhookDeliveries.subtitlePart1')} 8 {t('webhookDeliveries.subtitlePart2')}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -214,7 +216,7 @@ export default function WebhookDeliveriesPage() {
             onClick={() => window.location.assign("/settings/integration-events")}
             disabled={requeueing !== null}
           >
-            Event Log
+            {t('webhookDeliveries.eventLog')}
           </Button>
           <Button
             variant="outline"
@@ -223,11 +225,11 @@ export default function WebhookDeliveriesPage() {
             disabled={requeueing !== null || !canBulkRequeue}
           >
             <RotateCcw className="w-4 h-4 mr-2" />
-            Requeue Dead
+            {t('webhookDeliveries.requeueDead')}
           </Button>
           <Button variant="outline" size="sm" onClick={load} disabled={loading || requeueing !== null}>
             <RefreshCw className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`} />
-            Refresh
+            {tCommon('refresh')}
           </Button>
         </div>
       </div>
@@ -245,7 +247,7 @@ export default function WebhookDeliveriesPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Filters</CardTitle>
+          <CardTitle className="text-base">{t('webhookDeliveries.filters')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-wrap gap-2">
@@ -291,7 +293,7 @@ export default function WebhookDeliveriesPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Deliveries ({rows.length})</CardTitle>
+          <CardTitle className="text-base">{t('webhookDeliveries.deliveriesHeading')} ({rows.length})</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
@@ -314,7 +316,7 @@ export default function WebhookDeliveriesPage() {
                 {rows.length === 0 && (
                   <tr>
                     <td colSpan={10} className="px-4 py-8 text-center text-muted-foreground">
-                      {loading ? "Loading…" : "No deliveries match the current filters."}
+                      {loading ? t('webhookDeliveries.loading') : t('webhookDeliveries.noDeliveriesMatch')}
                     </td>
                   </tr>
                 )}
@@ -346,7 +348,7 @@ export default function WebhookDeliveriesPage() {
                           onClick={() => onRequeue(r.id)}
                         >
                           <RotateCcw className="w-3 h-3 mr-1" />
-                          Requeue
+                          {t('webhookDeliveries.requeue')}
                         </Button>
                       )}
                     </td>

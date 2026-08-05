@@ -31,6 +31,7 @@ import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { toast } from 'sonner';
+import { useTranslations } from 'next-intl';
 
 // Types for queue/job management
 interface QueueStats {
@@ -90,6 +91,7 @@ interface SystemHealth {
 }
 
 export default function ImportQueuePage() {
+  const t = useTranslations('admin');
   const [queues, setQueues] = useState<QueueStats[]>([]);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [batches, setBatches] = useState<ImportBatch[]>([]);
@@ -235,7 +237,7 @@ export default function ImportQueuePage() {
     return (
       <Badge className={cn('gap-1', color)}>
         <Icon className={cn('h-3 w-3', status === 'active' && 'animate-spin')} />
-        {status}
+        {t(`queue.jobStatus.${status}`)}
       </Badge>
     );
   };
@@ -250,13 +252,13 @@ export default function ImportQueuePage() {
               <div className="p-2 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl shadow-lg">
                 <Activity className="h-6 w-6 text-white" />
               </div>
-              Import Queue Manager
+              {t('queue.title')}
             </h1>
             <p className="text-gray-500 mt-1">
-              Monitor and manage contract processing jobs
+              {t('queue.subtitle')}
             </p>
           </div>
-          
+
           <div className="flex items-center gap-3">
             <div className="text-xs text-gray-500">
               Last updated: {lastRefresh.toLocaleTimeString()}
@@ -270,12 +272,12 @@ export default function ImportQueuePage() {
               {autoRefresh ? (
                 <>
                   <Pause className="h-4 w-4 mr-1" />
-                  Auto-refresh ON
+                  {t('queue.autoRefreshOn')}
                 </>
               ) : (
                 <>
                   <Play className="h-4 w-4 mr-1" />
-                  Auto-refresh OFF
+                  {t('queue.autoRefreshOff')}
                 </>
               )}
             </Button>
@@ -359,7 +361,7 @@ export default function ImportQueuePage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-3xl font-bold text-yellow-700">{totalWaiting}</p>
-                  <p className="text-sm text-yellow-600 mt-1">Waiting</p>
+                  <p className="text-sm text-yellow-600 mt-1">{t('queue.overview.waiting')}</p>
                 </div>
                 <Clock className="h-8 w-8 text-yellow-500 opacity-50" />
               </div>
@@ -371,7 +373,7 @@ export default function ImportQueuePage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-3xl font-bold text-violet-700">{totalActive}</p>
-                  <p className="text-sm text-violet-600 mt-1">Processing</p>
+                  <p className="text-sm text-violet-600 mt-1">{t('queue.overview.processing')}</p>
                 </div>
                 <Loader2 className="h-8 w-8 text-violet-500 opacity-50 animate-spin" />
               </div>
@@ -383,7 +385,7 @@ export default function ImportQueuePage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-3xl font-bold text-green-700">{totalCompleted}</p>
-                  <p className="text-sm text-green-600 mt-1">Completed</p>
+                  <p className="text-sm text-green-600 mt-1">{t('queue.overview.completed')}</p>
                 </div>
                 <CheckCircle className="h-8 w-8 text-green-500 opacity-50" />
               </div>
@@ -395,7 +397,7 @@ export default function ImportQueuePage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-3xl font-bold text-red-700">{totalFailed}</p>
-                  <p className="text-sm text-red-600 mt-1">Failed</p>
+                  <p className="text-sm text-red-600 mt-1">{t('queue.overview.failed')}</p>
                 </div>
                 <XCircle className="h-8 w-8 text-red-500 opacity-50" />
               </div>
@@ -409,7 +411,7 @@ export default function ImportQueuePage() {
             <CardHeader>
               <CardTitle className="text-sm font-semibold flex items-center gap-2">
                 <FileText className="h-4 w-4 text-violet-500" />
-                Active Import Batches
+                {t('queue.sections.activeImportBatches')}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -430,7 +432,7 @@ export default function ImportQueuePage() {
                         batch.status === 'paused' && 'bg-yellow-100 text-yellow-700',
                         batch.status === 'pending' && 'bg-gray-100 text-gray-700',
                       )}>
-                        {batch.status}
+                        {t(`queue.batchStatus.${batch.status}`)}
                       </Badge>
                     </div>
                     
@@ -485,7 +487,7 @@ export default function ImportQueuePage() {
             <CardHeader>
               <CardTitle className="text-sm font-semibold flex items-center gap-2">
                 <BarChart3 className="h-4 w-4 text-violet-500" />
-                Processing Queues
+                {t('queue.sections.processingQueues')}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -496,8 +498,8 @@ export default function ImportQueuePage() {
               ) : queues.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
                   <Activity className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                  <p>No queues available</p>
-                  <p className="text-xs mt-1">Queue system may be initializing...</p>
+                  <p>{t('queue.noQueues')}</p>
+                  <p className="text-xs mt-1">{t('queue.noQueuesHint')}</p>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -518,7 +520,7 @@ export default function ImportQueuePage() {
                           {queue.paused && (
                             <Badge className="bg-yellow-100 text-yellow-700">
                               <Pause className="h-3 w-3 mr-1" />
-                              Paused
+                              {t('queue.paused')}
                             </Badge>
                           )}
                         </div>
@@ -549,23 +551,23 @@ export default function ImportQueuePage() {
                       <div className="grid grid-cols-5 gap-2 text-center text-xs">
                         <div className="p-2 bg-yellow-50 rounded-lg">
                           <p className="font-bold text-yellow-700">{queue.waiting}</p>
-                          <p className="text-yellow-600">Waiting</p>
+                          <p className="text-yellow-600">{t('queue.miniStats.waiting')}</p>
                         </div>
                         <div className="p-2 bg-violet-50 rounded-lg">
                           <p className="font-bold text-violet-700">{queue.active}</p>
-                          <p className="text-violet-600">Active</p>
+                          <p className="text-violet-600">{t('queue.miniStats.active')}</p>
                         </div>
                         <div className="p-2 bg-green-50 rounded-lg">
                           <p className="font-bold text-green-700">{queue.completed}</p>
-                          <p className="text-green-600">Done</p>
+                          <p className="text-green-600">{t('queue.miniStats.done')}</p>
                         </div>
                         <div className="p-2 bg-red-50 rounded-lg">
                           <p className="font-bold text-red-700">{queue.failed}</p>
-                          <p className="text-red-600">Failed</p>
+                          <p className="text-red-600">{t('queue.miniStats.failed')}</p>
                         </div>
                         <div className="p-2 bg-violet-50 rounded-lg">
                           <p className="font-bold text-violet-700">{queue.delayed}</p>
-                          <p className="text-violet-600">Delayed</p>
+                          <p className="text-violet-600">{t('queue.miniStats.delayed')}</p>
                         </div>
                       </div>
                     </div>
@@ -580,7 +582,7 @@ export default function ImportQueuePage() {
             <CardHeader>
               <CardTitle className="text-sm font-semibold flex items-center gap-2">
                 <FileText className="h-4 w-4 text-violet-500" />
-                Recent Jobs
+                {t('queue.sections.recentJobs')}
                 {selectedQueue && (
                   <Badge variant="outline" className="ml-2">
                     {selectedQueue}
@@ -592,7 +594,7 @@ export default function ImportQueuePage() {
               {jobs.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
                   <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                  <p>No recent jobs</p>
+                  <p>{t('queue.noJobs')}</p>
                 </div>
               ) : (
                 <div className="space-y-2 max-h-96 overflow-y-auto">
@@ -620,7 +622,7 @@ export default function ImportQueuePage() {
                                 className="h-7 text-xs"
                               >
                                 <RefreshCw className="h-3 w-3 mr-1" />
-                                Retry
+                                {t('queue.retry')}
                               </Button>
                             )}
                             {job.data.contractId && (
@@ -668,7 +670,7 @@ export default function ImportQueuePage() {
             <div className="flex items-start gap-3">
               <Settings className="h-5 w-5 text-slate-500 mt-0.5" />
               <div>
-                <h3 className="font-medium text-slate-700">Processing Configuration</h3>
+                <h3 className="font-medium text-slate-700">{t('queue.sections.processingConfiguration')}</h3>
                 <p className="text-sm text-slate-500 mt-1">
                   Contracts are processed with a <strong>1-second delay</strong> between jobs to prevent API rate limits.
                   Each job has <strong>3 retry attempts</strong> with exponential backoff (30s, 60s, 120s).
@@ -678,13 +680,13 @@ export default function ImportQueuePage() {
                   <Link href="/admin/settings">
                     <Button variant="outline" size="sm" className="gap-1">
                       <Settings className="h-4 w-4" />
-                      Configure Limits
+                      {t('queue.configureLimits')}
                     </Button>
                   </Link>
                   <Link href="/admin/integrations">
                     <Button variant="outline" size="sm" className="gap-1">
                       <Database className="h-4 w-4" />
-                      Data Connections
+                      {t('queue.dataConnections')}
                     </Button>
                   </Link>
                 </div>

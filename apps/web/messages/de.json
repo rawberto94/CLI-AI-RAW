@@ -10,6 +10,7 @@
     "filter": "Filtern",
     "export": "Exportieren",
     "import": "Importieren",
+    "upload": "Hochladen",
     "refresh": "Aktualisieren",
     "back": "Zurück",
     "next": "Weiter",
@@ -30,7 +31,8 @@
     "description": "Beschreibung",
     "noResults": "Keine Ergebnisse gefunden",
     "error": "Ein Fehler ist aufgetreten",
-    "success": "Vorgang erfolgreich"
+    "success": "Vorgang erfolgreich",
+    "home": "Startseite"
   },
   "navigation": {
     "dashboard": "Dashboard",
@@ -48,7 +50,144 @@
     "admin": "Verwaltung",
     "settings": "Einstellungen",
     "sso": "SSO / SAML",
-    "governance": "Governance"
+    "governance": "Governance",
+    "groups": {
+      "workspace": "Arbeitsbereich",
+      "execution": "Ausführung",
+      "insights": "Einblicke",
+      "platform": "Plattform",
+      "admin": "Verwaltung"
+    },
+    "nav": {
+      "dashboard": {
+        "name": "Dashboard",
+        "desc": "Übersicht und Einblicke"
+      },
+      "contracts": {
+        "name": "Verträge",
+        "desc": "Repository für abgeschlossene und laufende Verträge"
+      },
+      "upload": {
+        "name": "Hochladen",
+        "desc": "Dokumente erfassen"
+      },
+      "clauses": {
+        "name": "Klauseln",
+        "desc": "Klauselbibliothek"
+      },
+      "draftingStudio": {
+        "name": "Entwurfsstudio",
+        "desc": "Neue Verträge mit Vorlagen, KI und Playbooks erstellen"
+      },
+      "templates": {
+        "name": "Vorlagen",
+        "desc": "Genehmigte Ausgangsvorlagen"
+      },
+      "playbooks": {
+        "name": "Playbooks",
+        "desc": "Rechtliche Standards und Fallback-Klauseln"
+      },
+      "workflows": {
+        "name": "Arbeitsabläufe",
+        "desc": "Anfragen, Genehmigungen und Automatisierung"
+      },
+      "approvals": {
+        "name": "Genehmigungen",
+        "desc": "Ausstehende Genehmigungen"
+      },
+      "requests": {
+        "name": "Anfragen",
+        "desc": "Vertrags-Eingangspipeline"
+      },
+      "myTasks": {
+        "name": "Meine Aufgaben",
+        "desc": "Zugewiesene Aufgaben"
+      },
+      "obligationsRenewals": {
+        "name": "Pflichten & Verlängerungen",
+        "desc": "Verpflichtungen und Meilensteine nach Unterzeichnung"
+      },
+      "obligations": {
+        "name": "Pflichten",
+        "desc": "Verpflichtungen nach Unterzeichnung"
+      },
+      "renewals": {
+        "name": "Verlängerungen",
+        "desc": "Anstehende Verlängerungen"
+      },
+      "deadlines": {
+        "name": "Fristen",
+        "desc": "Kritische Termine"
+      },
+      "suppliersSpend": {
+        "name": "Lieferanten & Ausgaben",
+        "desc": "Lieferantenleistung und Konditionen"
+      },
+      "rateCards": {
+        "name": "Tarifkarten",
+        "desc": "Tarifüberwachung"
+      },
+      "spendAnalysis": {
+        "name": "Ausgabenanalyse",
+        "desc": "Transparenz der Ausgaben"
+      },
+      "intelligence": {
+        "name": "Intelligenz",
+        "desc": "KI-Einblicke, Portfoliozustand und Risikosignale"
+      },
+      "contractHealth": {
+        "name": "Vertragszustand",
+        "desc": "Portfolio-Gesundheitswerte"
+      },
+      "risk": {
+        "name": "Risiko",
+        "desc": "Risikoanalyse"
+      },
+      "compliance": {
+        "name": "Compliance",
+        "desc": "Compliance-Nachverfolgung"
+      },
+      "analytics": {
+        "name": "Analysen",
+        "desc": "Dashboards und Berichte"
+      },
+      "governance": {
+        "name": "Governance",
+        "desc": "Richtlinien, Weiterleitung und Kontrollen"
+      },
+      "contractMigration": {
+        "name": "Vertragsmigration",
+        "desc": "Massenimport bestehender Verträge"
+      },
+      "settings": {
+        "name": "Einstellungen",
+        "desc": "Persönliche und Plattformeinstellungen"
+      },
+      "organization": {
+        "name": "Organisation",
+        "desc": "Mandanten- und Organisationseinrichtung"
+      },
+      "system": {
+        "name": "System",
+        "desc": "Audit, Warteschlangen und Integrationen"
+      },
+      "auditLogs": {
+        "name": "Audit-Protokolle",
+        "desc": "Prüfpfad"
+      },
+      "sso": {
+        "name": "SSO",
+        "desc": "SAML- & OIDC-Anbieter"
+      },
+      "queue": {
+        "name": "Warteschlange",
+        "desc": "Verarbeitungswarteschlangen"
+      },
+      "integrations": {
+        "name": "Integrationen",
+        "desc": "Datenverbindungen"
+      }
+    }
   },
   "dashboard": {
     "title": "Dashboard",
@@ -56,6 +195,76 @@
     "customize": "Anpassen",
     "refresh": "Aktualisieren",
     "addContract": "Vertrag hinzufügen",
+    "browseContracts": "Verträge durchsuchen",
+    "retry": "Erneut versuchen",
+    "unableToLoad": "Dashboard konnte nicht geladen werden",
+    "viewAll": "Alle anzeigen",
+    "renewalsSection": {
+      "title": "Verlängerungen & anstehende Fristen",
+      "noneIn90": "Keine Verträge laufen in den nächsten 90 Tagen aus",
+      "critical": "Kritisch",
+      "expiring30": "Läuft innerhalb von 30 Tagen ab",
+      "upcoming": "Bevorstehend",
+      "expiring3190": "Läuft in 31–90 Tagen ab",
+      "totalWindow": "Gesamtzeitraum",
+      "expiring90": "Läuft innerhalb von 90 Tagen ab"
+    },
+    "obligationsSection": {
+      "title": "Pflichten",
+      "none": "Noch keine Pflichten erfasst",
+      "total": "Gesamt",
+      "tracked": "erfasst",
+      "overdue": "Überfällig",
+      "needAction": "erfordern Maßnahmen",
+      "dueSoon": "Bald fällig",
+      "within7Days": "innerhalb von 7 Tagen",
+      "done": "Erledigt",
+      "thisMonth": "diesen Monat"
+    },
+    "recentContracts": {
+      "title": "Kürzliche Verträge",
+      "noneYet": "Noch keine Verträge",
+      "demoHint": "Demodaten werden hier nach dem Befüllen angezeigt",
+      "uploadHint": "Laden Sie Ihren ersten Vertrag hoch, um zu beginnen",
+      "recentlyAdded": "Kürzlich hinzugefügt",
+      "browseAll": "Alle Verträge durchsuchen",
+      "statuses": {
+        "active": "Aktiv",
+        "processing": "In Bearbeitung",
+        "uploaded": "Hochgeladen",
+        "queued": "In Warteschlange",
+        "error": "Fehler",
+        "draft": "Entwurf"
+      }
+    },
+    "aiAssistant": {
+      "title": "KI-Assistent",
+      "openChat": "Chat öffnen",
+      "exampleQuestions": "Beispielfragen:",
+      "q1": "Welche Verträge laufen bald aus?",
+      "q2": "Fassen Sie die wichtigsten Bedingungen meines neuesten Vertrags zusammen",
+      "q3": "Verträge mit automatischer Verlängerungsklausel finden"
+    },
+    "deadlinesSection": {
+      "title": "Anstehende Fristen",
+      "none": "Keine anstehenden Fristen",
+      "today": "Heute",
+      "typeExpires": "Läuft ab",
+      "typeRenewal": "Verlängerung",
+      "typeMilestone": "Meilenstein"
+    },
+    "activitySection": {
+      "title": "Letzte Aktivität",
+      "none": "Keine kürzliche Aktivität",
+      "justNow": "gerade eben",
+      "minutesAgo": "vor {n} Min.",
+      "hoursAgo": "vor {n} Std.",
+      "daysAgo": "vor {n} T."
+    },
+    "overviewSection": {
+      "title": "Vertragsübersicht",
+      "fullAnalytics": "Vollständige Analysen"
+    },
     "kpi": {
       "totalContracts": "Verträge gesamt",
       "activeContracts": "Aktive Verträge",
@@ -64,12 +273,38 @@
       "renewalsDue": "Fällige Verlängerungen"
     },
     "quickActions": {
-      "upload": "Vertrag hochladen",
-      "generate": "Vertrag generieren",
-      "obligations": "Pflichten",
-      "renewals": "Verlängerungen",
-      "aiAssistant": "KI-Assistent",
-      "search": "Suche"
+      "upload": {
+        "name": "Vertrag hochladen",
+        "desc": "Neue Verträge hinzufügen"
+      },
+      "generate": {
+        "name": "Vertrag generieren",
+        "desc": "Mit KI erstellen"
+      },
+      "obligations": {
+        "name": "Pflichten",
+        "desc": "Compliance verfolgen"
+      },
+      "renewals": {
+        "name": "Verlängerungen",
+        "desc": "Verlängerungen verfolgen"
+      },
+      "deadlines": {
+        "name": "Fristen",
+        "desc": "Kritische Termine"
+      },
+      "contracts": {
+        "name": "Verträge",
+        "desc": "Repository durchsuchen"
+      },
+      "aiAssistant": {
+        "name": "KI-Assistent",
+        "desc": "Fragen zu Verträgen stellen"
+      },
+      "search": {
+        "name": "Suche",
+        "desc": "Verträge finden"
+      }
     },
     "empty": {
       "title": "In 2 Minuten starten",
@@ -83,6 +318,26 @@
     "create": "Vertrag erstellen",
     "upload": "Vertrag hochladen",
     "esign": "E-Signatur",
+    "hero": {
+      "subtitle": "Verwalten Sie Ihr Vertragsportfolio mit KI-gestützten Einblicken und Analysen",
+      "refreshing": "Wird aktualisiert...",
+      "updated": "Aktualisiert",
+      "refreshList": "Liste aktualisieren",
+      "advanced": "Erweitert",
+      "taxonomy": "Taxonomie",
+      "newContract": "Neuer Vertrag",
+      "createContract": "Vertrag erstellen",
+      "quickUpload": "Schnell-Upload",
+      "quickUploadDesc": "Dateien hochladen, ohne die Seite zu verlassen",
+      "advancedUpload": "Erweiterter Upload",
+      "advancedUploadDesc": "Vollständiger Upload mit KI-Analyse",
+      "createManually": "Manuell erstellen",
+      "createManuallyDesc": "Vertragsdetails manuell eingeben",
+      "generateFromTemplate": "Aus Vorlage generieren",
+      "generateFromTemplateDesc": "Eine Vertragsvorlage verwenden",
+      "aiDraftAssistant": "KI-Entwurfsassistent",
+      "aiDraftAssistantDesc": "Lassen Sie sich von der KI beim Entwerfen helfen"
+    },
     "status": {
       "draft": "Entwurf",
       "active": "Aktiv",
@@ -98,6 +353,143 @@
       "startDate": "Startdatum",
       "endDate": "Enddatum",
       "type": "Typ"
+    },
+    "errorState": {
+      "title": "Verträge konnten nicht geladen werden",
+      "retry": "Erneut versuchen",
+      "defaultMessage": "Laden der Verträge fehlgeschlagen"
+    },
+    "quickFilters": {
+      "label": "Schnellfilter",
+      "expiringSoon": "Läuft bald ab",
+      "needsSignature": "Unterschrift erforderlich",
+      "highRisk": "Hohes Risiko",
+      "sowUnderMsa": "SOWs unter MSA",
+      "highValue": "Hoher Wert"
+    },
+    "clearFilters": "Filter zurücksetzen",
+    "clear": "Zurücksetzen",
+    "viewModes": {
+      "list": "Liste",
+      "cards": "Karten",
+      "timeline": "Zeitleiste",
+      "kanban": "Kanban"
+    },
+    "filters": {
+      "processing": "In Bearbeitung",
+      "failed": "Fehlgeschlagen"
+    },
+    "aiSearch": {
+      "heading": "KI-Suchergebnisse",
+      "searching": "KI-Suche läuft...",
+      "noResults": "Keine Ergebnisse gefunden. Versuchen Sie, Ihre Anfrage anders zu formulieren."
+    },
+    "bulkBar": {
+      "selected": "ausgewählt",
+      "selectedCount": "{count} ausgewählt",
+      "compare": "Vergleichen",
+      "share": "Teilen",
+      "tag": "Verschlagworten",
+      "access": "Zugriff",
+      "autoCategorize": "Automatisch kategorisieren"
+    },
+    "countSummary": "{filtered} von {total, plural, one {# Vertrag} other {# Verträge}}",
+    "contractsCount": "{count, plural, one {# Vertrag} other {# Verträge}}",
+    "bulkOperationsPage": {
+      "title": "Massenvorgänge",
+      "subtitle": "Bearbeiten Sie mehrere Verträge gleichzeitig mit KI-gestützter Automatisierung"
+    },
+    "detail": {
+      "notFoundTitle": "Vertrag nicht gefunden",
+      "errorTitle": "Fehler beim Laden des Vertrags",
+      "retry": "Erneut versuchen",
+      "backToContracts": "Zurück zu Verträgen",
+      "processingTitle": "Vertrag wird verarbeitet...",
+      "analyzingDocument": "Dokument wird analysiert",
+      "tabs": {
+        "summary": "Zusammenfassung",
+        "details": "Details",
+        "activity": "Aktivität",
+        "analysis": "Analyse"
+      },
+      "autoCategorize": "Automatisch kategorisieren",
+      "categorizing": "Kategorisierung läuft…",
+      "requestSignature": "Signatur anfordern",
+      "downloadSigned": "Signiertes Dokument herunterladen",
+      "aiNotAvailableTitle": "KI-Analyse nicht verfügbar",
+      "aiNotAvailableDescription": "Dieser Vertrag wurde noch nicht von der KI verarbeitet.",
+      "runAnalysis": "Analyse starten",
+      "chatWithAI": "Mit KI chatten",
+      "evidenceFocus": "Beleg-Fokus",
+      "spanExact": "Exakter Abschnitt",
+      "spanMatched": "Gefundener Auszug",
+      "spanFallback": "Ausweich-Auszug",
+      "contractEvidenceFallback": "Vertragsbeleg",
+      "sourceContext": "Quellkontext",
+      "noExcerptAvailable": "Für dieses Zitat ist kein Auszug verfügbar.",
+      "fullTextNotAvailable": "Der vollständige Vertragstext ist für diesen Datensatz nicht verfügbar. Diese Vorschau verwendet daher nur den Zitatauszug.",
+      "copyEvidenceLink": "Beleglink kopieren",
+      "selectCategoryTitle": "Kategorie auswählen",
+      "uploadSignedCopyTitle": "Signierte Kopie hochladen",
+      "extendContractTitle": "Vertrag verlängern",
+      "deleteContractTitle": "Vertrag löschen",
+      "deleteContractDescription": "Möchten Sie \"{filename}\" wirklich dauerhaft löschen? Diese Aktion kann nicht rückgängig gemacht werden. Alle zugehörigen Artefakte, Notizen und der Verlauf werden entfernt.",
+      "aiRecommendationLoading": "KI-Empfehlung wird generiert...",
+      "suggestedMonths": "Vorschlag: {months} Monate"
+    },
+    "uploadPage": {
+      "title": "Verträge hochladen",
+      "subtitle": "Dateien ablegen, um die KI-gestützte Analyse zu starten",
+      "allContracts": "Alle Verträge",
+      "queueTitle": "Upload-Warteschlange",
+      "uploadAll": "Alle hochladen ({count})",
+      "stopAfterCurrent": "Nach aktuellen Dateien anhalten",
+      "resume": "Fortsetzen",
+      "clearDone": "Erledigte entfernen",
+      "retryAll": "Alle erneut versuchen",
+      "reviewNext": "Nächste prüfen",
+      "skipReviews": "Prüfungen überspringen",
+      "metadataReviewReady": "{count, plural, one {# Metadatenprüfung bereit} other {# Metadatenprüfungen bereit}}",
+      "metadataReviewDescription": "Die Analyse ist abgeschlossen. Prüfen Sie extrahierte Parteien, Daten, Werte und Signaturdetails, wenn Sie bereit sind.",
+      "queueHelper": {
+        "processing": "Extraktion, KI-Analyse und Indizierung laufen gerade.",
+        "pending": "Prüfen Sie die Dateien in der Warteschlange und starten Sie dann die Pipeline.",
+        "error": "Fehlgeschlagene Uploads erneut versuchen oder aus dem aktuellen Batch entfernen.",
+        "completed": "Verarbeitete Verträge bleiben hier, bis Sie sie aus der Warteschlange entfernen.",
+        "empty": "Fügen Sie Dateien hinzu, um zu beginnen."
+      }
+    },
+    "newPage": {
+      "title": "Neuen Vertrag erstellen",
+      "stepProgress": "Schritt {current} von {total}: {stepTitle}",
+      "showPreview": "Vorschau anzeigen",
+      "hidePreview": "Vorschau ausblenden",
+      "saveDraft": "Als Entwurf speichern",
+      "creating": "Wird erstellt...",
+      "addAnotherParty": "Weitere Partei hinzufügen",
+      "livePreview": "Live-Vorschau",
+      "steps": {
+        "basic": {
+          "title": "Grunddaten",
+          "description": "Titel, Typ und Beschreibung"
+        },
+        "parties": {
+          "title": "Parteien",
+          "description": "Vertragsparteien hinzufügen"
+        },
+        "terms": {
+          "title": "Bedingungen",
+          "description": "Termine und Verlängerung"
+        },
+        "financials": {
+          "title": "Finanzen",
+          "description": "Wert und Zahlungsbedingungen"
+        },
+        "additional": {
+          "title": "Zusätzliches",
+          "description": "Tags, Priorität und Notizen"
+        }
+      }
     }
   },
   "esignature": {
@@ -147,7 +539,147 @@
     "metadataSchema": "Metadaten-Schema",
     "fieldDependencies": "Feldabhängigkeiten",
     "conditionalLogic": "Bedingte Logik",
-    "validationRules": "Validierungsregeln"
+    "validationRules": "Validierungsregeln",
+    "pageTitle": "Systemeinstellungen",
+    "pageDescription": "Systemparameter und Einstellungen konfigurieren",
+    "syncedTitle": "Einstellungen werden geräteübergreifend synchronisiert",
+    "syncedDescription": "Änderungen, die Sie hier vornehmen, werden auf allen Geräten übernommen, auf denen Sie angemeldet sind. Einige Änderungen erfordern möglicherweise ein Neuladen der Seite.",
+    "resetToDefaults": "Auf Standard zurücksetzen",
+    "saving": "Speichern...",
+    "saveChanges": "Änderungen speichern",
+    "saved": "Gespeichert",
+    "tabs": {
+      "general": "Allgemein",
+      "security": "Sicherheit",
+      "notifications": "Benachrichtigungen",
+      "processing": "Verarbeitung",
+      "integrations": "Integrationen",
+      "contractSources": "Vertragsquellen",
+      "metadata": "Metadaten-Schema",
+      "tags": "Tags",
+      "contractGroups": "Vertragsgruppen",
+      "tagRules": "Tag-Regeln",
+      "taxonomy": "Taxonomie"
+    },
+    "systemPreferences": "Systemeinstellungen",
+    "timezone": "Zeitzone",
+    "language": "Sprache",
+    "dateFormat": "Datumsformat",
+    "currency": "Währung",
+    "userProfile": "Benutzerprofil",
+    "fullName": "Vollständiger Name",
+    "editInProfile": "In Profileinstellungen bearbeiten →",
+    "emailAddress": "E-Mail-Adresse",
+    "role": "Rolle",
+    "helpSupport": "Hilfe & Support",
+    "appTour": "App-Tour & Lernzentrum",
+    "appTourDesc": "Interaktive Rundgänge und Funktionsanleitungen",
+    "adminAccessRequired": "Administratorzugriff erforderlich",
+    "security": {
+      "title": "Authentifizierung & Sicherheit",
+      "twoFactor": "Zwei-Faktor-Authentifizierung",
+      "mfaRequired": "Für alle Benutzer erforderlich",
+      "mfaOptional": "Optional",
+      "sessionTimeout": "Sitzungs-Timeout (Stunden)",
+      "minPasswordLength": "Mindestpasswortlänge",
+      "changePassword": "Passwort ändern",
+      "advancedPolicies": "Erweiterte Sicherheitsrichtlinien",
+      "apiAccess": "API-Zugriff",
+      "apiTokens": "API-Tokens",
+      "apiTokensDesc": "Ausgabe, Widerruf und Überwachung von zweckgebundenen Anmeldedaten für",
+      "apiTokensDescSuffix": "Nutzer.",
+      "manageTokens": "Tokens verwalten",
+      "adminRequiredDesc": "Mandantenweite Sicherheitsrichtlinien werden von Organisationsadministratoren über den Admin-Sicherheitsbereich verwaltet."
+    },
+    "notifications": {
+      "title": "Benachrichtigungseinstellungen",
+      "emailSection": "E-Mail-Benachrichtigungen",
+      "pushSection": "Push-Benachrichtigungen",
+      "contractUpdates": "Vertragsaktualisierungen",
+      "renewalReminders": "Verlängerungserinnerungen",
+      "complianceAlerts": "Compliance-Warnungen",
+      "weeklyDigest": "Wöchentliche Zusammenfassung",
+      "granularNote": "Granulare Benachrichtigungssteuerung ist noch nicht auf einer separaten Seite verfügbar. Die obigen Umschalter sind die unterstützten Einstellungen."
+    },
+    "processing": {
+      "title": "Verarbeitungskonfiguration",
+      "automated": "Automatisierte Verarbeitung",
+      "autoProcess": "Uploads automatisch verarbeiten",
+      "aiAnalysis": "KI-Analyse",
+      "riskAssessment": "Risikobewertung",
+      "ocr": "OCR-Verarbeitung",
+      "dataManagement": "Datenverwaltung",
+      "retentionPeriod": "Aufbewahrungsfrist",
+      "backupFrequency": "Sicherungshäufigkeit",
+      "adminRequiredDesc": "Verarbeitungsstandards betreffen den gesamten Mandanten und können nur von einem Organisationsadministrator geändert werden."
+    },
+    "integrationsTab": {
+      "title": "Integrationen von Drittanbietern",
+      "loadingText": "Integrationen werden geladen...",
+      "adminOnlyDesc": "Webhook-Endpunkte, Zustellungswiederherstellung, dauerhafte Ereigniswiedergabe und API-Token-Verwaltung sind auf Organisationsadministratoren und -inhaber beschränkt.",
+      "liveOverview": "Live-Übersicht ausgehender Verbindungen",
+      "liveOverviewDesc": "Aktueller Mandantenstatus für Webhook-Abonnenten, Zustellungsrückstand, Ereignisvolumen und Token-Verkehr.",
+      "webhooks": "Webhooks",
+      "openEndpoints": "Endpunkte öffnen →",
+      "retriesDlq": "Wiederholungen / DLQ",
+      "noBacklog": "Kein Zustellungsrückstand",
+      "openDeliveriesArrow": "Zustellungen öffnen →",
+      "events24h": "Ereignisse 24h",
+      "openEventLog": "Ereignisprotokoll öffnen →",
+      "openTokens": "Tokens öffnen →",
+      "recentIssues": "Aktuelle Probleme bei ausgehenden Verbindungen",
+      "recentIssuesDesc": "Neueste fehlgeschlagene oder dead-lettered Zustellungen über alle Webhook-Abonnenten.",
+      "requeueDead": "Fehlgeschlagene erneut einreihen",
+      "requeueing": "Wird erneut eingereiht…",
+      "openDeliveries": "Zustellungen öffnen",
+      "noRecentIssues": "Keine aktuellen fehlgeschlagenen oder dead-lettered Zustellungen.",
+      "inspect": "Untersuchen",
+      "retryNow": "Jetzt erneut versuchen",
+      "requeue": "Erneut einreihen",
+      "retrying": "Wird wiederholt…",
+      "comingSoon": "Demnächst verfügbar",
+      "adminOnly": "Nur Administrator",
+      "outboundTitle": "Ausgehende Integrationen",
+      "outboundDescAdmin": "Webhook-Abonnenten, Zustellungswiederherstellung, dauerhafte Ereigniswiedergabe und API-Tokens verwalten.",
+      "outboundDescNonAdmin": "Webhook-Abonnenten, Zustellungswiederherstellung, dauerhafte Ereigniswiedergabe und API-Tokens sind auf Organisationsadministratoren und -inhaber beschränkt.",
+      "open": "Öffnen",
+      "apps": {
+        "sharepoint": {
+          "label": "SharePoint",
+          "desc": "Dokumentenverwaltung"
+        },
+        "salesforce": {
+          "label": "Salesforce",
+          "desc": "CRM-Integration"
+        },
+        "slack": {
+          "label": "Slack",
+          "desc": "Team-Benachrichtigungen"
+        },
+        "teams": {
+          "label": "Microsoft Teams",
+          "desc": "Zusammenarbeit"
+        }
+      },
+      "links": {
+        "webhookConfig": {
+          "label": "Webhook-Endpunkte",
+          "desc": "Abonnenten und Geheimnisse verwalten"
+        },
+        "webhookDeliveries": {
+          "label": "Webhook-Zustellungen",
+          "desc": "Wiederholungen, DLQ und erneutes Einreihen prüfen"
+        },
+        "integrationEvents": {
+          "label": "Integrationsereignisse",
+          "desc": "Dauerhafte Ereignisse durchsuchen und wiedergeben"
+        },
+        "apiTokens": {
+          "label": "API-Tokens",
+          "desc": "Zweckgebundene Tokens für /api/v1-Zugriff ausstellen"
+        }
+      }
+    }
   },
   "auth": {
     "signIn": "Anmelden",
@@ -157,6 +689,1126 @@
     "password": "Passwort",
     "forgotPassword": "Passwort vergessen?",
     "rememberMe": "Angemeldet bleiben",
-    "mfa": "Multi-Faktor-Authentifizierung"
+    "mfa": "Multi-Faktor-Authentifizierung",
+    "welcomeBack": "Willkommen zurück",
+    "signInToAccount": "Melden Sie sich bei Ihrem {app}-Konto an",
+    "signingIn": "Anmeldung läuft…",
+    "dontHaveAccount": "Noch kein Konto?",
+    "firstName": "Vorname",
+    "lastName": "Nachname",
+    "confirmPassword": "Passwort bestätigen",
+    "organizationName": "Organisationsname",
+    "organizationUrl": "Organisations-URL",
+    "createAccount": "Konto erstellen",
+    "organizationSetup": "Organisation einrichten",
+    "invitedToJoin": "Sie wurden eingeladen, {tenant} beizutreten",
+    "startManagingContracts": "Verwalten Sie Ihre Verträge ab sofort mit KI",
+    "setUpOrganization": "Richten Sie Ihre Organisation ein",
+    "stepAccountLabel": "Konto",
+    "stepOrganizationLabel": "Organisation",
+    "continueButton": "Weiter",
+    "creatingAccount": "Konto wird erstellt...",
+    "createAccountAndJoin": "Konto erstellen & beitreten",
+    "createOrganization": "Organisation erstellen",
+    "creatingOrganization": "Wird erstellt...",
+    "alreadyHaveAccount": "Sie haben bereits ein Konto?",
+    "accountCreated": "Konto erstellt!",
+    "accountCreatedMessage": "Ihr Konto wurde erfolgreich erstellt.",
+    "continueToSignIn": "Weiter zur Anmeldung",
+    "resetPasswordTitle": "Passwort vergessen",
+    "resetPasswordSubtitle": "Geben Sie Ihre E-Mail-Adresse ein und wir senden Ihnen einen Link zum Zurücksetzen Ihres Passworts.",
+    "emailAddress": "E-Mail-Adresse",
+    "sendResetLink": "Link zum Zurücksetzen senden",
+    "sending": "Wird gesendet...",
+    "checkYourEmail": "Überprüfen Sie Ihre E-Mail",
+    "resetLinkSentMessage": "Falls ein Konto für <strong>{email}</strong> existiert, haben wir einen Link zum Zurücksetzen des Passworts gesendet. Überprüfen Sie Ihren Posteingang und folgen Sie den Anweisungen.",
+    "resendEmail": "E-Mail erneut senden",
+    "resendIn": "Erneut senden in {seconds}s",
+    "backToSignIn": "Zurück zur Anmeldung"
+  },
+  "intelligence": {
+    "title": "Vertragsintelligenz",
+    "subtitle": "KI-gestützte Einblicke und Analysen für Ihr Vertragsportfolio",
+    "askAi": "KI fragen",
+    "view": "Ansehen",
+    "activeRiskInsights": "Aktive Risikoerkenntnisse",
+    "ragSearch": "RAG-Suche",
+    "recentActivity": "Letzte Aktivität",
+    "stats": {
+      "avgHealthScore": "Ø Gesundheitswert",
+      "complianceRate": "Compliance-Quote",
+      "aiInsights": "KI-Erkenntnisse",
+      "actionsRequired": "Erforderliche Maßnahmen"
+    },
+    "aiAssistantBanner": {
+      "title": "KI-Vertragsassistent",
+      "subtitle": "Fragen Sie nach Gesundheitswerten, Risiken, Erkenntnissen oder allem in Ihrem Portfolio"
+    },
+    "features": {
+      "graph": {
+        "title": "Vertrags-Wissensgraph",
+        "description": "Visualisieren Sie Beziehungen zwischen Verträgen, Lieferanten, Klauseln und Risiken in einem interaktiven Graph-Explorer."
+      },
+      "health": {
+        "title": "Vertragsgesundheitswerte",
+        "description": "Überwachen Sie die Vertragsleistung mit KI-gestützter Gesundheitsbewertung über Risiko-, Compliance-, Finanz- und Betriebsdimensionen."
+      },
+      "search": {
+        "title": "Universelle RAG-Suche",
+        "description": "Stellen Sie Fragen in natürlicher Sprache und erhalten Sie KI-gestützte Antworten mit Belegen aus Ihrem gesamten Vertragsportfolio."
+      },
+      "negotiate": {
+        "title": "Verhandlungs-Co-Pilot",
+        "description": "KI-unterstützte Redline-Analyse mit Playbook-Abgleich, Risikobewertung und Gegenvorschlägen."
+      }
+    },
+    "featureStats": {
+      "graph": "{total} Verträge • {needAttention} erfordern Aufmerksamkeit",
+      "health": "{avg} Ø-Wert • {atRisk} gefährdet • {critical} kritisch",
+      "search": "{total} Verträge indexiert • KI-gestützte Fragen & Antworten",
+      "negotiate": "{highPriority} hohe Priorität • {total} Erkenntnisse insgesamt"
+    },
+    "health": {
+      "loadingTitle": "Vertragsgesundheit wird analysiert...",
+      "loadingSubtitle": "Dies kann einen Moment dauern",
+      "title": "Vertragsgesundheits-Dashboard",
+      "aiPowered": "KI-gestützt",
+      "subtitle": "Überwachen und optimieren Sie die Vertragsleistung in Ihrem gesamten Portfolio",
+      "refreshAll": "Alle aktualisieren",
+      "exportReport": "Bericht exportieren",
+      "contractsList": "Verträge",
+      "emptyTitle": "Keine Verträge gefunden",
+      "emptySubtitle": "Laden Sie Verträge hoch, um die Gesundheitsanalyse zu sehen",
+      "viewContract": "Vertrag ansehen",
+      "reassessNow": "Jetzt neu bewerten",
+      "tabs": {
+        "overview": "Übersicht",
+        "factors": "Faktoren",
+        "actions": "Aktionen"
+      },
+      "factorBreakdown": "Gesundheitsfaktoren-Aufschlüsselung",
+      "urgentActionsRequired": "Dringende Maßnahmen erforderlich",
+      "allClear": "Alles in Ordnung!",
+      "allClearSubtitle": "Keine Aktionspunkte für diesen Vertrag. Gute Arbeit bei der Pflege!",
+      "aiRecommendations": "KI-Empfehlungen",
+      "lastUpdated": "Zuletzt aktualisiert",
+      "refreshAnalysis": "Analyse aktualisieren",
+      "actionLinks": {
+        "manageRenewal": "Verlängerung verwalten",
+        "reviewPolicies": "Richtlinien prüfen",
+        "requestApproval": "Genehmigung anfordern",
+        "editContract": "Vertrag bearbeiten",
+        "contactSupplier": "Lieferant kontaktieren"
+      },
+      "quickActions": "Schnellaktionen",
+      "takeAction": "Maßnahme ergreifen",
+      "stats": {
+        "avgScore": "Ø Gesundheitswert",
+        "totalContracts": "Verträge gesamt",
+        "healthy": "Gesund",
+        "atRisk": "Gefährdet",
+        "critical": "Kritisch",
+        "urgentActions": "Dringende Maßnahmen"
+      }
+    },
+    "risk": {
+      "title": "Risikomanagement",
+      "subtitle": "Portfoliorisiken überwachen, bewerten und mindern",
+      "loadingSubtitle": "Portfolio-Risikoanalyse & -minderung",
+      "distribution": "Risikoverteilung",
+      "noRisksDetected": "Keine Risiken erkannt",
+      "flagsCount": "Risikomarkierungen ({count})",
+      "emptyTitle": "Keine Risiken gefunden",
+      "emptyHealthy": "Ihr Vertragsportfolio sieht gesund aus!",
+      "emptyFiltered": "Keine Risiken entsprechen den aktuellen Filtern",
+      "riskLevel": "Risiko: {level}",
+      "severity": {
+        "critical": "Kritisch",
+        "high": "Hoch",
+        "medium": "Mittel",
+        "low": "Niedrig"
+      },
+      "level": {
+        "high": "Hoch",
+        "medium": "Mittel",
+        "low": "Niedrig"
+      },
+      "stats": {
+        "overallRiskScore": "Gesamtrisikowert",
+        "criticalIssues": "Kritische Probleme",
+        "requireImmediateAction": "Erfordern sofortiges Handeln",
+        "highSeverity": "Hoher Schweregrad",
+        "openRiskFlags": "Offene Risikomarkierungen",
+        "contractsAnalyzed": "Analysierte Verträge",
+        "activePolicies": "{count} aktive Richtlinien"
+      }
+    },
+    "compliance": {
+      "subtitle": "Richtlinieneinhaltung und regulatorische Compliance überwachen",
+      "loadingSubtitle": "Richtlinien- & regulatorische Compliance",
+      "scoreHeading": "Compliance-Wert",
+      "scoreDescription": "Basierend auf {total} analysierten Verträgen im Vergleich zu {active} aktiven Richtlinien",
+      "compliant": "Konform",
+      "violations": "Verstöße",
+      "totalIssues": "Probleme insgesamt",
+      "policyComplianceCount": "Richtlinien-Compliance ({count})",
+      "emptyPolicies": "Keine Richtlinien gefunden",
+      "violationsCount": "{count} Verstöße",
+      "scoreLabel": {
+        "excellent": "Ausgezeichnet",
+        "needsAttention": "Erfordert Aufmerksamkeit",
+        "atRisk": "Gefährdet"
+      },
+      "stats": {
+        "activePolicies": "Aktive Richtlinien",
+        "openFlags": "Offene Markierungen",
+        "criticalIssues": "Kritische Probleme",
+        "contractsCovered": "Erfasste Verträge"
+      }
+    }
+  },
+  "analytics": {
+    "title": "Analytics-Zentrale",
+    "subtitle": "Umfassende Einblicke in Ihr Vertragsportfolio",
+    "detailedAnalytics": "Detaillierte Analysen",
+    "modulesCount": "{count} Module",
+    "modules": {
+      "documents": {
+        "title": "Dokumente",
+        "description": "Dokumentenklassifizierung & Signaturtrends"
+      },
+      "artifacts": {
+        "title": "Artefakte",
+        "description": "Artefakt-Extraktionsanalysen"
+      },
+      "savings": {
+        "title": "Kosteneinsparungen",
+        "description": "Einsparpotenziale"
+      },
+      "renewals": {
+        "title": "Verlängerungen",
+        "description": "Vertragsverlängerungen"
+      },
+      "suppliers": {
+        "title": "Lieferanten",
+        "description": "Lieferantenanalysen"
+      },
+      "negotiation": {
+        "title": "Verhandlung",
+        "description": "Verhandlungsvorbereitung"
+      },
+      "procurement": {
+        "title": "Beschaffung",
+        "description": "Beschaffungsintelligenz"
+      },
+      "portfolio": {
+        "title": "Portfolio",
+        "description": "Portfolio-Risiko-Heatmap & Exposition"
+      }
+    }
+  },
+  "settingsPages": {
+    "profile": {
+      "title": "Profileinstellungen",
+      "subtitle": "Verwalten Sie Ihre Kontoinformationen",
+      "tabs": {
+        "profile": "Profil",
+        "security": "Sicherheit",
+        "preferences": "Präferenzen"
+      },
+      "saveChanges": "Änderungen speichern",
+      "saved": "Gespeichert!",
+      "profilePhoto": "Profilfoto",
+      "profilePhotoDesc": "Dies wird in Ihrem Profil und in Kommentaren angezeigt.",
+      "basicInformation": "Grundlegende Informationen",
+      "basicInformationDesc": "Aktualisieren Sie Ihre persönlichen Daten.",
+      "password": "Passwort",
+      "passwordDesc": "Ändern Sie Ihr Passwort oder aktivieren Sie zusätzliche Sicherheitsmaßnahmen.",
+      "updatePassword": "Passwort aktualisieren",
+      "twoFactorAuth": "Zwei-Faktor-Authentifizierung",
+      "twoFactorAuthDesc": "Fügen Sie Ihrem Konto eine zusätzliche Sicherheitsebene hinzu.",
+      "accountDetails": "Kontodetails",
+      "regionalSettings": "Regionale Einstellungen",
+      "regionalSettingsDesc": "Konfigurieren Sie Ihre Zeitzone und Spracheinstellungen.",
+      "emailPreferences": "E-Mail-Einstellungen",
+      "emailPreferencesDesc": "Verwalten Sie Ihre E-Mail-Benachrichtigungseinstellungen."
+    },
+    "tags": {
+      "title": "Tag-Verwaltung",
+      "subtitle": "Erstellen und verwalten Sie Tags zur Organisation von Verträgen",
+      "createTag": "Tag erstellen",
+      "editTag": "Tag bearbeiten",
+      "createNewTag": "Neuen Tag erstellen",
+      "emptyTitle": "Keine Tags gefunden",
+      "emptyDescSearch": "Versuchen Sie einen anderen Suchbegriff",
+      "emptyDescNoSearch": "Erstellen Sie Ihren ersten Tag, um loszulegen",
+      "updateTag": "Tag aktualisieren",
+      "tagsHeading": "Tags"
+    },
+    "contractGroups": {
+      "subtitle": "Organisieren Sie Verträge mit statischen oder dynamischen Gruppen",
+      "newGroup": "Neue Gruppe",
+      "createGroup": "Gruppe erstellen",
+      "emptyTitle": "Keine Gruppen gefunden",
+      "emptyDescSearch": "Versuchen Sie einen anderen Suchbegriff",
+      "emptyDescNoSearch": "Erstellen Sie Ihre erste Gruppe, um loszulegen",
+      "groupsHeading": "Gruppen"
+    },
+    "tagRules": {
+      "title": "Tag-Regeln & Automatisierung",
+      "subtitle": "Erstellen Sie Regeln, um Verträge automatisch basierend auf Bedingungen zu taggen",
+      "newRule": "Neue Regel",
+      "createRule": "Regel erstellen",
+      "emptyTitle": "Keine Regeln gefunden",
+      "emptyDescSearch": "Versuchen Sie einen anderen Suchbegriff",
+      "emptyDescNoSearch": "Erstellen Sie Ihre erste Regel, um loszulegen",
+      "rulesHeading": "Regeln"
+    },
+    "taxonomy": {
+      "title": "Taxonomieverwaltung",
+      "subtitle": "Definieren Sie Kategorien für die automatische Vertragsklassifizierung",
+      "analytics": "Analysen",
+      "loadPreset": "Vorlage laden",
+      "addCategory": "Kategorie hinzufügen",
+      "exportJson": "Als JSON exportieren",
+      "exportCsv": "Als CSV exportieren",
+      "saveAsPreset": "Als Vorlage speichern",
+      "emptyTitle": "Noch keine Kategorien",
+      "emptyDesc": "Beginnen Sie mit einer Vorlage oder erstellen Sie eigene Kategorien",
+      "useTemplate": "Vorlage verwenden",
+      "createCustom": "Eigene erstellen",
+      "retry": "Erneut versuchen",
+      "taxonomyStats": "Taxonomie-Statistik",
+      "howItWorks": "So funktioniert die automatische Kategorisierung",
+      "editCategory": "Kategorie bearbeiten",
+      "newCategory": "Neue Kategorie",
+      "updateCategory": "Kategorie aktualisieren",
+      "createCategory": "Kategorie erstellen",
+      "deleteCategory": "Kategorie löschen",
+      "deleteAll": "Alle löschen",
+      "savePresetTitle": "Als Vorlage speichern",
+      "savePresetButton": "Vorlage speichern",
+      "chooseTemplate": "Vorlage auswählen",
+      "yourSavedPresets": "Ihre gespeicherten Vorlagen",
+      "industryTemplates": "Branchenvorlagen",
+      "applyTemplate": "Vorlage anwenden",
+      "apply": "Anwenden",
+      "applying": "Wird angewendet..."
+    },
+    "contractSources": {
+      "subtitle": "Verbinden Sie sich mit externen Systemen, um Verträge automatisch zu synchronisieren",
+      "addSource": "Quelle hinzufügen",
+      "configuredSources": "Konfigurierte Quellen",
+      "configuredSourcesDesc": "Verwalten Sie Ihre Vertragsquellenverbindungen und Synchronisierungseinstellungen",
+      "emptyTitle": "Keine Quellen konfiguriert",
+      "emptyDesc": "Verbinden Sie sich mit SharePoint, S3 oder anderem Speicher, um mit der Synchronisierung von Verträgen zu beginnen",
+      "addFirstSource": "Erste Quelle hinzufügen",
+      "addContractSource": "Vertragsquelle hinzufügen",
+      "addContractSourceDesc": "Verbinden Sie sich mit einem externen System, um Verträge automatisch zu synchronisieren",
+      "createSource": "Quelle erstellen",
+      "noSyncHistory": "Noch kein Synchronisierungsverlauf"
+    },
+    "apiTokens": {
+      "title": "API-Tokens",
+      "subtitlePart1": "Tokens authentifizieren Nutzer von",
+      "subtitlePart2": "Verwenden Sie",
+      "subtitlePart3": "um Verträge und Verpflichtungen aus Data Warehouses, BI-Tools oder anderen Systemen abzufragen.",
+      "newToken": "Neues Token",
+      "activeTokens": "Aktive Tokens",
+      "activeTokensDesc": "Es werden nur Token-Präfixe angezeigt. Das vollständige Token ist nur bei der Erstellung sichtbar.",
+      "loading": "Wird geladen…",
+      "noTokensYet": "Noch keine Tokens.",
+      "tokenCreatedTitle": "Token erstellt",
+      "createApiTokenTitle": "API-Token erstellen",
+      "tokenCreatedDesc": "Kopieren Sie dieses Token jetzt. Es wird nicht erneut angezeigt.",
+      "createTokenDesc": "Wählen Sie einen Namen und Berechtigungen. Das Token wird einmalig angezeigt.",
+      "copyToken": "Token kopieren",
+      "done": "Fertig",
+      "creating": "Wird erstellt…",
+      "createTokenButton": "Token erstellen"
+    },
+    "webhooks": {
+      "checkingAccess": "Zugriff auf Webhook-Einstellungen wird geprüft…",
+      "unableToLoadTitle": "Webhook-Einstellungen konnten nicht geladen werden",
+      "unableToLoadDesc": "Wir konnten nicht überprüfen, ob Sie ausgehende Webhooks verwalten können.",
+      "adminRequiredDesc": "Die Verwaltung von Webhook-Endpunkten ist auf Organisationsadministratoren und -inhaber beschränkt.",
+      "title": "Webhook-Endpunkte",
+      "subtitle": "Konfigurieren Sie ausgehende Webhook-Abonnenten und werfen Sie dann einen Blick auf den Zustellverlauf sowie das dauerhafte Integrationsereignisprotokoll, wenn ein Empfänger eine Wiederherstellung benötigt.",
+      "deliveries": "Zustellungen",
+      "eventLog": "Ereignisprotokoll",
+      "outboundSurface": "Ausgehende Oberfläche",
+      "outboundSurfaceDesc": "Die Konfiguration der Webhook-Endpunkte befindet sich hier. Verwenden Sie Zustellungen für Wiederholungsversuche und DLQ-Wiederherstellung sowie das Ereignisprotokoll für dauerhaftes Replay."
+    },
+    "webhookDeliveries": {
+      "checkingAccess": "Zugriff auf Webhook-Zustellungen wird geprüft…",
+      "unableToLoadTitle": "Webhook-Zustellungen konnten nicht geladen werden",
+      "unableToLoadDesc": "Wir konnten nicht überprüfen, ob Sie Zustellwiederholungen und DLQ-Status einsehen können.",
+      "adminRequiredDesc": "Die Überprüfung und Wiederherstellung von Webhook-Zustellungen ist auf Organisationsadministratoren und -inhaber beschränkt.",
+      "title": "Webhook-Zustellungen",
+      "subtitlePart1": "Überprüfen Sie ausgehende Webhook-Versuche. Fehlgeschlagene Zustellungen werden mit exponentiellem Backoff wiederholt; nach",
+      "subtitlePart2": "Versuchen werden sie in die Warteschlange für unzustellbare Nachrichten verschoben und können manuell erneut eingereiht werden.",
+      "eventLog": "Ereignisprotokoll",
+      "requeueDead": "Unzustellbare erneut einreihen",
+      "filters": "Filter",
+      "deliveriesHeading": "Zustellungen",
+      "loading": "Wird geladen…",
+      "noDeliveriesMatch": "Keine Zustellungen entsprechen den aktuellen Filtern.",
+      "requeue": "Erneut einreihen"
+    },
+    "integrationEvents": {
+      "checkingAccess": "Zugriff auf Integrationsereignisse wird geprüft…",
+      "unableToLoadTitle": "Integrationsereignisse konnten nicht geladen werden",
+      "unableToLoadDesc": "Wir konnten nicht überprüfen, ob Sie dauerhafte ausgehende Ereignisse durchsuchen und erneut abspielen können.",
+      "adminRequiredDesc": "Das Durchsuchen und erneute Abspielen dauerhafter Ereignisse ist auf Organisationsadministratoren und -inhaber beschränkt.",
+      "title": "Integrationsereignisse",
+      "subtitle": "Durchsuchen Sie das dauerhafte Protokoll ausgehender Ereignisse, das `/api/v1/events` zugrunde liegt. Nutzen Sie dies, um zu bestätigen, dass ein Ereignis aufgezeichnet wurde, selbst wenn nachgelagerte Webhooks fehlgeschlagen sind.",
+      "deliveries": "Zustellungen",
+      "filters": "Filter",
+      "eventLogHeading": "Ereignisprotokoll",
+      "loading": "Wird geladen…",
+      "noEventsMatch": "Keine Ereignisse entsprechen den aktuellen Filtern.",
+      "loadOlderEvents": "Ältere Ereignisse laden",
+      "replay": "Erneut abspielen"
+    },
+    "metadata": {
+      "title": "Einstellungen",
+      "subtitle": "Konfigurieren Sie Ihre Vertragsverwaltungseinstellungen",
+      "breadcrumbCurrent": "Metadatenkonfiguration",
+      "customSchema": "Benutzerdefiniertes Schema (v{version})",
+      "schemaStats": "Schema-Statistik",
+      "selectSection": "Bereich auswählen",
+      "selectSectionDesc": "Wählen Sie einen Einstellungsbereich aus der Seitenleiste zur Konfiguration.",
+      "soon": "Bald verfügbar",
+      "sections": {
+        "metadata": {
+          "label": "Metadatenfelder",
+          "description": "Benutzerdefinierte Felder für Verträge festlegen"
+        },
+        "templates": {
+          "label": "Vertragsvorlagen",
+          "description": "Vertragsvorlagen verwalten"
+        },
+        "categories": {
+          "label": "Kategorien & Tags",
+          "description": "Kategorisierung konfigurieren"
+        },
+        "ai": {
+          "label": "KI-Einstellungen",
+          "description": "KI-Extraktion konfigurieren"
+        },
+        "team": {
+          "label": "Team & Berechtigungen",
+          "description": "Teamzugriff verwalten"
+        },
+        "notifications": {
+          "label": "Benachrichtigungen",
+          "description": "Benachrichtigungseinstellungen"
+        },
+        "security": {
+          "label": "Sicherheit",
+          "description": "Sicherheitseinstellungen"
+        },
+        "branding": {
+          "label": "Branding",
+          "description": "Erscheinungsbild anpassen"
+        }
+      }
+    }
+  },
+  "workflows": {
+    "title": "Workflows",
+    "subtitle": "Genehmigungen und Automatisierungen an einem Ort verwalten",
+    "unified": "Vereinheitlicht",
+    "tabs": {
+      "queue": "Warteschlange",
+      "automation": "Automatisierung",
+      "templates": "Vorlagen"
+    },
+    "stats": {
+      "total": "Gesamt",
+      "pending": "Ausstehend",
+      "active": "Aktiv",
+      "inactive": "Inaktiv",
+      "executions": "Ausführungen"
+    },
+    "newWorkflow": "Neuer Workflow",
+    "backToWorkflows": "Zurück zu Workflows",
+    "loading": "Workflows werden geladen...",
+    "empty": {
+      "title": "Noch keine Workflows",
+      "description": "Erstellen Sie Ihren ersten automatisierten Workflow, um Vertragsgenehmigungen zu optimieren.",
+      "createWorkflow": "Workflow erstellen",
+      "useTemplate": "Vorlage verwenden"
+    },
+    "copy": "Kopieren",
+    "pause": "Pausieren",
+    "activate": "Aktivieren",
+    "templatesTab": {
+      "heading": "Schnellstart-Vorlagen",
+      "subtitle": "Wählen Sie eine Vorlage für einen schnellen Start oder übertragen Sie alle Vorlagen in Ihre Datenbank",
+      "seedAll": "Alle Vorlagen in Datenbank übertragen",
+      "needCustom": "Etwas Individuelles benötigt?",
+      "createFromScratch": "Von Grund auf neu erstellen"
+    },
+    "overdue": "ÜBERFÄLLIG",
+    "requestStatus": {
+      "all": "Alle",
+      "allStatuses": "Alle Status",
+      "submitted": "Eingereicht",
+      "inTriage": "In Sichtung",
+      "approved": "Genehmigt",
+      "inProgress": "In Bearbeitung",
+      "completed": "Abgeschlossen",
+      "rejected": "Abgelehnt",
+      "cancelled": "Storniert"
+    },
+    "requestsHub": {
+      "title": "Vertragsanfragen",
+      "subtitle": "Vertragsanfragen erfassen, sichten und verfolgen",
+      "newRequest": "Neue Anfrage",
+      "tabs": {
+        "triage": "Sichtungs-Posteingang",
+        "all": "Alle Anfragen",
+        "myRequests": "Meine Anfragen"
+      },
+      "metrics": {
+        "total": "Gesamt",
+        "slaBreached": "SLA verletzt",
+        "escalated": "Eskaliert"
+      },
+      "triageAction": "Sichten",
+      "approveAction": "Genehmigen",
+      "rejectAction": "Ablehnen",
+      "emptyTitle": "Keine Anfragen gefunden",
+      "emptyDescriptionFiltered": "Passen Sie Ihre Filter an, um mehr Ergebnisse zu sehen.",
+      "emptyDescriptionDefault": "Erstellen Sie eine neue Vertragsanfrage, um loszulegen."
+    },
+    "myRequestsPage": {
+      "hub": "Hub",
+      "title": "Meine Anfragen",
+      "subtitle": "Verfolgen Sie den Status Ihrer Vertragsanfragen",
+      "clearFilter": "Filter zurücksetzen",
+      "emptyDescriptionFiltered": "Versuchen Sie, Ihren Filter zurückzusetzen",
+      "emptyDescriptionDefault": "Reichen Sie Ihre erste Vertragsanfrage ein, um loszulegen"
+    }
+  },
+  "obligations": {
+    "tracker": {
+      "title": "Verpflichtungs-Tracker",
+      "subtitle": "KI-gestützte Überwachung von Vertragsverpflichtungen und Compliance-Tracking"
+    },
+    "tabs": {
+      "overview": "Übersicht",
+      "all": "Alle Verpflichtungen",
+      "calendar": "Kalender"
+    },
+    "actions": {
+      "addObligation": "Verpflichtung hinzufügen",
+      "adding": "Wird hinzugefügt...",
+      "complete": "Abschließen",
+      "retry": "Erneut versuchen"
+    },
+    "dialog": {
+      "addTitle": "Neue Verpflichtung hinzufügen",
+      "addDescription": "Erstellen Sie eine manuelle Verpflichtung zur Nachverfolgung. Verpflichtungen können auch automatisch aus Verträgen extrahiert werden."
+    },
+    "confirmComplete": {
+      "title": "Verpflichtung als abgeschlossen markieren",
+      "description": "Möchten Sie diese Verpflichtung wirklich als abgeschlossen markieren? Dabei wird der Abschlusszeitpunkt erfasst.",
+      "confirmLabel": "Als abgeschlossen markieren"
+    },
+    "loading": "Verpflichtungs-Dashboard wird geladen...",
+    "loadError": {
+      "title": "Ihre Verpflichtungen konnten nicht geladen werden"
+    },
+    "kpi": {
+      "total": "Verpflichtungen gesamt",
+      "complianceRate": "Compliance-Quote",
+      "overdue": "Überfällig",
+      "completedThisWeek": "Diese Woche abgeschlossen"
+    },
+    "sections": {
+      "criticalItems": {
+        "title": "Kritische Punkte",
+        "description": "Verpflichtungen, die sofortige Aufmerksamkeit erfordern"
+      },
+      "upcomingDeadlines": {
+        "title": "Anstehende Fristen",
+        "description": "Nächste 7 Tage"
+      },
+      "statusBreakdown": {
+        "title": "Statusübersicht"
+      }
+    },
+    "empty": {
+      "noCriticalItems": "Keine kritischen Punkte!",
+      "noUpcomingDeadlines": "Keine anstehenden Fristen",
+      "noObligationsFound": "Keine Verpflichtungen gefunden",
+      "tryAdjustingFilters": "Passen Sie Ihre Filter an, um Verpflichtungen zu finden",
+      "autoExtractHint": "Verpflichtungen werden automatisch mithilfe von KI aus Ihren Verträgen extrahiert. Laden Sie einen Vertrag hoch, um zu beginnen."
+    },
+    "combined": {
+      "title": "Verlängerungen & Verpflichtungen",
+      "subtitle": "Behalten Sie auslaufende Verträge und anstehende Verpflichtungen im Blick — Ihr tägliches Wert-Dashboard",
+      "failedToLoad": "Dashboard konnte nicht geladen werden",
+      "tabs": {
+        "overview": "Übersicht",
+        "renewals": "Auslaufende Verträge",
+        "obligations": "Verpflichtungen"
+      },
+      "kpi": {
+        "expiringUnder30": "Läuft in <30 Tagen aus",
+        "alreadyExpired": "{count} bereits abgelaufen",
+        "valueAtRisk": "Gefährdeter Wert (90 Tage)",
+        "contractsCount": "{count} Verträge",
+        "urgentObligations": "Dringende Verpflichtungen",
+        "overdueCount": "{count} überfällig",
+        "completed30d": "Abgeschlossen (30 Tage)",
+        "upcoming90d": "{count} anstehend (90 Tage)"
+      },
+      "sections": {
+        "topRenewals": "Wichtigste Verlängerungen",
+        "topObligations": "Wichtigste Verpflichtungen",
+        "viewAll": "Alle anzeigen"
+      },
+      "allExpiringContracts": {
+        "title": "Alle auslaufenden Verträge (nächste 90 Tage)",
+        "description": "{count} Verträge erfordern Aufmerksamkeit"
+      },
+      "urgentObligationsTable": {
+        "title": "Dringende Verpflichtungen",
+        "description": "{count} Verpflichtungen fällig innerhalb von 30 Tagen oder überfällig"
+      },
+      "empty": {
+        "noExpiringContracts": "Keine auslaufenden Verträge gefunden",
+        "noUrgentObligations": "Keine dringenden Verpflichtungen gefunden",
+        "noContractsExpiring90": "Keine Verträge laufen in den nächsten 90 Tagen aus"
+      },
+      "urgency": {
+        "expired": "Abgelaufen",
+        "critical": "Kritisch",
+        "urgent": "Dringend",
+        "high": "Hoch",
+        "medium": "Mittel"
+      }
+    },
+    "renewalManager": {
+      "title": "Verlängerungsverwaltung",
+      "subtitle": "Behalten Sie anstehende Vertragsverlängerungen im Blick und verwalten Sie diese",
+      "loading": "Verlängerungen werden geladen...",
+      "actions": {
+        "export": "Exportieren",
+        "refresh": "Aktualisieren",
+        "initiateRenewal": "Verlängerung einleiten",
+        "viewApprovals": "Genehmigungen anzeigen",
+        "sendReminders": "Erinnerungen senden",
+        "bulkActions": "Massenaktionen"
+      },
+      "stats": {
+        "totalRenewals": "Verlängerungen gesamt",
+        "dueIn30Days": "Fällig in 30 Tagen",
+        "autoRenewal": "Automatische Verlängerung",
+        "actionNeeded": "Handlungsbedarf",
+        "totalValue": "Gesamtwert",
+        "savingsIdentified": "Ermittelte Einsparungen"
+      },
+      "status": {
+        "upcoming": "Anstehend",
+        "urgent": "Dringend",
+        "inNegotiation": "In Verhandlung",
+        "pendingReview": "Prüfung ausstehend",
+        "completed": "Abgeschlossen",
+        "expired": "Abgelaufen",
+        "unknown": "Unbekannt"
+      },
+      "recommendation": {
+        "renew": "Verlängern",
+        "renegotiate": "Neu verhandeln",
+        "terminate": "Kündigen",
+        "review": "Prüfen",
+        "unknown": "Unbekannt"
+      },
+      "approvalStatus": {
+        "pending": "Genehmigung ausstehend",
+        "approved": "Genehmigt",
+        "rejected": "Abgelehnt"
+      },
+      "empty": {
+        "title": "Keine Verlängerungen gefunden",
+        "filtered": "Keine Verlängerungen entsprechen Ihren aktuellen Filtern. Passen Sie Ihre Suche oder Filterkriterien an.",
+        "none": "Es wurden keine Verträge mit anstehenden Verlängerungsterminen gefunden. Laden Sie Verträge mit Ablaufdaten hoch, um sie hier zu sehen."
+      },
+      "initiateModal": {
+        "title": "Verlängerung einleiten",
+        "subtitle": "Verlängerungsprozess starten",
+        "chooseNextStep": "Nächsten Schritt wählen",
+        "description": "Durch das Einleiten der Verlängerung wird der Workflow aktiviert. Anschließend gelangen Sie entweder in den geführten Verlängerungsassistenten oder in den KI-Copilot mit dem geladenen Ausgangsvertrag.",
+        "openCopilot": "KI-Copilot öffnen",
+        "openWizard": "Verlängerungsassistent öffnen"
+      },
+      "bulkMenu": {
+        "initiateSelected": "Auswahl einleiten",
+        "toggleAutoRenewal": "Automatische Verlängerung umschalten",
+        "markComplete": "Als abgeschlossen markieren",
+        "selectAllVisible": "Alle sichtbaren auswählen",
+        "clearSelection": "Auswahl aufheben"
+      }
+    },
+    "deadlineDashboard": {
+      "title": "Fristen- & Verpflichtungs-Dashboard",
+      "subtitle": "Behalten Sie Vertragsfristen, Verlängerungen und wichtige Meilensteine im Blick",
+      "loading": "Fristen werden geladen...",
+      "actions": {
+        "refresh": "Aktualisieren",
+        "configureAlerts": "Benachrichtigungen konfigurieren",
+        "viewContract": "Vertrag anzeigen"
+      },
+      "stats": {
+        "overdue": "Überfällig",
+        "dueSoon": "Bald fällig",
+        "upcoming": "Anstehend",
+        "total": "Gesamt"
+      },
+      "views": {
+        "timeline": "Zeitleiste",
+        "list": "Liste",
+        "calendar": "Kalender"
+      },
+      "resultsTitle": {
+        "timeline": "Zeitleistenansicht",
+        "list": "Listenansicht",
+        "calendar": "Kalenderansicht"
+      },
+      "status": {
+        "overdue": "Überfällig",
+        "dueSoon": "Bald fällig",
+        "upcoming": "Anstehend",
+        "completed": "Abgeschlossen",
+        "unknown": "Unbekannt"
+      },
+      "empty": "Keine Fristen gefunden, die Ihren Filtern entsprechen",
+      "notifications": {
+        "title": "Automatische Benachrichtigungen",
+        "description": "Konfigurieren Sie E-Mail-Benachrichtigungen für anstehende Fristen. Werden Sie 30, 14 und 7 Tage vor jeder Frist benachrichtigt.",
+        "setupAlerts": "E-Mail-Benachrichtigungen einrichten",
+        "exportToCalendar": "In Kalender exportieren"
+      }
+    }
+  },
+  "suppliers": {
+    "title": "Lieferantenverwaltung",
+    "description": "Lieferantenprofile, Risikobewertungen und Verträge anzeigen und verwalten",
+    "loadingDescription": "Lieferantenprofile und Risiko verwalten",
+    "actions": {
+      "analytics": "Analysen",
+      "addVendor": "Lieferant hinzufügen"
+    },
+    "kpi": {
+      "totalVendors": "Lieferanten gesamt",
+      "highRisk": "Hohes Risiko",
+      "compliant": "Konform",
+      "pendingReview": "Prüfung ausstehend"
+    },
+    "list": {
+      "title": "Lieferanten ({count})"
+    },
+    "empty": {
+      "noVendors": "Noch keine Lieferanten — fügen Sie Ihren ersten Lieferanten hinzu",
+      "noMatch": "Keine Lieferanten entsprechen den aktuellen Filtern"
+    },
+    "rateCardsDashboard": {
+      "title": "Tarifkarten-Dashboard",
+      "subtitle": "Portfolio-Zustand überwachen und Einsparpotenziale identifizieren",
+      "actions": {
+        "importRateCards": "Tarifkarten importieren",
+        "addRateCard": "Tarifkarte hinzufügen"
+      },
+      "sections": {
+        "clientNegotiation": "Kunden- und Verhandlungsübersicht",
+        "portfolioOverview": "Portfolioübersicht",
+        "financialPerformance": "Finanzielle Leistung",
+        "performanceIndicators": "Leistungsindikatoren"
+      },
+      "empty": {
+        "noClientData": "Noch keine Kundendaten",
+        "noClientDataDesc": "Tarifkarten importieren, um die Kundenübersicht zu sehen",
+        "noBaselineData": "Noch keine Baseline-Daten",
+        "noBaselineDataDesc": "Baselines festlegen, um Änderungen zu verfolgen",
+        "noNegotiationData": "Noch keine Verhandlungsdaten",
+        "noNegotiationDataDesc": "Starten Sie einen Benchmark, um den Status zu sehen"
+      }
+    },
+    "spend": {
+      "title": "Ausgabenmanagement",
+      "subtitle": "Bestellungen, Rechnungen, 3-Wege-Abgleich und Budgetverfolgung",
+      "actions": {
+        "newPO": "Neue Bestellung",
+        "newInvoice": "Neue Rechnung"
+      },
+      "tabs": {
+        "overview": "Übersicht",
+        "purchaseOrders": "Bestellungen",
+        "invoices": "Rechnungen",
+        "exceptions": "Ausnahmen"
+      },
+      "kpi": {
+        "totalPOs": "Bestellungen gesamt",
+        "totalInvoices": "Rechnungen gesamt",
+        "matched": "Abgeglichen",
+        "discrepancies": "Abweichungen"
+      },
+      "empty": {
+        "noPurchaseOrders": "Keine Bestellungen",
+        "noInvoices": "Keine Rechnungen",
+        "noExceptions": "Keine Ausnahmen"
+      }
+    }
+  },
+  "drafting": {
+    "hero": {
+      "wordDraft": "Entwerfen",
+      "wordNegotiate": "Verhandeln",
+      "wordRedline": "Überarbeiten",
+      "wordClose": "Abschließen",
+      "headlineSuffix": "– so schnell",
+      "headlineEnd": "wie der Gedanke.",
+      "subtitle": "Beschreiben Sie den Vertrag, den Sie benötigen. Contigo erstellt ihn anhand Ihres Playbooks, Ihrer Sprache und Ihrer freigegebenen Klauseln — in Sekunden.",
+      "promptPlaceholder": "Entwerfen Sie eine NDA für ein Software-Beratungsprojekt, 2 Jahre Laufzeit, gegenseitig…",
+      "generate": "Generieren",
+      "startBlank": "Leer starten",
+      "popular": "Beliebt",
+      "recent": "Zuletzt verwendet"
+    },
+    "continueCard": {
+      "eyebrow": "Dort weitermachen, wo Sie aufgehört haben",
+      "resume": "Fortsetzen"
+    },
+    "tabs": {
+      "drafts": "Entwürfe",
+      "pickUpTitle": "Machen Sie dort weiter, wo Sie aufgehört haben",
+      "pickUpSubtitle": "Wechseln Sie zwischen aktuellen Entwürfen und freigegebenen Vorlagen."
+    },
+    "search": {
+      "drafts": "Entwürfe durchsuchen...",
+      "templates": "Vorlagen durchsuchen..."
+    },
+    "draftsTab": {
+      "loadError": "Ihre Entwürfe konnten nicht geladen werden",
+      "empty": {
+        "titleFiltered": "Keine Entwürfe gefunden",
+        "titleEmpty": "Noch keine Entwürfe",
+        "descFiltered": "Keine Entwürfe entsprechen \"{query}\". Versuchen Sie eine andere Suche.",
+        "descEmpty": "Erstellen Sie Ihren ersten Vertragsentwurf von Grund auf, aus einer Vorlage, oder lassen Sie die KI einen für Sie generieren.",
+        "blankDocument": "Leeres Dokument",
+        "fromTemplate": "Aus Vorlage"
+      }
+    },
+    "templatesTab": {
+      "emptyTitleFiltered": "Keine Vorlagen gefunden",
+      "emptyTitleEmpty": "Keine aktiven Vorlagen",
+      "emptyDescFiltered": "Keine Vorlagen entsprechen \"{query}\".",
+      "emptyDescEmpty": "Erstellen Sie Vorlagen auf der Vorlagenseite, um sie hier zu verwenden.",
+      "goToTemplates": "Zu den Vorlagen",
+      "viewAll": "Alle Vorlagen anzeigen"
+    },
+    "previewDialog": {
+      "useTemplate": "Vorlage verwenden"
+    },
+    "templatesPage": {
+      "title": "Vertragsvorlagen",
+      "subtitle": "Wiederverwendbare Verträge mit Variablen und Klauseln. Starten Sie mit einer Vorlage und entwerfen Sie in Sekunden.",
+      "createTemplate": "Vorlage erstellen",
+      "searchPlaceholder": "Vorlagen nach Name, Beschreibung oder Tag durchsuchen…",
+      "use": "Verwenden",
+      "stats": {
+        "total": "Vorlagen gesamt",
+        "active": "Aktiv",
+        "drafts": "Entwürfe",
+        "totalUses": "Verwendungen gesamt"
+      },
+      "empty": {
+        "title": "Bauen Sie Ihre Vorlagenbibliothek auf",
+        "description": "Verwandeln Sie Ihre meistgenutzten Verträge in wiederverwendbare Vorlagen mit Variablen und Klauselblöcken. Sparen Sie bei jedem neuen Deal Stunden.",
+        "cta": "Erste Vorlage erstellen"
+      },
+      "noResults": {
+        "description": "Keine Vorlagen entsprechen Ihren aktuellen Filtern.",
+        "clearFilters": "Filter zurücksetzen"
+      },
+      "error": {
+        "title": "Vorlagen konnten nicht geladen werden.",
+        "description": "Überprüfen Sie Ihre Verbindung und versuchen Sie es erneut. Falls das Problem weiterhin besteht, laden Sie die Seite neu.",
+        "retry": "Erneut versuchen"
+      },
+      "deleteDialog": {
+        "title": "Vorlage löschen?",
+        "description": "\"{name}\" wird endgültig gelöscht. Dies kann nicht rückgängig gemacht werden."
+      }
+    },
+    "playbooksPage": {
+      "title": "Rechtliche Playbooks",
+      "subtitle": "Definieren Sie bevorzugte Klauseln, Risikoschwellen und Verhandlungspositionen für die automatisierte Vertragsprüfung",
+      "importPolicyPack": "Policy Pack importieren",
+      "newPlaybook": "Neues Playbook",
+      "searchPlaceholder": "Playbooks durchsuchen...",
+      "stats": {
+        "total": "Playbooks gesamt",
+        "default": "Standard",
+        "totalClauses": "Klauseln gesamt",
+        "redFlags": "Warnsignale"
+      },
+      "error": {
+        "title": "Playbooks konnten nicht geladen werden",
+        "retry": "Erneut versuchen"
+      },
+      "empty": {
+        "titleFiltered": "Keine Playbooks entsprechen Ihrer Suche",
+        "titleEmpty": "Noch keine Playbooks",
+        "descFiltered": "Versuchen Sie einen anderen Suchbegriff",
+        "descEmpty": "Erstellen Sie Ihr erstes rechtliches Playbook, um die Vertragsprüfung zu standardisieren",
+        "cta": "Playbook erstellen"
+      },
+      "detailDialog": {
+        "useInDrafting": "Im Drafting verwenden"
+      },
+      "deleteDialog": {
+        "title": "Playbook löschen",
+        "description": "Möchten Sie \"{name}\" wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden."
+      },
+      "formDialog": {
+        "createTitle": "Neues Playbook erstellen",
+        "editTitle": "Playbook bearbeiten",
+        "createDescription": "Definieren Sie ein rechtliches Playbook für die standardisierte Vertragsprüfung",
+        "editDescription": "Playbook-Einstellungen und Schwellenwerte aktualisieren",
+        "createSubmit": "Playbook erstellen",
+        "editSubmit": "Änderungen speichern"
+      },
+      "importDialog": {
+        "title": "Policy Pack importieren",
+        "description": "Laden Sie ein standardisiertes JSON-Policy-Pack hoch und wandeln Sie es in ein wiederverwendbares Drafting-Playbook um.",
+        "sampleJson": "Beispiel-JSON",
+        "submit": "Policy Pack importieren"
+      }
+    },
+    "clausesLibrary": {
+      "title": "Klauselbibliothek",
+      "subtitle": "Standardvertragsklauseln zum schnellen Einfügen",
+      "uploadClauses": "Klauseln hochladen",
+      "newClause": "Neue Klausel",
+      "searchPlaceholder": "Klauseln durchsuchen...",
+      "stats": {
+        "clauses": "{count} Klauseln",
+        "favorites": "{count} Favoriten"
+      },
+      "empty": {
+        "title": "Keine Klauseln gefunden",
+        "description": "Passen Sie Ihre Filter an, erstellen Sie eine Klausel oder laden Sie eine Klauselbibliothek hoch"
+      },
+      "detailDialog": {
+        "copyToClipboard": "In Zwischenablage kopieren",
+        "insertClause": "Klausel einfügen"
+      },
+      "newClauseDialog": {
+        "title": "Neue Klausel erstellen",
+        "description": "Fügen Sie Ihrer Bibliothek eine neue Standardklausel hinzu",
+        "submit": "Klausel erstellen"
+      }
+    }
+  },
+  "governance": {
+    "title": "KI-Leitplanken & Governance",
+    "subtitle": "Richtliniendurchsetzung, Risikomanagement und Prüfkontrollen",
+    "askAi": "KI fragen",
+    "configure": "Konfigurieren",
+    "tabs": {
+      "policies": "Richtlinien",
+      "flags": "Risikomarkierungen",
+      "audit": "Prüfprotokoll",
+      "thresholds": "Schwellenwerte"
+    },
+    "viewRules": "Regeln anzeigen",
+    "editPolicy": "Richtlinie bearbeiten",
+    "resolveFlag": "Beheben",
+    "dismissFlag": "Verwerfen",
+    "addThreshold": "Schwellenwert hinzufügen",
+    "automatedThresholds": "Automatisierte Schwellenwerte",
+    "loading": "Governance-Daten werden geladen…",
+    "emptyAudit": {
+      "title": "Keine Prüfprotokolleinträge gefunden",
+      "description": "Aktivitäten werden hier angezeigt, sobald Aktionen ausgeführt werden"
+    }
+  },
+  "migration": {
+    "subtitle": "Importieren Sie Ihr bestehendes Vertragsportfolio per Massenimport aus CSV oder Excel.",
+    "steps": {
+      "mapping": "Spalten zuordnen",
+      "review": "Überprüfung",
+      "complete": "Abgeschlossen"
+    },
+    "upload": {
+      "dropTitle": "Datei hier ablegen",
+      "dropDescription": "CSV oder Excel mit bis zu 1000 Zeilen"
+    },
+    "selectFile": "Datei auswählen",
+    "downloadTemplate": "Vorlage herunterladen",
+    "mapping": {
+      "requiredFields": "Pflichtfelder",
+      "optionalFields": "Optionale Felder"
+    },
+    "importContracts": "Verträge importieren",
+    "complete": {
+      "title": "Migration abgeschlossen",
+      "imported": "Importiert",
+      "skipped": "Übersprungen",
+      "errors": "Fehler",
+      "validationIssues": "Validierungsprobleme",
+      "importedContracts": "Importierte Verträge",
+      "importAnother": "Weitere Datei importieren",
+      "viewContracts": "Verträge anzeigen"
+    }
+  },
+  "admin": {
+    "title": "Organisationseinstellungen",
+    "subtitle": "Verwalten Sie Ihre Organisation, Teammitglieder und Einstellungen",
+    "inviteMember": "Mitglied einladen",
+    "sendInvitation": "Einladung senden",
+    "sendingInvitation": "Wird gesendet...",
+    "createAccount": "Konto erstellen",
+    "creatingAccount": "Wird erstellt...",
+    "noPendingInvitations": "Keine ausstehenden Einladungen",
+    "upgradePlan": "Plan upgraden",
+    "deletionUnavailable": "Löschung in der App nicht verfügbar",
+    "tenantRemovalDisabled": "Die Entfernung des Mandanten ist hier bewusst deaktiviert, da keine passende Self-Service-Backend-Route vorhanden ist.",
+    "saving": "Wird gespeichert...",
+    "tabs": {
+      "team": "Team",
+      "invitations": "Einladungen",
+      "accessGroups": "Zugriffsgruppen",
+      "aiAccuracy": "KI-Genauigkeit"
+    },
+    "stats": {
+      "teamMembers": "Teammitglieder",
+      "contracts": "Verträge",
+      "storageUsed": "Genutzter Speicher",
+      "plan": "Plan"
+    },
+    "sections": {
+      "teamMembersTitle": "Teammitglieder",
+      "teamMembersDescription": "Verwalten Sie Ihr Team und dessen Berechtigungen",
+      "pendingInvitationsTitle": "Ausstehende Einladungen",
+      "pendingInvitationsDescription": "Ausstehende Teameinladungen verfolgen und verwalten",
+      "organizationDetailsTitle": "Organisationsdetails",
+      "organizationDetailsDescription": "Aktualisieren Sie Ihre Organisationsinformationen",
+      "subscriptionTitle": "Abonnement",
+      "subscriptionDescription": "Ihr aktueller Plan und Ihre Nutzung",
+      "dangerZoneTitle": "Gefahrenzone",
+      "dangerZoneDescription": "Unwiderrufliche Aktionen – mit Vorsicht fortfahren"
+    },
+    "roles": {
+      "owner": "Inhaber",
+      "admin": "Admin",
+      "member": "Mitglied",
+      "viewer": "Betrachter"
+    },
+    "aiAccuracy": {
+      "overallAccuracy": "Gesamtgenauigkeit",
+      "correctExtractions": "Korrekte Extraktionen",
+      "correctionsMade": "Vorgenommene Korrekturen",
+      "totalFeedback": "Gesamtes Feedback",
+      "fieldAccuracyTitle": "Feldgenauigkeit",
+      "fieldAccuracyDescription": "Genauigkeit nach extrahiertem Feld – Felder mit der niedrigsten Genauigkeit zuerst",
+      "noDataYet": "Noch keine Extraktionsdaten. Die Genauigkeitsverfolgung beginnt, sobald Benutzer Feedback zu extrahierten Feldern geben.",
+      "noFieldData": "Noch keine Felddaten",
+      "recommendationsTitle": "KI-Empfehlungen",
+      "quality": {
+        "excellent": "Ausgezeichnet",
+        "good": "Gut",
+        "needsImprovement": "Verbesserungswürdig",
+        "poor": "Schlecht"
+      }
+    },
+    "audit": {
+      "unableToLoadTitle": "Audit-Protokolle konnten nicht geladen werden",
+      "unableToLoadDescription": "Wir konnten nicht überprüfen, ob Sie mandantenweite Audit-Aktivitäten derzeit einsehen können.",
+      "adminAccessRequiredTitle": "Administratorzugriff erforderlich",
+      "adminAccessRequiredDescription": "Mandantenweite Audit-Protokolle und Compliance-Aktivitäten sind auf Organisationsadministratoren und -inhaber beschränkt.",
+      "subtitle": "Systemaktivität und Compliance-Verfolgung",
+      "backToDashboard": "Zurück zum Dashboard",
+      "retry": "Erneut versuchen",
+      "liveMonitoring": "Live-Überwachung",
+      "compliance": "Compliance",
+      "fadpCompliant": "FADP-konform"
+    },
+    "queue": {
+      "title": "Import-Warteschlangen-Manager",
+      "subtitle": "Vertragsverarbeitungsjobs überwachen und verwalten",
+      "autoRefreshOn": "Auto-Aktualisierung EIN",
+      "autoRefreshOff": "Auto-Aktualisierung AUS",
+      "retry": "Wiederholen",
+      "configureLimits": "Limits konfigurieren",
+      "dataConnections": "Datenverbindungen",
+      "noQueues": "Keine Warteschlangen verfügbar",
+      "noQueuesHint": "Das Warteschlangensystem wird möglicherweise noch initialisiert...",
+      "noJobs": "Keine aktuellen Jobs",
+      "paused": "Pausiert",
+      "sections": {
+        "activeImportBatches": "Aktive Import-Batches",
+        "processingQueues": "Verarbeitungswarteschlangen",
+        "recentJobs": "Aktuelle Jobs",
+        "processingConfiguration": "Verarbeitungskonfiguration"
+      },
+      "overview": {
+        "waiting": "Wartend",
+        "processing": "In Verarbeitung",
+        "completed": "Abgeschlossen",
+        "failed": "Fehlgeschlagen"
+      },
+      "miniStats": {
+        "waiting": "Wartend",
+        "active": "Aktiv",
+        "done": "Fertig",
+        "failed": "Fehlgeschlagen",
+        "delayed": "Verzögert"
+      },
+      "jobStatus": {
+        "waiting": "wartend",
+        "active": "aktiv",
+        "completed": "abgeschlossen",
+        "failed": "fehlgeschlagen",
+        "delayed": "verzögert"
+      },
+      "batchStatus": {
+        "pending": "ausstehend",
+        "processing": "in Verarbeitung",
+        "completed": "abgeschlossen",
+        "paused": "pausiert",
+        "failed": "fehlgeschlagen"
+      }
+    },
+    "integrations": {
+      "title": "Datenverbindungen",
+      "subtitle": "Externe Datenbanken und Dokumentenspeicher verbinden, um Verträge zu synchronisieren",
+      "howItWorksTitle": "So funktionieren Datenverbindungen",
+      "addConnection": "Verbindung hinzufügen",
+      "addFirstConnection": "Erste Verbindung hinzufügen",
+      "saveConnection": "Verbindung speichern",
+      "saving": "Wird gespeichert...",
+      "testing": "Wird getestet...",
+      "loadingConnections": "Verbindungen werden geladen...",
+      "noConnectionsTitle": "Keine Datenverbindungen",
+      "noConnectionsDescription": "Verbinden Sie Ihre externen Datenbanken oder Dokumentenspeicher, um Verträge zu synchronisieren. ConTigo kann Dateien referenzieren, ohne sie aus Ihrem System zu verschieben.",
+      "activeConnectionsTitle": "Aktive Verbindungen",
+      "securityTitle": "Sicherheit & Verschlüsselung",
+      "status": {
+        "connected": "verbunden",
+        "disconnected": "getrennt",
+        "error": "Fehler",
+        "syncing": "wird synchronisiert"
+      }
+    }
+  },
+  "search": {
+    "title": "Intelligente Suche",
+    "subtitle": "KI-gestützte semantische Suche über alle Verträge und Artefakte"
   }
 }
