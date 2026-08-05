@@ -642,7 +642,21 @@ async function handleMerchantQuery(
   // Detect intent: general RFx query
   const isRfxRequest = lowerMsg.match(/\b(rfx|rfp|rfq|bid|award|vendor|supplier|procurement|sourcing)\b/i);
 
-  // ── Create RFx via direct Prisma call (no HTTP round-trip) ─────────────
+  // ── Create RFx via direct Prisma call (draft only; gated) ─────────────
+  // Opt-in: RFX_CHAT_CREATE_ENABLED=true. Default off so chat cannot mutate
+  // procurement state without explicit ops enablement (agent-readiness HITL).
+  if (isCreateRequest && process.env.RFX_CHAT_CREATE_ENABLED !== 'true') {
+    return {
+      content:
+        "I can prepare an RFx for you, but **chat-based creation is currently disabled** for safety.\n\n" +
+        "Use the **RFx Studio** tab to create events with full review, or ask your admin to set `RFX_CHAT_CREATE_ENABLED=true` after HITL review.",
+      actions: [
+        { type: 'navigate', label: 'Open RFx Studio', payload: { path: '/contigo-labs?tab=rfx-studio' } },
+      ],
+      confidence: 0.95,
+    };
+  }
+
   if (isCreateRequest) {
     // Extract title from message
     const titleMatch = message.match(/(?:for|called|titled|named)\s+"?([^"]+)"?$/i)
@@ -977,8 +991,8 @@ async function handleSentinelQuery(
 ): Promise<AgentResponse> {
   // If a specific contract is in context, validate it
   if (context?.contractId) {
-    const contract = await prisma.contract.findUnique({
-      where: { id: context.contractId },
+    const contract = await prisma.contract.findFirst({
+      where: { id: context.contractId, tenantId },
       include: { clauses: true },
     });
 
@@ -1237,8 +1251,8 @@ async function handleMemorykeeperQuery(
 ): Promise<AgentResponse> {
   if (context?.contractId) {
     const [contract, artifacts] = await Promise.all([
-      prisma.contract.findUnique({
-        where: { id: context.contractId },
+      prisma.contract.findFirst({
+        where: { id: context.contractId, tenantId },
         select: { id: true, contractTitle: true, status: true, createdAt: true, updatedAt: true },
       }),
       prisma.artifact.findMany({
@@ -1639,7 +1653,9 @@ async function buildEnrichedContext(context: any, tenantId: string): Promise<any
         log.info({ contractId: context.contractId, durationMs: deepCtx._meta?.enrichmentTimeMs }, 'Deep context enrichment succeeded');
         // Return early — we already have everything
         if (context.rfxId) {
-          const rfx = await prisma.rFxEvent.findUnique({ where: { id: context.rfxId } });
+          const rfx = await prisma.rFxEvent.findFirst({
+            where: { id: context.rfxId, tenantId },
+          });
           enriched.rfxDetails = rfx;
         }
         return enriched;
@@ -1649,8 +1665,8 @@ async function buildEnrichedContext(context: any, tenantId: string): Promise<any
     }
 
     // Fallback: basic enrichment
-    const contract = await prisma.contract.findUnique({
-      where: { id: context.contractId },
+    const contract = await prisma.contract.findFirst({
+      where: { id: context.contractId, tenantId },
       include: {
         clauses: { take: 10 },
       },
@@ -1659,8 +1675,8 @@ async function buildEnrichedContext(context: any, tenantId: string): Promise<any
   }
 
   if (context?.rfxId) {
-    const rfx = await prisma.rFxEvent.findUnique({
-      where: { id: context.rfxId },
+    const rfx = await prisma.rFxEvent.findFirst({
+      where: { id: context.rfxId, tenantId },
     });
     enriched.rfxDetails = rfx;
   }
