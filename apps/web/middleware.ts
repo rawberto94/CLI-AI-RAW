@@ -430,6 +430,38 @@ function getRequestOrigin(req: NextRequest): string {
   return `${protocol}://${host}`;
 }
 
+/** Production canonical host — bare apex must redirect here. */
+const CANONICAL_HOST = 'www.mycontigo.app';
+const APEX_HOSTS = new Set(['mycontigo.app']);
+
+function getRequestHostname(req: NextRequest): string {
+  const hostHeader = (
+    req.headers.get('x-forwarded-host') ||
+    req.headers.get('host') ||
+    req.nextUrl.host ||
+    ''
+  )
+    .split(',')[0]
+    .trim()
+    .toLowerCase();
+  // Strip port if present (e.g. localhost:3000)
+  return hostHeader.split(':')[0];
+}
+
+/**
+ * Permanent apex → www redirect so auth cookies, NEXTAUTH_URL, and SEO
+ * all live on a single host (www.mycontigo.app).
+ */
+function redirectApexToWww(req: NextRequest): NextResponse | null {
+  const hostname = getRequestHostname(req);
+  if (!APEX_HOSTS.has(hostname)) return null;
+  const dest = new URL(
+    `${req.nextUrl.pathname}${req.nextUrl.search}`,
+    `https://${CANONICAL_HOST}`,
+  );
+  return NextResponse.redirect(dest, 308);
+}
+
 function buildRequestUrl(req: NextRequest, path: string): URL {
   return new URL(path, getRequestOrigin(req));
 }
@@ -491,6 +523,10 @@ export default auth(async (req) => {
  try {
   const { pathname } = req.nextUrl;
   const startTime = Date.now();
+
+  // Apex → www before any other work (auth cookies / NEXTAUTH_URL are www-only)
+  const apexRedirect = redirectApexToWww(req);
+  if (apexRedirect) return apexRedirect;
   
   // Generate or use existing request ID for tracing
   const requestId = req.headers.get('x-request-id') || generateRequestId();
