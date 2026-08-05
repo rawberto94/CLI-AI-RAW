@@ -15,6 +15,7 @@
 // Use any for Job type due to cross-package compatibility
 type Job<T = any> = { id?: string; name: string; data: T; attemptsMade: number; opts: any; updateProgress: (progress: number | object) => Promise<void> };
 
+import { FIELD_TRUST_THRESHOLDS } from '@repo/utils';
 import { getTraceContextFromJobData } from './observability/trace';
 import { ensureProcessingJob, updateStep, assertRetryableReady } from './workflow/processing-job';
 import { RetryableError } from './utils/errors';
@@ -33,7 +34,7 @@ export interface MetadataExtractionJobData {
   forceReExtract?: boolean;
   /** Whether to auto-apply high-confidence values */
   autoApply?: boolean;
-  /** Minimum confidence for auto-apply (default 0.85) */
+  /** Minimum confidence for auto-apply (default FIELD_TRUST_THRESHOLDS.high = 0.85) */
   autoApplyThreshold?: number;
   /** Priority of the extraction */
   priority?: "high" | "normal" | "low";
@@ -72,7 +73,7 @@ export async function processMetadataExtractionJob(
     tenantId,
     forceReExtract = false,
     autoApply = true,
-    autoApplyThreshold = 0.85,
+    autoApplyThreshold = FIELD_TRUST_THRESHOLDS.high,
     source = "upload",
   } = job.data;
 

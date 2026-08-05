@@ -10,5 +10,7 @@ export * from './cache';
 export * from './azure-di-region';
 export * from './storage';
 export * from './security/raw-sql-guard';
+export * from './field-trust';
+export * from './agent-write-policy';
 // Note: tracing export disabled due to verbatimModuleStyle incompatibility with OpenTelemetry Resource import
 // export * from './tracing';

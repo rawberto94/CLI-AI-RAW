@@ -127,7 +127,7 @@ async function indexArtifactsIntoRAG() {
   const artifacts = await prisma.artifact.findMany({
     include: {
       contract: {
-        select: { id: true, fileName: true, tenantId: true },
+        select: { id: true, fileName: true, tenantId: true, contractType: true },
       },
     },
   });
@@ -170,10 +170,15 @@ async function indexArtifactsIntoRAG() {
       const embeddingVector = `[${embedding.join(',')}]`;
 
       if (existingMetaChunk) {
-        // Update existing using raw SQL for vector type
+        const tenantId = contract?.tenantId;
+        // Update existing using raw SQL for vector type; backfill tenant columns if missing
         await prisma.$executeRaw`
           UPDATE "ContractEmbedding" 
-          SET "chunkText" = ${artifactText}, embedding = ${embeddingVector}::vector, "updatedAt" = NOW()
+          SET "chunkText" = ${artifactText},
+              embedding = ${embeddingVector}::vector,
+              "tenantId" = COALESCE("tenantId", ${tenantId ?? null}),
+              "contractType" = COALESCE("contractType", ${contract?.contractType ?? null}),
+              "updatedAt" = NOW()
           WHERE id = ${existingMetaChunk.id}
         `;
         console.log(`   ✅ Updated existing metadata embedding`);
@@ -187,9 +192,13 @@ async function indexArtifactsIntoRAG() {
         const newChunkIndex = (maxIndex._max.chunkIndex || 0) + 1;
         const embeddingId = `emb_${crypto.randomUUID()}`;
 
+        const tenantId = contract?.tenantId;
+        if (!tenantId || tenantId === 'unknown') {
+          throw new Error(`Contract ${contractId} has no resolvable tenantId for embedding write`);
+        }
         await prisma.$executeRaw`
-          INSERT INTO "ContractEmbedding" (id, "contractId", "chunkIndex", "chunkText", "chunkType", section, embedding, "createdAt", "updatedAt")
-          VALUES (${embeddingId}, ${contractId}, ${newChunkIndex}, ${artifactText}, 'metadata', 'Extracted Artifacts', ${embeddingVector}::vector, NOW(), NOW())
+          INSERT INTO "ContractEmbedding" (id, "contractId", "chunkIndex", "chunkText", "chunkType", section, embedding, "tenantId", "contractType", "createdAt", "updatedAt")
+          VALUES (${embeddingId}, ${contractId}, ${newChunkIndex}, ${artifactText}, 'metadata', 'Extracted Artifacts', ${embeddingVector}::vector, ${tenantId}, ${contract?.contractType ?? null}, NOW(), NOW())
         `;
         console.log(`   ✅ Created new metadata embedding`);
       }
@@ -552,10 +561,13 @@ async function reindexAllContracts() {
         const embeddingId = `emb_${crypto.randomUUID()}`;
         const embeddingVector = `[${embedding.join(',')}]`;
 
+        if (!contract.tenantId || contract.tenantId === 'unknown') {
+          throw new Error(`Contract ${contract.id} has no resolvable tenantId for embedding write`);
+        }
         // Use raw SQL to insert embedding with vector type
         await prisma.$executeRaw`
-          INSERT INTO "ContractEmbedding" (id, "contractId", "chunkIndex", "chunkText", "chunkType", section, embedding, "createdAt", "updatedAt")
-          VALUES (${embeddingId}, ${contract.id}, ${i}, ${chunk.text}, ${chunk.type}, ${chunk.section}, ${embeddingVector}::vector, NOW(), NOW())
+          INSERT INTO "ContractEmbedding" (id, "contractId", "chunkIndex", "chunkText", "chunkType", section, embedding, "tenantId", "contractType", "createdAt", "updatedAt")
+          VALUES (${embeddingId}, ${contract.id}, ${i}, ${chunk.text}, ${chunk.type}, ${chunk.section}, ${embeddingVector}::vector, ${contract.tenantId}, ${contract.contractType ?? null}, NOW(), NOW())
         `;
       }
 

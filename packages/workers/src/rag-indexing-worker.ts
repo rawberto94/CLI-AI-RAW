@@ -30,6 +30,7 @@ import pino from 'pino';
 import { getTraceContextFromJobData } from './observability/trace';
 import { isRetryableError, RetryableError } from './utils/errors';
 import { sha256 } from './utils/hash';
+import { buildContractEmbeddingInsertBatch } from './utils/contract-embedding-write';
 import { ensureProcessingJob, updateStep, assertRetryableReady } from './workflow/processing-job';
 import { getWorkerConcurrency, getWorkerLimiter } from './config/worker-runtime';
 import { logAIUsageBatch } from './utils/ai-usage-logger';
@@ -100,6 +101,9 @@ export async function processRAGIndexingJob(
   const jobLogger = logger.child({ jobId: job.id, contractId, tenantId });
   let ragTokensUsed = 0; // Track all LLM + embedding tokens for cost visibility
   let contractRawText: string | null = null; // Hoisted for fallback BM25 path
+  // Hoisted so the catch-path BM25 fallback can still stamp tenant columns
+  let embeddingTenantId: string = tenantId;
+  let embeddingContractType: string | null = null;
   
   jobLogger.info('Starting RAG indexing');
   
@@ -130,6 +134,7 @@ export async function processRAGIndexingJob(
         rawText: true,
         fileName: true,
         tenantId: true,
+        contractType: true,
         status: true,
         aiMetadata: true,
       },
@@ -137,6 +142,14 @@ export async function processRAGIndexingJob(
     
     if (!contract) {
       throw new Error(`Contract ${contractId} not found`);
+    }
+
+    // Resolved tenant/type for every embedding write path (including catch fallback).
+    // Search filters on ce."tenantId" — omitting these columns makes new indexes invisible.
+    embeddingTenantId = contract.tenantId || tenantId;
+    embeddingContractType = contract.contractType ?? null;
+    if (!embeddingTenantId || embeddingTenantId === 'unknown') {
+      throw new Error(`Contract ${contractId} has no resolvable tenantId for RAG indexing`);
     }
     
     // Check if contract is ready for indexing (completed or partial processing)
@@ -582,6 +595,8 @@ Return a JSON object with a "prefixes" key containing an array of strings, one p
         embedding: toSql(vec),
         chunkType: chunk.metadata.chunkType,
         section: chunk.metadata.section || null,
+        tenantId: embeddingTenantId,
+        contractType: embeddingContractType,
       };
     });
     
@@ -594,22 +609,8 @@ Return a JSON object with a "prefixes" key containing an array of strings, one p
       for (let i = 0; i < records.length; i += INSERT_BATCH) {
         const batch = records.slice(i, i + INSERT_BATCH);
         
-        // Build fully-parameterized values list (no string interpolation)
-        const paramParts: string[] = [];
-        const params: unknown[] = [];
-        for (let idx = 0; idx < batch.length; idx++) {
-          const offset = idx * 6;
-          paramParts.push(
-            `(gen_random_uuid(), $${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}::vector, $${offset + 5}, $${offset + 6}, NOW(), NOW())`
-          );
-          const r = batch[idx]!;
-          params.push(r.contractId, r.chunkIndex, r.chunkText, r.embedding, r.chunkType, r.section ?? null);
-        }
-        
-        await tx.$executeRawUnsafe(
-          `INSERT INTO "ContractEmbedding" ("id", "contractId", "chunkIndex", "chunkText", "embedding", "chunkType", "section", "createdAt", "updatedAt") VALUES ${paramParts.join(', ')}`,
-          ...params,
-        );
+        const { sql, params } = buildContractEmbeddingInsertBatch(batch);
+        await tx.$executeRawUnsafe(sql, ...params);
       }
     }, { timeout: 60000 });
     
@@ -734,6 +735,8 @@ Return a JSON object with a "prefixes" key containing an array of strings, one p
                 chunkText: chunk.text,
                 chunkType: chunk.metadata.chunkType,
                 section: chunk.metadata.section || null,
+                tenantId: embeddingTenantId,
+                contractType: embeddingContractType,
               })),
             });
           }, { timeout: 30000 });

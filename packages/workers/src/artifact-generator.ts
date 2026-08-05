@@ -7,6 +7,7 @@ type Job<T = any> = { id?: string; name: string; data: T; attemptsMade: number; 
 import clientsDb from 'clients-db';
 const getClient = typeof clientsDb === 'function' ? clientsDb : (clientsDb as any).default;
 import type { ArtifactType } from 'clients-db';
+import { FIELD_TRUST_THRESHOLDS } from '@repo/utils';
 import {
   getQueueService,
   JOB_NAMES,
@@ -854,7 +855,7 @@ export async function generateArtifactsJob(
               contractId,
               tenantId,
               autoApply: true,
-              autoApplyThreshold: 0.85,
+              autoApplyThreshold: FIELD_TRUST_THRESHOLDS.high,
               source: 'upload',
               priority: 'normal',
               traceId: trace.traceId,
@@ -896,6 +897,32 @@ export async function generateArtifactsJob(
         } catch (categorizationError) {
           logger.warn({ contractId, categorizationError }, 'Failed to queue categorization');
         }
+      }
+
+      // Kick off the agent intelligence pass (split mode).
+      // OCR worker returns early in split mode and never reaches its legacy enqueue;
+      // this is the canonical post-artifact agent tick. Deterministic jobId dedupes
+      // with the legacy OCR path if both fire.
+      try {
+        await queueService.addJob(
+          QUEUE_NAMES.AGENT_ORCHESTRATION,
+          'run-agent',
+          {
+            contractId,
+            tenantId,
+            traceId: trace.traceId,
+            requestId: job.data.requestId,
+            iteration: 0,
+          } as any,
+          {
+            priority: 40,
+            delay: 500,
+            jobId: `agent-${contractId}-0`,
+          }
+        );
+        logger.info({ contractId, traceId: trace.traceId }, 'Queued agent orchestrator tick after artifact generation');
+      } catch (agentError) {
+        logger.warn({ contractId, agentError }, 'Failed to queue agent orchestrator tick');
       }
     }
 

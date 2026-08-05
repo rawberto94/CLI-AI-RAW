@@ -45,12 +45,13 @@ import {
   MessageSquare,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { FIELD_TRUST_THRESHOLDS } from '@repo/utils';
 
-// Confidence thresholds
+// Shared with workers / write-gateway / metadata auto-apply (see packages/utils field-trust)
 const CONFIDENCE_THRESHOLDS = {
-  high: 0.85,
-  medium: 0.65,
-  low: 0.4,
+  high: FIELD_TRUST_THRESHOLDS.high,
+  medium: FIELD_TRUST_THRESHOLDS.medium,
+  low: FIELD_TRUST_THRESHOLDS.low,
 };
 
 // Field categories for grouping

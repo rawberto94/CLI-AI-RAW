@@ -1403,7 +1403,13 @@ function extractHighlights(text: string, query: string): string[] {
 export async function processContractWithSemanticChunking(
   contractId: string,
   text: string,
-  options?: { apiKey?: string; model?: string }
+  options?: {
+    apiKey?: string;
+    model?: string;
+    /** When omitted, loaded from the parent Contract row */
+    tenantId?: string;
+    contractType?: string | null;
+  }
 ): Promise<{ chunksCreated: number; embeddingsGenerated: number }> {
   const model = options?.model || process.env.RAG_EMBED_MODEL || 'text-embedding-3-small';
 
@@ -1413,6 +1419,21 @@ export async function processContractWithSemanticChunking(
   // uploaded contracts permanently un-indexed (ContractEmbedding count = 0).
   if (!options?.apiKey && !hasAIClientConfig()) {
     throw new Error('No AI client configured (set AZURE_OPENAI_API_KEY/AZURE_OPENAI_ENDPOINT or OPENAI_API_KEY)');
+  }
+
+  // Tenant columns are required: hybrid search filters on ce."tenantId".
+  let tenantId = options?.tenantId;
+  let contractType = options?.contractType ?? null;
+  if (!tenantId || tenantId === 'unknown') {
+    const parent = await prisma.contract.findUnique({
+      where: { id: contractId },
+      select: { tenantId: true, contractType: true },
+    });
+    if (!parent?.tenantId || parent.tenantId === 'unknown') {
+      throw new Error(`Contract ${contractId} has no resolvable tenantId for RAG indexing`);
+    }
+    tenantId = parent.tenantId;
+    if (contractType == null) contractType = parent.contractType ?? null;
   }
   
   // Step 1: Semantic chunking
@@ -1463,7 +1484,7 @@ export async function processContractWithSemanticChunking(
   // Delete existing embeddings
   await prisma.contractEmbedding.deleteMany({ where: { contractId } });
   
-  // Create new embeddings with metadata
+  // Create new embeddings with metadata (including tenant columns for search)
   const records = contextualizedChunks.map((chunk, i) => ({
     contractId,
     chunkIndex: chunk.index,
@@ -1471,28 +1492,39 @@ export async function processContractWithSemanticChunking(
     embedding: toSql(embeddings[i]),
     chunkType: chunk.metadata.chunkType,
     section: chunk.metadata.section,
+    tenantId,
+    contractType,
   }));
   
   // Insert in batches using fully parameterized queries (no string interpolation)
   const INSERT_BATCH = 50;
   for (let batchStart = 0; batchStart < records.length; batchStart += INSERT_BATCH) {
     const batch = records.slice(batchStart, batchStart + INSERT_BATCH);
-    // Build a parameterized values list: each row uses 6 parameters
+    // 8 params/row: contractId, chunkIndex, chunkText, embedding, chunkType, section, tenantId, contractType
     const paramParts: string[] = [];
     const params: unknown[] = [];
     for (let idx = 0; idx < batch.length; idx++) {
-      const offset = idx * 6;
+      const offset = idx * 8;
       paramParts.push(
-        `(gen_random_uuid(), $${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}::vector, $${offset + 5}, $${offset + 6}, NOW(), NOW())`
+        `(gen_random_uuid(), $${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}::vector, $${offset + 5}, $${offset + 6}, $${offset + 7}, $${offset + 8}, NOW(), NOW())`
       );
       const r = batch[idx]!;
-      params.push(r.contractId, r.chunkIndex, r.chunkText, r.embedding, r.chunkType, r.section ?? null);
+      params.push(
+        r.contractId,
+        r.chunkIndex,
+        r.chunkText,
+        r.embedding,
+        r.chunkType,
+        r.section ?? null,
+        r.tenantId,
+        r.contractType,
+      );
     }
     // Note: Bulk insert with dynamic VALUES lists requires $executeRawUnsafe since
     // Prisma.sql tagged templates can't build dynamic numbers of value groups.
     // All parameters are positionally bound ($1, $2, ...) — no string interpolation of values.
     await prisma.$executeRawUnsafe(
-      `INSERT INTO "ContractEmbedding" ("id", "contractId", "chunkIndex", "chunkText", "embedding", "chunkType", "section", "createdAt", "updatedAt") VALUES ${paramParts.join(', ')}`,
+      `INSERT INTO "ContractEmbedding" ("id", "contractId", "chunkIndex", "chunkText", "embedding", "chunkType", "section", "tenantId", "contractType", "createdAt", "updatedAt") VALUES ${paramParts.join(', ')}`,
       ...params,
     );
     // TODO: Consider migrating to prisma.contractEmbedding.createMany() when vector type support is added

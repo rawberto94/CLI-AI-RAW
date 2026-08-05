@@ -37,7 +37,7 @@ export async function triggerContractReindex(
     // Get contract text
     const contract = await prisma.contract.findFirst({
       where: { id: contractId, tenantId },
-      select: { rawText: true },
+      select: { rawText: true, tenantId: true, contractType: true },
     });
 
     if (!contract || !contract.rawText) {
@@ -51,11 +51,14 @@ export async function triggerContractReindex(
       });
     }
 
-    // Process with semantic chunking
+    // Process with semantic chunking (stamp tenant columns for tenant-filtered search)
     const result = await processContractWithSemanticChunking(
       contractId,
       contract.rawText,
-      undefined
+      {
+        tenantId: contract.tenantId || tenantId,
+        contractType: contract.contractType ?? null,
+      }
     );
 
     return {

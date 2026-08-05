@@ -25,9 +25,22 @@ interface ProcessResult {
 async function processContractWithSemanticChunking(
   contractId: string,
   text: string,
-  options: { apiKey: string; model?: string }
+  options: {
+    apiKey: string;
+    model?: string;
+    tenantId: string;
+    contractType?: string | null;
+  }
 ): Promise<{ chunksCreated: number; embeddingsGenerated: number }> {
-  const { apiKey, model = process.env.RAG_EMBED_MODEL || 'text-embedding-3-large' } = options;
+  const {
+    apiKey,
+    model = process.env.RAG_EMBED_MODEL || 'text-embedding-3-large',
+    tenantId,
+    contractType = null,
+  } = options;
+  if (!tenantId || tenantId === 'unknown') {
+    throw new Error(`Contract ${contractId} has no resolvable tenantId for embedding generation`);
+  }
   const embDims = parseInt(process.env.RAG_EMBED_DIMENSIONS || '1024', 10);
   
   // Semantic chunking - split by sections and paragraphs
@@ -73,7 +86,7 @@ async function processContractWithSemanticChunking(
     const embedding = embeddings[i];
     
     await prisma.$executeRaw`
-      INSERT INTO "ContractEmbedding" ("id", "contractId", "chunkIndex", "chunkText", "embedding", "chunkType", "section", "createdAt", "updatedAt")
+      INSERT INTO "ContractEmbedding" ("id", "contractId", "chunkIndex", "chunkText", "embedding", "chunkType", "section", "tenantId", "contractType", "createdAt", "updatedAt")
       VALUES (
         gen_random_uuid(), 
         ${contractId}, 
@@ -81,7 +94,9 @@ async function processContractWithSemanticChunking(
         ${chunk.text}, 
         ${toSql(embedding)}::vector, 
         ${chunk.metadata.chunkType}, 
-        ${chunk.metadata.section ?? null}, 
+        ${chunk.metadata.section ?? null},
+        ${tenantId},
+        ${contractType},
         NOW(), 
         NOW()
       )
@@ -198,6 +213,8 @@ async function main() {
       id: true,
       fileName: true,
       rawText: true,
+      tenantId: true,
+      contractType: true,
       _count: { select: { contractEmbeddings: true } },
     },
     take: limit,
@@ -226,10 +243,17 @@ async function main() {
     }
 
     try {
+      if (!contract.tenantId || contract.tenantId === 'unknown') {
+        throw new Error(`Contract ${contract.id} has no resolvable tenantId`);
+      }
       const result = await processContractWithSemanticChunking(
         contract.id,
         contract.rawText,
-        { apiKey }
+        {
+          apiKey,
+          tenantId: contract.tenantId,
+          contractType: contract.contractType ?? null,
+        }
       );
 
       console.log(`   ✅ Created ${result.chunksCreated} chunks with embeddings`);

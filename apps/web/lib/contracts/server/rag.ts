@@ -33,6 +33,7 @@ export async function postContractRagProcess(
         rawText: true,
         fileName: true,
         tenantId: true,
+        contractType: true,
         storagePath: true,
         mimeType: true,
       },
@@ -57,6 +58,8 @@ export async function postContractRagProcess(
       result = await processContractWithSemanticChunking(contractId, contract.rawText, {
         apiKey: process.env.OPENAI_API_KEY,
         model: process.env.RAG_EMBED_MODEL || 'text-embedding-3-small',
+        tenantId: contract.tenantId,
+        contractType: contract.contractType ?? null,
       });
     } else {
       const { chunkText, embedChunks } = await loadLegacyRagClient();

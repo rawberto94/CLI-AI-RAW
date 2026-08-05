@@ -103,6 +103,20 @@ interface ApprovalQueueProps {
   className?: string;
 }
 
+/** Pending agent field mutation from write-gateway (AiDecision outcome=pending) */
+interface AgentFieldWrite {
+  id: string; // agent-write-{decisionId}
+  decisionId: string;
+  agentId: string;
+  contractId?: string | null;
+  field: string;
+  proposedValue: unknown;
+  confidence: number;
+  requestedAt: string;
+  citations?: unknown;
+  evidenceChain?: unknown;
+}
+
 // ============================================================================
 // Helper Components
 // ============================================================================
@@ -519,6 +533,148 @@ function GoalCard({
 }
 
 // ============================================================================
+// FieldWriteCard — agent write-gateway proposals
+// ============================================================================
+
+function FieldWriteCard({
+  item,
+  onApprove,
+  onReject,
+  isProcessing,
+}: {
+  item: AgentFieldWrite;
+  onApprove: (id: string) => void;
+  onReject: (id: string, notes: string) => void;
+  isProcessing: boolean;
+}) {
+  const router = useRouter();
+  const [showReject, setShowReject] = useState(false);
+  const [notes, setNotes] = useState('');
+
+  return (
+    <div
+      className="bg-white border border-amber-200 rounded-lg shadow-sm p-4"
+      role="article"
+      aria-label={`Field change proposal: ${item.field}`}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-900">
+              Field change
+            </span>
+            <span className="text-lg font-semibold text-gray-900 font-mono">{item.field}</span>
+            <span className="text-xs text-gray-500">
+              {(item.confidence * 100).toFixed(0)}% confidence
+            </span>
+          </div>
+          <p className="mt-1 text-sm text-gray-600">
+            Agent <span className="font-medium">{item.agentId}</span> proposes a new value
+            {item.contractId ? (
+              <>
+                {' '}on{' '}
+                <button
+                  type="button"
+                  className="text-violet-700 hover:underline"
+                  onClick={() => router.push(`/contracts/${item.contractId}`)}
+                >
+                  contract {item.contractId.slice(0, 8)}…
+                </button>
+              </>
+            ) : null}
+          </p>
+          <div className="mt-3 p-3 bg-slate-50 rounded-md border">
+            <p className="text-xs font-medium text-slate-500 mb-1">Proposed value</p>
+            <pre className="text-sm text-slate-800 whitespace-pre-wrap break-all">
+              {typeof item.proposedValue === 'string'
+                ? item.proposedValue
+                : JSON.stringify(item.proposedValue, null, 2)}
+            </pre>
+          </div>
+          <p className="mt-2 text-xs text-gray-500" title={new Date(item.requestedAt).toLocaleString()}>
+            {formatDistanceToNow(new Date(item.requestedAt), { addSuffix: true })}
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-4 flex items-center gap-2 flex-wrap" role="group" aria-label="Field write actions">
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button
+              size="sm"
+              disabled={isProcessing}
+              className="bg-green-600 hover:bg-green-700 text-white"
+              aria-label={`Approve field change for ${item.field}`}
+            >
+              <CheckCircle2 className="h-4 w-4 mr-1" />
+              Apply change
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Apply field change?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will write the proposed value to <strong>{item.field}</strong> on the contract.
+                Critical fields (TCV, parties, dates) are never applied this way.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => onApprove(item.id)}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                Yes, apply
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        <Button
+          size="sm"
+          variant="destructive"
+          disabled={isProcessing}
+          onClick={() => setShowReject(true)}
+          aria-label={`Reject field change for ${item.field}`}
+        >
+          <XCircle className="h-4 w-4 mr-1" />
+          Reject
+        </Button>
+      </div>
+
+      {showReject && (
+        <div className="mt-3 p-3 bg-gray-50 rounded-lg">
+          <label className="block text-sm font-medium text-gray-700 mb-1">Rejection reason</label>
+          <textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            className="w-full px-3 py-2 border rounded-md text-sm"
+            rows={2}
+            placeholder="Optional notes…"
+          />
+          <div className="mt-2 flex justify-end gap-2">
+            <Button variant="ghost" size="sm" onClick={() => setShowReject(false)}>
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={() => {
+                onReject(item.id, notes);
+                setShowReject(false);
+                setNotes('');
+              }}
+            >
+              Confirm reject
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================================
 // Main Component
 // ============================================================================
 
@@ -528,6 +684,7 @@ export function AgentApprovalQueue({
   className = '',
 }: ApprovalQueueProps) {
   const [goals, setGoals] = useState<AgentGoal[]>([]);
+  const [fieldWrites, setFieldWrites] = useState<AgentFieldWrite[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<'all' | 'awaiting'>('awaiting');
@@ -541,10 +698,43 @@ export function AgentApprovalQueue({
       if (filter !== 'all') {
         params.set('status', filter);
       }
-      const response = await fetch(`/api/agents/goals?${params}`);
-      if (!response.ok) throw new Error('Failed to fetch goals');
-      const data = await response.json();
-      setGoals(data.goals);
+      const [goalsRes, writesRes] = await Promise.all([
+        fetch(`/api/agents/goals?${params}`),
+        fetch('/api/agents/approvals?type=agent_write&limit=50'),
+      ]);
+      if (!goalsRes.ok) throw new Error('Failed to fetch goals');
+      const goalsData = await goalsRes.json();
+      setGoals(goalsData.goals ?? goalsData.data?.goals ?? []);
+
+      if (writesRes.ok) {
+        const writesData = await writesRes.json();
+        // withAuthApiHandler may wrap as { data: { approvals } } or { approvals }
+        const approvals =
+          writesData.approvals ??
+          writesData.data?.approvals ??
+          [];
+        const mapped: AgentFieldWrite[] = (approvals as Array<Record<string, unknown>>)
+          .filter((a) => a.type === 'agent_write')
+          .map((a) => {
+            const ctx = (a.context ?? {}) as Record<string, unknown>;
+            return {
+              id: String(a.id),
+              decisionId: String(ctx.decisionId ?? String(a.id).replace(/^agent-write-/, '')),
+              agentId: String(a.agentId ?? 'agent'),
+              contractId: (a.contractId as string | null | undefined) ?? null,
+              field: String(ctx.field ?? 'field'),
+              proposedValue: ctx.proposedValue,
+              confidence: typeof ctx.confidence === 'number' ? ctx.confidence : 0,
+              requestedAt: String(a.requestedAt ?? new Date().toISOString()),
+              citations: ctx.citations,
+              evidenceChain: ctx.evidenceChain,
+            };
+          });
+        setFieldWrites(mapped);
+      } else {
+        setFieldWrites([]);
+      }
+
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
@@ -643,6 +833,45 @@ export function AgentApprovalQueue({
     }
   };
 
+  const handleFieldWriteApprove = async (actionId: string) => {
+    setProcessing(actionId);
+    try {
+      const response = await fetch('/api/agents/approvals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ actionId, action: 'approve' }),
+      });
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body?.error?.message || body?.message || 'Failed to apply field change');
+      }
+      toast.success('Field change applied');
+      await fetchGoals();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to apply field change');
+    } finally {
+      setProcessing(null);
+    }
+  };
+
+  const handleFieldWriteReject = async (actionId: string, notes: string) => {
+    setProcessing(actionId);
+    try {
+      const response = await fetch('/api/agents/approvals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ actionId, action: 'reject', notes }),
+      });
+      if (!response.ok) throw new Error('Failed to reject field change');
+      toast.success('Field change rejected');
+      await fetchGoals();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to reject field change');
+    } finally {
+      setProcessing(null);
+    }
+  };
+
   const handleModify = async (goalId: string, feedback: string, modifiedPlan?: Record<string, unknown>) => {
     setProcessing(goalId);
     try {
@@ -662,7 +891,19 @@ export function AgentApprovalQueue({
     }
   };
 
-  const awaitingCount = goals.filter(g => g.status === 'AWAITING_APPROVAL').length;
+  const awaitingCount =
+    goals.filter(g => g.status === 'AWAITING_APPROVAL').length + fieldWrites.length;
+
+  const filteredFieldWrites = useMemo(() => {
+    if (!searchQuery.trim()) return fieldWrites;
+    const q = searchQuery.toLowerCase();
+    return fieldWrites.filter(
+      (w) =>
+        w.field.toLowerCase().includes(q) ||
+        w.agentId.toLowerCase().includes(q) ||
+        (w.contractId || '').toLowerCase().includes(q),
+    );
+  }, [fieldWrites, searchQuery]);
 
   return (
     <div className={`space-y-4 ${className}`} role="main" aria-label="Agent Approval Queue">
@@ -686,7 +927,10 @@ export function AgentApprovalQueue({
           <h2 className="text-xl font-semibold text-gray-900">Agent Approval Queue</h2>
           {awaitingCount > 0 && (
             <p className="text-sm text-yellow-600 mt-1" aria-live="polite">
-              {awaitingCount} goal{awaitingCount !== 1 ? 's' : ''} awaiting your approval
+              {awaitingCount} item{awaitingCount !== 1 ? 's' : ''} awaiting your approval
+              {fieldWrites.length > 0
+                ? ` (${fieldWrites.length} field change${fieldWrites.length !== 1 ? 's' : ''})`
+                : ''}
             </p>
           )}
         </div>
@@ -749,17 +993,35 @@ export function AgentApprovalQueue({
       )}
 
       {/* Empty state */}
-      {!loading && filteredGoals.length === 0 && (
+      {!loading && filteredGoals.length === 0 && filteredFieldWrites.length === 0 && (
         <div className="text-center py-12 bg-gray-50 rounded-lg">
           <CheckCircle2 className="h-12 w-12 text-green-500 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900">
-            {searchQuery || typeFilter !== 'all' ? 'No matching goals' : 'All caught up!'}
+            {searchQuery || typeFilter !== 'all' ? 'No matching items' : 'All caught up!'}
           </h3>
           <p className="text-gray-500 mt-1">
             {searchQuery || typeFilter !== 'all'
               ? 'Try adjusting your search or filters.'
-              : 'No goals are awaiting approval right now.'}
+              : 'No goals or field changes are awaiting approval right now.'}
           </p>
+        </div>
+      )}
+
+      {/* Field change proposals (write gateway) */}
+      {filteredFieldWrites.length > 0 && (
+        <div className="space-y-3" aria-label="Pending field changes">
+          <h3 className="text-sm font-semibold text-amber-900 uppercase tracking-wide">
+            Field change proposals
+          </h3>
+          {filteredFieldWrites.map((item) => (
+            <FieldWriteCard
+              key={item.id}
+              item={item}
+              onApprove={handleFieldWriteApprove}
+              onReject={handleFieldWriteReject}
+              isProcessing={processing === item.id}
+            />
+          ))}
         </div>
       )}
 

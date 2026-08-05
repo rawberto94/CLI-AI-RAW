@@ -532,17 +532,39 @@ export async function runAgentOrchestrationJob(
       for (const [name, output] of postArtifactResults) allResults[name] = { success: output.success, confidence: output.confidence };
       for (const [name, output] of postPipelineResults) allResults[name] = { success: output.success, confidence: output.confidence };
 
-      // Execute any recommended actions from agents (action execution loop)
+      // Execute any recommended actions from agents via the write gateway.
+      // Never raw prisma.contract.update({ [field]: value }) — critical fields are denylisted.
+      const { applyAgentWrite } = await import('./services/agent-write-gateway');
       for (const [agentName, output] of [...postArtifactResults, ...postPipelineResults]) {
         if (output.success && output.data?.actions && Array.isArray(output.data.actions)) {
           for (const action of output.data.actions) {
             try {
               if (action.type === 'update_field' && action.field && action.value !== undefined) {
-                await prisma.contract.update({
-                  where: { id: contractId },
-                  data: { [action.field]: action.value },
+                const result = await applyAgentWrite({
+                  agentId: agentName,
+                  tenantId,
+                  entity: 'Contract',
+                  entityId: contractId,
+                  field: String(action.field),
+                  value: action.value,
+                  confidence: typeof output.confidence === 'number' ? output.confidence : 0,
+                  evidence: {
+                    citations: action.citations ?? output.data?.citations ?? [],
+                    evidenceChain: action.evidenceChain ?? output.data?.evidenceChain ?? [],
+                    reason: action.reason ?? action.message,
+                  },
                 });
-                logger.info({ contractId, agentName, field: action.field }, 'Agent action: field updated');
+                logger.info(
+                  {
+                    contractId,
+                    agentName,
+                    field: action.field,
+                    status: result.status,
+                    decisionId: result.decisionId,
+                    reason: result.reason,
+                  },
+                  'Agent action: write gateway result',
+                );
               } else if (action.type === 'create_alert' && action.message) {
                 logger.info({ contractId, agentName, alert: action.message }, 'Agent action: alert created');
               }

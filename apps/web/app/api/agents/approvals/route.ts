@@ -35,66 +35,145 @@ export const GET = withAuthApiHandler(async (req: NextRequest, ctx) => {
   const offset = Math.max(0, parseInt(searchParams.get('offset') || '0') || 0);
 
   try {
+    // type filter:
+    // - unset / "all" → everything (legacy)
+    // - "agent_write" → only write-gateway field proposals
+    // - other values → legacy agentGoal.type filter + still include agent writes
+    const agentWriteOnly = type === 'agent_write';
+    const includeAgentWrites = !type || type === 'all' || type === 'agent_write';
+    const goalTypeFilter =
+      type && !['all', 'agent_write', 'agent_goal', 'rfx_award', 'compliance_alert', 'renewal_decision'].includes(type)
+        ? type.toUpperCase()
+        : undefined;
+
     // Fetch all approval-requiring items in parallel
     const [
       agentGoals,
       rfxEvents,
       complianceAlerts,
       renewalAlerts,
+      pendingAgentWrites,
     ] = await Promise.all([
       // 1. Agent Goals awaiting approval
-      prisma.agentGoal.findMany({
-        where: {
-          tenantId,
-          status: 'AWAITING_APPROVAL',
-          ...(type && { type: type.toUpperCase() }),
-        },
-        orderBy: { createdAt: 'desc' },
-      }),
+      !agentWriteOnly
+        ? prisma.agentGoal.findMany({
+            where: {
+              tenantId,
+              status: 'AWAITING_APPROVAL',
+              ...(goalTypeFilter ? { type: goalTypeFilter } : {}),
+            },
+            orderBy: { createdAt: 'desc' },
+          })
+        : Promise.resolve([]),
 
       // 2. RFx Events awaiting approval
-      prisma.rFxEvent.findMany({
-        where: {
-          tenantId,
-          status: 'awaiting_approval',
-        },
-        orderBy: { updatedAt: 'desc' },
-      }),
+      !agentWriteOnly
+        ? prisma.rFxEvent.findMany({
+            where: {
+              tenantId,
+              status: 'awaiting_approval',
+            },
+            orderBy: { updatedAt: 'desc' },
+          })
+        : Promise.resolve([]),
 
       // 3. Compliance alerts needing review
-      prisma.riskDetectionLog.findMany({
-        where: {
-          tenantId,
-          acknowledged: false,
-          severity: { in: ['HIGH', 'CRITICAL'] },
-        },
-        orderBy: { detectedAt: 'desc' },
-      }),
+      !agentWriteOnly
+        ? prisma.riskDetectionLog.findMany({
+            where: {
+              tenantId,
+              acknowledged: false,
+              severity: { in: ['HIGH', 'CRITICAL'] },
+            },
+            orderBy: { detectedAt: 'desc' },
+          })
+        : Promise.resolve([]),
 
       // 4. Contract renewals needing decision
-      prisma.contract.findMany({
-        where: {
-          tenantId,
-          status: { in: ['ACTIVE', 'COMPLETED'] },
-          expirationDate: {
-            lte: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-            gte: new Date(),
-          },
-          renewalInitiatedAt: null,
-        },
-        select: {
-          id: true,
-          contractTitle: true,
-          expirationDate: true,
-          supplierName: true,
-          totalValue: true,
-        },
-        orderBy: { expirationDate: 'asc' },
-      }),
+      !agentWriteOnly
+        ? prisma.contract.findMany({
+            where: {
+              tenantId,
+              status: { in: ['ACTIVE', 'COMPLETED'] },
+              expirationDate: {
+                lte: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+                gte: new Date(),
+              },
+              renewalInitiatedAt: null,
+            },
+            select: {
+              id: true,
+              contractTitle: true,
+              expirationDate: true,
+              supplierName: true,
+              totalValue: true,
+            },
+            orderBy: { expirationDate: 'asc' },
+          })
+        : Promise.resolve([]),
+
+      // 5. Pending agent field writes (write-gateway HITL)
+      includeAgentWrites
+        ? prisma.aiDecision.findMany({
+            where: {
+              tenantId,
+              feature: 'agent_write',
+              outcome: 'pending',
+              outputType: 'agent_field_write',
+            },
+            orderBy: { createdAt: 'desc' },
+            take: 100,
+          })
+        : Promise.resolve([]),
     ]);
 
     // Transform to unified approval format
     const approvals = [
+      // Agent field write proposals (write gateway)
+      ...pendingAgentWrites.map((decision) => {
+        const output = (decision.output ?? {}) as Record<string, unknown>;
+        const field = String(output.field ?? decision.subFeature?.split('.')[1] ?? 'field');
+        const proposedValue = output.proposedValue ?? output.value;
+        const agentId = String(output.agentId ?? decision.model ?? 'agent');
+        const confidence =
+          typeof decision.confidence === 'number'
+            ? decision.confidence
+            : typeof output.confidence === 'number'
+              ? (output.confidence as number)
+              : 0;
+        return {
+          id: `agent-write-${decision.id}`,
+          type: 'agent_write' as const,
+          category: 'agent_write',
+          title: `Field change: ${field}`,
+          description: `${agentId} proposes updating ${field} on contract ${decision.contractId || output.entityId || ''}`,
+          agentId,
+          agentCodename: getAgentCodename(agentId),
+          contractId: decision.contractId,
+          priority: confidence < 0.5 ? 'high' : 'medium',
+          requestedAt: decision.createdAt.toISOString(),
+          requester: agentId,
+          context: {
+            entity: output.entity ?? 'Contract',
+            entityId: output.entityId ?? decision.contractId,
+            field,
+            proposedValue,
+            confidence,
+            citations: decision.citations,
+            evidenceChain: decision.evidenceChain,
+            decisionId: decision.id,
+          },
+          recommendation: {
+            action: 'approve',
+            reason: `Apply proposed ${field} change`,
+            confidence,
+          },
+          alternatives: [
+            { action: 'reject', label: 'Reject', reason: 'Do not apply this field change' },
+          ],
+        };
+      }),
+
       // Agent Goals
       ...agentGoals.map(goal => {
         const ctx = (goal.context ?? {}) as Record<string, unknown>;
@@ -263,7 +342,10 @@ export const POST = withAuthApiHandler(async (req: NextRequest, ctx) => {
     // Determine the type of approval and route accordingly
     let result;
 
-    if (actionId.startsWith('goal-')) {
+    if (actionId.startsWith('agent-write-')) {
+      const decisionId = actionId.replace('agent-write-', '');
+      result = await processAgentWriteApproval(decisionId, tenantId, userId, action, notes);
+    } else if (actionId.startsWith('goal-')) {
       const goalId = actionId.replace('goal-', '');
       result = await processGoalApproval(goalId, tenantId, action, notes, modifications);
     } else if (actionId.startsWith('rfx-')) {
@@ -276,7 +358,12 @@ export const POST = withAuthApiHandler(async (req: NextRequest, ctx) => {
       const alertId = actionId.replace('compliance-', '');
       result = await processComplianceApproval(alertId, tenantId, userId, action, notes);
     } else {
-      return createErrorResponse(ctx, 'INVALID_APPROVAL_TYPE', 'Unknown approval type', 400);
+      // Bare goal IDs from legacy clients
+      try {
+        result = await processGoalApproval(actionId, tenantId, action, notes, modifications);
+      } catch {
+        return createErrorResponse(ctx, 'INVALID_APPROVAL_TYPE', 'Unknown approval type', 400);
+      }
     }
 
     // Log the approval action
@@ -304,6 +391,129 @@ export const POST = withAuthApiHandler(async (req: NextRequest, ctx) => {
 // ============================================================================
 // APPROVAL PROCESSING FUNCTIONS
 // ============================================================================
+
+async function processAgentWriteApproval(
+  decisionId: string,
+  tenantId: string,
+  userId: string,
+  action: string,
+  notes?: string,
+) {
+  const {
+    isAgentWriteDenylisted,
+    isAgentWriteAllowlisted,
+  } = await import('@repo/utils');
+
+  const decision = await prisma.aiDecision.findFirst({
+    where: {
+      id: decisionId,
+      tenantId,
+      feature: 'agent_write',
+    },
+  });
+
+  if (!decision) {
+    throw new Error('Agent write decision not found');
+  }
+
+  if (decision.outcome !== 'pending') {
+    throw new Error(`Decision is not pending (outcome=${decision.outcome})`);
+  }
+
+  const output = (decision.output ?? {}) as Record<string, unknown>;
+  const entity = String(output.entity ?? 'Contract');
+  const entityId = String(output.entityId ?? decision.contractId ?? '');
+  const field = String(output.field ?? '');
+  const proposedValue = output.proposedValue ?? output.value;
+
+  if (!entityId || !field) {
+    throw new Error('Decision is missing entityId or field');
+  }
+
+  if (isAgentWriteDenylisted(field)) {
+    throw new Error(`Field ${field} is denylisted and cannot be applied`);
+  }
+
+  if (!isAgentWriteAllowlisted(entity, field)) {
+    throw new Error(`Field ${entity}.${field} is not allowlisted`);
+  }
+
+  switch (action) {
+    case 'approve': {
+      // Human-authorized apply of an agent proposal (still respect denylist/allowlist)
+      // Always scope by tenantId so cross-tenant ids cannot be mutated.
+      if (entity === 'Contract') {
+        const updated = await prisma.contract.updateMany({
+          where: { id: entityId, tenantId },
+          data: { [field]: proposedValue as never },
+        });
+        if (updated.count === 0) throw new Error('Contract not found for tenant');
+      } else if (entity === 'ContractMetadata') {
+        const updated = await prisma.contractMetadata.updateMany({
+          where: { contractId: entityId, tenantId },
+          data: { [field]: proposedValue as never },
+        });
+        if (updated.count === 0) throw new Error('Contract metadata not found for tenant');
+      } else if (entity === 'Obligation') {
+        const updated = await prisma.obligation.updateMany({
+          where: { id: entityId, tenantId },
+          data: { [field]: proposedValue as never },
+        });
+        if (updated.count === 0) throw new Error('Obligation not found for tenant');
+      } else {
+        throw new Error(`Unsupported entity: ${entity}`);
+      }
+
+      await prisma.aiDecision.update({
+        where: { id: decisionId },
+        data: {
+          outcome: 'accepted',
+          reviewedAt: new Date(),
+          userFeedback: {
+            action: 'approve',
+            actorId: userId,
+            notes: notes ?? null,
+            appliedValue: proposedValue,
+          },
+        },
+      });
+
+      return {
+        type: 'agent_write',
+        status: 'approved',
+        message: `Applied ${entity}.${field}`,
+        field,
+        entityId,
+      };
+    }
+
+    case 'reject': {
+      await prisma.aiDecision.update({
+        where: { id: decisionId },
+        data: {
+          outcome: 'rejected',
+          reviewedAt: new Date(),
+          userFeedback: {
+            action: 'reject',
+            actorId: userId,
+            notes: notes ?? 'Rejected by user',
+          },
+        },
+      });
+
+      return {
+        type: 'agent_write',
+        status: 'rejected',
+        message: `Rejected ${entity}.${field}`,
+        field,
+        entityId,
+      };
+    }
+
+    default:
+      throw new Error(`Unsupported action for agent write: ${action}`);
+  }
+}
 
 async function processGoalApproval(
   goalId: string,
