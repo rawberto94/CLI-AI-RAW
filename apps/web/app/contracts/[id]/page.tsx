@@ -68,6 +68,7 @@ import {
   SectionErrorBoundary,
   AIInsightsSummaryCard,
 } from './components'
+import { AgentPendingWritesBanner } from '@/components/contracts/AgentPendingWritesBanner'
 import { useContractMetadata, useContractUIStore } from './hooks'
 import {
   contractKeys,
@@ -1142,6 +1143,11 @@ export default function ContractDetailPage() {
               onRetryArtifactType={(artifactType) => { void retryArtifactType(artifactType) }}
               onRetryAllArtifacts={() => { void retryAllArtifactTypes() }}
             />
+
+            {/* Agent HITL: field-change proposals for this contract */}
+            {contractId && (
+              <AgentPendingWritesBanner contractId={contractId} className="mt-3" />
+            )}
 
             {/* Quick Overview */}
             <ContractQuickOverview

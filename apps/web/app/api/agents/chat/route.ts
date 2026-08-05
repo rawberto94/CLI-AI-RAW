@@ -19,6 +19,11 @@ import { agenticChat } from '@/lib/ai/agentic-chat.service';
 import { shouldUseAgent } from '@/lib/ai/agent-integration';
 import { hybridSearch } from '@/lib/rag/advanced-rag.service';
 import { createOpenAIClient, hasAIClientConfig } from '@/lib/openai-client';
+import {
+  AGENT_CODENAMES,
+  parseMentions,
+  resolveMentionedAgentIds,
+} from '@/lib/agents/agent-catalog';
 
 // ── Structured logger ─────────────────────────────────────────────────
 const log = pino({ name: 'agent-chat', level: process.env.LOG_LEVEL ?? 'info' });
@@ -122,54 +127,7 @@ If the data is empty or limited, acknowledge that and suggest next steps.`,
   }
 }
 
-// Agent @mention handlers mapping
-const AGENT_MENTION_MAP: Record<string, string> = {
-  '@merchant': 'rfx-procurement-agent',
-  '@scout': 'rfx-detection-agent',
-  '@sage': 'intelligent-search-agent',
-  '@sentinel': 'proactive-validation-agent',
-  '@vigil': 'compliance-monitoring-agent',
-  '@warden': 'proactive-risk-detector',
-  '@blueprinter': 'workflow-authoring-agent',
-  '@prospector': 'opportunity-discovery-engine',
-  '@clockwork': 'autonomous-deadline-manager',
-  '@mediator': 'conflict-resolution-agent',
-  '@navigator': 'onboarding-coach-agent',
-  '@builder': 'template-generation-agent',
-  '@memorykeeper': 'contract-transformation-agent',
-  '@orchestrator': 'workflow-orchestrator-agent',
-  '@synthesizer': 'data-synthesizer-agent',
-  '@steward': 'obligation-tracking-agent',
-  '@artificer': 'smart-gap-filling-agent',
-  '@conductor': 'multi-agent-coordinator',
-  '@mnemosyne': 'user-feedback-learner',
-  '@swarm': 'agent-swarm',
-  '@ab': 'ab-testing-engine',
-};
-
-const AGENT_CODENAMES: Record<string, { name: string; avatar: string; color: string }> = {
-  'rfx-procurement-agent': { name: 'Merchant', avatar: '🤝', color: 'yellow' },
-  'rfx-detection-agent': { name: 'Scout', avatar: '🎯', color: 'rose' },
-  'intelligent-search-agent': { name: 'Sage', avatar: '🔮', color: 'violet' },
-  'proactive-validation-agent': { name: 'Sentinel', avatar: '🛡️', color: 'blue' },
-  'compliance-monitoring-agent': { name: 'Vigil', avatar: '⚖️', color: 'emerald' },
-  'proactive-risk-detector': { name: 'Warden', avatar: '🔥', color: 'orange' },
-  'workflow-authoring-agent': { name: 'Blueprinter', avatar: '📐', color: 'slate' },
-  'opportunity-discovery-engine': { name: 'Prospector', avatar: '💎', color: 'amber' },
-  'autonomous-deadline-manager': { name: 'Clockwork', avatar: '⏰', color: 'cyan' },
-  'conflict-resolution-agent': { name: 'Mediator', avatar: '⚖️', color: 'indigo' },
-  'onboarding-coach-agent': { name: 'Navigator', avatar: '🧭', color: 'teal' },
-  'template-generation-agent': { name: 'Builder', avatar: '🏗️', color: 'lime' },
-  'contract-transformation-agent': { name: 'MemoryKeeper', avatar: '🧬', color: 'fuchsia' },
-  'workflow-orchestrator-agent': { name: 'Orchestrator', avatar: '🎼', color: 'purple' },
-  'data-synthesizer-agent': { name: 'Synthesizer', avatar: '🔮', color: 'pink' },
-  'obligation-tracking-agent': { name: 'Steward', avatar: '📋', color: 'emerald' },
-  'smart-gap-filling-agent': { name: 'Artificer', avatar: '🔧', color: 'gray' },
-  'multi-agent-coordinator': { name: 'Conductor', avatar: '🎼', color: 'amber' },
-  'user-feedback-learner': { name: 'Mnemosyne', avatar: '🧠', color: 'violet' },
-  'agent-swarm': { name: 'Swarm', avatar: '🐝', color: 'yellow' },
-  'ab-testing-engine': { name: 'A/B', avatar: '🧪', color: 'cyan' },
-};
+// AGENT_MENTION_MAP + AGENT_CODENAMES imported from @/lib/agents/agent-catalog
 
 const ChatMessageSchema = z.object({
   message: z.string().min(1).max(4000),
@@ -239,9 +197,9 @@ export const POST = withAuthApiHandler(async (req: NextRequest, ctx) => {
     // Generate thread ID if not provided
     const threadId = existingThreadId || `thread-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
-    // Parse @mentions
+    // Parse @mentions via shared catalog
     const mentions = parseMentions(message);
-    const mentionedAgents = mentions.map(m => AGENT_MENTION_MAP[m.toLowerCase()]).filter(Boolean);
+    const mentionedAgents = resolveMentionedAgentIds(message);
 
     // If no mentions, route to Sage (default conversational agent)
     const targetAgents = mentionedAgents.length > 0 ? mentionedAgents : ['intelligent-search-agent'];
@@ -1651,10 +1609,7 @@ async function handleABTestingQuery(
 // HELPER FUNCTIONS
 // ============================================================================
 
-function parseMentions(message: string): string[] {
-  const mentionRegex = /@\w+/g;
-  return message.match(mentionRegex) || [];
-}
+// parseMentions imported from @/lib/agents/agent-catalog
 
 async function buildEnrichedContext(context: any, tenantId: string): Promise<any> {
   const enriched: any = { ...context };

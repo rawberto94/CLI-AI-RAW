@@ -105,6 +105,13 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { PageBreadcrumb } from '@/components/navigation';
 import { UnifiedAgentInterface } from '@/components/agents/UnifiedAgentInterface';
+import { AgentApprovalQueue } from '@/components/agents/AgentApprovalQueue';
+import {
+  AGENT_CATALOG,
+  AGENT_CLUSTER_META,
+  AGENT_AVATAR_MAP as CATALOG_AVATAR_MAP,
+  type AgentClusterId,
+} from '@/lib/agents/agent-catalog';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -128,82 +135,75 @@ interface Message {
 }
 
 // ============================================================================
-// AGENT CLUSTER CONFIGURATION
+// AGENT CLUSTER CONFIGURATION (from shared catalog)
 // ============================================================================
 
-const AGENT_CLUSTERS = {
-  guardians: {
-    id: 'guardians',
-    name: 'Guardians',
-    emoji: '🛡️',
-    color: 'blue',
-    gradient: 'from-blue-500 to-cyan-500',
-    description: 'Compliance & Risk Protection',
-    agents: [
-      { id: 'proactive-validation-agent', codename: 'Sentinel', avatar: '🛡️', icon: Shield, description: 'First line of defense — catches errors before they propagate', status: 'active' },
-      { id: 'compliance-monitoring-agent', codename: 'Vigil', avatar: '⚖️', icon: Scale, description: 'Regulatory watchdog — ensures contracts meet all requirements', status: 'active' },
-      { id: 'proactive-risk-detector', codename: 'Warden', avatar: '🔥', icon: AlertTriangle, description: 'Early warning system — detects risks before they materialize', status: 'active' },
-      { id: 'conflict-resolution-agent', codename: 'Mediator', avatar: '⚖️', icon: GitCompare, description: 'Contradiction hunter — finds clauses at war with each other', status: 'active' },
-    ],
-  },
-  oracles: {
-    id: 'oracles',
-    name: 'Oracles',
-    emoji: '🔮',
-    color: 'violet',
-    gradient: 'from-violet-500 to-purple-500',
-    description: 'Intelligence & Discovery',
-    agents: [
-      { id: 'intelligent-search-agent', codename: 'Sage', avatar: '🔮', icon: Search, description: 'Seer of contracts — finds anything with intent-aware search', status: 'active' },
-      { id: 'opportunity-discovery-engine', codename: 'Prospector', avatar: '💎', icon: TrendingUp, description: 'Fortune finder — discovers savings and optimization gold', status: 'active' },
-      { id: 'rfx-detection-agent', codename: 'Scout', avatar: '🎯', icon: Target, description: 'Sniper — spots RFx opportunities before they expire', status: 'active' },
-      { id: 'contract-transformation-agent', codename: 'MemoryKeeper', avatar: '🧬', icon: Network, description: 'Pattern decoder — transforms contracts into structured knowledge', status: 'active' },
-      { id: 'data-synthesizer-agent', codename: 'Synthesizer', avatar: '🔮', icon: BarChart3, description: 'Portfolio oracle — synthesises insights across your contract base', status: 'active' },
-    ],
-  },
-  operators: {
-    id: 'operators',
-    name: 'Operators',
-    emoji: '⚡',
-    color: 'emerald',
-    gradient: 'from-emerald-500 to-teal-500',
-    description: 'Execution & Monitoring',
-    agents: [
-      { id: 'autonomous-deadline-manager', codename: 'Clockwork', avatar: '⏰', icon: Clock, description: 'Precision timekeeper — never misses a deadline', status: 'active' },
-      { id: 'obligation-tracking-agent', codename: 'Steward', avatar: '📋', icon: CheckCircle, description: 'Dedicated steward — tracks every commitment', status: 'active' },
-      { id: 'smart-gap-filling-agent', codename: 'Artificer', avatar: '🔧', icon: Wrench, description: 'Master craftsperson — fills missing data with precision', status: 'active' },
-      { id: 'template-generation-agent', codename: 'Builder', avatar: '🏗️', icon: LayoutTemplate, description: 'Template architect — structures contracts from learned patterns', status: 'active' },
-    ],
-  },
-  strategists: {
-    id: 'strategists',
-    name: 'Strategists',
-    emoji: '🎯',
-    color: 'amber',
-    gradient: 'from-amber-500 to-orange-500',
-    description: 'Workflow & Planning',
-    agents: [
-      { id: 'workflow-authoring-agent', codename: 'Blueprinter', avatar: '📐', icon: Workflow, description: 'Flow designer — creates tailored approval workflows', status: 'active' },
-      { id: 'rfx-procurement-agent', codename: 'Merchant', avatar: '🤝', icon: Gavel, description: 'Master negotiator — manages RFx lifecycles', status: 'active' },
-      { id: 'multi-agent-coordinator', codename: 'Conductor', avatar: '🎼', icon: Users, description: 'Orchestra leader — coordinates agent symphonies', status: 'active' },
-      { id: 'onboarding-coach-agent', codename: 'Navigator', avatar: '🧭', icon: HelpCircle, description: 'Setup guide — helps teams get the most from the platform', status: 'active' },
-    ],
-  },
-  evolution: {
-    id: 'evolution',
-    name: 'Evolution',
-    emoji: '🧬',
-    color: 'rose',
-    gradient: 'from-rose-500 to-pink-500',
-    description: 'Learning & Improvement',
-    agents: [
-      { id: 'user-feedback-learner', codename: 'Mnemosyne', avatar: '🧠', icon: Brain, description: 'Memory incarnate — learns from every interaction', status: 'active' },
-      { id: 'ab-testing-engine', codename: 'A/B', avatar: '🧪', icon: Beaker, description: 'Scientist — tests and validates agent performance', status: 'active' },
-      { id: 'agent-swarm', codename: 'Swarm', avatar: '🐝', icon: GitMerge, description: 'Collective intelligence — many minds, one purpose', status: 'active' },
-      { id: 'workflow-orchestrator-agent', codename: 'Orchestrator', avatar: '🎼', icon: Layers, description: 'Meta-conductor — coordinates multi-agent analysis plans', status: 'active' },
-    ],
-  },
+const CLUSTER_ICON: Record<string, typeof Shield> = {
+  'proactive-validation-agent': Shield,
+  'compliance-monitoring-agent': Scale,
+  'proactive-risk-detector': AlertTriangle,
+  'conflict-resolution-agent': GitCompare,
+  'intelligent-search-agent': Search,
+  'opportunity-discovery-engine': TrendingUp,
+  'rfx-detection-agent': Target,
+  'contract-transformation-agent': Network,
+  'data-synthesizer-agent': BarChart3,
+  'autonomous-deadline-manager': Clock,
+  'obligation-tracking-agent': CheckCircle,
+  'smart-gap-filling-agent': Wrench,
+  'template-generation-agent': LayoutTemplate,
+  'workflow-authoring-agent': Workflow,
+  'rfx-procurement-agent': Gavel,
+  'multi-agent-coordinator': Users,
+  'onboarding-coach-agent': HelpCircle,
+  'user-feedback-learner': Brain,
+  'ab-testing-engine': Beaker,
+  'agent-swarm': GitMerge,
+  'workflow-orchestrator-agent': Layers,
 };
+
+const AGENT_CLUSTERS = (Object.keys(AGENT_CLUSTER_META) as AgentClusterId[]).reduce(
+  (acc, clusterId) => {
+    const meta = AGENT_CLUSTER_META[clusterId];
+    const agents = AGENT_CATALOG.filter((a) => a.cluster === clusterId).map((a) => ({
+      id: a.id,
+      codename: a.codename,
+      avatar: a.avatar,
+      icon: CLUSTER_ICON[a.id] || Bot,
+      description: a.description,
+      status: 'active' as const,
+    }));
+    acc[clusterId] = {
+      id: clusterId,
+      name: meta.name,
+      emoji: meta.emoji,
+      color: agents[0]?.id ? 'blue' : 'blue',
+      gradient: meta.gradient,
+      description: meta.description,
+      agents,
+    };
+    return acc;
+  },
+  {} as Record<
+    string,
+    {
+      id: string;
+      name: string;
+      emoji: string;
+      color: string;
+      gradient: string;
+      description: string;
+      agents: Array<{
+        id: string;
+        codename: string;
+        avatar: string;
+        icon: typeof Shield;
+        description: string;
+        status: 'active';
+      }>;
+    }
+  >,
+);
 
 // ============================================================================
 // MAIN COMPONENT
@@ -430,7 +430,7 @@ export default function ContigoLabsPage() {
             </div>
           </TabsContent>
 
-          {/* Approvals Tab */}
+          {/* Approvals Tab — real HITL queue (goals + agent field writes) */}
           <TabsContent value="approvals" className="m-0">
             <ApprovalsView />
           </TabsContent>
@@ -779,8 +779,7 @@ function ActivityRow({ activity }: { activity: any }) {
 
 function ApprovalsView() {
   return (
-    <div className="space-y-8">
-      {/* Header */}
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg shadow-amber-500/20">
@@ -788,41 +787,16 @@ function ApprovalsView() {
           </div>
           <div>
             <h2 className="text-2xl font-black text-slate-900">Approval Queue</h2>
-            <p className="text-slate-500 font-medium">Review and approve agent recommendations</p>
+            <p className="text-slate-500 font-medium">
+              Goals awaiting human approval and agent field-change proposals
+            </p>
           </div>
         </div>
-        <Badge className="bg-amber-100 text-amber-700 border-transparent font-bold px-3 py-1.5 rounded-lg text-sm">
-          <AlertTriangle className="w-4 h-4 mr-2 inline" />
-          Requires Attention
-        </Badge>
       </div>
 
-      {/* Main Card */}
       <Card className="border-transparent shadow-sm rounded-2xl bg-white overflow-hidden">
-        <CardContent className="p-0">
-          <div className="h-1.5 bg-gradient-to-r from-amber-400 via-orange-500 to-amber-600" />
-          <div className="flex flex-col items-center justify-center py-20 px-8">
-            <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-amber-100 to-orange-100 flex items-center justify-center mx-auto mb-6">
-              <ListChecks className="w-12 h-12 text-amber-500" />
-            </div>
-            <h3 className="text-2xl font-black text-slate-900 mb-2">Integrated with Agent Center</h3>
-            <p className="text-slate-500 font-medium max-w-md text-center mb-8">
-              The approval queue has been unified with the Agent Command Center for a more streamlined experience. Review and approve recommendations directly from the agent interface.
-            </p>
-            <Button 
-              size="lg"
-              className="h-12 px-8 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-bold shadow-md shadow-violet-500/20 hover:shadow-lg hover:-translate-y-0.5 transition-all"
-              onClick={() => {
-                const params = new URLSearchParams(window.location.search);
-                params.set('tab', 'agents');
-                window.history.replaceState(null, '', `/contigo-labs?${params.toString()}`);
-                window.location.reload();
-              }}
-            >
-              <Bot className="w-5 h-5 mr-2" />
-              Go to Agent Command Center
-            </Button>
-          </div>
+        <CardContent className="p-4 sm:p-6">
+          <AgentApprovalQueue />
         </CardContent>
       </Card>
     </div>
@@ -3621,42 +3595,25 @@ function EmbeddedAIBubble() {
  * Mirrors the FloatingAIBubble functionality but embedded in the page
  */
 
-// Flat list of all agents for @mention autocomplete
-const ALL_AGENTS = Object.values(AGENT_CLUSTERS).flatMap(cluster =>
-  cluster.agents.map(agent => ({
-    ...agent,
-    cluster: cluster.name,
-    clusterEmoji: cluster.emoji,
-    mention: `@${agent.codename.toLowerCase()}`,
-    example: agent.codename === 'Sage' ? 'Find all NDAs expiring this quarter'
-      : agent.codename === 'Vigil' ? 'Check compliance status of my contracts'
-      : agent.codename === 'Warden' ? 'What are the top risks in my portfolio?'
-      : agent.codename === 'Sentinel' ? 'Validate this contract for errors'
-      : agent.codename === 'Prospector' ? 'Where can I save money on renewals?'
-      : agent.codename === 'Scout' ? 'Are there any open RFx opportunities?'
-      : agent.codename === 'Clockwork' ? 'What deadlines are coming up?'
-      : agent.codename === 'Steward' ? 'Track all outstanding obligations'
-      : agent.codename === 'Artificer' ? 'Fill missing metadata across contracts'
-      : agent.codename === 'Blueprinter' ? 'Design an approval workflow for NDAs'
-      : agent.codename === 'Merchant' ? 'Start an RFx procurement process'
-      : agent.codename === 'Conductor' ? 'Coordinate a multi-agent analysis'
-      : agent.codename === 'Mnemosyne' ? 'What have I asked about recently?'
-      : agent.codename === 'Swarm' ? 'Run a full portfolio deep-dive'
-      : agent.codename === 'Mediator' ? 'Find clause conflicts in contract #123'
-      : agent.codename === 'Navigator' ? 'Help me get started with Contigo'
-      : agent.codename === 'Builder' ? 'Generate a standard NDA template'
-      : agent.codename === 'MemoryKeeper' ? 'Transform contracts into structured data'
-      : agent.codename === 'Orchestrator' ? 'Plan multi-agent analysis of my portfolio'
-      : agent.codename === 'Synthesizer' ? 'Give me a portfolio risk overview'
-      : agent.codename === 'A/B' ? 'Run performance tests on agent responses'
-      : 'Help me with contract management',
-  }))
-);
+// Flat list of all agents for @mention autocomplete (shared catalog)
+const ALL_AGENTS = AGENT_CATALOG.map((agent) => {
+  const clusterMeta = AGENT_CLUSTER_META[agent.cluster];
+  return {
+    id: agent.id,
+    codename: agent.codename,
+    avatar: agent.avatar,
+    icon: CLUSTER_ICON[agent.id] || Bot,
+    description: agent.description,
+    status: 'active' as const,
+    cluster: clusterMeta.name,
+    clusterEmoji: clusterMeta.emoji,
+    mention: agent.mention,
+    example: agent.example,
+  };
+});
 
 // Lookup: codename → emoji avatar for chat message rendering
-const AGENT_AVATAR_MAP: Record<string, string> = Object.fromEntries(
-  ALL_AGENTS.map(a => [a.codename, a.avatar])
-);
+const AGENT_AVATAR_MAP: Record<string, string> = CATALOG_AVATAR_MAP;
 
 function EmbeddedChatInterface() {
   const [messages, setMessages] = useState<Message[]>([{
