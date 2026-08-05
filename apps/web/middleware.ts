@@ -391,6 +391,7 @@ const publicAuthApiPaths = [
   '/api/auth/reset-password',
   '/api/auth/signup',
   '/api/auth/providers-list',
+  '/api/auth/sso-providers',
   '/api/auth/verify-email',
   '/api/auth/verify-invite',
   '/api/auth/sso',

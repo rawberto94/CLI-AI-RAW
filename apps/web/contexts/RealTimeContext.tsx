@@ -91,15 +91,19 @@ export function RealTimeProvider({
   autoReconnect = true, // Enabled so SSE recovers from transient failures
 }: RealTimeProviderProps) {
   const toast = useToast();
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
 
   // Resolve tenant ID from: prop > session > localStorage > env
   // Also sync session tenantId to localStorage so other utilities can use it
   const sessionTenantId = (session?.user as { tenantId?: string } | undefined)?.tenantId;
-  if (sessionTenantId && typeof window !== 'undefined') {
-    setTenantId(sessionTenantId);
-  }
-  const resolvedTenantId = tenantId ?? sessionTenantId ?? getTenantId();
+  useEffect(() => {
+    if (sessionTenantId) {
+      setTenantId(sessionTenantId);
+    }
+  }, [sessionTenantId]);
+  // While the session is still loading, avoid probing localStorage/env (and
+  // the "no tenant" warning it emits) — wait for the session tenantId instead.
+  const resolvedTenantId = tenantId ?? sessionTenantId ?? (status === 'loading' ? 'unknown' : getTenantId());
   // Skip SSE connection if tenant ID is unresolved
   const effectiveTenantId = resolvedTenantId === 'unknown' ? undefined : resolvedTenantId;
   const [connectionAttempts, setConnectionAttempts] = useState(0);

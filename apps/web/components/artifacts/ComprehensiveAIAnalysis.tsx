@@ -517,6 +517,7 @@ export function ComprehensiveAIAnalysis({
   const [isRunningDeepAnalysis, setIsRunningDeepAnalysis] = useState(false)
   const [deepAnalysisResult, setDeepAnalysisResult] = useState<IntelligentAnalysisResult | null>(null)
   const [showDeepAnalysis, setShowDeepAnalysis] = useState(false)
+  const [showAllClauses, setShowAllClauses] = useState(false)
 
   // Run intelligent deep analysis
   const runDeepAnalysis = useCallback(async () => {
@@ -674,6 +675,11 @@ export function ComprehensiveAIAnalysis({
       r.severity === 'high' || r.severity === 'critical'
     ).length
   }), [data])
+
+  // Full clause list for the Key Clauses section (preview shows first 6)
+  const allClauses = useMemo(() => (
+    data.clauses?.clauses || data.clauses?.keyClauses || []
+  ), [data])
 
   const handleRequestAnalysis = useCallback((section: string) => {
     if (onRequestAnalysis) {
@@ -1634,7 +1640,7 @@ export function ComprehensiveAIAnalysis({
         >
           {data.clauses ? (
             <div className="space-y-3">
-              {(data.clauses.clauses || data.clauses.keyClauses || []).slice(0, 6).map((clause: any, i: number) => (
+              {(showAllClauses ? allClauses : allClauses.slice(0, 6)).map((clause: any, i: number) => (
                 <div 
                   key={clause.id || clause.title || `clause-${i}`}
                   className="p-4 bg-white border border-slate-200 rounded-lg hover:border-indigo-200 transition-colors"
@@ -1668,10 +1674,17 @@ export function ComprehensiveAIAnalysis({
                 </div>
               ))}
               
-              {(data.clauses.clauses || data.clauses.keyClauses || []).length > 6 && (
-                <Button variant="outline" className="w-full" size="sm">
-                  View all {(data.clauses.clauses || data.clauses.keyClauses || []).length} clauses
-                  <ChevronRight className="h-4 w-4 ml-1" />
+              {allClauses.length > 6 && (
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  size="sm"
+                  onClick={() => setShowAllClauses((v) => !v)}
+                >
+                  {showAllClauses ? 'Show fewer clauses' : `View all ${allClauses.length} clauses`}
+                  {showAllClauses
+                    ? <ChevronDown className="h-4 w-4 ml-1" />
+                    : <ChevronRight className="h-4 w-4 ml-1" />}
                 </Button>
               )}
             </div>
