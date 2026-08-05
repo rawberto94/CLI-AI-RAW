@@ -40,6 +40,8 @@
     "security:audit:high": "pnpm audit --prod --audit-level high",
     "audit:tcv": "tsx scripts/audit-tcv-quality.ts",
     "audit:critical-fields": "tsx scripts/audit-critical-fields.ts",
+    "audit:critical-fields:ci": "pnpm --filter @repo/utils exec vitest run src/__tests__/critical-fields-ci-gate.test.ts src/__tests__/critical-fields.test.ts",
+    "test:tenant-guard": "pnpm --filter clients-db exec vitest run src/__tests__/tenant-guard.test.ts src/__tests__/with-tenant.test.ts",
     "lint": "turbo run lint",
     "typecheck": "turbo run type-check",
     "type-check:web:strict:core": "pnpm --filter web type-check:strict:core",

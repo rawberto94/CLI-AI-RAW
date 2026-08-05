@@ -927,7 +927,8 @@ model ContractEmbedding {
   embedding    Unsupported("vector")?
   chunkType    String?
   section      String?
-  tenantId     String?
+  /// Required for tenant-filtered hybrid search (Wave D). Backfill before migrate.
+  tenantId     String
   contractType String?
   createdAt    DateTime               @default(now())
   updatedAt    DateTime               @updatedAt

@@ -86,8 +86,16 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Generate Prisma Client
         run: pnpm run db:generate
+      - name: Critical-fields CI gate (seeded hallucination must fail)
+        run: pnpm --filter @repo/utils exec vitest run src/__tests__/critical-fields-ci-gate.test.ts src/__tests__/critical-fields.test.ts src/__tests__/field-trust.test.ts src/__tests__/agent-write-policy.test.ts
+      - name: Tenant guard unit tests
+        run: pnpm --filter clients-db exec vitest run src/__tests__/tenant-guard.test.ts src/__tests__/with-tenant.test.ts
       - name: Unit / Workspace Tests
-        run: pnpm run test:unit || pnpm run test
+        # Prefer failing unit tests; do not mask with e2e (agent-readiness F11)
+        run: pnpm run test:unit
+      - name: E2E / integration tests (non-blocking until fully green)
+        continue-on-error: true
+        run: pnpm run test
 
   build:
     name: Build

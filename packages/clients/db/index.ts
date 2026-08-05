@@ -1,5 +1,6 @@
 import { PrismaClient, Prisma } from '@prisma/client';
 import { performance } from 'perf_hooks';
+import { assertTenantGuard, isTenantGuardStrict } from './src/tenant-guard';
 
 // ============================================================================
 // ADVANCED ARCHITECTURE EXPORTS
@@ -7,6 +8,14 @@ import { performance } from 'perf_hooks';
 // ============================================================================
 
 export * from './src/advanced';
+export {
+  assertTenantGuard,
+  TenantGuardError,
+  TENANT_SCOPED_MODELS,
+  isTenantGuardStrict,
+} from './src/tenant-guard';
+export { withTenant, assertSafeTenantId } from './src/with-tenant';
+export type { PrismaLike, TenantTxClient } from './src/with-tenant';
 
 // ============================================================================
 // LEGACY DATABASE MANAGER (maintained for backward compatibility)
@@ -107,54 +116,17 @@ export class DatabaseManager {
       },
     });
 
-    // Add tenant isolation middleware
+    // Tenant isolation middleware (Wave D) — hard-fail writes without tenantId;
+    // strict reads in production or when TENANT_GUARD_STRICT=true.
     this.prisma.$use(async (params, next) => {
-      // Models that require tenant isolation
-      const tenantModels = [
-        'Contract',
-        'Artifact',
-        'ProcessingJob',
-        'FileIntegrity',
-        'AuditLog',
-        'ContractMetadata',
-        'RateCard',
-        'Supplier',
-        'ComplianceCheck',
-      ];
-
-      // Check if this model requires tenant isolation
-      if (tenantModels.includes(params.model || '')) {
-        // For read operations, ensure tenantId filter is present
-        if (['findUnique', 'findFirst', 'findMany', 'count', 'aggregate'].includes(params.action)) {
-          if (!params.args) {
-            params.args = {};
-          }
-          if (!params.args.where) {
-            params.args.where = {};
-          }
-          
-          // Silent check - tenantId filter validation
-        }
-
-        // For write operations, ensure tenantId is present
-        if (['create', 'update', 'upsert', 'delete', 'deleteMany', 'updateMany'].includes(params.action)) {
-          if (params.action === 'create') {
-            if (!params.args?.data?.tenantId) {
-              throw new Error(`tenantId is required when creating ${params.model}`);
-            }
-          }
-          
-          // For upsert, check the create block (upsert uses create/update, not data)
-          if (params.action === 'upsert') {
-            if (!params.args?.create?.tenantId) {
-              throw new Error(`tenantId is required in upsert create block for ${params.model}`);
-            }
-          }
-          
-          // Silent check for update/delete - tenantId filter validation
-        }
-      }
-
+      assertTenantGuard(
+        {
+          model: params.model,
+          action: params.action,
+          args: params.args,
+        },
+        { strictReads: isTenantGuardStrict() },
+      );
       return next(params);
     });
 

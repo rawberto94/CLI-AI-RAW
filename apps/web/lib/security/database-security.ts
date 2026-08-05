@@ -447,14 +447,30 @@ export class DatabaseSecurityService {
     sessionId: string;
     isAdmin?: boolean;
   }): Promise<void> {
-    await this.prisma.$executeRawUnsafe(`
-      SET LOCAL "app.current_tenant" = '${context.tenantId}';
-      SET LOCAL "app.current_user_id" = '${context.userId}';
-      SET LOCAL "app.current_user_email" = '${context.userEmail}';
-      SET LOCAL "app.current_ip" = '${context.ipAddress}';
-      SET LOCAL "app.current_session" = '${context.sessionId}';
-      SET LOCAL "app.is_admin" = '${context.isAdmin || false}';
-    `);
+    // Validate identifiers before interpolating into SET LOCAL (no SQL params for SET).
+    const safe = (v: string, max = 128) => {
+      const s = String(v ?? '').slice(0, max);
+      if (!/^[a-zA-Z0-9@._:+\-]*$/.test(s)) {
+        throw new Error('Invalid session context value for RLS');
+      }
+      return s;
+    };
+    const tenantId = safe(context.tenantId);
+    const userId = safe(context.userId);
+    const userEmail = safe(context.userEmail, 256);
+    const ipAddress = safe(context.ipAddress, 64);
+    const sessionId = safe(context.sessionId);
+    const isAdmin = context.isAdmin ? 'true' : 'false';
+
+    // Dual keys: app.tenant_id (Wave D policies) + app.current_tenant (legacy)
+    // One statement per set_config (pool-safe SET LOCAL via is_local=true)
+    await this.prisma.$executeRawUnsafe(`SELECT set_config('app.tenant_id', $1, true)`, tenantId);
+    await this.prisma.$executeRawUnsafe(`SELECT set_config('app.current_tenant', $1, true)`, tenantId);
+    await this.prisma.$executeRawUnsafe(`SELECT set_config('app.current_user_id', $1, true)`, userId);
+    await this.prisma.$executeRawUnsafe(`SELECT set_config('app.current_user_email', $1, true)`, userEmail);
+    await this.prisma.$executeRawUnsafe(`SELECT set_config('app.current_ip', $1, true)`, ipAddress);
+    await this.prisma.$executeRawUnsafe(`SELECT set_config('app.current_session', $1, true)`, sessionId);
+    await this.prisma.$executeRawUnsafe(`SELECT set_config('app.is_admin', $1, true)`, isAdmin);
   }
 
   /**

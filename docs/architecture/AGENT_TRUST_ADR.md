@@ -45,8 +45,16 @@ Shared in `@repo/utils` (`field-trust`, `agent-write-policy`, `critical-fields`)
 - Prefer API `criticalFields` for chips next to values  
 - Client-side party invention from `clientName` is behind `LEGACY_PARTY_FALLBACK` (default on until sync is proven)
 
+## Tenant isolation (Wave D)
+
+- App guard: `packages/clients/db/src/tenant-guard.ts` — writes always require `tenantId`; strict reads via `TENANT_GUARD_STRICT=true`
+- Transaction helper: `withTenant(prisma, tenantId, fn)` sets `app.tenant_id` + `app.current_tenant` with `SET LOCAL`
+- Migration `20260805120000_tenant_guard_embedding_rls`: backfill embeddings, `tenantId NOT NULL`, RLS **ENABLE** (not FORCE) on core tables
+- FORCE RLS is a follow-up after staging soak
+
 ## Consequences
 
 - Agents act only on allowlisted non-critical fields via gateway + HITL  
 - Portfolio metrics should eventually exclude `ai_low` / `conflict` (follow-up)  
-- Dual date columns remain until a dedicated migration collapses `startDate`/`endDate`
+- Dual date columns remain until a dedicated migration collapses `startDate`/`endDate`  
+- Apply DB migrate before deploying code that assumes non-null embedding `tenantId`

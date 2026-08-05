@@ -1,10 +1,15 @@
--- PostgreSQL Row-Level Security (RLS) Policies
--- 
--- This migration enables RLS for defense-in-depth tenant isolation.
--- Even if application code misses a tenant filter, RLS prevents data leakage.
+-- ⚠️ HISTORICAL / STALE — DO NOT RUN
 --
--- IMPORTANT: Run this after the Prisma schema migration
--- Usage: psql $DATABASE_URL -f enable_rls.sql
+-- This script references tables that no longer exist (ContractClause, Tag,
+-- ApprovalRequest, …) and is superseded by:
+--   migrations/20260805120000_tenant_guard_embedding_rls/migration.sql
+--
+-- Kept for archaeology only. See docs/architecture/AGENT_TRUST_ADR.md and
+-- docs/planning/AGENT_READINESS_REVIEW.md (F2 / P0-2).
+--
+-- Original header below for context:
+-- PostgreSQL Row-Level Security (RLS) Policies (legacy)
+-- Usage: DO NOT apply — use 20260805120000_tenant_guard_embedding_rls instead.
 
 -- ============================================================================
 -- Enable RLS on Tenant-Scoped Tables
