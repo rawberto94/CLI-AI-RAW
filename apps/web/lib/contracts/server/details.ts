@@ -876,6 +876,28 @@ export async function getContractDetails(
         : null,
     };
 
+    // SSOT critical-field trust map (canonical Contract columns)
+    try {
+      const { buildCriticalFields } = await import('@repo/utils');
+      const aiMeta = (contract.aiMetadata ?? {}) as Record<string, unknown>;
+      enrichedData.criticalFields = buildCriticalFields({
+        totalValue: contract.totalValue,
+        currency: contract.currency,
+        effectiveDate: contract.effectiveDate,
+        expirationDate: contract.expirationDate,
+        startDate: contract.startDate,
+        endDate: contract.endDate,
+        clientName: contract.clientName,
+        supplierName: contract.supplierName,
+        external_parties: aiMeta.external_parties,
+        autoRenewalEnabled: contract.autoRenewalEnabled,
+        noticePeriodDays: contract.noticePeriodDays,
+        classificationConf: contract.classificationConf,
+      });
+    } catch {
+      // non-fatal
+    }
+
     const responseTime = Date.now() - startTime;
     const isTerminal = contract.status === 'COMPLETED' || contract.status === 'FAILED';
     let etag: string | undefined;

@@ -837,6 +837,25 @@ export async function generateArtifactsJob(
       logger.error({ error: metadataPopulateError }, 'Failed to populate ContractMetadata — AI insights may be missing');
     }
 
+    // 5.4 Critical-field sync: backfill derived party mirrors + record TCV/date drift
+    try {
+      const { runCriticalFieldSync } = await import('./services/critical-field-sync');
+      const syncResult = await runCriticalFieldSync(contractId, tenantId);
+      logger.info(
+        {
+          contractId,
+          driftCount: syncResult.drifts.length,
+          partiesBackfilled: syncResult.partiesBackfilled,
+        },
+        'Critical field sync completed after artifact generation',
+      );
+    } catch (syncErr) {
+      logger.warn(
+        { contractId, error: syncErr instanceof Error ? syncErr.message : String(syncErr) },
+        'Critical field sync failed (non-fatal)',
+      );
+    }
+
     // 5.5 Deterministic downstream plan
     const { plan } = buildProcessingPlan({ extractedText: contractText });
 

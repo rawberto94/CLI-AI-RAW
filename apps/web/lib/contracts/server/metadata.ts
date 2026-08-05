@@ -504,6 +504,8 @@ export async function getContractMetadata(
   context: ContractApiContext,
   contractId: string,
 ) {
+  const { buildCriticalFields, isLegacyPartyFallbackEnabled } = await import('@repo/utils');
+
   const contract = await prisma.contract.findFirst({
     where: { id: contractId, tenantId: context.tenantId },
     select: {
@@ -588,7 +590,9 @@ export async function getContractMetadata(
     })).filter((party: any) => party.legalName);
   }
 
-  if (normalizedParties.length === 0) {
+  // Invent parties from clientName/supplierName only when legacy fallback is enabled.
+  // Prefer canonical sync (critical-field-sync worker) writing aiMetadata.external_parties.
+  if (normalizedParties.length === 0 && isLegacyPartyFallbackEnabled()) {
     if (contract.clientName) {
       normalizedParties.push({ legalName: contract.clientName, role: 'Client' });
     }
@@ -759,6 +763,58 @@ export async function getContractMetadata(
     };
   }
 
+  // SSOT critical-field trust map for UI chips (canonical Contract columns)
+  let artifactTotalValue: number | null = null;
+  let artifactParties: Array<{ legalName?: string; name?: string; role?: string }> = [];
+  try {
+    const fin = await prisma.artifact.findFirst({
+      where: {
+        contractId,
+        tenantId: context.tenantId,
+        type: { in: ['FINANCIAL', 'financial', 'OVERVIEW', 'overview'] },
+      },
+      select: { type: true, data: true },
+      orderBy: { updatedAt: 'desc' },
+    });
+    const data = (fin?.data ?? {}) as Record<string, unknown>;
+    const tv = data.totalValue ?? data.tcv_amount;
+    if (typeof tv === 'number') artifactTotalValue = tv;
+    else if (tv != null) {
+      const n = Number(tv);
+      if (Number.isFinite(n)) artifactTotalValue = n;
+    }
+    if (Array.isArray(data.parties)) artifactParties = data.parties as typeof artifactParties;
+  } catch {
+    // non-fatal
+  }
+
+  const confFromMap: Record<string, number> = {};
+  Object.entries(confidenceMap).forEach(([k, v]) => {
+    if (typeof v?.value === 'number') confFromMap[k] = v.value;
+  });
+
+  const criticalFields = buildCriticalFields(
+    {
+      totalValue: contract.totalValue,
+      currency: contract.currency,
+      effectiveDate: contract.effectiveDate,
+      expirationDate: contract.expirationDate,
+      startDate: contract.startDate,
+      endDate: contract.endDate,
+      clientName: contract.clientName,
+      supplierName: contract.supplierName,
+      external_parties: enterpriseMetadata.external_parties,
+      autoRenewalEnabled: contract.autoRenewalEnabled,
+      noticePeriodDays: contract.noticePeriodDays,
+      classificationConf: contract.classificationConf,
+    },
+    {
+      artifactTotalValue,
+      artifactParties,
+      fieldConfidence: confFromMap,
+    },
+  );
+
   return createSuccessResponse(context, {
     success: true,
     metadata: {
@@ -766,6 +822,7 @@ export async function getContractMetadata(
       _field_confidence: confidenceMap,
       _fieldValidations: fieldValidations,
     },
+    criticalFields,
     reviewStatus,
     metadataVersion: contract.metadataVersion ?? 1,
     classification: {

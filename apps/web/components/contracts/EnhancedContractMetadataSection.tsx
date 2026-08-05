@@ -76,6 +76,8 @@ import {
 } from '@/lib/types/contract-metadata-schema';
 import { formatCurrency, formatDate } from '@/lib/design-tokens';
 import { isFieldRequired } from '@/lib/contracts/metadata-requirements';
+import { FieldTrustChip } from '@/components/contracts/FieldTrustChip';
+import type { FieldTrust } from '@repo/utils';
 import {
   enrichCommercialFieldsFromArtifacts,
   mergePersistedMetadata,
@@ -639,7 +641,7 @@ function PartyCard({ party, index, isEditing, onChange, onRemove }: PartyDisplay
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           <h4 className="font-semibold text-slate-900 truncate">
-            {displayName || <span className="text-slate-400 italic">Unnamed Party</span>}
+            {displayName || <span className="text-slate-400 italic">Party not extracted</span>}
           </h4>
         </div>
         <div className="flex items-center gap-2 mt-0.5">
@@ -795,6 +797,16 @@ function MetadataSection({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {section === 'parties' ? (
               <div className="col-span-2 space-y-2">
+                {(() => {
+                  const partiesTrust = (metadata as { _criticalFields?: Record<string, { trust: FieldTrust; confidence?: number | null }> })
+                    ?._criticalFields?.parties;
+                  return partiesTrust ? (
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-xs text-slate-500">Party trust</span>
+                      <FieldTrustChip trust={partiesTrust.trust} confidence={partiesTrust.confidence} />
+                    </div>
+                  ) : null;
+                })()}
                 <AnimatePresence mode="popLayout">
                   {(metadata.external_parties || []).map((party, idx) => (
                     <PartyCard 
@@ -836,7 +848,7 @@ function MetadataSection({
                   <EmptyState
                     icon={Users}
                     title="No parties extracted"
-                    description="Parties will appear here after AI processing or manual entry."
+                    description="Party names were not found on the contract record. Run extraction again or add parties manually — we no longer invent parties from partial fields unless legacy fallback is on."
                   />
                 )}
               </div>
@@ -1118,10 +1130,17 @@ function MetadataField({
     
     if (field.type === 'decimal' && field.key === 'tcv_amount') {
       const currency = metadata.currency || 'USD';
-      return value ? (
-        <span className="text-lg font-bold text-violet-700">{formatCurrency(Number(value), currency)}</span>
-      ) : (
-        <span className="text-slate-400 italic">Not specified</span>
+      const trust = (metadata as { _criticalFields?: Record<string, { trust: FieldTrust; confidence?: number | null }> })
+        ._criticalFields?.totalValue;
+      return (
+        <span className="inline-flex items-center gap-2 flex-wrap">
+          {value ? (
+            <span className="text-lg font-bold text-violet-700">{formatCurrency(Number(value), currency)}</span>
+          ) : (
+            <span className="text-slate-400 italic">Not specified</span>
+          )}
+          {trust && <FieldTrustChip trust={trust.trust} confidence={trust.confidence} />}
+        </span>
       );
     }
     
@@ -1499,7 +1518,11 @@ export function EnhancedContractMetadataSection({
     if (!data) return;
     const m = data.metadata ?? data.enterpriseMetadata ?? null;
     if (m) {
-      setMetadataFromAPI(normalizeSignatureMetadataSnapshot(m));
+      // Attach criticalFields from API envelope for FieldTrustChip (SSOT trust)
+      const withTrust = data.criticalFields
+        ? { ...normalizeSignatureMetadataSnapshot(m), _criticalFields: data.criticalFields }
+        : normalizeSignatureMetadataSnapshot(m);
+      setMetadataFromAPI(withTrust);
       const validations =
         m._fieldValidations || data.rawMetadata?.customFields?._fieldValidations;
       if (validations) setFieldValidations(validations);
@@ -1582,8 +1605,20 @@ export function EnhancedContractMetadataSection({
         base.external_parties = contract.external_parties.filter((p: any) => p.legalName || p.name);
       }
       
-      // Fallback: Create parties from clientName/supplierName if external_parties is empty
-      if (!base.external_parties || base.external_parties.length === 0) {
+      // Fallback: invent parties from clientName/supplierName only when legacy flag allows.
+      // Prefer server critical-field-sync writing external_parties from canonical columns.
+      // Disable with LEGACY_PARTY_FALLBACK=false (Next public: NEXT_PUBLIC_LEGACY_PARTY_FALLBACK).
+      const legacyPartyFallback = (() => {
+        const raw =
+          (typeof process !== 'undefined' &&
+            (process.env.NEXT_PUBLIC_LEGACY_PARTY_FALLBACK ?? process.env.LEGACY_PARTY_FALLBACK)) ||
+          'true';
+        return !['0', 'false', 'no', 'off'].includes(String(raw).toLowerCase());
+      })();
+      if (
+        legacyPartyFallback &&
+        (!base.external_parties || base.external_parties.length === 0)
+      ) {
         const fallbackParties: ExternalParty[] = [];
         
         if (contract.clientName) {
