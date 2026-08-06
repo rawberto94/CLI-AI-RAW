@@ -30,6 +30,8 @@ export interface EmitUxEventInput {
 
 /**
  * Persist a UX analytics event. Fire-and-forget safe: never throws to callers.
+ * Server-only — client components must use `trackUxEventClient` from
+ * `@/lib/analytics/ux-events-client` so Prisma is not pulled into the browser bundle.
  */
 export async function emitUxEvent(input: EmitUxEventInput): Promise<void> {
   try {
@@ -48,26 +50,6 @@ export async function emitUxEvent(input: EmitUxEventInput): Promise<void> {
       event: input.event,
       tenantId: input.tenantId,
     });
-  }
-}
-
-/**
- * Client-side helper: POST to /api/analytics/ux-events (best-effort).
- * Use from React components that cannot import prisma.
- */
-export async function trackUxEventClient(
-  event: UxAnalyticsEventName | string,
-  props?: Record<string, unknown>,
-): Promise<void> {
-  try {
-    await fetch('/api/analytics/ux-events', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ event, props: props ?? {} }),
-      keepalive: true,
-    });
-  } catch {
-    // best-effort
   }
 }
 

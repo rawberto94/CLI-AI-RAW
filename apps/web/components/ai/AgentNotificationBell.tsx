@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { Bell, Check, CheckCheck, AlertTriangle, Info, Zap, Brain, MessageSquare, FileText, Users, Clock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useWebSocket } from '@/contexts/websocket-context';
-import { trackUxEventClient } from '@/lib/analytics/ux-events';
+import { trackUxEventClient } from '@/lib/analytics/ux-events-client';
 
 // ---- Agent-origin notifications (existing) ----
 interface AgentNotification {
