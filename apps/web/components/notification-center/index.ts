@@ -4,8 +4,8 @@
  * Real notification UI lives in:
  *   - components/ui/notification-system.tsx (NotificationProvider, NotificationCenter, useNotifications)
  *   - components/notifications/NotificationCenter.tsx
- *   - components/collaboration/NotificationCenter.tsx
- * 
+ *   - components/ai/AgentNotificationBell.tsx (global nav bell — agent + system notifications)
+ *
  * These exports provide no-op stubs for the originally planned module API.
  */
 

@@ -186,6 +186,28 @@ export class GoalPersistenceService {
         data: update,
       });
 
+      // Agentic UX 1.5: emit approval_requested when a goal enters HITL
+      if (update.status === 'AWAITING_APPROVAL') {
+        try {
+          if (typeof (prisma as { analyticsEvent?: { create: Function } }).analyticsEvent?.create === 'function') {
+            await (prisma as { analyticsEvent: { create: Function } }).analyticsEvent.create({
+              data: {
+                tenantId: goal.tenantId,
+                event: 'approval_requested',
+                props: {
+                  source: 'agent_goal',
+                  goalId: goal.id,
+                  type: goal.type,
+                  title: goal.title,
+                },
+              },
+            });
+          }
+        } catch {
+          // analytics table may not exist in every env
+        }
+      }
+
       logger.debug({ goalId, status: update.status }, 'Updated goal');
       return goal;
     } catch (error) {

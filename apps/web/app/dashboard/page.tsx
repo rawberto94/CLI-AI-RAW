@@ -38,6 +38,10 @@ import { useRealTimeEvents } from "@/contexts/RealTimeContext";
 import { type DashboardWidget } from "@/components/dashboard/CustomDashboardBuilder";
 import { useDemoMode } from "@/hooks/useDemoMode";
 import { useTranslations } from "next-intl";
+import { PredictiveInsightsWidget } from "@/components/ai/PredictiveInsightsWidget";
+import { AIActivityFeed } from "@/components/ai/AIActivityFeed";
+import { AutoApprovalDigestCard } from "@/components/agents/AutoApprovalDigestCard";
+import { GraduationNudgeCard } from "@/components/agents/GraduationNudgeCard";
 
 const CustomDashboardBuilder = lazy(() => import("@/components/dashboard/CustomDashboardBuilder"));
 
@@ -780,6 +784,23 @@ export default function DashboardPage() {
             })}
           </div>
         </motion.div>
+
+        {/* Proactive AI: predictive insights + agent activity feed */}
+        {!isDemo && (
+          <motion.div variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <GraduationNudgeCard />
+            <AutoApprovalDigestCard />
+            <PredictiveInsightsWidget />
+            <Card className="bg-white dark:bg-slate-900 border-slate-200/60 dark:border-slate-700/60 shadow-sm">
+              <CardHeader className="pb-4">
+                <CardTitle className="text-base font-semibold text-slate-900 dark:text-white">Agent Activity</CardTitle>
+              </CardHeader>
+              <CardContent className="p-5 pt-0">
+                <AIActivityFeed maxItems={8} compact showFilters={false} />
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
 
         {/* Two Column Layout - Contracts & AI Assistant */}
         <div className={cn(

@@ -92,8 +92,8 @@
         "desc": "Anfragen, Genehmigungen und Automatisierung"
       },
       "approvals": {
-        "name": "Genehmigungen",
-        "desc": "Ausstehende Genehmigungen"
+        "name": "Braucht dich",
+        "desc": "Einheitlicher Posteingang für Agent-Schreibvorgänge, Ziele, Workflows und Reviews"
       },
       "requests": {
         "name": "Anfragen",
@@ -155,9 +155,21 @@
         "name": "Governance",
         "desc": "Richtlinien, Weiterleitung und Kontrollen"
       },
+      "aiDecisions": {
+        "name": "KI-Entscheidungen",
+        "desc": "Prüfprotokoll autonomer Agentenentscheidungen"
+      },
       "contractMigration": {
         "name": "Vertragsmigration",
         "desc": "Massenimport bestehender Verträge"
+      },
+      "observability": {
+        "name": "Observability",
+        "desc": "Agentenaktivität, Reasoning-Ketten und Leistung"
+      },
+      "uxMetrics": {
+        "name": "UX-Metriken",
+        "desc": "Erfolgsmetriken für agentische Freigaben und Benachrichtigungen"
       },
       "settings": {
         "name": "Einstellungen",

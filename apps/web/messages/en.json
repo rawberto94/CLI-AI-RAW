@@ -92,8 +92,8 @@
         "desc": "Requests, approvals, and automation"
       },
       "approvals": {
-        "name": "Approvals",
-        "desc": "Pending approvals"
+        "name": "Needs you",
+        "desc": "Unified inbox for agent writes, goals, workflows, and reviews"
       },
       "requests": {
         "name": "Requests",
@@ -155,9 +155,21 @@
         "name": "Governance",
         "desc": "Policies, routing, and controls"
       },
+      "aiDecisions": {
+        "name": "AI Decisions",
+        "desc": "Audit log of autonomous agent decisions"
+      },
       "contractMigration": {
         "name": "Contract Migration",
         "desc": "Bulk import existing contracts"
+      },
+      "observability": {
+        "name": "Observability",
+        "desc": "Agent activity, reasoning chains, and performance"
+      },
+      "uxMetrics": {
+        "name": "UX metrics",
+        "desc": "Agentic approval and notification success metrics"
       },
       "settings": {
         "name": "Settings",

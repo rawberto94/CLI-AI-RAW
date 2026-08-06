@@ -11,11 +11,14 @@
 import { createHash } from 'crypto';
 import { z } from 'zod';
 import {
-  FIELD_TRUST_THRESHOLDS,
-  isAutoApplyConfidence,
   isAgentWriteDenylisted,
   isAgentWriteAllowlisted,
   RENEWAL_STATUS_VALUES,
+  evaluateAutonomy,
+  normalizeAutonomyMode,
+  normalizeRiskLevel,
+  type AgentAutonomyConfigShape,
+  type AutonomyMode,
 } from '@repo/utils';
 import clientsDb from 'clients-db';
 import { logger } from '../utils/logger';
@@ -103,10 +106,54 @@ function inputHash(input: AgentWriteInput): string {
     .slice(0, 32);
 }
 
+/**
+ * Read current field value before proposal/apply so we can store previousValue
+ * and later support undo. Best-effort — returns undefined on miss/error.
+ */
+async function readCurrentFieldValue(
+  entity: AgentWriteEntity,
+  entityId: string,
+  field: string,
+  tenantId: string,
+): Promise<unknown> {
+  try {
+    if (entity === 'Contract') {
+      const row = await prisma.contract.findFirst({
+        where: { id: entityId, tenantId },
+      });
+      return row ? (row as Record<string, unknown>)[field] : undefined;
+    }
+    if (entity === 'ContractMetadata') {
+      const row = await prisma.contractMetadata.findFirst({
+        where: { contractId: entityId, tenantId },
+      });
+      return row ? (row as Record<string, unknown>)[field] : undefined;
+    }
+    if (entity === 'Obligation') {
+      const row = await prisma.obligation.findFirst({
+        where: { id: entityId, tenantId },
+      });
+      return row ? (row as Record<string, unknown>)[field] : undefined;
+    }
+  } catch (err) {
+    logger.warn(
+      {
+        error: err instanceof Error ? err.message : String(err),
+        entity,
+        entityId,
+        field,
+      },
+      'Failed to read current field value for agent write snapshot',
+    );
+  }
+  return undefined;
+}
+
 async function recordDecision(
   input: AgentWriteInput,
   outcome: string,
   output: Record<string, unknown>,
+  previousValue?: unknown,
 ): Promise<string> {
   try {
     const row = await prisma.aiDecision.create({
@@ -126,6 +173,9 @@ async function recordDecision(
         processingTimeMs: 0,
         citations: input.evidence?.citations ?? [],
         evidenceChain: input.evidence?.evidenceChain ?? [],
+        ...(previousValue !== undefined
+          ? { previousValue: previousValue as object | null }
+          : {}),
         outcome,
       },
     });
@@ -167,6 +217,27 @@ async function applyDomainUpdate(
     return;
   }
   throw new Error(`Unsupported entity: ${entity}`);
+}
+
+/** Emit approval_requested when a decision enters pending (best-effort). */
+async function emitApprovalRequested(
+  tenantId: string,
+  decisionId: string,
+  props: Record<string, unknown>,
+): Promise<void> {
+  try {
+    if (typeof prisma.analyticsEvent?.create === 'function') {
+      await prisma.analyticsEvent.create({
+        data: {
+          tenantId,
+          event: 'approval_requested',
+          props: { decisionId, source: 'agent_write', ...props },
+        },
+      });
+    }
+  } catch {
+    // analytics table may not exist yet in all envs
+  }
 }
 
 /**
@@ -253,51 +324,156 @@ export async function applyAgentWrite(input: AgentWriteInput): Promise<AgentWrit
     return { status: 'rejected', decisionId, reason: 'writes_disabled' };
   }
 
-  // 5) Confidence gate → pending vs auto-apply
-  if (!isAutoApplyConfidence(input.confidence)) {
-    const decisionId = await recordDecision(input, 'pending', {
-      status: 'pending_approval',
+  // Snapshot current value before pending or apply (needed for undo + old/new diff)
+  const previousValue = await readCurrentFieldValue(
+    input.entity,
+    input.entityId,
+    input.field,
+    input.tenantId,
+  );
+
+  // 5) Per-agent autonomy (Phase 2.1) + legacy global confidence floor
+  const autonomyConfig = await loadAutonomyConfig(
+    input.tenantId,
+    input.agentId,
+    `agent_write.${input.entity}.${input.field}`,
+  );
+  const autonomy = evaluateAutonomy({
+    confidence: input.confidence,
+    cost: null,
+    risk: 'low',
+    config: autonomyConfig,
+  });
+
+  // Per-agent autonomy is authoritative. Missing config → review (no silent auto-upgrade).
+  // When mode=auto, evaluateAutonomy already enforces confidence/cost/risk thresholds.
+  const shouldAutoApply = autonomy.allowAutoApply;
+
+  if (!shouldAutoApply) {
+    // mode=suggest still records pending so humans can review (same as review for write path)
+    const decisionId = await recordDecision(
+      input,
+      'pending',
+      {
+        status: 'pending_approval',
+        entity: input.entity,
+        entityId: input.entityId,
+        field: input.field,
+        proposedValue: parsed.data,
+        confidence: input.confidence,
+        threshold: autonomy.thresholds.confidence,
+        agentId: input.agentId,
+        previousValue,
+        autonomyMode: autonomy.mode,
+        autonomyReason: autonomy.reason,
+      },
+      previousValue,
+    );
+    await emitApprovalRequested(input.tenantId, decisionId, {
       entity: input.entity,
-      entityId: input.entityId,
       field: input.field,
-      proposedValue: parsed.data,
       confidence: input.confidence,
-      threshold: FIELD_TRUST_THRESHOLDS.high,
-      agentId: input.agentId,
+      autonomyMode: autonomy.mode,
+      autonomyReason: autonomy.reason,
     });
-    log.info({ decisionId, confidence: input.confidence }, 'Agent write pending approval');
-    return { status: 'pending_approval', decisionId, reason: 'below_auto_apply_threshold' };
+    log.info(
+      {
+        decisionId,
+        confidence: input.confidence,
+        autonomyMode: autonomy.mode,
+        autonomyReason: autonomy.reason,
+      },
+      'Agent write pending approval',
+    );
+    return {
+      status: 'pending_approval',
+      decisionId,
+      reason: autonomy.reason || 'below_auto_apply_threshold',
+    };
   }
 
-  // 6) Apply mutation
+  // 6) Apply mutation (auto)
   try {
     await applyDomainUpdate(input.entity, input.entityId, input.field, parsed.data);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    const decisionId = await recordDecision(input, 'rejected', {
-      status: 'rejected',
-      reason: 'apply_failed',
-      error: message,
-      entity: input.entity,
-      entityId: input.entityId,
-      field: input.field,
-      agentId: input.agentId,
-    });
+    const decisionId = await recordDecision(
+      input,
+      'rejected',
+      {
+        status: 'rejected',
+        reason: 'apply_failed',
+        error: message,
+        entity: input.entity,
+        entityId: input.entityId,
+        field: input.field,
+        agentId: input.agentId,
+      },
+      previousValue,
+    );
     log.error({ decisionId, error: message }, 'Agent write apply failed');
     return { status: 'rejected', decisionId, reason: 'apply_failed' };
   }
 
-  const decisionId = await recordDecision(input, 'auto_applied', {
-    status: 'applied',
-    entity: input.entity,
-    entityId: input.entityId,
-    field: input.field,
-    value: parsed.data,
-    confidence: input.confidence,
-    agentId: input.agentId,
-  });
-  log.info({ decisionId }, 'Agent write applied');
+  const decisionId = await recordDecision(
+    input,
+    'auto_applied',
+    {
+      status: 'applied',
+      entity: input.entity,
+      entityId: input.entityId,
+      field: input.field,
+      value: parsed.data,
+      confidence: input.confidence,
+      agentId: input.agentId,
+      previousValue,
+      autonomyMode: autonomy.mode,
+      autonomyReason: autonomy.reason,
+    },
+    previousValue,
+  );
+  log.info({ decisionId, autonomyMode: autonomy.mode }, 'Agent write applied');
   return { status: 'applied', decisionId };
+}
+
+/**
+ * Load tenant×agent×action autonomy config. Falls back to agent-level agent_write
+ * row, then null (evaluateAutonomy defaults to review).
+ */
+async function loadAutonomyConfig(
+  tenantId: string,
+  agentId: string,
+  actionType: string,
+): Promise<AgentAutonomyConfigShape | null> {
+  try {
+    if (typeof prisma.agentAutonomyConfig?.findFirst !== 'function') return null;
+    const specific = await prisma.agentAutonomyConfig.findFirst({
+      where: { tenantId, agentId, actionType },
+    });
+    const row =
+      specific ||
+      (await prisma.agentAutonomyConfig.findFirst({
+        where: { tenantId, agentId, actionType: 'agent_write' },
+      }));
+    if (!row) return null;
+    return {
+      tenantId: row.tenantId,
+      agentId: row.agentId,
+      actionType: row.actionType,
+      mode: normalizeAutonomyMode(row.mode) as AutonomyMode,
+      confidenceThreshold: row.confidenceThreshold,
+      costThreshold: row.costThreshold,
+      riskThreshold: normalizeRiskLevel(row.riskThreshold),
+      notifyEmail: row.notifyEmail,
+      notifyInApp: row.notifyInApp,
+    };
+  } catch (err) {
+    logger.warn(
+      { error: err instanceof Error ? err.message : String(err), tenantId, agentId },
+      'Failed to load AgentAutonomyConfig — defaulting to review',
+    );
+    return null;
+  }
 }
 
 export const agentWriteSchemas = {

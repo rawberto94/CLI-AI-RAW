@@ -19,6 +19,7 @@ import {
   Sparkles,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { AgentWriteUndoBanner } from '@/components/contracts/AgentWriteUndoBanner'
 
 interface ActivityItem {
   id: string
@@ -121,6 +122,7 @@ export function ActivityFeed({ contractId }: ActivityFeedProps) {
       </CardHeader>
 
       <CardContent className="p-6">
+        <AgentWriteUndoBanner contractId={contractId} />
         {activities.length === 0 ? (
           <div className="text-center py-12">
             <Activity className="h-16 w-16 mx-auto text-gray-400 mb-4" />

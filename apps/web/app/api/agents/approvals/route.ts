@@ -14,12 +14,16 @@ import { withAuthApiHandler, createSuccessResponse, createErrorResponse } from '
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
 import { logger } from '@/lib/logger';
+import { emitUxEvent } from '@/lib/analytics/ux-events';
+import { writeDomainFieldValue } from '@/lib/agents/domain-field-write';
 
 const ApprovalActionSchema = z.object({
   actionId: z.string().min(1, 'Action ID is required'),
   action: z.enum(['approve', 'reject', 'modify', 'escalate', 'defer']),
   notes: z.string().optional(),
   modifications: z.record(z.any()).optional(),
+  /** Whether the reviewer opened evidence/citations before deciding (UX telemetry) */
+  evidenceViewed: z.boolean().optional(),
 });
 
 /**
@@ -141,6 +145,16 @@ export const GET = withAuthApiHandler(async (req: NextRequest, ctx) => {
             : typeof output.confidence === 'number'
               ? (output.confidence as number)
               : 0;
+        // previousValue may live on the column (new writes) or only in output (fallback)
+        const columnPrev = (decision as { previousValue?: unknown }).previousValue;
+        const previousValue =
+          columnPrev !== undefined && columnPrev !== null
+            ? columnPrev
+            : Object.prototype.hasOwnProperty.call(output, 'previousValue')
+              ? output.previousValue
+              : undefined;
+        const hasPreviousValue = previousValue !== undefined && previousValue !== null;
+
         return {
           id: `agent-write-${decision.id}`,
           type: 'agent_write' as const,
@@ -158,6 +172,8 @@ export const GET = withAuthApiHandler(async (req: NextRequest, ctx) => {
             entityId: output.entityId ?? decision.contractId,
             field,
             proposedValue,
+            previousValue,
+            hasPreviousValue,
             confidence,
             citations: decision.citations,
             evidenceChain: decision.evidenceChain,
@@ -337,13 +353,21 @@ export const POST = withAuthApiHandler(async (req: NextRequest, ctx) => {
 
   try {
     const body = await req.json();
-    const { actionId, action, notes, modifications } = ApprovalActionSchema.parse(body);
+    const { actionId, action, notes, modifications, evidenceViewed } =
+      ApprovalActionSchema.parse(body);
+    const decidedAt = Date.now();
 
     // Determine the type of approval and route accordingly
     let result;
+    let requestedAtMs: number | null = null;
 
     if (actionId.startsWith('agent-write-')) {
       const decisionId = actionId.replace('agent-write-', '');
+      const existing = await prisma.aiDecision.findFirst({
+        where: { id: decisionId, tenantId },
+        select: { createdAt: true },
+      });
+      requestedAtMs = existing?.createdAt?.getTime() ?? null;
       result = await processAgentWriteApproval(decisionId, tenantId, userId, action, notes);
     } else if (actionId.startsWith('goal-')) {
       const goalId = actionId.replace('goal-', '');
@@ -376,6 +400,21 @@ export const POST = withAuthApiHandler(async (req: NextRequest, ctx) => {
         actorId: userId,
         notes,
         modifications,
+      },
+    });
+
+    // UX telemetry: approval_decided
+    await emitUxEvent({
+      tenantId,
+      userId,
+      event: 'approval_decided',
+      props: {
+        actionId,
+        action,
+        outcome: action,
+        type: result.type,
+        latencyMs: requestedAtMs != null ? decidedAt - requestedAtMs : null,
+        evidence_viewed: Boolean(evidenceViewed),
       },
     });
 
@@ -442,27 +481,8 @@ async function processAgentWriteApproval(
     case 'approve': {
       // Human-authorized apply of an agent proposal (still respect denylist/allowlist)
       // Always scope by tenantId so cross-tenant ids cannot be mutated.
-      if (entity === 'Contract') {
-        const updated = await prisma.contract.updateMany({
-          where: { id: entityId, tenantId },
-          data: { [field]: proposedValue as never },
-        });
-        if (updated.count === 0) throw new Error('Contract not found for tenant');
-      } else if (entity === 'ContractMetadata') {
-        const updated = await prisma.contractMetadata.updateMany({
-          where: { contractId: entityId, tenantId },
-          data: { [field]: proposedValue as never },
-        });
-        if (updated.count === 0) throw new Error('Contract metadata not found for tenant');
-      } else if (entity === 'Obligation') {
-        const updated = await prisma.obligation.updateMany({
-          where: { id: entityId, tenantId },
-          data: { [field]: proposedValue as never },
-        });
-        if (updated.count === 0) throw new Error('Obligation not found for tenant');
-      } else {
-        throw new Error(`Unsupported entity: ${entity}`);
-      }
+      const ok = await writeDomainFieldValue(entity, entityId, field, proposedValue, tenantId);
+      if (!ok) throw new Error(`${entity} not found for tenant`);
 
       await prisma.aiDecision.update({
         where: { id: decisionId },

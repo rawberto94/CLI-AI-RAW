@@ -12,6 +12,7 @@ export * from './storage';
 export * from './security/raw-sql-guard';
 export * from './field-trust';
 export * from './agent-write-policy';
+export * from './agent-autonomy';
 export * from './critical-fields';
 // Note: tracing export disabled due to verbatimModuleStyle incompatibility with OpenTelemetry Resource import
 // export * from './tracing';

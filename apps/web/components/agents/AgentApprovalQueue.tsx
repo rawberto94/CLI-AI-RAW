@@ -15,7 +15,7 @@
  * - Skeleton loading, relative timestamps, design-system Button
  */
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
@@ -52,7 +52,11 @@ import {
   ExternalLink,
   WifiOff,
   Timer,
+  ArrowRight,
 } from 'lucide-react';
+import { CitationList } from '@/components/ai/CitationList';
+import { formatFieldValue, type Citation } from '@/lib/ai/citations';
+import { toastWithUndo } from '@/lib/toast-utils';
 
 // ============================================================================
 // Types
@@ -111,10 +115,13 @@ interface AgentFieldWrite {
   contractId?: string | null;
   field: string;
   proposedValue: unknown;
+  /** Snapshot of the value before the proposal (may be absent on legacy rows) */
+  previousValue?: unknown;
+  hasPreviousValue?: boolean;
   confidence: number;
   requestedAt: string;
-  citations?: unknown;
-  evidenceChain?: unknown;
+  citations?: Citation[] | unknown;
+  evidenceChain?: Citation[] | unknown;
 }
 
 // ============================================================================
@@ -248,12 +255,14 @@ function GoalCard({
   onReject,
   onModify,
   isProcessing,
+  onEvidenceViewed,
 }: {
   goal: AgentGoal;
   onApprove: (id: string) => void;
   onReject: (id: string, feedback: string) => void;
   onModify: (id: string, feedback: string, modifiedPlan?: Record<string, unknown>) => void;
   isProcessing: boolean;
+  onEvidenceViewed?: (goalId: string) => void;
 }) {
   const router = useRouter();
   const [expanded, setExpanded] = useState(false);
@@ -525,6 +534,23 @@ function GoalCard({
               <pre className="text-xs text-violet-700 overflow-x-auto">{JSON.stringify(goal.plan, null, 2)}</pre>
             </div>
           )}
+          {/* Goal plan / context evidence (agentic UX 1.1) */}
+          <div className="mt-3">
+            <CitationList
+              citations={
+                (goal.plan as Record<string, unknown> | undefined)?.citations ??
+                (goal.context as Record<string, unknown> | undefined)?.citations ??
+                (goal.plan as Record<string, unknown> | undefined)?.evidence ??
+                (goal.context as Record<string, unknown> | undefined)?.evidence
+              }
+              contractId={
+                ((goal.context as Record<string, unknown> | undefined)?.contractId as string) ||
+                undefined
+              }
+              emptyLabel="No evidence recorded"
+              onEvidenceViewed={() => onEvidenceViewed?.(goal.id)}
+            />
+          </div>
           <StepList steps={goal.steps} expanded={true} />
         </div>
       )}
@@ -536,16 +562,62 @@ function GoalCard({
 // FieldWriteCard — agent write-gateway proposals
 // ============================================================================
 
+function FieldValueDiff({
+  previousValue,
+  proposedValue,
+  hasPreviousValue,
+}: {
+  previousValue: unknown;
+  proposedValue: unknown;
+  hasPreviousValue?: boolean;
+}) {
+  if (!hasPreviousValue) {
+    return (
+      <div className="mt-3 p-3 bg-slate-50 rounded-md border">
+        <p className="text-xs font-medium text-slate-500 mb-1">Proposed value</p>
+        <pre className="text-sm text-slate-800 whitespace-pre-wrap break-all">
+          {formatFieldValue(proposedValue)}
+        </pre>
+      </div>
+    );
+  }
+
+  const oldText = formatFieldValue(previousValue);
+  const newText = formatFieldValue(proposedValue);
+
+  return (
+    <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2" data-testid="field-value-diff">
+      <div className="p-3 bg-red-50/60 rounded-md border border-red-100">
+        <p className="text-xs font-medium text-red-700/80 mb-1">Current (before)</p>
+        <pre className="text-sm text-slate-800 whitespace-pre-wrap break-all line-through decoration-red-300/60">
+          {oldText}
+        </pre>
+      </div>
+      <div className="p-3 bg-emerald-50/70 rounded-md border border-emerald-100 relative">
+        <div className="absolute -left-3 top-1/2 -translate-y-1/2 hidden sm:flex h-6 w-6 items-center justify-center rounded-full bg-white border text-slate-400 shadow-sm">
+          <ArrowRight className="h-3.5 w-3.5" />
+        </div>
+        <p className="text-xs font-medium text-emerald-800 mb-1">Proposed (after)</p>
+        <pre className="text-sm text-slate-900 whitespace-pre-wrap break-all font-medium">
+          {newText}
+        </pre>
+      </div>
+    </div>
+  );
+}
+
 function FieldWriteCard({
   item,
   onApprove,
   onReject,
   isProcessing,
+  onEvidenceViewed,
 }: {
   item: AgentFieldWrite;
   onApprove: (id: string) => void;
   onReject: (id: string, notes: string) => void;
   isProcessing: boolean;
+  onEvidenceViewed?: (decisionId: string) => void;
 }) {
   const router = useRouter();
   const [showReject, setShowReject] = useState(false);
@@ -583,13 +655,22 @@ function FieldWriteCard({
               </>
             ) : null}
           </p>
-          <div className="mt-3 p-3 bg-slate-50 rounded-md border">
-            <p className="text-xs font-medium text-slate-500 mb-1">Proposed value</p>
-            <pre className="text-sm text-slate-800 whitespace-pre-wrap break-all">
-              {typeof item.proposedValue === 'string'
-                ? item.proposedValue
-                : JSON.stringify(item.proposedValue, null, 2)}
-            </pre>
+          <FieldValueDiff
+            previousValue={item.previousValue}
+            proposedValue={item.proposedValue}
+            hasPreviousValue={item.hasPreviousValue}
+          />
+          <div className="mt-3">
+            <CitationList
+              citations={
+                Array.isArray(item.citations) && (item.citations as unknown[]).length > 0
+                  ? item.citations
+                  : item.evidenceChain
+              }
+              contractId={item.contractId}
+              emptyLabel="No evidence recorded"
+              onEvidenceViewed={() => onEvidenceViewed?.(item.decisionId)}
+            />
           </div>
           <p className="mt-2 text-xs text-gray-500" title={new Date(item.requestedAt).toLocaleString()}>
             {formatDistanceToNow(new Date(item.requestedAt), { addSuffix: true })}
@@ -691,6 +772,12 @@ export function AgentApprovalQueue({
   const [processing, setProcessing] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
+  /** decisionIds whose evidence/citations panel was opened */
+  const evidenceViewedRef = useRef<Set<string>>(new Set());
+
+  const markEvidenceViewed = useCallback((decisionId: string) => {
+    evidenceViewedRef.current.add(decisionId);
+  }, []);
 
   const fetchGoals = useCallback(async () => {
     try {
@@ -717,6 +804,7 @@ export function AgentApprovalQueue({
           .filter((a) => a.type === 'agent_write')
           .map((a) => {
             const ctx = (a.context ?? {}) as Record<string, unknown>;
+            const hasPreviousValue = Boolean(ctx.hasPreviousValue);
             return {
               id: String(a.id),
               decisionId: String(ctx.decisionId ?? String(a.id).replace(/^agent-write-/, '')),
@@ -724,6 +812,8 @@ export function AgentApprovalQueue({
               contractId: (a.contractId as string | null | undefined) ?? null,
               field: String(ctx.field ?? 'field'),
               proposedValue: ctx.proposedValue,
+              previousValue: ctx.previousValue,
+              hasPreviousValue,
               confidence: typeof ctx.confidence === 'number' ? ctx.confidence : 0,
               requestedAt: String(a.requestedAt ?? new Date().toISOString()),
               citations: ctx.citations,
@@ -799,7 +889,11 @@ export function AgentApprovalQueue({
       const response = await fetch('/api/agents/goals', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ goalId, action: 'approve' }),
+        body: JSON.stringify({
+          goalId,
+          action: 'approve',
+          evidenceViewed: evidenceViewedRef.current.has(goalId),
+        }),
       });
       if (!response.ok) throw new Error('Failed to approve goal');
       toast.success('Goal approved — execution will begin shortly');
@@ -819,7 +913,12 @@ export function AgentApprovalQueue({
       const response = await fetch('/api/agents/goals', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ goalId, action: 'reject', feedback }),
+        body: JSON.stringify({
+          goalId,
+          action: 'reject',
+          feedback,
+          evidenceViewed: evidenceViewedRef.current.has(goalId),
+        }),
       });
       if (!response.ok) throw new Error('Failed to reject goal');
       toast.success('Goal rejected');
@@ -835,17 +934,37 @@ export function AgentApprovalQueue({
 
   const handleFieldWriteApprove = async (actionId: string) => {
     setProcessing(actionId);
+    const decisionId = actionId.replace(/^agent-write-/, '');
+    const evidenceViewed = evidenceViewedRef.current.has(decisionId);
     try {
       const response = await fetch('/api/agents/approvals', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ actionId, action: 'approve' }),
+        body: JSON.stringify({
+          actionId,
+          action: 'approve',
+          evidenceViewed,
+        }),
       });
       if (!response.ok) {
         const body = await response.json().catch(() => ({}));
         throw new Error(body?.error?.message || body?.message || 'Failed to apply field change');
       }
-      toast.success('Field change applied');
+      toastWithUndo({
+        message: 'Field change applied',
+        description: 'You can undo this agent write',
+        duration: 8000,
+        onUndo: async () => {
+          const res = await fetch(`/api/agents/decisions/${decisionId}/revert`, {
+            method: 'POST',
+          });
+          if (!res.ok) {
+            const body = await res.json().catch(() => ({}));
+            throw new Error(body?.error?.message || body?.message || 'Failed to undo');
+          }
+          await fetchGoals();
+        },
+      });
       await fetchGoals();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to apply field change');
@@ -856,11 +975,18 @@ export function AgentApprovalQueue({
 
   const handleFieldWriteReject = async (actionId: string, notes: string) => {
     setProcessing(actionId);
+    const decisionId = actionId.replace(/^agent-write-/, '');
+    const evidenceViewed = evidenceViewedRef.current.has(decisionId);
     try {
       const response = await fetch('/api/agents/approvals', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ actionId, action: 'reject', notes }),
+        body: JSON.stringify({
+          actionId,
+          action: 'reject',
+          notes,
+          evidenceViewed,
+        }),
       });
       if (!response.ok) throw new Error('Failed to reject field change');
       toast.success('Field change rejected');
@@ -1020,6 +1146,7 @@ export function AgentApprovalQueue({
               onApprove={handleFieldWriteApprove}
               onReject={handleFieldWriteReject}
               isProcessing={processing === item.id}
+              onEvidenceViewed={markEvidenceViewed}
             />
           ))}
         </div>
@@ -1035,6 +1162,7 @@ export function AgentApprovalQueue({
             onReject={handleReject}
             onModify={handleModify}
             isProcessing={processing === goal.id}
+            onEvidenceViewed={markEvidenceViewed}
           />
         ))}
       </div>

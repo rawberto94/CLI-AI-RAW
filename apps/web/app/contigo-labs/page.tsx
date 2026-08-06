@@ -123,6 +123,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
 import { FloatingAIBubble } from '@/components/ai/FloatingAIBubble';
 import { MarkdownContent } from '@/components/ai/MarkdownContent';
+import { AgentObservabilityDashboard } from '@/components/agents/AgentObservabilityDashboard';
 
 // Message type for chat interface
 interface Message {
@@ -408,12 +409,19 @@ export default function ContigoLabsPage() {
                 <Wrench className="w-4 h-4 mr-2" />
                 Toolbox
               </TabsTrigger>
-              <TabsTrigger 
-                value="knowledge" 
+              <TabsTrigger
+                value="knowledge"
                 className="data-[state=active]:bg-violet-100 data-[state=active]:text-violet-700 rounded-xl px-4 py-2.5 transition-all hover:bg-slate-100"
               >
                 <GitBranch className="w-4 h-4 mr-2" />
                 Knowledge
+              </TabsTrigger>
+              <TabsTrigger
+                value="observability"
+                className="data-[state=active]:bg-violet-100 data-[state=active]:text-violet-700 rounded-xl px-4 py-2.5 transition-all hover:bg-slate-100"
+              >
+                <Gauge className="w-4 h-4 mr-2" />
+                Observability
               </TabsTrigger>
             </TabsList>
           </div>
@@ -458,6 +466,11 @@ export default function ContigoLabsPage() {
           {/* Knowledge Tab */}
           <TabsContent value="knowledge" className="m-0">
             <KnowledgeView />
+          </TabsContent>
+
+          {/* Observability Tab */}
+          <TabsContent value="observability" className="m-0">
+            <AgentObservabilityDashboard />
           </TabsContent>
         </Tabs>
       </main>
@@ -3547,477 +3560,13 @@ function ChatView() {
 }
 
 /**
- * EmbeddedAIBubble - Wrapper that renders the FloatingAIBubble in embedded mode
- * This ensures the chatbot UI is consistent between the floating widget and the Chat tab
+ * EmbeddedAIBubble — Phase 3.1: single chat surface via FloatingAIBubble embedded mode.
+ * (Previous hand-rolled EmbeddedChatInterface removed to eliminate duplicate chat UI.)
  */
 function EmbeddedAIBubble() {
-  const router = useRouter();
-  
   return (
-    <Card className="h-full flex flex-col overflow-hidden border-transparent shadow-sm rounded-2xl bg-white dark:bg-slate-900">
-      <CardHeader className="flex-shrink-0 border-b border-slate-100 dark:border-slate-800 bg-gradient-to-r from-violet-50/80 to-purple-50/80 dark:from-violet-950/40 dark:to-purple-950/40">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg shadow-violet-500/20">
-              <Sparkles className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <CardTitle className="flex items-center gap-2 text-lg font-bold text-slate-900 dark:text-white">
-                ConTigo AI
-                <Badge className="text-xs bg-violet-100 text-violet-700 border-transparent font-bold px-2 py-0.5 rounded-md">
-                  RAG Powered
-                </Badge>
-              </CardTitle>
-              <CardDescription className="text-sm font-medium text-slate-500 dark:text-slate-400">
-                Your intelligent contract assistant
-              </CardDescription>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 border border-emerald-100">
-              <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="text-xs font-bold text-emerald-700">Online</span>
-            </div>
-          </div>
-        </div>
-      </CardHeader>
-      
-      <CardContent className="flex-1 p-0 overflow-hidden relative">
-        {/* Use a modified approach - render the chat interface inline */}
-        <EmbeddedChatInterface />
-      </CardContent>
-    </Card>
-  );
-}
-
-/**
- * EmbeddedChatInterface - Inline version of the chatbot UI
- * Mirrors the FloatingAIBubble functionality but embedded in the page
- */
-
-// Flat list of all agents for @mention autocomplete (shared catalog)
-const ALL_AGENTS = AGENT_CATALOG.map((agent) => {
-  const clusterMeta = AGENT_CLUSTER_META[agent.cluster];
-  return {
-    id: agent.id,
-    codename: agent.codename,
-    avatar: agent.avatar,
-    icon: CLUSTER_ICON[agent.id] || Bot,
-    description: agent.description,
-    status: 'active' as const,
-    cluster: clusterMeta.name,
-    clusterEmoji: clusterMeta.emoji,
-    mention: agent.mention,
-    example: agent.example,
-  };
-});
-
-// Lookup: codename → emoji avatar for chat message rendering
-const AGENT_AVATAR_MAP: Record<string, string> = CATALOG_AVATAR_MAP;
-
-function EmbeddedChatInterface() {
-  const [messages, setMessages] = useState<Message[]>([{
-    id: 'welcome',
-    role: 'assistant',
-    content: `👋 Hey! I'm **ConTigo AI** — your intelligent contract command centre with **22 specialised agents**.
-
-**🛡️ Guardians** — Compliance & Risk
-• \`@sentinel\` catches errors • \`@vigil\` monitors compliance • \`@warden\` detects risks • \`@mediator\` finds clause conflicts
-
-**🔮 Oracles** — Intelligence & Discovery
-• \`@sage\` smart search • \`@prospector\` finds savings • \`@scout\` spots RFx • \`@memorykeeper\` transforms data • \`@synthesizer\` portfolio insights
-
-**⚡ Operators** — Execution & Monitoring
-• \`@clockwork\` deadlines • \`@steward\` obligations • \`@artificer\` fills gaps • \`@builder\` generates templates
-
-**🎯 Strategists** — Workflow & Planning
-• \`@blueprinter\` approval flows • \`@merchant\` RFx lifecycle • \`@conductor\` multi-agent • \`@navigator\` onboarding
-
-**🧬 Evolution** — Learning & Improvement
-• \`@orchestrator\` analysis plans • plus Mnemosyne, A/B, Swarm
-
-**Pro Tips:** Type **@** to browse all agents • Ask anything in natural language • I remember your context
-
-What would you like to explore?`,
-    timestamp: new Date(),
-    suggestions: ['🔮 @sage Find all NDAs', '⚖️ @mediator Check conflicts', '📐 @blueprinter Design workflow', '🔮 @synthesizer Portfolio report'],
-  }]);
-  const [input, setInput] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [threadId, setThreadId] = useState<string | null>(null);
-  const [showAgentList, setShowAgentList] = useState(false);
-  const [mentionFilter, setMentionFilter] = useState('');
-  const [mentionIndex, setMentionIndex] = useState(0);
-  const [showAgentSidebar, setShowAgentSidebar] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const mentionRef = useRef<HTMLDivElement>(null);
-
-  // Filter agents based on @mention text
-  const filteredAgents = useMemo(() => {
-    if (!mentionFilter) return ALL_AGENTS;
-    const q = mentionFilter.toLowerCase();
-    return ALL_AGENTS.filter(a => 
-      a.codename.toLowerCase().includes(q) || 
-      a.description.toLowerCase().includes(q) ||
-      a.cluster.toLowerCase().includes(q)
-    );
-  }, [mentionFilter]);
-
-  // Handle @mention detection in input
-  const handleInputChange = (value: string) => {
-    setInput(value);
-    const atIdx = value.lastIndexOf('@');
-    if (atIdx !== -1 && (atIdx === 0 || value[atIdx - 1] === ' ')) {
-      const afterAt = value.slice(atIdx + 1);
-      if (!afterAt.includes(' ')) {
-        setMentionFilter(afterAt);
-        setShowAgentList(true);
-        setMentionIndex(0);
-        return;
-      }
-    }
-    setShowAgentList(false);
-  };
-
-  // Insert agent mention
-  const insertMention = (agent: typeof ALL_AGENTS[0]) => {
-    const atIdx = input.lastIndexOf('@');
-    const before = input.slice(0, atIdx);
-    setInput(`${before}@${agent.codename.toLowerCase()} `);
-    setShowAgentList(false);
-    inputRef.current?.focus();
-  };
-
-  // Keyboard navigation for mention dropdown
-  const handleMentionKeyDown = (e: React.KeyboardEvent) => {
-    if (!showAgentList || filteredAgents.length === 0) return;
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      setMentionIndex(i => Math.min(i + 1, filteredAgents.length - 1));
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      setMentionIndex(i => Math.max(i - 1, 0));
-    } else if (e.key === 'Enter' || e.key === 'Tab') {
-      e.preventDefault();
-      insertMention(filteredAgents[mentionIndex]);
-    } else if (e.key === 'Escape') {
-      setShowAgentList(false);
-    }
-  };
-
-  // Scroll to bottom on new messages
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [messages]);
-
-  // Focus input on mount
-  useEffect(() => {
-    inputRef.current?.focus();
-  }, []);
-
-  const sendMessage = async (overrideText?: string) => {
-    const text = overrideText || input;
-    if (!text.trim() || isLoading) return;
-
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      role: 'user',
-      content: text,
-      timestamp: new Date(),
-    };
-
-    setMessages(prev => [...prev, userMessage]);
-    setInput('');
-    setIsLoading(true);
-
-    try {
-      const response = await fetch('/api/agents/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          message: text,
-          ...(threadId ? { threadId } : {}),
-        }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        
-        // Persist threadId for conversation continuity
-        if (data.threadId) {
-          setThreadId(data.threadId);
-        }
-        
-        // Process agent responses
-        const assistantMessages = data.messages?.map((m: any, idx: number) => ({
-          id: `response-${Date.now()}-${idx}`,
-          role: 'assistant' as const,
-          content: m.content,
-          timestamp: new Date(),
-          agent: m.agentCodename || m.metadata?.agentCodename,
-          suggestions: m.suggestions || ['📊 View contracts', '🔄 Analyze more', '⏰ Check renewals'],
-        })) || [];
-
-        setMessages(prev => [...prev, ...assistantMessages]);
-      } else {
-        throw new Error('Failed to get response');
-      }
-    } catch (error) {
-      toast.error('Failed to send message');
-      setMessages(prev => [...prev, {
-        id: `error-${Date.now()}`,
-        role: 'assistant',
-        content: 'Sorry, I encountered an error. Please try again.',
-        timestamp: new Date(),
-        suggestions: ['🔄 Try again'],
-      }]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleQuickAction = (query: string) => {
-    setInput(query);
-    sendMessage(query);
-  };
-
-  return (
-    <div className="flex flex-col h-full bg-white dark:bg-slate-900">
-      {/* Messages Area */}
-      <ScrollArea ref={scrollRef} className="flex-1 p-4">
-        <div className="space-y-4 max-w-4xl mx-auto">
-          {messages.map((msg) => (
-            <div
-              key={msg.id}
-              className={cn(
-                "flex gap-3",
-                msg.role === 'user' && "justify-end"
-              )}
-            >
-              {msg.role === 'assistant' && (
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center flex-shrink-0 text-sm">
-                  {msg.agent && AGENT_AVATAR_MAP[msg.agent] ? (
-                    <span>{AGENT_AVATAR_MAP[msg.agent]}</span>
-                  ) : (
-                    <Sparkles className="w-4 h-4 text-white" />
-                  )}
-                </div>
-              )}
-              <div
-                className={cn(
-                  "max-w-[85%] rounded-2xl px-4 py-3",
-                  msg.role === 'user'
-                    ? "bg-gradient-to-r from-violet-600 to-purple-600 text-white rounded-br-md"
-                    : "bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-bl-md"
-                )}
-              >
-                {msg.agent && (
-                  <p className="text-xs font-bold text-violet-600 dark:text-violet-400 mb-1.5 flex items-center gap-1.5">
-                    {AGENT_AVATAR_MAP[msg.agent] && <span>{AGENT_AVATAR_MAP[msg.agent]}</span>}
-                    {msg.agent}
-                  </p>
-                )}
-                {msg.role === 'assistant' ? (
-                  <MarkdownContent
-                    content={msg.content}
-                    className="prose-sm prose-p:my-0 prose-ul:my-2 prose-ol:my-2 prose-li:my-0 text-sm"
-                  />
-                ) : (
-                  <div className="text-sm whitespace-pre-wrap leading-relaxed">
-                    {msg.content}
-                  </div>
-                )}
-                
-                {/* Suggestions */}
-                {msg.suggestions && msg.suggestions.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mt-3">
-                    {msg.suggestions.map((suggestion, idx) => (
-                      <button
-                        key={idx}
-                        onClick={() => handleQuickAction(suggestion.replace(/^[📊🔄⏰💰]\s*/, ''))}
-                        className="px-3 py-1.5 text-xs rounded-full bg-white/80 dark:bg-slate-700 hover:bg-white dark:hover:bg-slate-600 border border-slate-200 dark:border-slate-600 transition-colors"
-                      >
-                        {suggestion}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
-          
-          {isLoading && (
-            <div className="flex gap-3">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
-                <Sparkles className="w-4 h-4 text-white animate-pulse" />
-              </div>
-              <div className="bg-slate-100 dark:bg-slate-800 rounded-2xl rounded-bl-md px-4 py-3">
-                <div className="flex items-center gap-2">
-                  <div className="flex gap-1.5">
-                    <span className="w-2 h-2 bg-violet-400 rounded-full animate-bounce" />
-                    <span className="w-2 h-2 bg-violet-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
-                    <span className="w-2 h-2 bg-violet-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
-                  </div>
-                  <span className="text-xs text-slate-400 font-medium ml-1">Thinking...</span>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </ScrollArea>
-
-      {/* Quick Actions */}
-      <div className="px-4 py-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/50">
-        <div className="max-w-4xl mx-auto">
-          <p className="text-xs text-slate-500 dark:text-slate-400 mb-2 font-bold uppercase tracking-wider">Quick Actions</p>
-          <div className="flex flex-wrap gap-2">
-            {[
-              { icon: Search, label: '@sage Search', query: '@sage Find all contracts expiring this quarter', color: 'from-violet-500 to-purple-500' },
-              { icon: Calendar, label: '@clockwork Deadlines', query: '@clockwork Show upcoming deadlines', color: 'from-cyan-500 to-blue-500' },
-              { icon: Shield, label: '@warden Risks', query: '@warden What are the top risks?', color: 'from-orange-500 to-red-500' },
-              { icon: GitCompare, label: '@mediator Conflicts', query: '@mediator Scan for clause conflicts', color: 'from-indigo-500 to-purple-500' },
-              { icon: BarChart3, label: '@synthesizer Insights', query: '@synthesizer Portfolio overview', color: 'from-pink-500 to-rose-500' },
-              { icon: LayoutTemplate, label: '@builder Template', query: '@builder Generate an NDA template', color: 'from-lime-500 to-emerald-500' },
-              { icon: Workflow, label: '@blueprinter Flow', query: '@blueprinter Design approval workflow', color: 'from-slate-500 to-gray-600' },
-              { icon: HelpCircle, label: '@navigator Help', query: '@navigator How do I get started?', color: 'from-teal-500 to-cyan-500' },
-            ].map((action) => (
-              <button
-                key={action.label}
-                onClick={() => handleQuickAction(action.query)}
-                className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-violet-300 dark:hover:border-violet-500 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 text-sm group"
-              >
-                <div className={`w-6 h-6 rounded-lg bg-gradient-to-br ${action.color} flex items-center justify-center shadow-sm`}>
-                  <action.icon className="w-3 h-3 text-white" />
-                </div>
-                <span className="font-semibold text-slate-700 dark:text-slate-200 group-hover:text-violet-700 dark:group-hover:text-violet-400 transition-colors">{action.label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Input Area */}
-      <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 relative">
-        {/* @mention autocomplete dropdown */}
-        {showAgentList && filteredAgents.length > 0 && (
-          <div ref={mentionRef} className="absolute bottom-full left-4 right-4 mb-1 max-w-4xl mx-auto z-50">
-            <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xl overflow-hidden max-h-64 overflow-y-auto">
-              <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900">
-                <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Agents — type to filter</p>
-              </div>
-              {filteredAgents.map((agent, idx) => (
-                <button
-                  key={agent.id}
-                  onClick={() => insertMention(agent)}
-                  className={cn(
-                    "w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors",
-                    idx === mentionIndex ? "bg-violet-50 dark:bg-violet-900/30" : "hover:bg-slate-50 dark:hover:bg-slate-700"
-                  )}
-                >
-                  <span className="text-lg flex-shrink-0">{agent.avatar}</span>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-sm text-slate-900 dark:text-white">{agent.mention}</span>
-                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{agent.cluster}</Badge>
-                    </div>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{agent.description}</p>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <div className="max-w-4xl mx-auto">
-          <div className="flex gap-3">
-            <button
-              onClick={() => setShowAgentSidebar(!showAgentSidebar)}
-              className={cn(
-                "h-12 w-12 rounded-xl border flex items-center justify-center transition-all flex-shrink-0",
-                showAgentSidebar
-                  ? "bg-violet-100 border-violet-300 text-violet-700"
-                  : "bg-slate-50/50 border-slate-200 text-slate-500 hover:bg-slate-100 hover:text-slate-700"
-              )}
-              title="Show available agents"
-            >
-              <HelpCircle className="w-5 h-5" />
-            </button>
-            <Input
-              ref={inputRef}
-              placeholder="Ask anything... Type @ to mention an agent (e.g. @sage find NDAs)"
-              value={input}
-              onChange={(e) => handleInputChange(e.target.value)}
-              onKeyDown={(e) => {
-                handleMentionKeyDown(e);
-                if (e.key === 'Enter' && !e.shiftKey && !showAgentList && !isLoading) sendMessage();
-              }}
-              className="flex-1 h-12 rounded-xl bg-slate-50/50 border-slate-200 focus-visible:ring-violet-500/20 focus-visible:border-violet-500 transition-all duration-200 text-base font-medium"
-            />
-            <Button 
-              onClick={() => sendMessage()} 
-              disabled={isLoading || !input.trim()}
-              className="h-12 w-12 rounded-xl bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-md shadow-violet-500/20 hover:shadow-lg hover:-translate-y-0.5 transition-all"
-            >
-              {isLoading ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
-              ) : (
-                <Send className="w-5 h-5" />
-              )}
-            </Button>
-          </div>
-          <p className="text-center text-xs font-medium text-slate-400 mt-2.5">
-            Press Enter to send • Type <kbd className="px-1.5 py-0.5 bg-slate-100 rounded text-slate-600 font-mono">@</kbd> to mention an agent
-          </p>
-        </div>
-
-        {/* Agent sidebar panel */}
-        <AnimatePresence>
-          {showAgentSidebar && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className="max-w-4xl mx-auto mt-3 overflow-hidden"
-            >
-              <div className="bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <h4 className="text-sm font-bold text-slate-700 dark:text-slate-200">22 AI Agents — type @ in chat to mention</h4>
-                  <button onClick={() => setShowAgentSidebar(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-                {Object.values(AGENT_CLUSTERS).map((cluster) => (
-                  <div key={cluster.id} className="mb-3 last:mb-0">
-                    <div className="flex items-center gap-2 mb-1.5">
-                      <span className="text-sm">{cluster.emoji}</span>
-                      <span className="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">{cluster.name}</span>
-                      <span className="text-[10px] text-slate-400 dark:text-slate-500">— {cluster.description}</span>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 ml-5">
-                      {cluster.agents.map((agent) => (
-                        <button
-                          key={agent.id}
-                          onClick={() => { setInput(`@${agent.codename.toLowerCase()} `); setShowAgentSidebar(false); inputRef.current?.focus(); }}
-                          className="flex items-start gap-2 p-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-700 hover:border-violet-200 dark:hover:border-violet-500 hover:shadow-sm transition-all text-left group"
-                        >
-                          <span className="text-sm mt-0.5">{agent.avatar}</span>
-                          <div className="min-w-0">
-                            <p className="text-xs font-bold text-violet-700 group-hover:text-violet-800 dark:text-violet-400">@{agent.codename.toLowerCase()}</p>
-                            <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight mt-0.5 line-clamp-1">{agent.description}</p>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+    <div className="h-full min-h-[480px]">
+      <FloatingAIBubble mode="embedded" />
     </div>
   );
 }

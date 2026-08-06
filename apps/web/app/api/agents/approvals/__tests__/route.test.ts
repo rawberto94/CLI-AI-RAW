@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => ({
   mockContractMetadataUpdateMany: vi.fn(),
   mockObligationUpdateMany: vi.fn(),
   mockApprovalActionCreate: vi.fn(),
+  mockAnalyticsEventCreate: vi.fn(),
 }));
 
 vi.mock('@/lib/prisma', () => ({
@@ -36,11 +37,16 @@ vi.mock('@/lib/prisma', () => ({
     contractMetadata: { updateMany: mocks.mockContractMetadataUpdateMany },
     obligation: { updateMany: mocks.mockObligationUpdateMany },
     approvalAction: { create: mocks.mockApprovalActionCreate },
+    analyticsEvent: { create: mocks.mockAnalyticsEventCreate },
   },
 }));
 
 vi.mock('data-orchestration/services', () => ({
   monitoringService: { recordMetric: vi.fn() },
+}));
+
+vi.mock('@/lib/analytics/ux-events', () => ({
+  emitUxEvent: vi.fn().mockResolvedValue(undefined),
 }));
 
 import { GET, POST } from '../route';
@@ -90,8 +96,9 @@ describe('GET /api/agents/approvals', () => {
         outputType: 'agent_field_write',
         model: 'test-agent',
         confidence: 0.6,
-        citations: [],
+        citations: [{ text: 'clause', source: 'contract', confidence: 0.9 }],
         evidenceChain: [],
+        previousValue: ['old-tag'],
         subFeature: 'Contract.tags',
         createdAt: new Date('2026-08-01T00:00:00Z'),
         output: {
@@ -113,6 +120,9 @@ describe('GET /api/agents/approvals', () => {
     expect(approvals[0].type).toBe('agent_write');
     expect(approvals[0].id).toBe('agent-write-dec-1');
     expect(approvals[0].context.field).toBe('tags');
+    expect(approvals[0].context.previousValue).toEqual(['old-tag']);
+    expect(approvals[0].context.hasPreviousValue).toBe(true);
+    expect(approvals[0].context.citations).toHaveLength(1);
   });
 });
 

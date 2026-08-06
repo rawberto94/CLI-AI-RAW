@@ -81,6 +81,9 @@ import { AIFeedbackDialog } from "@/components/ai/AIFeedbackDialog";
 import { ConversationHistoryPanel } from "@/components/ai/ConversationHistoryPanel";
 import { calculateCost } from "@/components/ai/AICostWidget";
 import { useVoiceInput } from "@/hooks/useVoiceInput";
+import { CitationList } from "@/components/ai/CitationList";
+import { buildCitationHref } from "@/lib/ai/citations";
+import { ChatApprovalStrip } from "@/components/ai/ChatApprovalStrip";
 
 // Types
 interface ContractPreviewCard {
@@ -458,37 +461,23 @@ export function FloatingAIBubble({ mode = 'floating' }: FloatingAIBubbleProps) {
   const [showExportDialog, setShowExportDialog] = useState(false);
   const [activeCitationPreview, setActiveCitationPreview] = useState<{ source: RAGSource; index: number } | null>(null);
 
-  const buildCitationHref = useCallback((citation: { source: RAGSource; index: number }) => {
-    const isCurrentContractPage = pathname === `/contracts/${citation.source.contractId}`;
-    const next = new URLSearchParams(isCurrentContractPage ? (searchParams?.toString() || "") : "");
-
-    next.set("tab", "details");
-    next.set("cite", "1");
-    next.set("citeIndex", String(citation.index));
-
-    if (citation.source.heading) next.set("citeHeading", citation.source.heading);
-    else next.delete("citeHeading");
-
-    if (citation.source.section) next.set("citeSection", citation.source.section);
-    else next.delete("citeSection");
-
-    if (typeof citation.source.startOffset === "number") next.set("citeStart", String(citation.source.startOffset));
-    else next.delete("citeStart");
-
-    if (typeof citation.source.endOffset === "number") next.set("citeEnd", String(citation.source.endOffset));
-    else next.delete("citeEnd");
-
-    if (citation.source.snippet) next.set("citeSnippet", citation.source.snippet.slice(0, 320));
-    else next.delete("citeSnippet");
-
-    return `/contracts/${citation.source.contractId}?${next.toString()}`;
-  }, [pathname, searchParams]);
-
   const openCitationInContract = useCallback((citation: { source: RAGSource; index: number }) => {
-    router.push(buildCitationHref(citation));
+    const href = buildCitationHref(
+      {
+        contractId: citation.source.contractId,
+        index: citation.index,
+        heading: citation.source.heading,
+        section: citation.source.section,
+        startOffset: citation.source.startOffset,
+        endOffset: citation.source.endOffset,
+        snippet: citation.source.snippet,
+      },
+      { pathname, searchParams: searchParams?.toString() || "" },
+    );
+    if (href) router.push(href);
     setActiveCitationPreview(null);
     if (!isEmbedded) setIsOpen(false);
-  }, [buildCitationHref, isEmbedded, router]);
+  }, [isEmbedded, pathname, router, searchParams]);
 
   const handleInlineCitationClick = useCallback((
     href: string,
@@ -1282,6 +1271,85 @@ export function FloatingAIBubble({ mode = 'floating' }: FloatingAIBubbleProps) {
     try {
       const startTime = Date.now();
       const pageContext = getPageContext(pathname);
+
+      // Phase 3.1: chat → agents dispatch
+      // Syntax: /agent <agentName> [optional context...]  OR  "run agent <name> on this contract"
+      const agentDispatch =
+        messageContent.match(/^\/agent\s+(\S+)(?:\s+([\s\S]+))?$/i) ||
+        messageContent.match(/^run\s+agent\s+(\S+)(?:\s+on\s+this\s+contract)?(?:\s*[:\-]\s*([\s\S]+))?$/i);
+      if (agentDispatch && currentContractId) {
+        const agentName = agentDispatch[1];
+        const extra = agentDispatch[2]?.trim();
+        try {
+          const res = await fetch('/api/agents/execute', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            signal,
+            body: JSON.stringify({
+              agentName,
+              contractId: currentContractId,
+              context: {
+                source: 'chat_dispatch',
+                note: extra || undefined,
+                page: pathname,
+              },
+            }),
+          });
+          const body = await res.json().catch(() => ({}));
+          const data = body.data ?? body;
+          const ok = res.ok;
+          const assistantMessage: Message = {
+            id: (Date.now() + 1).toString(),
+            role: 'assistant',
+            content: ok
+              ? `✅ Dispatched **${agentName}** on this contract.\n\n${
+                  typeof data?.result?.summary === 'string'
+                    ? data.result.summary
+                    : 'Agent execution started. Open **Runs** or the Needs you inbox if approval is required.'
+                }\n\n[Inspect related activity](/inbox)`
+              : `⚠️ Could not dispatch **${agentName}**: ${
+                  body?.error?.message || body?.message || res.statusText || 'request failed'
+                }. Try an agent name from Labs (e.g. \`/agent proactive-validation-agent\`).`,
+            timestamp: new Date(),
+            status: 'sent',
+          };
+          setMessages((prev) => [...prev, assistantMessage]);
+          playSound(ok ? 'receive' : 'error');
+        } catch (err) {
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: (Date.now() + 1).toString(),
+              role: 'assistant',
+              content: `Failed to dispatch agent: ${err instanceof Error ? err.message : 'unknown error'}`,
+              timestamp: new Date(),
+              status: 'error',
+            },
+          ]);
+        } finally {
+          clearTimeout(timeoutId);
+          setIsLoading(false);
+          setIsTyping(false);
+        }
+        return;
+      }
+      if (agentDispatch && !currentContractId) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: (Date.now() + 1).toString(),
+            role: 'assistant',
+            content:
+              'Open a contract first, then run `/agent <name>` to dispatch an agent on that contract.',
+            timestamp: new Date(),
+            status: 'sent',
+          },
+        ]);
+        clearTimeout(timeoutId);
+        setIsLoading(false);
+        setIsTyping(false);
+        return;
+      }
       
       // Create a placeholder message for streaming
       const assistantMessageId = (Date.now() + 1).toString();
@@ -1600,7 +1668,9 @@ export function FloatingAIBubble({ mode = 'floating' }: FloatingAIBubbleProps) {
         // which is captured above via linkConversationId.
         
       } else {
-        // Fallback to non-streaming endpoint
+        // Intentional non-streaming fallback when useStreaming is false (e.g. client
+        // capability / feature flag). Primary path is /api/ai/chat/stream above.
+        // Kept live — not dead code (Phase 3.1 review).
         const response = await fetch('/api/ai/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -2718,7 +2788,25 @@ export function FloatingAIBubble({ mode = 'floating' }: FloatingAIBubbleProps) {
                                             return message.content.replace(/\[(\d+)\]/g, (_m, digits) => {
                                               const idx = parseInt(digits, 10);
                                               if (idx < 1 || idx > sources.length) return `[${digits}]`;
-                                              return `[${toSuperscriptNumber(idx)}](${buildCitationHref({ source: sources[idx - 1], index: idx })})`;
+                                              const src = sources[idx - 1];
+                                              const href = buildCitationHref(
+                                                {
+                                                  contractId: src.contractId,
+                                                  index: idx,
+                                                  heading: src.heading,
+                                                  section: src.section,
+                                                  startOffset: src.startOffset,
+                                                  endOffset: src.endOffset,
+                                                  snippet: src.snippet,
+                                                },
+                                                {
+                                                  pathname,
+                                                  searchParams: searchParams?.toString() || '',
+                                                },
+                                              );
+                                              return href
+                                                ? `[${toSuperscriptNumber(idx)}](${href})`
+                                                : `[${digits}]`;
                                             });
                                           })()}
                                           className="text-[15px] leading-relaxed"
@@ -2785,7 +2873,7 @@ export function FloatingAIBubble({ mode = 'floating' }: FloatingAIBubbleProps) {
                                     </div>
                                   </div>
                                   
-                                  {/* RAG Sources - Enhanced collapsible section */}
+                                  {/* RAG Sources - shared CitationList (agentic UX 1.1) */}
                                   {message.metadata?.ragSources && message.metadata.ragSources.length > 0 && (
                                     <motion.div 
                                       initial={{ opacity: 0 }}
@@ -2793,67 +2881,26 @@ export function FloatingAIBubble({ mode = 'floating' }: FloatingAIBubbleProps) {
                                       transition={{ delay: 0.3 }}
                                       className="mt-3 pt-3 border-t border-gray-100"
                                     >
-                                      <details className="text-xs group/sources">
-                                        <summary className="cursor-pointer text-violet-600 hover:text-violet-700 flex items-center gap-1.5 font-medium transition-colors">
-                                          <FileText className="w-3.5 h-3.5" />
-                                          <span>{message.metadata.ragSources.length} source{message.metadata.ragSources.length !== 1 ? 's' : ''} referenced</span>
-                                          <motion.span 
-                                            className="text-gray-400 ml-auto"
-                                            initial={{ rotate: 0 }}
-                                          >
-                                            ›
-                                          </motion.span>
-                                        </summary>
-                                        <ul className="mt-2.5 space-y-2 text-gray-600">
-                                          {message.metadata.ragSources.slice(0, 3).map((src, i) => (
-                                            <motion.li 
-                                              key={i} 
-                                              initial={{ opacity: 0, x: -10 }}
-                                              animate={{ opacity: 1, x: 0 }}
-                                              transition={{ delay: i * 0.1 }}
-                                              className="bg-gray-50 rounded-lg border border-gray-200 hover:border-violet-300 transition-colors"
-                                            >
-                                              <button
-                                                type="button"
-                                                onClick={() => setActiveCitationPreview({ source: src, index: i + 1 })}
-                                                className="flex w-full items-start justify-between gap-3 px-3 py-2 text-left"
-                                              >
-                                                <div className="min-w-0 flex-1">
-                                                  <div className="flex items-center gap-2 min-w-0">
-                                                    <span className="text-[10px] font-bold text-violet-700 bg-violet-100 px-1.5 py-0.5 rounded flex-shrink-0" aria-label={`Citation ${i + 1}`}>
-                                                      [{i + 1}]
-                                                    </span>
-                                                    <FileText className="w-3.5 h-3.5 text-violet-500 flex-shrink-0" />
-                                                    <span className="truncate font-medium">{src.contractName}</span>
-                                                    {(src.heading || src.section) && (
-                                                      <span className="hidden sm:inline rounded-full bg-white px-1.5 py-0.5 text-[10px] font-semibold text-slate-500 border border-gray-200">
-                                                        {src.heading || src.section}
-                                                      </span>
-                                                    )}
-                                                  </div>
-                                                  {src.snippet && (
-                                                    <p className="mt-1 line-clamp-2 text-[11px] leading-4 text-gray-500">
-                                                      {src.snippet}
-                                                    </p>
-                                                  )}
-                                                  {(typeof src.startOffset === 'number' || typeof src.endOffset === 'number') && (
-                                                    <p className="mt-1 text-[10px] font-medium text-slate-400">
-                                                      Span {typeof src.startOffset === 'number' ? src.startOffset : '?'}
-                                                      {typeof src.endOffset === 'number' ? `-${src.endOffset}` : ''}
-                                                    </p>
-                                                  )}
-                                                </div>
-                                                <div className="flex shrink-0 items-center gap-2">
-                                                  <span className="text-xs font-bold text-violet-600 bg-violet-50 px-1.5 py-0.5 rounded flex-shrink-0">
-                                                    {Math.round(src.score * 100)}%
-                                                  </span>
-                                                  <ExternalLink className="h-3.5 w-3.5 text-slate-400" />
-                                                </div>
-                                              </button>
-                                            </motion.li>
-                                          ))}
-                                        </ul>
-                                      </details>
+                                      <CitationList
+                                        citations={message.metadata.ragSources}
+                                        maxItems={3}
+                                        navigateOnOpen={false}
+                                        onCitationOpen={(c) => {
+                                          const match =
+                                            message.metadata?.ragSources?.find(
+                                              (s, idx) =>
+                                                s.contractId === c.contractId &&
+                                                (idx + 1 === c.index || s.snippet === c.snippet),
+                                            ) ??
+                                            message.metadata?.ragSources?.[c.index - 1];
+                                          if (match) {
+                                            setActiveCitationPreview({
+                                              source: match,
+                                              index: c.index,
+                                            });
+                                          }
+                                        }}
+                                      />
                                     </motion.div>
                                   )}
 
@@ -3455,6 +3502,8 @@ export function FloatingAIBubble({ mode = 'floating' }: FloatingAIBubbleProps) {
                             </div>
                           );
                         })()}
+                        {/* Phase 3.1: inline approve/reject without leaving chat */}
+                        <ChatApprovalStrip enabled={isOpen || isEmbedded} />
                         <Input
                           ref={inputRef}
                           value={input}

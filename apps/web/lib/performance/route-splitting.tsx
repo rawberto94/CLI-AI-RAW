@@ -87,13 +87,9 @@ export const ContractDetailPage = dynamic(() => import('@/app/contracts/[id]/pag
   loading: () => <PageLoadingSkeleton />,
 });
 
-export const ContractEnhancedPage = dynamic(() => import('@/app/contracts/[id]/enhanced/page'), {
-  loading: () => <PageLoadingSkeleton />,
-});
-
-export const ContractStateOfTheArtPage = dynamic(() => import('@/app/contracts/[id]/state-of-the-art/page'), {
-  loading: () => <PageLoadingSkeleton />,
-});
+// Phase 3.2: enhanced + state-of-the-art routes removed — alias to canonical detail page
+export const ContractEnhancedPage = ContractDetailPage;
+export const ContractStateOfTheArtPage = ContractDetailPage;
 
 // Upload routes
 export const UploadPage = dynamic(() => import('@/app/upload/page'), {

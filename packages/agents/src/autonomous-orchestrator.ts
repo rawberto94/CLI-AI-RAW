@@ -98,9 +98,54 @@ async function getABTestWinnerModel(): Promise<string> {
 // Goals, triggers, and notifications are persisted to DB and cached in-memory.
 // ============================================================================
 
+/**
+ * Phase 2.1: goal-level autonomy check.
+ * Missing config → false (do not skip HITL). mode=auto + risk under threshold → true.
+ * Implemented without hard dep on @repo/utils to keep package graph light.
+ */
+async function canAutoExecuteGoal(
+  tenantId: string,
+  agentType: string,
+  riskLevel: string,
+): Promise<boolean> {
+  try {
+    const prisma = await getPrisma();
+    if (!prisma?.agentAutonomyConfig?.findFirst) return false;
+
+    const row =
+      (await prisma.agentAutonomyConfig.findFirst({
+        where: {
+          tenantId,
+          agentId: agentType,
+          actionType: { in: ['agent_goal', 'agent_goal.execute'] },
+        },
+      })) ||
+      (await prisma.agentAutonomyConfig.findFirst({
+        where: { tenantId, agentId: agentType, actionType: 'agent_write' },
+      }));
+
+    if (!row || row.mode !== 'auto') return false;
+
+    const confThreshold =
+      typeof row.confidenceThreshold === 'number' ? row.confidenceThreshold : 0.85;
+    // Map plan risk to a pseudo-confidence so lower risk is more auto-friendly
+    const risk = (riskLevel || 'medium').toLowerCase();
+    const riskRank: Record<string, number> = { low: 1, medium: 2, high: 3, critical: 4 };
+    const maxRisk = String(row.riskThreshold || 'medium').toLowerCase();
+    if ((riskRank[risk] || 2) > (riskRank[maxRisk] || 2)) return false;
+
+    const pseudoConfidence =
+      risk === 'low' ? 0.95 : risk === 'medium' ? 0.88 : risk === 'high' ? 0.75 : 0.5;
+    return pseudoConfidence >= confThreshold;
+  } catch {
+    return false; // fail closed → HITL
+  }
+}
+
 async function persistGoalToDB(goal: AgentGoal): Promise<void> {
   try {
     const prisma = await getPrisma();
+    const dbStatus = goalStatusToEnum(goal.status);
     await prisma.agentGoal.upsert({
       where: { id: goal.id },
       create: {
@@ -110,7 +155,7 @@ async function persistGoalToDB(goal: AgentGoal): Promise<void> {
         title: goal.description,
         description: goal.description,
         priority: goalPriorityToInt(goal.priority),
-        status: goalStatusToEnum(goal.status),
+        status: dbStatus,
         context: goal.metadata ?? {},
         plan: goal.plan ? JSON.parse(JSON.stringify(goal.plan)) : undefined,
         totalSteps: goal.plan?.steps.length ?? 0,
@@ -118,7 +163,7 @@ async function persistGoalToDB(goal: AgentGoal): Promise<void> {
         result: goal.result ? JSON.parse(JSON.stringify(goal.result)) : undefined,
       },
       update: {
-        status: goalStatusToEnum(goal.status),
+        status: dbStatus,
         progress: goal.status === 'completed' ? 100 : goal.status === 'executing' ? 50 : 0,
         plan: goal.plan ? JSON.parse(JSON.stringify(goal.plan)) : undefined,
         totalSteps: goal.plan?.steps.length ?? 0,
@@ -128,6 +173,26 @@ async function persistGoalToDB(goal: AgentGoal): Promise<void> {
         error: goal.result && !goal.result.success ? goal.result.summary : undefined,
       },
     });
+
+    // Agentic UX 1.5: approval_requested when goal enters HITL
+    if (goal.status === 'awaiting_approval' || dbStatus === 'AWAITING_APPROVAL') {
+      try {
+        await prisma.analyticsEvent?.create?.({
+          data: {
+            tenantId: goal.tenantId,
+            event: 'approval_requested',
+            props: {
+              source: 'agent_goal',
+              goalId: goal.id,
+              type: goal.type,
+              title: goal.description,
+            },
+          },
+        });
+      } catch {
+        // non-blocking
+      }
+    }
   } catch (error: any) {
     // Graceful fallback — in-memory still works
     if (error?.code !== 'P2021' && error?.code !== 'P2010') {
@@ -1301,8 +1366,16 @@ Decompose this into executable steps.`;
       // Persist planned state (write-ahead)
       await persistGoalToDB(goal);
       
-      // Phase 2: Approval check
-      if (goal.plan?.riskAssessment.requiresHumanApproval) {
+      // Phase 2: Approval check (respect per-agent autonomy — Phase 2.1)
+      // Default is review: high/critical risk goals wait for HITL unless mode=auto
+      // and risk/confidence clear configured thresholds.
+      const risk = goal.plan?.riskAssessment;
+      const needsApprovalByRisk = Boolean(risk?.requiresHumanApproval);
+      const autoOk = needsApprovalByRisk
+        ? await canAutoExecuteGoal(goal.tenantId, goal.type, risk?.level || 'high')
+        : true;
+
+      if (needsApprovalByRisk && !autoOk) {
         goal.status = 'awaiting_approval';
         goal.updatedAt = new Date();
         
@@ -1322,6 +1395,11 @@ Decompose this into executable steps.`;
         
         // Wait for human approval via DB polling
         await this.waitForApproval(goal.id);
+      } else if (needsApprovalByRisk && autoOk) {
+        // Autonomy mode=auto allowed this high-risk goal to proceed without HITL
+        console.info(
+          `[Orchestrator] Auto-executing goal ${goal.id} under autonomy policy (type=${goal.type})`,
+        );
       }
       
       // Phase 3: Execution

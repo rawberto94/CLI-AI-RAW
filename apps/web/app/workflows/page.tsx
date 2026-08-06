@@ -164,11 +164,21 @@ function WorkflowsPageContent() {
   const searchParams = useSearchParams()
   const t = useTranslations('workflows')
   const tCommon = useTranslations('common')
-  const initialTab = searchParams.get('tab') || 'queue'
+  // Phase 1.4: legacy approvals queue lives at /inbox. Default workflows tab is automation.
+  const initialTab = searchParams.get('tab') || 'automation'
   
   const [activeTab, setActiveTab] = useState<'queue' | 'automation' | 'templates'>(
-    initialTab === 'automation' || initialTab === 'templates' ? initialTab : 'queue'
+    initialTab === 'queue' || initialTab === 'templates' || initialTab === 'automation'
+      ? (initialTab as 'queue' | 'automation' | 'templates')
+      : 'automation'
   )
+
+  // Redirect legacy ?tab=queue deep-links to the unified Needs you inbox
+  useEffect(() => {
+    if (searchParams.get('tab') === 'queue') {
+      router.replace('/inbox')
+    }
+  }, [searchParams, router])
   const [showBuilder, setShowBuilder] = useState(false)
   const [selectedWorkflow, setSelectedWorkflow] = useState<WorkflowType | null>(null)
   
@@ -387,6 +397,11 @@ function WorkflowsPageContent() {
                 <TabsTrigger 
                   value="queue" 
                   className="gap-2 rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-500 data-[state=active]:via-violet-500 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-violet-500/30 transition-all duration-200 dark:text-slate-300"
+                  onClick={(e) => {
+                    // Phase 1.4: queue is the unified Needs you inbox
+                    e.preventDefault()
+                    router.push('/inbox')
+                  }}
                 >
                   <Inbox className="h-4 w-4" aria-hidden="true" />
                   {t('tabs.queue')}
@@ -422,8 +437,24 @@ function WorkflowsPageContent() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
                 transition={{ duration: 0.2 }}
-                className="h-[calc(100vh-220px)]"
+                className="space-y-4"
               >
+                {/* Phase 1.4: unified Needs you inbox supersedes the workflow-only queue */}
+                <div className="rounded-xl border border-violet-200 bg-violet-50/70 px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="text-sm text-violet-900">
+                    <p className="font-semibold">Approvals moved to Needs you</p>
+                    <p className="text-violet-800/80">
+                      Agent writes, goals, workflows, RFx, and reviews now live in one inbox.
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    className="bg-violet-600 hover:bg-violet-700 shrink-0"
+                    onClick={() => router.push('/inbox')}
+                  >
+                    Open Needs you
+                  </Button>
+                </div>
                 <SimpleApprovalsQueue />
               </motion.div>
             )}

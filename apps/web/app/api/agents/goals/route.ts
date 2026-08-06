@@ -172,6 +172,28 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
           newStatus: updatedGoal.status,
           feedback } } });
 
+    // Agentic UX 1.5 — approval_decided for goals
+    try {
+      const { emitUxEvent } = await import('@/lib/analytics/ux-events');
+      await emitUxEvent({
+        tenantId: ctx.tenantId,
+        userId: ctx.userId,
+        event: 'approval_decided',
+        props: {
+          actionId: goalId,
+          action,
+          outcome: action,
+          type: 'agent_goal',
+          latencyMs: goal.createdAt
+            ? Date.now() - new Date(goal.createdAt).getTime()
+            : null,
+          evidence_viewed: Boolean((body as { evidenceViewed?: boolean }).evidenceViewed),
+        },
+      });
+    } catch {
+      // non-blocking
+    }
+
     // Broadcast real-time SSE event to connected subscribers
     broadcastSSE(ctx.tenantId, `goal_${action}d`, {
       goalId,

@@ -5734,11 +5734,15 @@ model AiDecision {
   citations     Json @default("[]")
   evidenceChain Json @default("[]") @map("evidence_chain")
 
+  // Snapshot of the field value before the proposed write (captured at proposal time)
+  previousValue Json? @map("previous_value")
+
   // Outcome & feedback
-  outcome      String    @default("pending") // accepted, rejected, modified, pending, auto_applied
+  outcome      String    @default("pending") // accepted, rejected, modified, pending, auto_applied, reverted
   userFeedback Json?     @map("user_feedback")
   reviewedAt   DateTime? @map("reviewed_at")
   expiresAt    DateTime? @map("expires_at")
+  revertedAt   DateTime? @map("reverted_at")
 
   createdAt DateTime @default(now()) @map("created_at")
 
@@ -5750,6 +5754,54 @@ model AiDecision {
   @@index([outcome])
   @@index([confidence])
   @@map("ai_decisions")
+}
+
+// ============================================
+// UX / product analytics events (agentic UX metrics)
+// ============================================
+
+model AnalyticsEvent {
+  id        String   @id @default(cuid())
+  tenantId  String   @map("tenant_id")
+  userId    String?  @map("user_id")
+  event     String
+  props     Json     @default("{}")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([tenantId])
+  @@index([tenantId, event])
+  @@index([tenantId, createdAt])
+  @@index([event, createdAt])
+  @@map("analytics_events")
+}
+
+// ============================================
+// Per-agent autonomy settings (Agentic UX 2.1)
+// Default mode for missing rows is always "review" — never silently auto.
+// ============================================
+
+model AgentAutonomyConfig {
+  id                  String   @id @default(cuid())
+  tenantId            String   @map("tenant_id")
+  agentId             String   @map("agent_id")
+  /// Granularity: e.g. agent_write, agent_goal, field_tags
+  actionType          String   @default("agent_write") @map("action_type")
+  /// suggest | review | auto
+  mode                String   @default("review")
+  confidenceThreshold Float    @default(0.85) @map("confidence_threshold")
+  /// Optional monetary / impact ceiling for auto-apply (null = no cost gate)
+  costThreshold       Float?   @map("cost_threshold")
+  /// low | medium | high | critical — max risk allowed for auto
+  riskThreshold       String   @default("medium") @map("risk_threshold")
+  notifyEmail         Boolean  @default(true) @map("notify_email")
+  notifyInApp         Boolean  @default(true) @map("notify_in_app")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  @@unique([tenantId, agentId, actionType])
+  @@index([tenantId])
+  @@index([tenantId, agentId])
+  @@map("agent_autonomy_configs")
 }
 
 // ============================================

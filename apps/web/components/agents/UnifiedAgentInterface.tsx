@@ -16,6 +16,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSession } from 'next-auth/react';
+import { AgentAutonomySettingsPanel } from '@/components/agents/AgentAutonomySettingsPanel';
 import {
   Bot,
   Brain,
@@ -138,22 +139,6 @@ interface AgentResult {
     name: string;
     url?: string;
   }>;
-}
-
-interface AgentConfiguration {
-  agentId: string;
-  enabled: boolean;
-  autoApprove: boolean;
-  thresholds: {
-    confidence: number;
-    cost: number;
-    risk: Priority;
-  };
-  notificationPreferences: {
-    email: boolean;
-    inApp: boolean;
-    slack?: boolean;
-  };
 }
 
 // ============================================================================
@@ -1136,7 +1121,40 @@ function PriorityBadge({ priority }: { priority: Priority }) {
 // PLACEHOLDER COMPONENTS
 // ============================================================================
 
+const AUTONOMY_MODE_BADGE: Record<string, string> = {
+  suggest: 'bg-slate-100 text-slate-700 border-slate-200',
+  review: 'bg-amber-100 text-amber-900 border-amber-200',
+  auto: 'bg-emerald-100 text-emerald-900 border-emerald-200',
+};
+
 function AgentDirectory() {
+  const [modes, setModes] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/agents/autonomy');
+        if (!res.ok) return;
+        const json = await res.json();
+        const configs = (json.data ?? json).configs ?? [];
+        const map: Record<string, string> = {};
+        for (const c of configs as Array<{ agentId: string; actionType: string; mode: string }>) {
+          // Prefer agent_write / agent_goal generic rows for badge display
+          if (!map[c.agentId] || c.actionType === 'agent_write' || c.actionType === 'agent_goal') {
+            map[c.agentId] = c.mode;
+          }
+        }
+        if (!cancelled) setModes(map);
+      } catch {
+        /* best-effort */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   // Group agents by cluster
   const agentsByCluster = Object.entries(AGENT_CONFIGS).reduce((acc, [id, config]) => {
     if (!acc[config.cluster]) acc[config.cluster] = [];
@@ -1160,6 +1178,7 @@ function AgentDirectory() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {agents.map(([id, config]) => {
                 const Icon = config.icon;
+                const mode = modes[id] || 'review';
                 return (
                   <Card key={id} className="hover:shadow-md transition-shadow group">
                     <CardContent className="p-4">
@@ -1171,14 +1190,33 @@ function AgentDirectory() {
                           <Icon className={cn("w-5 h-5", `text-${config.color}-600`)} />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <span className="text-lg">{config.avatar}</span>
                             <h4 className="font-semibold">{config.codename}</h4>
+                            <Badge
+                              variant="outline"
+                              className={cn(
+                                'ml-auto text-[10px] capitalize',
+                                AUTONOMY_MODE_BADGE[mode] || AUTONOMY_MODE_BADGE.review,
+                              )}
+                              title="Autonomy mode (default review)"
+                            >
+                              {mode}
+                            </Badge>
                           </div>
                           <p className="text-xs text-muted-foreground truncate">{config.name}</p>
                           <p className="text-sm text-muted-foreground mt-2">{config.description}</p>
                           <div className="mt-3 flex gap-2">
-                            <Button variant="outline" size="sm" className="flex-1 text-xs">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="flex-1 text-xs"
+                              onClick={() => {
+                                // Jump to settings tab via hash-like query if parent listens;
+                                // otherwise user uses Settings tab.
+                                toast.info(`Set autonomy for ${config.codename} in the Settings tab`);
+                              }}
+                            >
                               Configure
                             </Button>
                             <Button size="sm" className="flex-1 text-xs">
@@ -1209,31 +1247,8 @@ function ActivityHistory() {
 }
 
 function AgentSettings() {
-  return (
-    <div className="max-w-2xl">
-      <Card>
-        <CardHeader>
-          <CardTitle>Agent Configuration</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between p-3 border rounded-lg">
-            <div>
-              <p className="font-medium">Auto-approve low-risk actions</p>
-              <p className="text-sm text-muted-foreground">Confidence &gt; 90% and no risks</p>
-            </div>
-            <input type="checkbox" className="w-5 h-5" defaultChecked />
-          </div>
-          <div className="flex items-center justify-between p-3 border rounded-lg">
-            <div>
-              <p className="font-medium">Email notifications</p>
-              <p className="text-sm text-muted-foreground">Get notified when agents need approval</p>
-            </div>
-            <input type="checkbox" className="w-5 h-5" defaultChecked />
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
+  // Phase 2.1: real per-agent autonomy controls (default mode=review)
+  return <AgentAutonomySettingsPanel />;
 }
 
 // ============================================================================

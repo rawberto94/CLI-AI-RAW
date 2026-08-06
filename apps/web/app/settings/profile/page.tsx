@@ -705,11 +705,9 @@ export default function ProfileSettingsPage() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
+                        {/* Phase 3.3: only complete locales are selectable (en/de) */}
                         <SelectItem value="en">English</SelectItem>
-                        <SelectItem value="es">Español</SelectItem>
-                        <SelectItem value="fr">Français</SelectItem>
                         <SelectItem value="de">Deutsch</SelectItem>
-                        <SelectItem value="ja">日本語</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

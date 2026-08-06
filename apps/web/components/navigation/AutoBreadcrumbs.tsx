@@ -91,7 +91,7 @@ const ROUTE_LABELS: Record<string, string> = {
   redline: 'Redline',
   renew: 'Renewal',
   sign: 'Sign',
-  'state-of-the-art': 'SOTA View',
+
   store: 'Store',
   terminate: 'Termination',
   versions: 'Version History',

@@ -16,7 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { CompactConnectionStatus } from '@/components/realtime/ConnectionStatusIndicator';
-import { NotificationBell } from '@/components/collaboration/NotificationCenter';
+import { AgentNotificationBell as NotificationBell } from '@/components/ai/AgentNotificationBell';
 import { ConTigoLogoSVG } from '@/components/ui/ConTigoLogo';
 import { ThemeToggle } from '@/components/theme/ThemeProvider';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -69,6 +69,7 @@ import {
   Gavel,
   Key,
   ArrowLeftRight,
+  Gauge,
 } from 'lucide-react';
 
 interface NavigationItem {
@@ -163,7 +164,7 @@ const navigationConfig: NavigationGroupConfig[] = [
         audiences: ['operator'],
         demo: 'hide',
         children: [
-          { key: 'approvals', href: '/approvals', icon: CheckCircle2, audiences: ['oversight'], demo: 'hide' },
+          { key: 'approvals', href: '/inbox', icon: CheckCircle2, audiences: ['oversight'], demo: 'hide' },
           { key: 'requests', href: '/requests', icon: Zap, audiences: ['operator'], demo: 'hide' },
           { key: 'myTasks', href: '/self-service/my-requests', icon: CheckSquare, audiences: ['operator'], demo: 'hide' },
         ],
@@ -221,8 +222,18 @@ const navigationConfig: NavigationGroupConfig[] = [
     id: 'platform',
     groupKey: 'platform',
     items: [
-      { key: 'governance', href: '/governance', icon: Shield, audiences: ['legal'], demo: 'hide' },
+      {
+        key: 'governance',
+        href: '/governance',
+        icon: Shield,
+        audiences: ['legal'],
+        demo: 'hide',
+        children: [
+          { key: 'aiDecisions', href: '/governance/ai-decisions', icon: ScrollText, audiences: ['legal'], demo: 'hide' },
+        ],
+      },
       { key: 'contractMigration', href: '/migration', icon: Upload, audiences: ['all'], isNew: true },
+      { key: 'observability', href: '/contigo-labs?tab=observability', icon: Gauge, audiences: ['all'], demo: 'hide' },
       { key: 'settings', href: '/settings', icon: Settings, audiences: ['all'] },
     ],
   },
@@ -233,6 +244,13 @@ const navigationConfig: NavigationGroupConfig[] = [
     requiresAdmin: true,
     items: [
       { key: 'organization', href: '/admin', icon: Building2, audiences: ['admin'], requiresAdmin: true },
+      {
+        key: 'uxMetrics',
+        href: '/admin/ux-metrics',
+        icon: BarChart3,
+        audiences: ['admin'],
+        requiresAdmin: true,
+      },
       {
         key: 'system',
         href: '/audit-logs',
@@ -547,7 +565,45 @@ function EnhancedNavigation() {
   const tNav = useTranslations('navigation');
   const navigationGroups = useMemo(() => resolveNavigationConfig(tNav), [tNav]);
 
+  // Unified "Needs you" badge count (Phase 1.4) — source of truth is /api/inbox
+  const [inboxCount, setInboxCount] = useState(0);
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const res = await fetch('/api/inbox?limit=1');
+        if (!res.ok) return;
+        const json = await res.json();
+        const total = json.data?.stats?.total ?? json.stats?.total ?? 0;
+        if (!cancelled) setInboxCount(typeof total === 'number' ? total : 0);
+      } catch {
+        // best-effort badge
+      }
+    };
+    load();
+    const id = setInterval(load, 60_000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [pathname]);
+
   const filteredNavigationGroups = useMemo(() => {
+    const injectInboxBadge = (item: NavigationItem): NavigationItem => {
+      if (item.href === '/inbox' || item.href === '/approvals') {
+        return {
+          ...item,
+          badge: inboxCount > 0 ? inboxCount : undefined,
+          badgeVariant: inboxCount > 0 ? 'warning' : undefined,
+          children: item.children?.map(injectInboxBadge),
+        };
+      }
+      return {
+        ...item,
+        children: item.children?.map(injectInboxBadge),
+      };
+    };
+
     const filterItem = (item: NavigationItem): NavigationItem | null => {
       const visibleChildren = item.children
         ?.map(filterItem)
@@ -567,10 +623,10 @@ function EnhancedNavigation() {
         return null;
       }
 
-      return {
+      return injectInboxBadge({
         ...item,
         children: visibleChildren,
-      };
+      });
     };
 
     return navigationGroups
@@ -583,7 +639,7 @@ function EnhancedNavigation() {
           .filter((item): item is NavigationItem => item !== null),
       }))
       .filter((group) => group.items.length > 0);
-  }, [navigationGroups, activeAudiences, isAdmin, isDemo]);
+  }, [navigationGroups, activeAudiences, isAdmin, isDemo, inboxCount]);
 
   // Keyboard shortcut for search (Cmd/Ctrl + K)
   useEffect(() => {

@@ -1,9 +1,12 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Bell, Check, CheckCheck, X, AlertTriangle, Info, Zap, Brain } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { Bell, Check, CheckCheck, AlertTriangle, Info, Zap, Brain, MessageSquare, FileText, Users, Clock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useWebSocket } from '@/contexts/websocket-context';
+import { trackUxEventClient } from '@/lib/analytics/ux-events';
 
+// ---- Agent-origin notifications (existing) ----
 interface AgentNotification {
   id: string;
   type: string;
@@ -16,40 +19,119 @@ interface AgentNotification {
   read: boolean;
 }
 
+// ---- System/collaboration-origin notifications (merged in from the old collaboration bell) ----
+interface SystemNotification {
+  id: string;
+  type: string;
+  title: string;
+  message: string;
+  link?: string;
+  isRead: boolean;
+  createdAt: string;
+}
+
+// ---- Unified shape the panel actually renders ----
+interface MergedNotification {
+  id: string;
+  origin: 'agent' | 'system';
+  title: string;
+  message: string;
+  href?: string;
+  createdAt: string;
+  read: boolean;
+  severity?: AgentNotification['severity'];
+  rawType: string;
+}
+
+const systemTypeIcon: Record<string, React.ElementType> = {
+  APPROVAL_REQUEST: FileText,
+  APPROVAL_COMPLETED: Check,
+  COMMENT_MENTION: MessageSquare,
+  COMMENT_REPLY: MessageSquare,
+  CONTRACT_DEADLINE: Clock,
+  CONTRACT_UPDATE: FileText,
+  WORKFLOW_STEP: Users,
+  SHARE_INVITE: Users,
+};
+
+function fromAgent(n: AgentNotification): MergedNotification {
+  return {
+    id: `agent:${n.id}`,
+    origin: 'agent',
+    title: n.title,
+    message: n.message,
+    href: n.actionUrl,
+    createdAt: n.createdAt,
+    read: n.read,
+    severity: n.severity,
+    rawType: n.source,
+  };
+}
+
+function fromSystem(n: SystemNotification): MergedNotification {
+  return {
+    id: `system:${n.id}`,
+    origin: 'system',
+    title: n.title,
+    message: n.message,
+    href: n.link,
+    createdAt: n.createdAt,
+    read: n.isRead,
+    rawType: n.type,
+  };
+}
+
+type FilterTab = 'all' | 'agent' | 'system';
+
 export function AgentNotificationBell() {
-  const [notifications, setNotifications] = useState<AgentNotification[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
+  const [agentNotifications, setAgentNotifications] = useState<AgentNotification[]>([]);
+  const [systemNotifications, setSystemNotifications] = useState<SystemNotification[]>([]);
   const [isOpen, setIsOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [filter, setFilter] = useState<FilterTab>('all');
   const dropdownRef = useRef<HTMLDivElement>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
+  const wsContext = useWebSocket();
 
-  const fetchNotifications = useCallback(async () => {
+  // ---- fetch: agent notifications ----
+  const fetchAgentNotifications = useCallback(async () => {
     try {
-      setLoading(true);
       const res = await fetch('/api/ai/notifications?limit=20');
       if (!res.ok) return;
       const data = await res.json();
-      setNotifications(data.notifications || []);
-      setUnreadCount(data.unreadCount || 0);
+      setAgentNotifications(data.notifications || []);
     } catch {
       // Silently fail — notifications are non-critical
-    } finally {
-      setLoading(false);
     }
   }, []);
 
-  // SSE subscription for real-time notifications
-  useEffect(() => {
-    fetchNotifications(); // Initial load
+  // ---- fetch: system/collaboration notifications ----
+  const fetchSystemNotifications = useCallback(async () => {
+    try {
+      const res = await fetch('/api/notifications');
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.success) {
+        setSystemNotifications(data.notifications || []);
+      }
+    } catch {
+      // Silently fail — notifications are non-critical
+    }
+  }, []);
 
+  useEffect(() => {
+    fetchAgentNotifications();
+    fetchSystemNotifications();
+  }, [fetchAgentNotifications, fetchSystemNotifications]);
+
+  // SSE subscription for real-time agent notifications
+  useEffect(() => {
     let es: EventSource | null = null;
     let fallbackInterval: ReturnType<typeof setInterval> | null = null;
 
     function connectSSE() {
       if (typeof EventSource === 'undefined') {
         // Fallback to polling for browsers without SSE
-        fallbackInterval = setInterval(fetchNotifications, 30_000);
+        fallbackInterval = setInterval(fetchAgentNotifications, 30_000);
         return;
       }
 
@@ -59,8 +141,7 @@ export function AgentNotificationBell() {
       es.onmessage = (event) => {
         try {
           const notification: AgentNotification = JSON.parse(event.data);
-          setNotifications(prev => [notification, ...prev].slice(0, 50));
-          setUnreadCount(prev => prev + 1);
+          setAgentNotifications(prev => [notification, ...prev].slice(0, 50));
         } catch {
           // Invalid data
         }
@@ -71,7 +152,7 @@ export function AgentNotificationBell() {
         es?.close();
         eventSourceRef.current = null;
         if (!fallbackInterval) {
-          fallbackInterval = setInterval(fetchNotifications, 30_000);
+          fallbackInterval = setInterval(fetchAgentNotifications, 30_000);
         }
         // Attempt reconnect after 10 seconds
         setTimeout(() => {
@@ -83,12 +164,10 @@ export function AgentNotificationBell() {
       };
     }
 
-    // Only connect SSE when tab is visible
     function handleVisibility() {
       if (document.visibilityState === 'visible') {
         if (!eventSourceRef.current) connectSSE();
       } else {
-        // Tab hidden — close SSE to save resources, stop polling
         es?.close();
         eventSourceRef.current = null;
         if (fallbackInterval) { clearInterval(fallbackInterval); fallbackInterval = null; }
@@ -104,7 +183,21 @@ export function AgentNotificationBell() {
       eventSourceRef.current = null;
       if (fallbackInterval) clearInterval(fallbackInterval);
     };
-  }, [fetchNotifications]);
+  }, [fetchAgentNotifications]);
+
+  // Real-time system notifications via WebSocket (same mechanism the old collaboration bell used)
+  useEffect(() => {
+    if (!wsContext?.onEvent) return;
+
+    const unsubscribe = wsContext.onEvent((event: unknown) => {
+      const typedEvent = event as { type?: string; data?: SystemNotification };
+      if (typedEvent.type === 'notification' && typedEvent.data) {
+        setSystemNotifications(prev => [typedEvent.data!, ...prev]);
+      }
+    });
+
+    return () => unsubscribe?.();
+  }, [wsContext]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -117,49 +210,91 @@ export function AgentNotificationBell() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isOpen]);
 
+  const merged = useMemo<MergedNotification[]>(() => {
+    const all = [
+      ...agentNotifications.map(fromAgent),
+      ...systemNotifications.map(fromSystem),
+    ];
+    all.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    return all;
+  }, [agentNotifications, systemNotifications]);
+
+  const filtered = useMemo(
+    () => (filter === 'all' ? merged : merged.filter(n => n.origin === filter)),
+    [merged, filter],
+  );
+
+  const unreadCount = useMemo(() => merged.filter(n => !n.read).length, [merged]);
+
+  const markRead = async (n: MergedNotification) => {
+    if (n.origin === 'agent') {
+      const rawId = n.id.replace(/^agent:/, '');
+      setAgentNotifications(prev => prev.map(x => (x.id === rawId ? { ...x, read: true } : x)));
+      try {
+        await fetch('/api/ai/notifications', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ notificationId: rawId }),
+        });
+      } catch {
+        // ignore
+      }
+    } else {
+      const rawId = n.id.replace(/^system:/, '');
+      setSystemNotifications(prev => prev.map(x => (x.id === rawId ? { ...x, isRead: true } : x)));
+      try {
+        await fetch('/api/notifications', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ notificationIds: [rawId] }),
+        });
+      } catch {
+        // ignore
+      }
+    }
+  };
+
   const markAllRead = async () => {
+    setAgentNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    setSystemNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
     try {
-      await fetch('/api/ai/notifications', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ markAllRead: true }),
-      });
-      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-      setUnreadCount(0);
+      await Promise.all([
+        fetch('/api/ai/notifications', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ markAllRead: true }),
+        }),
+        fetch('/api/notifications', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ markAllRead: true }),
+        }),
+      ]);
     } catch {
       // ignore
     }
   };
 
-  const markRead = async (id: string) => {
-    try {
-      await fetch('/api/ai/notifications', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ notificationId: id }),
-      });
-      setNotifications(prev =>
-        prev.map(n => (n.id === id ? { ...n, read: true } : n))
-      );
-      setUnreadCount(prev => Math.max(0, prev - 1));
-    } catch {
-      // ignore
+  const originIcon = (n: MergedNotification) => {
+    if (n.origin === 'agent') {
+      switch (n.severity) {
+        case 'critical': return <AlertTriangle className="h-3.5 w-3.5 text-red-500" />;
+        case 'warning': return <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />;
+        case 'success': return <Check className="h-3.5 w-3.5 text-emerald-500" />;
+        default: return <Info className="h-3.5 w-3.5 text-blue-500" />;
+      }
     }
+    const Icon = systemTypeIcon[n.rawType] ?? Bell;
+    return <Icon className="h-3.5 w-3.5 text-violet-500" />;
   };
 
-  const severityIcon = (severity: string) => {
-    switch (severity) {
-      case 'critical': return <AlertTriangle className="h-3.5 w-3.5 text-red-500" />;
-      case 'warning': return <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />;
-      case 'success': return <Check className="h-3.5 w-3.5 text-emerald-500" />;
-      default: return <Info className="h-3.5 w-3.5 text-blue-500" />;
+  const sourceLabel = (n: MergedNotification) => {
+    if (n.origin === 'agent') {
+      if (n.rawType.includes('risk') || n.rawType.includes('compliance')) return <AlertTriangle className="h-3 w-3" />;
+      if (n.rawType.includes('learning') || n.rawType.includes('intelligence')) return <Brain className="h-3 w-3" />;
+      return <Zap className="h-3 w-3" />;
     }
-  };
-
-  const sourceIcon = (source: string) => {
-    if (source.includes('risk') || source.includes('compliance')) return <AlertTriangle className="h-3 w-3" />;
-    if (source.includes('learning') || source.includes('intelligence')) return <Brain className="h-3 w-3" />;
-    return <Zap className="h-3 w-3" />;
+    return null;
   };
 
   const timeAgo = (dateStr: string) => {
@@ -170,13 +305,29 @@ export function AgentNotificationBell() {
     return `${Math.round(diff / 86_400_000)}d`;
   };
 
+  const tabs: { id: FilterTab; label: string }[] = [
+    { id: 'all', label: 'All' },
+    { id: 'agent', label: 'Agents' },
+    { id: 'system', label: 'System' },
+  ];
+
   return (
     <div className="relative" ref={dropdownRef}>
       {/* Bell Button */}
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => {
+          const next = !isOpen;
+          setIsOpen(next);
+          if (next) {
+            // impression when the panel opens (agentic UX 1.5)
+            void trackUxEventClient('notification_impression', {
+              unreadCount,
+              source: 'agent_notification_bell',
+            });
+          }
+        }}
         className="relative p-2 rounded-lg text-slate-500 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-        title="Agent Notifications"
+        title="Notifications"
       >
         <Bell className="h-5 w-5" />
         {unreadCount > 0 && (
@@ -203,8 +354,8 @@ export function AgentNotificationBell() {
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-2">
-                <Bot className="h-4 w-4 text-violet-500" />
-                <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">Agent Alerts</span>
+                <Bell className="h-4 w-4 text-violet-500" />
+                <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">Notifications</span>
                 {unreadCount > 0 && (
                   <span className="text-[10px] font-bold text-violet-600 bg-violet-50 px-1.5 py-0.5 rounded-full">
                     {unreadCount}
@@ -221,28 +372,50 @@ export function AgentNotificationBell() {
               )}
             </div>
 
+            {/* Filter tabs */}
+            <div className="flex items-center gap-1.5 px-4 py-2 border-b border-slate-100 dark:border-slate-800">
+              {tabs.map((t) => (
+                <button
+                  key={t.id}
+                  onClick={() => setFilter(t.id)}
+                  className={`px-2.5 py-1 text-[11px] font-medium rounded-full transition-colors ${
+                    filter === t.id
+                      ? 'bg-violet-500 text-white'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300'
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+
             {/* Notification List */}
             <div className="overflow-y-auto max-h-72">
-              {notifications.length === 0 ? (
+              {filtered.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-8 text-slate-400">
                   <Bell className="h-8 w-8 mb-2 opacity-30" />
-                  <p className="text-xs">No agent notifications yet</p>
-                  <p className="text-[10px] mt-0.5">Agents will notify you of important findings</p>
+                  <p className="text-xs">No notifications</p>
                 </div>
               ) : (
-                notifications.map((n) => (
+                filtered.map((n) => (
                   <div
                     key={n.id}
                     className={`px-4 py-3 border-b border-slate-50 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer ${
                       !n.read ? 'bg-violet-50/30 dark:bg-violet-950/10' : ''
                     }`}
                     onClick={() => {
-                      if (!n.read) markRead(n.id);
-                      if (n.actionUrl) window.location.href = n.actionUrl;
+                      if (!n.read) markRead(n);
+                      void trackUxEventClient('notification_click', {
+                        notificationId: n.id,
+                        origin: n.origin,
+                        href: n.href ?? null,
+                        source: 'agent_notification_bell',
+                      });
+                      if (n.href) window.location.href = n.href;
                     }}
                   >
                     <div className="flex items-start gap-2.5">
-                      <div className="mt-0.5">{severityIcon(n.severity)}</div>
+                      <div className="mt-0.5">{originIcon(n)}</div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between">
                           <p className={`text-xs font-medium truncate ${!n.read ? 'text-slate-900 dark:text-white' : 'text-slate-600 dark:text-slate-400'}`}>
@@ -251,10 +424,12 @@ export function AgentNotificationBell() {
                           <span className="text-[10px] text-slate-400 shrink-0 ml-2">{timeAgo(n.createdAt)}</span>
                         </div>
                         <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2 mt-0.5">{n.message}</p>
-                        <div className="flex items-center gap-1.5 mt-1">
-                          {sourceIcon(n.source)}
-                          <span className="text-[10px] text-slate-400 capitalize">{n.source.replace(/-/g, ' ')}</span>
-                        </div>
+                        {n.origin === 'agent' && (
+                          <div className="flex items-center gap-1.5 mt-1">
+                            {sourceLabel(n)}
+                            <span className="text-[10px] text-slate-400 capitalize">{n.rawType.replace(/-/g, ' ')}</span>
+                          </div>
+                        )}
                       </div>
                       {!n.read && (
                         <div className="w-2 h-2 rounded-full bg-violet-500 shrink-0 mt-1.5" />
@@ -266,10 +441,13 @@ export function AgentNotificationBell() {
             </div>
 
             {/* Footer */}
-            {notifications.length > 0 && (
-              <div className="px-4 py-2 border-t border-slate-100 dark:border-slate-800 text-center">
+            {filtered.length > 0 && (
+              <div className="px-4 py-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                <a href="/notifications" className="text-[11px] text-violet-600 hover:text-violet-800 font-medium">
+                  All notifications →
+                </a>
                 <a href="/ai/agents" className="text-[11px] text-violet-600 hover:text-violet-800 font-medium">
-                  View Agent Dashboard →
+                  Agent dashboard →
                 </a>
               </div>
             )}
@@ -280,25 +458,4 @@ export function AgentNotificationBell() {
   );
 }
 
-// Bot icon inline — avoids extra import
-function Bot(props: React.SVGProps<SVGSVGElement> & { className?: string }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      {...props}
-    >
-      <path d="M12 8V4H8" />
-      <rect width="16" height="12" x="4" y="8" rx="2" />
-      <path d="M2 14h2" />
-      <path d="M20 14h2" />
-      <path d="M15 13v2" />
-      <path d="M9 13v2" />
-    </svg>
-  );
-}
+export default AgentNotificationBell;

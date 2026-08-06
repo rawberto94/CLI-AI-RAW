@@ -3,11 +3,13 @@ import { getRequestConfig } from 'next-intl/server';
 
 import deMessages from '../messages/de.json';
 import enMessages from '../messages/en.json';
-import esMessages from '../messages/es.json';
-import frMessages from '../messages/fr.json';
-import itMessages from '../messages/it.json';
 
-export const locales = ['en', 'es', 'de', 'fr', 'it'] as const;
+/**
+ * Phase 3.3 product decision: ship only complete locales (en/de).
+ * es/fr/it message files remain in repo (~7% coverage) but are not selectable
+ * until they reach parity — silent English fallback is worse than fewer options.
+ */
+export const locales = ['en', 'de'] as const;
 export type Locale = (typeof locales)[number];
 export const defaultLocale: Locale = 'en';
 
@@ -18,9 +20,6 @@ export const LOCALE_COOKIE = 'NEXT_LOCALE';
 const messagesByLocale: Record<Locale, typeof enMessages> = {
   de: deMessages,
   en: enMessages,
-  es: esMessages,
-  fr: frMessages,
-  it: itMessages,
 };
 
 export default getRequestConfig(async ({ requestLocale }) => {
