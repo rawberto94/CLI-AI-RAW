@@ -46,6 +46,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { logger } from '@/lib/logger'
+import { usePermissions } from '@/hooks/usePermissions'
 
 interface ContractFloatingActionsProps {
   contractId: string
@@ -75,6 +76,7 @@ export const ContractFloatingActions = memo(function ContractFloatingActions({
   onPrint,
 }: ContractFloatingActionsProps) {
   const isDemo = useDemoMode()
+  const { canDeleteContracts, canEditContracts } = usePermissions()
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [showArchiveDialog, setShowArchiveDialog] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -319,8 +321,8 @@ export const ContractFloatingActions = memo(function ContractFloatingActions({
                   <ExternalLink className="h-4 w-4 mr-2" />
                   Open in new tab
                 </DropdownMenuItem>
-                {!isDemo && <DropdownMenuSeparator />}
-                {!isDemo && (
+                {!isDemo && canEditContracts && <DropdownMenuSeparator />}
+                {!isDemo && canEditContracts && (
                   <DropdownMenuItem 
                     onClick={() => setShowArchiveDialog(true)}
                     className="cursor-pointer"
@@ -338,8 +340,8 @@ export const ContractFloatingActions = memo(function ContractFloatingActions({
                     )}
                   </DropdownMenuItem>
                 )}
-                {!isDemo && <DropdownMenuSeparator />}
-                {!isDemo && (
+                {!isDemo && canDeleteContracts && <DropdownMenuSeparator />}
+                {!isDemo && canDeleteContracts && (
                   <DropdownMenuItem 
                     onClick={() => setShowDeleteDialog(true)}
                     className="cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50"

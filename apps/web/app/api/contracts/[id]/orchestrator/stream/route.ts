@@ -1,7 +1,8 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { contractService } from 'data-orchestration/services';
-import { getAuthenticatedApiContextWithSessionFallback, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { requireContractReadAccess } from '@/lib/security/require-api-access';
 
 /**
  * GET /api/contracts/[id]/orchestrator/stream
@@ -13,11 +14,10 @@ export async function GET(
   props: { params: Promise<{ id: string }> }
 ) {
   const params = await props.params;
-  const ctx = await getAuthenticatedApiContextWithSessionFallback(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-  }
   const contractId = params.id;
+  const access = await requireContractReadAccess({ request, contractId });
+  if (!access.ok) return access.response;
+  const ctx = access.context;
   const tenantId = ctx.tenantId;
 
   const encoder = new TextEncoder();

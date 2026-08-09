@@ -8,18 +8,18 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthenticatedApiContextWithSessionFallback } from '@/lib/api-middleware';
 import { subscribeToNotifications, type AgentNotification } from '@/lib/ai/agent-notifications';
+import { requireAuthenticatedRbac } from '@/lib/security/require-api-access';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest): Promise<NextResponse | Response> {
-  const ctx = await getAuthenticatedApiContextWithSessionFallback(request);
-  if (!ctx) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const access = await requireAuthenticatedRbac(request, {
+    anyOf: ['chat:view', 'contracts:view', 'dashboard:view'],
+  });
+  if (!access.ok) return access.response;
 
-  const { tenantId, userId } = ctx;
+  const { tenantId, userId } = access.context;
   const encoder = new TextEncoder();
 
   const stream = new ReadableStream({

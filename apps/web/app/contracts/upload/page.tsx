@@ -23,6 +23,7 @@ import { toast } from 'sonner'
 import { logger } from '@/lib/logger'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
+import { usePermissions } from '@/hooks/usePermissions'
 
 import { UploadDropZone } from './components'
 import { UploadMetadataReviewDialog } from './components'
@@ -81,6 +82,7 @@ export default function UploadPage() {
   const isDemo = useDemoMode()
   const router = useRouter()
   const { dataMode } = useDataMode()
+  const { canCreateContracts, loading: permsLoading } = usePermissions()
   const [files, setFiles] = useState<UploadFile[]>([])
   const [isUploading, setIsUploading] = useState(false)
   const [isPaused, setIsPaused] = useState(false)
@@ -539,6 +541,30 @@ export default function UploadPage() {
   }, [files.length, processingCount, pendingCount, completedCount, errorCount, partialWarningCount, reviewQueue.length, skipAllMetadataReview, isDemo, router])
 
   // ── Render ──────────────────────────────────────────────────────────────
+
+  if (!permsLoading && !canCreateContracts) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center p-6">
+        <Card className="max-w-md w-full">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              Upload not permitted
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4 text-sm text-slate-600 dark:text-slate-300">
+            <p>Your role is read-only. Contact an admin if you need permission to upload contracts.</p>
+            <Link href="/contracts">
+              <Button variant="outline" size="sm" className="gap-1">
+                {t('uploadPage.allContracts')}
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900">

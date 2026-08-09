@@ -2,24 +2,30 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const {
   mockUserFindUnique,
+  mockUserUpdate,
   mockInvitationFindMany,
+  mockTenantConfigFindUnique,
   mockWarn,
 } = vi.hoisted(() => ({
   mockUserFindUnique: vi.fn(),
+  mockUserUpdate: vi.fn(),
   mockInvitationFindMany: vi.fn(),
+  mockTenantConfigFindUnique: vi.fn(),
   mockWarn: vi.fn(),
 }));
 
 vi.mock('@/lib/prisma', () => ({
   prisma: {
-    user: { findUnique: mockUserFindUnique },
+    user: { findUnique: mockUserFindUnique, update: mockUserUpdate },
     teamInvitation: { findMany: mockInvitationFindMany },
+    tenantConfig: { findUnique: mockTenantConfigFindUnique },
   },
 }));
 
 vi.mock('@/lib/logger', () => ({
   logger: {
     warn: mockWarn,
+    error: vi.fn(),
   },
 }));
 
@@ -28,6 +34,8 @@ import { resolveSSOSignInMapping } from '../sso-access';
 describe('resolveSSOSignInMapping', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockTenantConfigFindUnique.mockResolvedValue({ securitySettings: {} });
+    mockUserUpdate.mockResolvedValue({});
   });
 
   afterEach(() => {
@@ -86,8 +94,20 @@ describe('resolveSSOSignInMapping', () => {
       expect.objectContaining({
         email: 'consultant@example.com',
         invitationCount: 2,
-      })
+      }),
     );
+  });
+
+  it('uses preferredTenantId to disambiguate invitations', async () => {
+    mockUserFindUnique.mockResolvedValue(null);
+    mockInvitationFindMany.mockResolvedValue([
+      { tenantId: 'tenant-a', role: 'member' },
+      { tenantId: 'tenant-b', role: 'admin' },
+    ]);
+
+    await expect(
+      resolveSSOSignInMapping('consultant@example.com', { preferredTenantId: 'tenant-b' }),
+    ).resolves.toEqual({ tenantId: 'tenant-b', role: 'admin' });
   });
 
   it('falls back to configured auto-provisioning only when no invitations exist', async () => {
@@ -100,5 +120,47 @@ describe('resolveSSOSignInMapping', () => {
       tenantId: 'default-tenant',
       role: 'member',
     });
+  });
+
+  it('maps role from IdP groups on auto-provision', async () => {
+    vi.stubEnv('SSO_AUTO_PROVISION', 'true');
+    vi.stubEnv('SSO_DEFAULT_TENANT_ID', 'default-tenant');
+    mockUserFindUnique.mockResolvedValue(null);
+    mockInvitationFindMany.mockResolvedValue([]);
+
+    await expect(
+      resolveSSOSignInMapping('newuser@example.com', {
+        groups: ['App-Admins'],
+        groupRoleMapping: { 'App-Admins': 'admin' },
+      }),
+    ).resolves.toEqual({
+      tenantId: 'default-tenant',
+      role: 'admin',
+    });
+  });
+
+  it('blocks emails outside provider domain allowlist', async () => {
+    mockUserFindUnique.mockResolvedValue({
+      id: 'user-1',
+      tenantId: 'tenant-1',
+      role: 'member',
+      status: 'ACTIVE',
+    });
+
+    await expect(
+      resolveSSOSignInMapping('user@evil.com', { allowedDomains: ['contoso.com'] }),
+    ).resolves.toBeNull();
+  });
+
+  it('blocks emails outside global SSO_ALLOWED_DOMAINS', async () => {
+    vi.stubEnv('SSO_ALLOWED_DOMAINS', 'contoso.com');
+    mockUserFindUnique.mockResolvedValue({
+      id: 'user-1',
+      tenantId: 'tenant-1',
+      role: 'member',
+      status: 'ACTIVE',
+    });
+
+    await expect(resolveSSOSignInMapping('user@other.com')).resolves.toBeNull();
   });
 });

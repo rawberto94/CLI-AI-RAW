@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 import { parseStringPromise } from 'xml2js';
+import { isElevatedAdminRole } from '@/lib/permissions';
 
 export const runtime = 'nodejs';
 
@@ -17,7 +18,7 @@ function extractText(node: any): string {
 }
 
 export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
-  if (ctx.userRole !== 'admin' && ctx.userRole !== 'superadmin') {
+  if (!isElevatedAdminRole(ctx.userRole)) {
     return createErrorResponse(ctx, 'FORBIDDEN', 'Admin access required', 403);
   }
 

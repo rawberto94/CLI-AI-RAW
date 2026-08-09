@@ -219,20 +219,26 @@ providers.push(
           // Consume token (one-time use)
           await samlTokenStore.delete(token);
 
+          const email = String(samlData.email || '').toLowerCase().trim();
           const user = await prisma.user.findUnique({
-            where: { email: samlData.email },
+            where: { email },
             include: { tenant: true },
           });
 
           if (user && user.status === 'ACTIVE') {
+            // Prefer role/tenant stamped on bridge token (groups mapping / invite)
+            const tenantId = samlData.tenantId || user.tenantId;
+            const role = samlData.role || user.role;
             return {
               id: user.id,
               email: user.email,
-              name: `${user.firstName} ${user.lastName}`,
-              tenantId: user.tenantId,
-              role: user.role,
+              name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || email,
+              tenantId,
+              role,
               image: user.avatar || undefined,
-              mfaRequired: false, // SSO users bypass MFA
+              // IdP is trusted for MFA when using enterprise SSO (SAML/OIDC bridge).
+              // Enforce MFA at the identity provider for compliance.
+              mfaRequired: false,
             };
           }
           return null;
@@ -494,13 +500,20 @@ export const authOptions: NextAuthConfig = {
   providers,
   callbacks: {
     async signIn({ user, account, profile }) {
-      // Credentials provider handles its own validation
+      // Credentials provider handles its own validation (password + SAML/OIDC bridge)
       if (account?.provider === "credentials") {
         return true;
       }
 
-      // SSO providers - check if user is allowed
-      const ssoMapping = await resolveSSOSignInMapping(user.email);
+      // Global OIDC providers (Google / Entra / GitHub) — fail-closed mapping + domain gates
+      const profileGroups = (() => {
+        const p = profile as { groups?: string[] } | null | undefined;
+        return Array.isArray(p?.groups) ? p!.groups!.map(String) : undefined;
+      })();
+
+      const ssoMapping = await resolveSSOSignInMapping(user.email, {
+        groups: profileGroups,
+      });
       if (!ssoMapping) {
         return false; // Deny access
       }

@@ -1,39 +1,57 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { signIn } from 'next-auth/react';
 import { Loader2 } from 'lucide-react';
 
 /**
- * SAML Success Bridge Page
+ * SAML / OIDC Success Bridge Page
  *
- * Exchanges the SAML token for a NextAuth session via credentials provider.
+ * Reads one-time SSO bridge token from HttpOnly cookie via /api/auth/saml/consume,
+ * then exchanges it for a NextAuth session (credentials + samlToken).
  */
 
 export default function SAMLBridgePage() {
   const searchParams = useSearchParams();
-  const router = useRouter();
   const [error, setError] = useState<string | null>(null);
 
-  const token = searchParams.get('token');
   const callbackUrl = searchParams.get('callbackUrl') || '/dashboard';
 
   useEffect(() => {
-    if (!token) {
-      setError('Missing authentication token');
-      return;
+    let cancelled = false;
+
+    async function complete() {
+      try {
+        const res = await fetch('/api/auth/saml/consume', {
+          method: 'POST',
+          credentials: 'include',
+        });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok || !body?.data?.samlToken) {
+          if (!cancelled) {
+            setError(body?.error?.message || 'Missing authentication token');
+          }
+          return;
+        }
+
+        await signIn('credentials', {
+          samlToken: body.data.samlToken,
+          callbackUrl: callbackUrl.startsWith('/') ? callbackUrl : '/dashboard',
+          redirect: true,
+        });
+      } catch (err) {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : 'Authentication failed');
+        }
+      }
     }
 
-    // Exchange SAML token for session via credentials provider
-    signIn('credentials', {
-      samlToken: token,
-      callbackUrl,
-      redirect: true,
-    }).catch((err) => {
-      setError(err?.message || 'Authentication failed');
-    });
-  }, [token, callbackUrl]);
+    void complete();
+    return () => {
+      cancelled = true;
+    };
+  }, [callbackUrl]);
 
   if (error) {
     return (
@@ -41,6 +59,9 @@ export default function SAMLBridgePage() {
         <div className="text-center">
           <h2 className="text-xl font-semibold text-red-600 mb-2">Authentication Failed</h2>
           <p className="text-slate-500">{error}</p>
+          <a href="/auth/signin" className="mt-4 inline-block text-violet-600 underline text-sm">
+            Back to sign in
+          </a>
         </div>
       </div>
     );

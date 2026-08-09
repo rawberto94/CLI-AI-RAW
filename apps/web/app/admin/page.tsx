@@ -8,6 +8,7 @@ import SSOConfigManager from '@/components/admin/SSOConfigManager';
 import { toast } from 'sonner';
 import { useConfirm, confirmPresets } from '@/components/dialogs/ConfirmDialog';
 import { useSession } from "next-auth/react";
+import { usePermissions } from "@/hooks/usePermissions";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Building2,
@@ -338,6 +339,7 @@ export default function TenantAdminPage() {
   const tCommon = useTranslations('common');
   const tNav = useTranslations('navigation');
   const { data: session } = useSession();
+  const { isAdmin, loading: permsLoading } = usePermissions();
   const confirm = useConfirm();
   const [activeTab, setActiveTab] = useState("team");
   const [tenantInfo, setTenantInfo] = useState<TenantInfo | null>(null);
@@ -557,10 +559,33 @@ export default function TenantAdminPage() {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
   };
 
-  if (loading) {
+  if (loading || permsLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6">
+        <Card className="max-w-md w-full">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Shield className="h-5 w-5 text-violet-600" />
+              Admin access required
+            </CardTitle>
+            <CardDescription>
+              You do not have permission to manage organization settings.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button variant="outline" asChild>
+              <a href="/dashboard">Back to dashboard</a>
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }

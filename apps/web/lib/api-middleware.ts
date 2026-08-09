@@ -12,6 +12,10 @@ import { z } from 'zod';
 import { nanoid } from 'nanoid';
 
 import { isTenantSessionExpired } from '@/lib/security/tenant-session-policy';
+import {
+  enforceRequestRbac,
+  type RbacHandlerOptions,
+} from '@/lib/security/rbac-enforcement';
 
 // ============================================================================
 // TYPES
@@ -441,14 +445,28 @@ export function withPublicApiHandler(
   };
 }
 
+function forbidRbac(
+  context: ApiContext,
+  decision: { reason: string; required?: string[] },
+): NextResponse {
+  return createErrorResponse(context, 'FORBIDDEN', decision.reason || 'Forbidden', 403, {
+    retryable: false,
+    details: decision.required?.join(', '),
+  });
+}
+
 /**
  * Wrapper for authenticated API route handlers.
- * Combines defense-in-depth auth check + structured error handling + response formatting.
+ * Combines defense-in-depth auth check + RBAC + structured error handling.
  * Uses middleware-injected headers (x-user-id, x-tenant-id) for identity.
  * Forwards Next.js route context (params) for dynamic routes.
+ *
+ * @param options.permission / anyOf / minRole — override automatic path rules
+ * @param options.skipRbac — opt out (rare; prefer explicit permissions)
  */
 export function withAuthApiHandler(
-  handler: (request: NextRequest, context: AuthenticatedApiContext) => Promise<NextResponse>
+  handler: (request: NextRequest, context: AuthenticatedApiContext) => Promise<NextResponse>,
+  options?: RbacHandlerOptions,
 ) {
   return async (request: NextRequest, routeContext?: { params: Promise<Record<string, string>> }): Promise<NextResponse> => {
     const context = await getAuthenticatedApiContextWithSessionFallback(request);
@@ -458,6 +476,11 @@ export function withAuthApiHandler(
       return createErrorResponse(fallback, 'UNAUTHORIZED', 'Authentication required', 401, {
         retryable: false,
       });
+    }
+
+    const rbac = enforceRequestRbac(request, context.userRole, options);
+    if (!rbac.allowed) {
+      return forbidRbac(context, rbac);
     }
 
     // Merge Next.js route params into context for dynamic routes
@@ -484,7 +507,8 @@ function hasContractActor(
 }
 
 export function withContractApiHandler(
-  handler: (request: NextRequest, context: ContractApiContext) => Promise<NextResponse>
+  handler: (request: NextRequest, context: ContractApiContext) => Promise<NextResponse>,
+  options?: RbacHandlerOptions,
 ) {
   return async (request: NextRequest, routeContext?: { params: Promise<Record<string, string>> }): Promise<NextResponse> => {
     if (!hasRequiredContractHeaders(request)) {
@@ -503,6 +527,11 @@ export function withContractApiHandler(
       });
     }
 
+    const rbac = enforceRequestRbac(request, context.userRole, options);
+    if (!rbac.allowed) {
+      return forbidRbac(context, rbac);
+    }
+
     const mergedContext = routeContext?.params
       ? Object.assign(context, { params: routeContext.params })
       : context;
@@ -516,7 +545,8 @@ export function withContractApiHandler(
 }
 
 export function withContractSessionApiHandler(
-  handler: (request: NextRequest, context: ContractApiContext) => Promise<NextResponse>
+  handler: (request: NextRequest, context: ContractApiContext) => Promise<NextResponse>,
+  options?: RbacHandlerOptions,
 ) {
   return async (request: NextRequest, routeContext?: { params: Promise<Record<string, string>> }): Promise<NextResponse> => {
     const context = await getAuthenticatedApiContextWithSessionFallback(request);
@@ -526,6 +556,11 @@ export function withContractSessionApiHandler(
       return createErrorResponse(fallback, 'UNAUTHORIZED', 'Authentication required', 401, {
         retryable: false,
       });
+    }
+
+    const rbac = enforceRequestRbac(request, context.userRole, options);
+    if (!rbac.allowed) {
+      return forbidRbac(context, rbac);
     }
 
     const mergedContext = routeContext?.params
@@ -539,6 +574,8 @@ export function withContractSessionApiHandler(
     }
   };
 }
+
+export type { RbacHandlerOptions };
 
 /**
  * Wrapper for cron/internal route handlers.

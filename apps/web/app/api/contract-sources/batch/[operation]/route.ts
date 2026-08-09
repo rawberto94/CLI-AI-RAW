@@ -13,8 +13,9 @@ import {
   BatchDownloadRequest,
 } from "@/lib/integrations/services/batch-operations.service";
 import { withRateLimit } from "@/lib/integrations/middleware/rate-limit";
-import { getAuthenticatedApiContextWithSessionFallback, getApiContext, createSuccessResponse, createErrorResponse, type AuthenticatedApiContext } from '@/lib/api-middleware';
+import { createSuccessResponse, createErrorResponse, type AuthenticatedApiContext } from '@/lib/api-middleware';
 import { logger } from '@/lib/logger';
+import { requireAuthenticatedRbac } from '@/lib/security/require-api-access';
 
 // Validation schemas
 const batchDownloadSchema = z.object({
@@ -144,10 +145,17 @@ async function handleDelete(req: NextRequest, ctx: AuthenticatedApiContext): Pro
 export const POST = withRateLimit(async (req: NextRequest) => {
   const url = new URL(req.url);
   const operation = url.pathname.split("/").pop();
-  const ctx = await getAuthenticatedApiContextWithSessionFallback(req);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(req), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-  }
+
+  const permissionOpts =
+    operation === 'delete'
+      ? { anyOf: ['contracts:delete', 'contracts:manage'] }
+      : operation === 'import'
+        ? { anyOf: ['contracts:create'] }
+        : { anyOf: ['contracts:view', 'contracts:create'] };
+
+  const access = await requireAuthenticatedRbac(req, permissionOpts);
+  if (!access.ok) return access.response;
+  const ctx = access.context;
 
   switch (operation) {
     case "download":

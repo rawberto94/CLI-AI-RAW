@@ -154,10 +154,18 @@ export function createApiHandler<TInput, TOutput>(
           return apiError('Unauthorized', 'UNAUTHORIZED', 401);
         }
         
-        // Role check
+        // Role check (normalize aliases like ADMIN / super_admin)
         if (options.roles && options.roles.length > 0) {
-          const userRole = session.user.role || 'user';
-          if (!options.roles.includes(userRole)) {
+          const { normalizeRole, getRoleLevel } = await import('@/lib/permissions');
+          const userRole = normalizeRole(session.user.role);
+          // Allow if user role is listed, or user is strictly higher in hierarchy than the lowest required role
+          const requiredLevels = options.roles.map((r) => getRoleLevel(r));
+          const minRequired = Math.min(...requiredLevels);
+          const roleMatched =
+            options.roles.some((r) => normalizeRole(r) === userRole) ||
+            getRoleLevel(userRole) >= minRequired;
+
+          if (!roleMatched) {
             logger.warn('Forbidden - insufficient role', { 
               url, 
               method, 

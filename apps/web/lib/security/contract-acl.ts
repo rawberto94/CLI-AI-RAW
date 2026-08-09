@@ -3,16 +3,15 @@
  *
  * Rules (apply to both read and write):
  *   1. Tenant admins / owners / super_admins → always allowed.
- *   2. Contract uploader (contract.uploadedBy === userId) → always allowed.
- *   3. A user with an active, non-expired ContractUserAccess / ContractGroupAccess
- *      whose `accessLevel` satisfies the required level → allowed.
- *   4. A user with an active, non-expired DocumentShare whose `permission`
- *      satisfies the required level → allowed.
+ *   2. Contract uploader (contract.uploadedBy === userId) → allowed for EDIT+
+ *      (VIEW always; ADMIN delete only if role has contracts:delete/manage OR
+ *      explicit admin grant — uploaders keep EDIT by default).
+ *   3. Explicit ContractUserAccess / ContractGroupAccess meeting required level.
+ *   4. Active DocumentShare meeting required level.
  *
- * If no explicit ContractUserAccess / ContractGroupAccess / DocumentShare rows
- * exist for the contract at all, we fall back to "any tenant member can access"
- * so we don't regress tenants that never used access controls. The moment an
- * owner creates even one explicit grant/share, the ACL becomes authoritative.
+ * If no explicit access rows or shares exist, fall back to **role defaults**
+ * from RBAC (viewer → VIEW only; member → EDIT; manager+ → ADMIN). This
+ * replaces the previous open "any tenant member can do anything" default.
  *
  * Caller is responsible for the tenant scope check (Contract.tenantId); this
  * helper assumes you've already verified the contract belongs to ctx.tenantId.
@@ -21,6 +20,11 @@
 import { prisma } from '@/lib/prisma';
 import { auditLog, AuditAction } from '@/lib/security/audit';
 import { logger } from '@/lib/logger';
+import {
+  hasPermissionForRole,
+  maxContractAclLevelForRole,
+  normalizeRole,
+} from '@/lib/permissions';
 
 type Permission = 'VIEW' | 'COMMENT' | 'EDIT' | 'ADMIN';
 type ContractAccessLevel = 'view' | 'edit' | 'manage' | 'admin';
@@ -40,8 +44,14 @@ const CONTRACT_ACCESS_LEVEL: Record<ContractAccessLevel, number> = {
 };
 
 export type AclDecision =
-  | { allowed: true; reason: 'owner' | 'role' | 'contract-access' | 'share' | 'no-shares' }
+  | { allowed: true; reason: 'owner' | 'role' | 'contract-access' | 'share' | 'role-default' }
   | { allowed: false; reason: 'forbidden' };
+
+function roleDefaultAllows(userRole: string | undefined, required: Permission): boolean {
+  const max = maxContractAclLevelForRole(userRole);
+  if (!max) return false;
+  return LEVEL[max] >= LEVEL[required];
+}
 
 function contractAccessMeetsRequired(accessLevel: string | null | undefined, required: Permission): boolean {
   const normalized = String(accessLevel || '').toLowerCase() as ContractAccessLevel;
@@ -118,7 +128,13 @@ async function checkPermission(args: {
 }): Promise<AclDecision> {
   const { contractId, tenantId, userId, userRole, required } = args;
 
-  if (userRole === 'admin' || userRole === 'owner' || userRole === 'super_admin') {
+  const normalizedRole = normalizeRole(userRole);
+  if (
+    normalizedRole === 'admin' ||
+    normalizedRole === 'owner' ||
+    userRole === 'super_admin' ||
+    userRole === 'superadmin'
+  ) {
     return { allowed: true, reason: 'role' };
   }
 
@@ -130,8 +146,20 @@ async function checkPermission(args: {
     return { allowed: false, reason: 'forbidden' };
   }
 
+  // Uploader: full read + edit; delete/manage only if role allows or they have admin grant
   if (contract.uploadedBy && contract.uploadedBy === userId) {
-    return { allowed: true, reason: 'owner' };
+    if (required === 'VIEW' || required === 'COMMENT' || required === 'EDIT') {
+      return { allowed: true, reason: 'owner' };
+    }
+    // ADMIN (delete/manage): uploader needs contracts:delete/manage OR role-default ADMIN
+    if (
+      hasPermissionForRole(userRole, 'contracts:delete') ||
+      hasPermissionForRole(userRole, 'contracts:manage') ||
+      roleDefaultAllows(userRole, 'ADMIN')
+    ) {
+      return { allowed: true, reason: 'owner' };
+    }
+    // fall through to explicit grants / shares
   }
 
   const explicitAccess = await checkExplicitContractAccess({ contractId, userId, required });
@@ -149,8 +177,13 @@ async function checkPermission(args: {
     select: { sharedWith: true, permission: true, expiresAt: true },
   });
 
+  // No ACL rows: apply RBAC role defaults (viewer cannot write/delete)
   if (!explicitAccess.hasExplicitAccessRows && shares.length === 0) {
-    return { allowed: true, reason: 'no-shares' };
+    if (roleDefaultAllows(userRole, required)) {
+      return { allowed: true, reason: 'role-default' };
+    }
+    logDenial({ contractId, tenantId, userId, required });
+    return { allowed: false, reason: 'forbidden' };
   }
 
   const now = Date.now();

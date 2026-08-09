@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 import { auditLog, AuditAction } from '@/lib/security/audit';
+import { isElevatedAdminRole } from '@/lib/permissions';
 
 async function getPrisma() {
   const { prisma } = await import('@/lib/prisma');
@@ -27,7 +28,7 @@ async function saveSecuritySettings(tenantId: string, settings: Record<string, u
 
 // GET /api/admin/sso/settings — Return global SSO settings
 export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
-  if (ctx.userRole !== 'admin' && ctx.userRole !== 'superadmin') {
+  if (!isElevatedAdminRole(ctx.userRole)) {
     return createErrorResponse(ctx, 'FORBIDDEN', 'Admin access required', 403);
   }
 
@@ -43,7 +44,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
 
 // PUT /api/admin/sso/settings — Update global SSO settings
 export const PUT = withAuthApiHandler(async (request: NextRequest, ctx) => {
-  if (ctx.userRole !== 'admin' && ctx.userRole !== 'superadmin') {
+  if (!isElevatedAdminRole(ctx.userRole)) {
     return createErrorResponse(ctx, 'FORBIDDEN', 'Admin access required', 403);
   }
 

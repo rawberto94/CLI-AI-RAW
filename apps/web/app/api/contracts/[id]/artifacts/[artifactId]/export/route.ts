@@ -7,8 +7,9 @@
 
 import { NextRequest } from 'next/server';
 import { prisma } from "@/lib/prisma";
-import { getAuthenticatedApiContextWithSessionFallback, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 import { generateArtifactPDF, generateArtifactDOCX } from '@/lib/artifacts/artifact-export';
+import { requireContractReadAccess } from '@/lib/security/require-api-access';
 
 /**
  * GET /api/contracts/[id]/artifacts/[artifactId]/export?format=json|csv|pdf|docx
@@ -19,12 +20,11 @@ export async function GET(
   props: { params: Promise<{ id: string; artifactId: string }> }
 ) {
   const params = await props.params;
-  const ctx = await getAuthenticatedApiContextWithSessionFallback(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-  }
+  const contractId = params.id;
+  const access = await requireContractReadAccess({ request, contractId });
+  if (!access.ok) return access.response;
+  const ctx = access.context;
   try {
-    const contractId = params.id;
     const artifactId = params.artifactId;
     const tenantId = ctx.tenantId;
     const { searchParams } = new URL(request.url);

@@ -73,11 +73,41 @@ describe('contract ACL', () => {
     mockAuditLog.mockResolvedValue(undefined);
   });
 
-  it('allows tenant members when no explicit access rows or shares exist', async () => {
+  it('allows tenant members to VIEW when no explicit access rows or shares exist (role default)', async () => {
     const decision = await checkContractReadPermission(baseArgs);
 
-    expect(decision).toEqual({ allowed: true, reason: 'no-shares' });
+    expect(decision).toEqual({ allowed: true, reason: 'role-default' });
     expect(mockDocumentShareFindMany).toHaveBeenCalledTimes(1);
+  });
+
+  it('denies viewers from EDIT when no explicit grants exist', async () => {
+    const decision = await checkContractWritePermission({
+      ...baseArgs,
+      userRole: 'viewer',
+      required: 'EDIT',
+    });
+
+    expect(decision).toEqual({ allowed: false, reason: 'forbidden' });
+  });
+
+  it('denies members from ADMIN delete when no explicit grants exist', async () => {
+    const decision = await checkContractWritePermission({
+      ...baseArgs,
+      userRole: 'member',
+      required: 'ADMIN',
+    });
+
+    expect(decision).toEqual({ allowed: false, reason: 'forbidden' });
+  });
+
+  it('allows managers ADMIN when no explicit grants exist', async () => {
+    const decision = await checkContractWritePermission({
+      ...baseArgs,
+      userRole: 'manager',
+      required: 'ADMIN',
+    });
+
+    expect(decision).toEqual({ allowed: true, reason: 'role-default' });
   });
 
   it('allows a user with a direct explicit contract grant', async () => {

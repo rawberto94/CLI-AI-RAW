@@ -6,9 +6,13 @@ const { mockHasPermission, mockQueryRaw } = vi.hoisted(() => ({
   mockQueryRaw: vi.fn(),
 }));
 
-vi.mock('@/lib/permissions', () => ({
-  hasPermission: mockHasPermission,
-}));
+vi.mock('@/lib/permissions', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/permissions')>();
+  return {
+    ...actual,
+    hasPermission: mockHasPermission,
+  };
+});
 
 vi.mock('@/lib/prisma', () => ({
   prisma: {
@@ -44,7 +48,20 @@ describe('Audit Logs API', () => {
   });
 
   it('returns 403 for requests without audit:view permission before querying audit logs', async () => {
+    // Member lacks audit:view — central RBAC forbids before route-level hasPermission
     const response = await GET(createRequest('member'));
+    const data = await response.json();
+
+    expect(response.status).toBe(403);
+    expect(data.success).toBe(false);
+    expect(data.error.code).toBe('FORBIDDEN');
+    expect(mockHasPermission).not.toHaveBeenCalled();
+    expect(mockQueryRaw).not.toHaveBeenCalled();
+  });
+
+  it('returns 403 when route-level audit:view check fails for admin', async () => {
+    mockHasPermission.mockResolvedValue(false);
+    const response = await GET(createRequest('admin'));
     const data = await response.json();
 
     expect(response.status).toBe(403);

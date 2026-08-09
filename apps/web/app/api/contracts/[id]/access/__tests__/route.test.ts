@@ -50,9 +50,13 @@ vi.mock('@/lib/prisma', () => ({
   },
 }));
 
-vi.mock('@/lib/permissions', () => ({
-  hasPermission: mockHasPermission,
-}));
+vi.mock('@/lib/permissions', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/permissions')>();
+  return {
+    ...actual,
+    hasPermission: mockHasPermission,
+  };
+});
 
 vi.mock('@/lib/security/audit', () => ({
   auditLog: vi.fn(),

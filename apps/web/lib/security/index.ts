@@ -159,3 +159,25 @@ export {
   getUserAccessibleTenants,
   TenantError,
 } from './tenant';
+
+// Central RBAC enforcement (path/method rules + handler options)
+export {
+  evaluateRbac,
+  enforceRequestRbac,
+  type RbacDecision,
+  type RbacHandlerOptions,
+} from './rbac-enforcement';
+
+// Contract resource ACL
+export {
+  checkContractReadPermission,
+  checkContractWritePermission,
+  type AclDecision,
+} from './contract-acl';
+
+// Manual route helpers (downloads, streams without withAuth wrappers)
+export {
+  requireAuthenticatedRbac,
+  requireContractReadAccess,
+  requireContractWriteAccess,
+} from './require-api-access';

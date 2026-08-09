@@ -1,7 +1,8 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getAuthenticatedApiContextWithSessionFallback, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 import { logger } from '@/lib/logger';
+import { requireContractReadAccess } from '@/lib/security/require-api-access';
 
 // Bulletproof constants
 const FAST_POLL_MS = 500; // Poll every 500ms during active processing
@@ -118,12 +119,11 @@ function inferProcessingStage(contractStatus: string, artifactCount: number, com
 export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   ensureConnectionCleanup();
   const params = await props.params;
-  const ctx = await getAuthenticatedApiContextWithSessionFallback(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-  }
   const contractId = params.id;
-  
+  const access = await requireContractReadAccess({ request, contractId });
+  if (!access.ok) return access.response;
+  const ctx = access.context;
+
   // Use the middleware-injected tenant ID from the authenticated context.
   // The middleware overwrites x-tenant-id with the session tenant, so ctx.tenantId
   // is authoritative. Do NOT use query param tenantId — it comes from client-side

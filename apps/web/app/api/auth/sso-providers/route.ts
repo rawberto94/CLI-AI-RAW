@@ -1,14 +1,14 @@
 /**
  * Dynamic SSO Providers API
- * GET /api/auth/sso-providers
+ * GET /api/auth/sso-providers?tenantId=
  *
  * Returns merged list of SSO providers from environment variables
- * and tenant-specific admin configuration.
+ * and tenant-specific admin configuration (SAML + tenant OIDC).
  */
 
 import { NextRequest } from 'next/server';
-import { prisma } from '@/lib/prisma';
 import { getPublicApiContext, createSuccessResponse } from '@/lib/api-middleware';
+import { listEnabledSsoProviders } from '@/lib/auth/sso-provider-store';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,59 +18,58 @@ interface SSOProviderInfo {
   protocol: 'oidc' | 'saml';
   enabled: boolean;
   domain?: string;
+  /** Client login URL for tenant-configured providers */
+  loginUrl?: string;
+  global?: boolean;
 }
 
 export async function GET(request: NextRequest) {
   const ctx = getPublicApiContext(request);
+  const baseUrl = process.env.NEXTAUTH_URL || '';
 
   const providers: SSOProviderInfo[] = [];
 
-  // Environment-based providers
+  // Environment-based global OIDC providers (NextAuth)
   if (process.env.GOOGLE_CLIENT_ID) {
-    providers.push({ id: 'google', name: 'Google', protocol: 'oidc', enabled: true });
+    providers.push({ id: 'google', name: 'Google', protocol: 'oidc', enabled: true, global: true });
   }
   if (process.env.AZURE_AD_CLIENT_ID) {
-    providers.push({ id: 'microsoft-entra-id', name: 'Microsoft Entra ID', protocol: 'oidc', enabled: true });
+    providers.push({
+      id: 'microsoft-entra-id',
+      name: 'Microsoft Entra ID',
+      protocol: 'oidc',
+      enabled: true,
+      global: true,
+    });
   }
   if (process.env.GITHUB_CLIENT_ID) {
-    providers.push({ id: 'github', name: 'GitHub', protocol: 'oidc', enabled: true });
+    providers.push({ id: 'github', name: 'GitHub', protocol: 'oidc', enabled: true, global: true });
   }
 
-  // Tenant-specific providers from admin config
+  // Tenant-specific providers (SAML / custom OIDC)
   try {
-    const tenantId = request.headers.get('x-tenant-id') ||
-                     new URL(request.url).searchParams.get('tenantId') ||
-                     undefined;
+    const tenantId =
+      request.headers.get('x-tenant-id') ||
+      new URL(request.url).searchParams.get('tenantId') ||
+      undefined;
 
     if (tenantId) {
-      const config = await prisma.tenantConfig.findUnique({
-        where: { tenantId },
-        select: { securitySettings: true },
-      });
-
-      const securitySettings = (config?.securitySettings || {}) as {
-        ssoProviders?: Array<{
-          id: string;
-          name: string;
-          protocol: 'oidc' | 'saml';
-          enabled: boolean;
-          allowedDomains?: string[];
-        }>;
-      };
-
-      if (securitySettings.ssoProviders) {
-        for (const provider of securitySettings.ssoProviders) {
-          // Avoid duplicates
-          if (!providers.some(p => p.id === provider.id)) {
-            providers.push({
-              id: provider.id,
-              name: provider.name,
-              protocol: provider.protocol,
-              enabled: provider.enabled,
-              domain: provider.allowedDomains?.[0],
-            });
-          }
-        }
+      const tenantProviders = await listEnabledSsoProviders(tenantId);
+      for (const provider of tenantProviders) {
+        if (providers.some((p) => p.id === provider.id)) continue;
+        const loginUrl =
+          provider.protocol === 'saml'
+            ? `${baseUrl}/api/auth/saml/init?tenantId=${encodeURIComponent(tenantId)}&id=${encodeURIComponent(provider.id)}`
+            : `${baseUrl}/api/auth/oidc/init?tenantId=${encodeURIComponent(tenantId)}&id=${encodeURIComponent(provider.id)}`;
+        providers.push({
+          id: provider.id,
+          name: provider.name,
+          protocol: provider.protocol,
+          enabled: provider.enabled !== false,
+          domain: provider.allowedDomains?.[0],
+          loginUrl,
+          global: false,
+        });
       }
     }
   } catch {

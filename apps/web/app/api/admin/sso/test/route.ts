@@ -1,11 +1,12 @@
 import { NextRequest } from 'next/server';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 import { IdentityProvider, ServiceProvider, setSchemaValidator } from 'samlify';
+import { isElevatedAdminRole } from '@/lib/permissions';
 
 export const runtime = 'nodejs';
 
 export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
-  if (ctx.userRole !== 'admin' && ctx.userRole !== 'superadmin') {
+  if (!isElevatedAdminRole(ctx.userRole)) {
     return createErrorResponse(ctx, 'FORBIDDEN', 'Admin access required', 403);
   }
 

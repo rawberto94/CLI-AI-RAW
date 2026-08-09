@@ -64,6 +64,7 @@ import { useContracts, useContractStats, useCrossModuleInvalidation, useTaxonomy
 import { useContractsPageFilters } from "@/hooks/use-contracts-page-filters";
 import { useContractsPageActions } from "@/hooks/use-contracts-page-actions";
 import { toast } from "sonner";
+import { usePermissions } from "@/hooks/usePermissions";
 
 // Lazy load heavy components for better performance
 import { LazyContractPreviewPanel } from "@/components/lazy";
@@ -357,6 +358,12 @@ export default function ContractsPage() {
     bulkTagDialogOpen, setBulkTagDialogOpen,
     bulkAccessDialogOpen, setBulkAccessDialogOpen,
   } = useContractsPageActions({ dataMode, refetch, refetchStats, crossModule, queryClient });
+
+  const {
+    canCreateContracts,
+    canDeleteContracts,
+    canEditContracts,
+  } = usePermissions();
 
   const contracts: Contract[] = contractsData?.contracts || [];
 
@@ -1011,8 +1018,8 @@ export default function ContractsPage() {
         {/* Hero Dashboard */}
         <ContractsHeroDashboard
           stats={heroStats}
-          onUploadClick={() => router.push('/upload')}
-          onGenerateClick={() => router.push('/drafting')}
+          onUploadClick={canCreateContracts ? () => router.push('/upload') : undefined}
+          onGenerateClick={canCreateContracts ? () => router.push('/drafting') : undefined}
           onCompareClick={() => {
             if (selectedContracts.size === 2) {
               const ids = Array.from(selectedContracts);
@@ -1386,6 +1393,8 @@ export default function ContractsPage() {
                         onTagsChange={() => refetch()}
                         formatCurrency={formatCurrency}
                         formatDate={formatDate}
+                        canDelete={canDeleteContracts}
+                        canEdit={canEditContracts}
                       />
                     </ErrorBoundary>
                   ))}
@@ -1816,7 +1825,7 @@ export default function ContractsPage() {
                       </Tooltip>
                     )}
 
-                    {!isDemo && (
+                    {!isDemo && canEditContracts && (
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Button
@@ -1836,6 +1845,7 @@ export default function ContractsPage() {
 
                     {!isDemo && <div className="w-px h-5 bg-slate-700 mx-0.5" />}
 
+                    {canDeleteContracts && (
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button
@@ -1850,6 +1860,7 @@ export default function ContractsPage() {
                       </TooltipTrigger>
                       <TooltipContent side="top">Delete selected</TooltipContent>
                     </Tooltip>
+                    )}
                   </div>
                 </div>
               </CardContent>

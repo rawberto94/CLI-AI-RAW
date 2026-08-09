@@ -19,8 +19,9 @@ import { sanitizePath, hasPathTraversal } from '@/lib/security/sanitize';
 import cors from '@/lib/security/cors';
 import { getStorageConfig, isDocumentAccessible } from '@/lib/storage/retention-config';
 import { createConnector } from '@/lib/integrations/connectors/factory';
-import { getAuthenticatedApiContextWithSessionFallback, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 import { logger } from '@/lib/logger';
+import { requireContractReadAccess } from '@/lib/security/require-api-access';
 
 // ============================================================================
 // GET - Serve contract file
@@ -30,18 +31,19 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const ctx = await getAuthenticatedApiContextWithSessionFallback(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  const resolvedParams = await params;
+  const contractId = resolvedParams.id;
+
+  if (!contractId) {
+    const { getApiContext } = await import('@/lib/api-middleware');
+    return createErrorResponse(getApiContext(request), 'BAD_REQUEST', 'Contract ID is required', 400);
   }
+
+  const access = await requireContractReadAccess({ request, contractId });
+  if (!access.ok) return access.response;
+  const ctx = access.context;
+
   try {
-    const resolvedParams = await params;
-    const contractId = resolvedParams.id;
-
-    if (!contractId) {
-      return createErrorResponse(ctx, 'BAD_REQUEST', 'Contract ID is required', 400);
-    }
-
     const tenantId = ctx.tenantId;
 
     // Check query params for fetch strategy

@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 import { auditLog, AuditAction } from '@/lib/security/audit';
 import crypto from 'crypto';
+import { isElevatedAdminRole } from '@/lib/permissions';
 
 async function getPrisma() {
   const { prisma } = await import('@/lib/prisma');
@@ -66,7 +67,7 @@ async function migratePlaintextToken(tenantId: string, settings: Record<string, 
 
 // GET /api/admin/sso/scim — Return SCIM base URL and token preview (generate if missing)
 export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
-  if (ctx.userRole !== 'admin' && ctx.userRole !== 'superadmin') {
+  if (!isElevatedAdminRole(ctx.userRole)) {
     return createErrorResponse(ctx, 'FORBIDDEN', 'Admin access required', 403);
   }
 
@@ -116,7 +117,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
 
 // POST /api/admin/sso/scim — Regenerate SCIM token
 export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
-  if (ctx.userRole !== 'admin' && ctx.userRole !== 'superadmin') {
+  if (!isElevatedAdminRole(ctx.userRole)) {
     return createErrorResponse(ctx, 'FORBIDDEN', 'Admin access required', 403);
   }
 

@@ -2,8 +2,6 @@ import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import {
-  getAuthenticatedApiContextWithSessionFallback,
-  getApiContext,
   createErrorResponse,
 } from '@/lib/api-middleware';
 import { logger } from '@/lib/logger';
@@ -13,6 +11,7 @@ import {
 } from '@/lib/ai/negotiation-copilot.service';
 import { auditLog, AuditAction } from '@/lib/security/audit';
 import { checkRateLimit, rateLimitResponse, AI_RATE_LIMITS } from '@/lib/ai/rate-limit';
+import { requireContractReadAccess } from '@/lib/security/require-api-access';
 
 const adviceRequestSchema = z.object({
   question: z.string().min(5, 'Question must be at least 5 characters'),
@@ -27,16 +26,19 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const ctx = await getAuthenticatedApiContextWithSessionFallback(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-  }
+  const { id: contractId } = await params;
+  const access = await requireContractReadAccess({
+    request,
+    contractId,
+    options: { anyOf: ['contracts:view', 'chat:view'] },
+  });
+  if (!access.ok) return access.response;
+  const ctx = access.context;
 
   const rl = checkRateLimit(ctx.tenantId, ctx.userId, '/api/contracts/negotiate/advice', AI_RATE_LIMITS.streaming);
   if (!rl.allowed) return rateLimitResponse(rl, ctx.requestId);
 
   try {
-    const { id: contractId } = await params;
 
     const contract = await prisma.contract.findFirst({
       where: { id: contractId, tenantId: ctx.tenantId },

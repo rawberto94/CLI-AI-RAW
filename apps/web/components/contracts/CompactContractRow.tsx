@@ -69,6 +69,10 @@ export interface CompactContractRowProps {
   onTagsChange?: () => void;
   formatCurrency: (value?: number, currency?: string) => string;
   formatDate: (date?: string) => string;
+  /** When false, hide delete control (RBAC) */
+  canDelete?: boolean;
+  /** When false, hide mutation actions that require edit (RBAC) */
+  canEdit?: boolean;
 }
 
 export const CompactContractRow = memo(function CompactContractRow({
@@ -85,6 +89,8 @@ export const CompactContractRow = memo(function CompactContractRow({
   onTagsChange,
   formatCurrency,
   formatDate,
+  canDelete = true,
+  canEdit = true,
 }: CompactContractRowProps) {
   const router = useRouter();
   const [tagPopoverOpen, setTagPopoverOpen] = useState(false);
@@ -557,6 +563,8 @@ export const CompactContractRow = memo(function CompactContractRow({
             <DropdownMenuItem onSelect={() => router.push(`/contracts/${contract.id}/redline`)} className="text-sm rounded-md cursor-pointer hover:bg-slate-50 focus:bg-slate-50">
               <Edit3 className="h-4 w-4 mr-2.5 text-slate-500" /> Redline Editor
             </DropdownMenuItem>
+            {canEdit && (
+              <>
             <DropdownMenuSeparator className="my-1" />
             <DropdownMenuItem onSelect={() => router.push(`/contracts/${contract.id}/renew`)} className="text-sm rounded-md cursor-pointer hover:bg-slate-50 focus:bg-slate-50">
               <RefreshCw className="h-4 w-4 mr-2.5 text-slate-500" /> Start Renewal
@@ -567,13 +575,19 @@ export const CompactContractRow = memo(function CompactContractRow({
             <DropdownMenuItem onSelect={onApproval} className="text-sm rounded-md cursor-pointer hover:bg-slate-50 focus:bg-slate-50">
               <PenTool className="h-4 w-4 mr-2.5 text-slate-500" /> Request Signature
             </DropdownMenuItem>
+              </>
+            )}
             <DropdownMenuSeparator className="my-1" />
             <DropdownMenuItem onSelect={onDownload} className="text-sm rounded-md cursor-pointer hover:bg-slate-50 focus:bg-slate-50">
               <Download className="h-4 w-4 mr-2.5 text-slate-500" /> Download
             </DropdownMenuItem>
+            {canEdit && (
             <DropdownMenuItem onSelect={onShare} className="text-sm rounded-md cursor-pointer hover:bg-slate-50 focus:bg-slate-50">
               <Share2 className="h-4 w-4 mr-2.5 text-slate-500" /> Share
             </DropdownMenuItem>
+            )}
+            {canDelete && (
+              <>
             <DropdownMenuSeparator className="my-1" />
             <DropdownMenuItem 
               onSelect={(e) => {
@@ -584,6 +598,8 @@ export const CompactContractRow = memo(function CompactContractRow({
             >
               <Trash2 className="h-4 w-4 mr-2.5" /> Delete Contract
             </DropdownMenuItem>
+              </>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

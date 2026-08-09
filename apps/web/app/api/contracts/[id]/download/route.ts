@@ -16,11 +16,10 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { initializeStorage } from '@/lib/storage-service';
 import {
-  getAuthenticatedApiContextWithSessionFallback,
-  getApiContext,
   createErrorResponse,
   handleApiError,
 } from '@/lib/api-middleware';
+import { requireContractReadAccess } from '@/lib/security/require-api-access';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,20 +27,13 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const ctx = await getAuthenticatedApiContextWithSessionFallback(request);
-  if (!ctx) {
-    return createErrorResponse(
-      getApiContext(request),
-      'UNAUTHORIZED',
-      'Authentication required',
-      401,
-      { retryable: false }
-    );
-  }
+  const { id } = await params;
+  const access = await requireContractReadAccess({ request, contractId: id });
+  if (!access.ok) return access.response;
+  const ctx = access.context;
 
   try {
     const tenantId = ctx.tenantId;
-    const { id } = await params;
 
     const contract = await prisma.contract.findFirst({
       where: { id, tenantId },

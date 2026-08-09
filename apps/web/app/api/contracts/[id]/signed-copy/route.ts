@@ -15,8 +15,6 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import {
-  getAuthenticatedApiContextWithSessionFallback,
-  getApiContext,
   createSuccessResponse,
   createErrorResponse,
   handleApiError,
@@ -24,6 +22,7 @@ import {
 import crypto from 'crypto';
 import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
+import { requireContractWriteAccess } from '@/lib/security/require-api-access';
 
 export const dynamic = 'force-dynamic';
 
@@ -40,20 +39,18 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const ctx = await getAuthenticatedApiContextWithSessionFallback(request);
-  if (!ctx) {
-    return createErrorResponse(
-      getApiContext(request),
-      'UNAUTHORIZED',
-      'Authentication required',
-      401,
-      { retryable: false }
-    );
-  }
+  const { id: contractId } = await params;
+  const access = await requireContractWriteAccess({
+    request,
+    contractId,
+    required: 'EDIT',
+    options: { anyOf: ['contracts:edit', 'contracts:edit_own', 'contracts:manage'] },
+  });
+  if (!access.ok) return access.response;
+  const ctx = access.context;
 
   try {
     const tenantId = ctx.tenantId;
-    const { id: contractId } = await params;
 
     // Verify contract exists
     const contract = await prisma.contract.findFirst({

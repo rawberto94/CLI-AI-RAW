@@ -45,6 +45,7 @@ import {
 import { QuickUploadModal } from "./QuickUploadModal";
 import { cn } from "@/lib/utils";
 import { useDemoMode } from "@/hooks/useDemoMode";
+import { usePermissions } from "@/hooks/usePermissions";
 
 // ============================================================================
 // TYPES
@@ -72,18 +73,20 @@ export const ContractsPageHeader = memo(function ContractsPageHeader({
   onQuickUploadComplete,
 }: ContractsPageHeaderProps) {
   const isDemo = useDemoMode();
+  const { canCreateContracts } = usePermissions();
   const router = useRouter();
   const t = useTranslations('contracts');
   const tCommon = useTranslations('common');
   const [showRefreshSuccess, setShowRefreshSuccess] = useState(false);
   const [showQuickUpload, setShowQuickUpload] = useState(false);
   
-  // Listen for keyboard shortcut event
+  // Listen for keyboard shortcut event (only if user may create/upload)
   useEffect(() => {
+    if (!canCreateContracts) return;
     const handleOpenQuickUpload = () => setShowQuickUpload(true);
     window.addEventListener('openQuickUpload', handleOpenQuickUpload);
     return () => window.removeEventListener('openQuickUpload', handleOpenQuickUpload);
-  }, []);
+  }, [canCreateContracts]);
   
   const handleRefresh = useCallback(() => {
     onRefresh();
@@ -195,7 +198,8 @@ export const ContractsPageHeader = memo(function ContractsPageHeader({
               </Button>
             )}
 
-            {/* New Contract Dropdown */}
+            {/* New Contract Dropdown — create/upload requires contracts:create */}
+            {canCreateContracts && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -272,16 +276,19 @@ export const ContractsPageHeader = memo(function ContractsPageHeader({
                 )}
               </DropdownMenuContent>
             </DropdownMenu>
+            )}
           </div>
         </div>
       </div>
       
       {/* Quick Upload Modal */}
+      {canCreateContracts && (
       <QuickUploadModal
         isOpen={showQuickUpload}
         onClose={() => setShowQuickUpload(false)}
         onUploadComplete={handleQuickUploadComplete}
       />
+      )}
     </div>
   );
 });

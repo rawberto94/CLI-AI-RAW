@@ -1,17 +1,26 @@
 /**
  * Role-Based Access Control (RBAC) Permissions
- * 
+ *
  * Fine-grained permission system based on user roles
  * Supports: owner, admin, manager, member, viewer
+ *
+ * Enforcement entry points:
+ * - hasPermissionForRole / roleHasAnyPermission — sync checks (API wrappers, ACL)
+ * - hasPermission — async DB-backed check (status ACTIVE)
+ * - lib/security/rbac-enforcement.ts — path/method maps + wrapper integration
  */
 
 import { prisma } from '@/lib/prisma';
+
+/** Canonical roles, lowest → highest privilege */
+export const RBAC_ROLES = ['viewer', 'member', 'manager', 'admin', 'owner'] as const;
+export type RbacRole = (typeof RBAC_ROLES)[number];
 
 /**
  * Permission definitions by role
  * Higher roles inherit permissions from lower roles
  */
-const ROLE_PERMISSIONS: Record<string, string[]> = {
+export const ROLE_PERMISSIONS: Record<string, string[]> = {
   // Viewer - read-only access
   viewer: [
     'contracts:view',
@@ -146,6 +155,56 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
 };
 
 /**
+ * Normalize role strings from JWT/DB (handles ADMIN, super_admin aliases).
+ * Unknown / missing roles default to the least privilege role: viewer.
+ */
+export function normalizeRole(role?: string | null): RbacRole {
+  if (!role || typeof role !== 'string') {
+    return 'viewer';
+  }
+
+  const lower = role.trim().toLowerCase();
+  const aliases: Record<string, RbacRole> = {
+    superadmin: 'owner',
+    super_admin: 'owner',
+    'super-admin': 'owner',
+    administrator: 'admin',
+    user: 'member',
+    guest: 'viewer',
+    readonly: 'viewer',
+    'read-only': 'viewer',
+  };
+
+  const mapped = aliases[lower] ?? lower;
+  if ((RBAC_ROLES as readonly string[]).includes(mapped)) {
+    return mapped as RbacRole;
+  }
+  return 'viewer';
+}
+
+/**
+ * Sync permission check from a role string (no DB). Prefer this in hot paths.
+ */
+export function hasPermissionForRole(role: string | null | undefined, permission: string): boolean {
+  const normalized = normalizeRole(role);
+  return (ROLE_PERMISSIONS[normalized] || []).includes(permission);
+}
+
+export function roleHasAnyPermission(
+  role: string | null | undefined,
+  permissions: string[],
+): boolean {
+  return permissions.some((p) => hasPermissionForRole(role, p));
+}
+
+export function roleHasAllPermissions(
+  role: string | null | undefined,
+  permissions: string[],
+): boolean {
+  return permissions.every((p) => hasPermissionForRole(role, p));
+}
+
+/**
  * Check if a user has a specific permission
  * @param userId - The user's ID
  * @param permission - The permission to check (e.g., 'contracts:view')
@@ -162,8 +221,7 @@ export async function hasPermission(userId: string, permission: string): Promise
       return false;
     }
     
-    const rolePermissions = ROLE_PERMISSIONS[user.role] || [];
-    return rolePermissions.includes(permission);
+    return hasPermissionForRole(user.role, permission);
   } catch (error) {
     console.error('Error checking permission:', error);
     return false;
@@ -186,7 +244,7 @@ export async function getUserPermissions(userId: string): Promise<string[]> {
       return [];
     }
     
-    return ROLE_PERMISSIONS[user.role] || [];
+    return ROLE_PERMISSIONS[normalizeRole(user.role)] || [];
   } catch (error) {
     console.error('Error getting user permissions:', error);
     return [];
@@ -238,7 +296,7 @@ export function getRoleLevel(role: string): number {
     admin: 4,
     owner: 5,
   };
-  return levels[role] || 0;
+  return levels[normalizeRole(role)] || 0;
 }
 
 /**
@@ -252,6 +310,17 @@ export function canManageRole(actorRole: string, targetRole: string): boolean {
   const targetLevel = getRoleLevel(targetRole);
   // Can only manage roles below your own level
   return actorLevel > targetLevel;
+}
+
+/** Tenant admin surface (admin console, SSO config, security) */
+export function isTenantAdminRole(role?: string | null): boolean {
+  const n = normalizeRole(role);
+  return n === 'admin' || n === 'owner';
+}
+
+/** Platform-level or tenant admin */
+export function isElevatedAdminRole(role?: string | null): boolean {
+  return isTenantAdminRole(role) || role === 'superadmin' || role === 'super_admin';
 }
 
 /**
@@ -269,7 +338,24 @@ export function getAllPermissions(): string[] {
  * Get permissions for a specific role
  */
 export function getPermissionsForRole(role: string): string[] {
-  return ROLE_PERMISSIONS[role] || [];
+  return ROLE_PERMISSIONS[normalizeRole(role)] || [];
+}
+
+/** Contract ACL level that a role may exercise when no explicit grants exist */
+export function maxContractAclLevelForRole(role: string | null | undefined): 'VIEW' | 'COMMENT' | 'EDIT' | 'ADMIN' | null {
+  if (hasPermissionForRole(role, 'contracts:delete') || hasPermissionForRole(role, 'contracts:manage')) {
+    return 'ADMIN';
+  }
+  if (hasPermissionForRole(role, 'contracts:edit') || hasPermissionForRole(role, 'contracts:edit_own')) {
+    return 'EDIT';
+  }
+  if (hasPermissionForRole(role, 'comments:create')) {
+    return 'COMMENT';
+  }
+  if (hasPermissionForRole(role, 'contracts:view')) {
+    return 'VIEW';
+  }
+  return null;
 }
 
 /**

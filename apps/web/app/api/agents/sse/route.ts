@@ -14,7 +14,7 @@ import { NextRequest } from 'next/server';
 import { redis } from '@/lib/redis';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
-import { getAuthenticatedApiContextWithSessionFallback } from '@/lib/api-middleware';
+import { requireAuthenticatedRbac } from '@/lib/security/require-api-access';
 
 // Track connected clients
 const clients = new Map<string, ReadableStreamDefaultController[]>();
@@ -25,13 +25,13 @@ const clients = new Map<string, ReadableStreamDefaultController[]>();
  * Establish SSE connection for real-time updates
  */
 export async function GET(req: NextRequest) {
-  const ctx = await getAuthenticatedApiContextWithSessionFallback(req);
-  if (!ctx) {
-    return Response.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const access = await requireAuthenticatedRbac(req, {
+    anyOf: ['chat:view', 'contracts:view', 'dashboard:view'],
+  });
+  if (!access.ok) return access.response;
 
-  const tenantId = ctx.tenantId;
-  const userId = ctx.userId;
+  const tenantId = access.context.tenantId;
+  const userId = access.context.userId;
 
   const clientId = `${tenantId}:${userId || 'anonymous'}:${Date.now()}`;
 

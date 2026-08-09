@@ -80,6 +80,8 @@ const CSRF_EXEMPT_PATHS = [
   '/api/auth/verify-invite',   // Invite acceptance — no session yet
   '/api/auth/addin-login',     // Office Add-in auth — non-browser client
   '/api/auth/sso',             // SSO token exchange — external IdP callback
+  '/api/auth/saml',            // SAML ACS / init / consume / SLO (IdP browser POST)
+  '/api/auth/oidc',            // Tenant OIDC authorize callback (browser redirect)
   // Infrastructure / monitoring
   '/api/health',
   '/api/health/detailed',
@@ -363,6 +365,7 @@ const publicPaths = [
   "/auth/reset-password",
   "/auth/verify-email",
   "/auth/mfa-verify",   // MFA verification page (user is half-authenticated)
+  "/auth/saml",         // SAML/OIDC bridge success page (cookie → session)
   "/signatures",    // Public signing pages (token-validated, no session auth)
   "/portal",        // Supplier portal (token-validated)
 ];
@@ -405,6 +408,8 @@ const publicAuthApiPaths = [
   '/api/auth/verify-email',
   '/api/auth/verify-invite',
   '/api/auth/sso',
+  '/api/auth/saml',
+  '/api/auth/oidc',
   '/api/auth/mfa/verify-login',
 ];
 

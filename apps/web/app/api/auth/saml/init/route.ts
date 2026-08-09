@@ -1,13 +1,14 @@
 /**
  * SAML Initiation Endpoint
- * GET /api/auth/saml/init?id={providerId}
+ * GET /api/auth/saml/init?id={providerId}&tenantId={tenantId}&callbackUrl=/dashboard
  *
- * Creates a signed AuthnRequest (via samlify) and redirects to the IdP.
+ * Creates AuthnRequest (via samlify) and redirects to the IdP with signed RelayState.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { logger } from '@/lib/logger';
 import { loadSamlProvider, createLoginRequest } from '@/lib/auth/saml-service';
+import { encodeSsoState, safeCallbackUrl } from '@/lib/auth/sso-utils';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -16,13 +17,22 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const providerId = searchParams.get('id');
-    const callbackUrl = searchParams.get('callbackUrl') || '/dashboard';
+    const callbackUrl = safeCallbackUrl(searchParams.get('callbackUrl'));
+    const tenantId =
+      searchParams.get('tenantId') ||
+      searchParams.get('tenant') ||
+      request.headers.get('x-tenant-id') ||
+      '';
 
     if (!providerId) {
       return NextResponse.redirect(new URL('/auth/error?error=SAMLProviderIdMissing', request.url));
     }
 
-    const tenantId = request.headers.get('x-tenant-id') || 'default';
+    if (!tenantId || tenantId === 'default') {
+      logger.warn('[SAML] Init missing tenantId');
+      return NextResponse.redirect(new URL('/auth/error?error=SAMLTenantMissing', request.url));
+    }
+
     const provider = await loadSamlProvider(tenantId, providerId);
 
     if (!provider) {
@@ -30,10 +40,18 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(new URL('/auth/error?error=SAMLConfigMissing', request.url));
     }
 
+    if (!provider.ssoUrl) {
+      return NextResponse.redirect(new URL('/auth/error?error=SAMLSsoUrlMissing', request.url));
+    }
+
     const { context } = await createLoginRequest(provider);
 
-    // Encode provider info into RelayState
-    const relayState = Buffer.from(JSON.stringify({ providerId, callbackUrl })).toString('base64');
+    const relayState = encodeSsoState({
+      tenantId,
+      providerId,
+      callbackUrl,
+      protocol: 'saml',
+    });
 
     const redirectUrl = new URL(context);
     redirectUrl.searchParams.set('RelayState', relayState);

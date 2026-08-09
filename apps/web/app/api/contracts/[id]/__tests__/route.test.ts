@@ -412,9 +412,21 @@ describe('/api/contracts/[id]', () => {
   });
 
   it('returns 403 when DELETE caller lacks admin permission', async () => {
+    // Members lack contracts:delete — RBAC wrapper forbids before contract ACL runs
+    const response = await deleteRoute(createRequest('DELETE', 'member'), routeContext);
+    const data = await response.json();
+
+    expect(response.status).toBe(403);
+    expect(data.success).toBe(false);
+    expect(data.error.code).toBe('FORBIDDEN');
+    expect(mockCheckContractWritePermission).not.toHaveBeenCalled();
+    expect(mockSafeDeleteContract).not.toHaveBeenCalled();
+  });
+
+  it('returns 403 when DELETE reaches ACL and is denied for manager without access', async () => {
     mockCheckContractWritePermission.mockResolvedValue({ allowed: false });
 
-    const response = await deleteRoute(createRequest('DELETE', 'member'), routeContext);
+    const response = await deleteRoute(createRequest('DELETE', 'manager'), routeContext);
     const data = await response.json();
 
     expect(response.status).toBe(403);
