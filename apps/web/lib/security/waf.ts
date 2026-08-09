@@ -487,7 +487,11 @@ export async function wafMiddleware(
   }
 
   // Check rate limit
-  if (mergedConfig.rateLimit?.enabled) {
+  // Scoped to /api/* only — page navigation, RSC fetches, and static-ish assets
+  // (icons/images/fonts) that aren't in pathWhitelist above must never burn this
+  // shared per-IP budget, or a user can get locked out of /auth/signin itself
+  // (this check runs before the public-paths allowance in middleware.ts).
+  if (mergedConfig.rateLimit?.enabled && path.startsWith('/api/')) {
     const withinLimit = checkRateLimit(ip, mergedConfig.rateLimit);
     if (!withinLimit) {
       await logWAFBlock(request, 'RATE-001', 'Rate limit exceeded');

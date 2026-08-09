@@ -14,5 +14,6 @@ export * from './field-trust';
 export * from './agent-write-policy';
 export * from './agent-autonomy';
 export * from './critical-fields';
+export * from './web-research';
 // Note: tracing export disabled due to verbatimModuleStyle incompatibility with OpenTelemetry Resource import
 // export * from './tracing';

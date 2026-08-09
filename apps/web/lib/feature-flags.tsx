@@ -159,6 +159,15 @@ export const defaultFlags: FeatureFlag[] = [
     environments: ['development', 'staging'],
     enabledForRoles: ['admin'],
   },
+  {
+    id: 'firecrawl-web-research',
+    name: 'Firecrawl Web Research',
+    description:
+      'Allow agents/chat to search and scrape public web pages via Firecrawl. Never used for contract OCR or private document parse.',
+    // Runtime also requires ENABLE_FIRECRAWL_WEB_RESEARCH=true + FIRECRAWL_API_KEY server-side.
+    enabled: process.env.NEXT_PUBLIC_ENABLE_FIRECRAWL_WEB_RESEARCH === 'true',
+    environments: ['development', 'staging', 'production'],
+  },
 ];
 
 // ============================================================================

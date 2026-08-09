@@ -318,6 +318,15 @@ const SearchParamsSchema = z.object({
   limit: z.number().optional().default(10),
 });
 
+const PublicWebSearchParamsSchema = z.object({
+  query: z.string().min(2).max(500),
+  limit: z.number().int().min(1).max(10).optional().default(5),
+});
+
+const PublicWebScrapeParamsSchema = z.object({
+  url: z.string().url(),
+});
+
 // =============================================================================
 // BUILT-IN TOOLS
 // =============================================================================
@@ -526,6 +535,104 @@ const BUILT_IN_TOOLS: ToolDefinition[] = [
       updatedAt: new Date(),
       avgExecutionTimeMs: 800,
       successRate: 0.94,
+    },
+  },
+  {
+    id: 'public-web-search',
+    name: 'Public Web Search',
+    description:
+      'Search the public internet via Firecrawl for regulations, vendor pages, or market context. ' +
+      'PUBLIC WEB ONLY — not for tenant contracts or private documents. Disabled unless ENABLE_FIRECRAWL_WEB_RESEARCH=true.',
+    version: '1.0.0',
+    category: 'integration',
+    tags: ['web', 'research', 'firecrawl', 'public', 'optional'],
+    parameters: PublicWebSearchParamsSchema,
+    returnType: z.object({
+      query: z.string(),
+      results: z.array(
+        z.object({
+          url: z.string(),
+          title: z.string(),
+          description: z.string().optional(),
+          markdown: z.string().optional(),
+        })
+      ),
+      provider: z.literal('firecrawl'),
+      disclaimer: z.string(),
+      disabled: z.boolean().optional(),
+    }),
+    execute: async (params) => {
+      const { isFirecrawlWebResearchEnabled, searchPublicWeb } = await import('utils');
+      if (!isFirecrawlWebResearchEnabled()) {
+        return {
+          query: params.query,
+          results: [],
+          provider: 'firecrawl' as const,
+          disclaimer: 'Firecrawl web research is disabled.',
+          disabled: true,
+        };
+      }
+      return searchPublicWeb(params.query, { limit: params.limit });
+    },
+    metadata: {
+      author: 'ConTigo Platform',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      avgExecutionTimeMs: 2500,
+      successRate: 0.9,
+      costEstimate: 50,
+      rateLimit: { maxCalls: 20, windowMs: 60_000 },
+      permissions: {
+        roles: ['admin', 'analyst', 'legal'],
+        features: ['firecrawl-web-research'],
+      },
+    },
+  },
+  {
+    id: 'public-web-scrape',
+    name: 'Public Web Scrape',
+    description:
+      'Scrape a single public HTTP(S) URL to markdown via Firecrawl. ' +
+      'Rejects localhost/private IPs. Never use for uploaded contracts or internal systems.',
+    version: '1.0.0',
+    category: 'integration',
+    tags: ['web', 'research', 'firecrawl', 'public', 'optional'],
+    parameters: PublicWebScrapeParamsSchema,
+    returnType: z.object({
+      url: z.string(),
+      title: z.string().optional(),
+      markdown: z.string(),
+      truncated: z.boolean(),
+      provider: z.literal('firecrawl'),
+      disclaimer: z.string(),
+      disabled: z.boolean().optional(),
+    }),
+    execute: async (params) => {
+      const { isFirecrawlWebResearchEnabled, scrapePublicUrl } = await import('utils');
+      if (!isFirecrawlWebResearchEnabled()) {
+        return {
+          url: params.url,
+          markdown: '',
+          truncated: false,
+          provider: 'firecrawl' as const,
+          disclaimer: 'Firecrawl web research is disabled.',
+          disabled: true,
+        };
+      }
+      return scrapePublicUrl(params.url);
+    },
+    metadata: {
+      author: 'ConTigo Platform',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      avgExecutionTimeMs: 3500,
+      successRate: 0.88,
+      costEstimate: 30,
+      rateLimit: { maxCalls: 15, windowMs: 60_000 },
+      permissions: {
+        roles: ['admin', 'analyst', 'legal'],
+        features: ['firecrawl-web-research'],
+      },
     },
   },
 ];

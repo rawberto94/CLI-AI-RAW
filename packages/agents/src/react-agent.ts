@@ -460,6 +460,64 @@ const BUILT_IN_TOOLS: ReActTool[] = [
     },
   },
   {
+    name: 'search_public_web',
+    description:
+      'Search the public internet for regulations, vendor terms, or market context (Firecrawl). ' +
+      'PUBLIC WEB ONLY — not for tenant contracts. Only available when ENABLE_FIRECRAWL_WEB_RESEARCH=true.',
+    parameters: z.object({
+      query: z.string().min(2).max(500),
+      limit: z.number().int().min(1).max(10).optional().default(5),
+    }),
+    execute: async (params) => {
+      try {
+        const { isFirecrawlWebResearchEnabled, searchPublicWeb } = await import('utils');
+        if (!isFirecrawlWebResearchEnabled()) {
+          return {
+            success: false,
+            data: null,
+            error: 'Public web research is disabled (set ENABLE_FIRECRAWL_WEB_RESEARCH=true and FIRECRAWL_API_KEY).',
+          };
+        }
+        const data = await searchPublicWeb(params.query, { limit: params.limit });
+        return { success: true, data };
+      } catch (error) {
+        return {
+          success: false,
+          data: null,
+          error: error instanceof Error ? error.message : 'Public web search failed',
+        };
+      }
+    },
+  },
+  {
+    name: 'scrape_public_url',
+    description:
+      'Scrape a public HTTP(S) page to markdown for research. Rejects private/local URLs. Never use for uploaded contracts.',
+    parameters: z.object({
+      url: z.string().url(),
+    }),
+    execute: async (params) => {
+      try {
+        const { isFirecrawlWebResearchEnabled, scrapePublicUrl } = await import('utils');
+        if (!isFirecrawlWebResearchEnabled()) {
+          return {
+            success: false,
+            data: null,
+            error: 'Public web research is disabled (set ENABLE_FIRECRAWL_WEB_RESEARCH=true and FIRECRAWL_API_KEY).',
+          };
+        }
+        const data = await scrapePublicUrl(params.url);
+        return { success: true, data };
+      } catch (error) {
+        return {
+          success: false,
+          data: null,
+          error: error instanceof Error ? error.message : 'Public URL scrape failed',
+        };
+      }
+    },
+  },
+  {
     name: 'final_answer',
     description: 'Provide the final answer to the user goal. Use this when you have gathered enough information.',
     parameters: z.object({
@@ -617,6 +675,8 @@ OR if you have gathered enough information:
 2. Use tools to gather facts - don't make assumptions
 3. After each observation, reflect on what you learned
 4. Continue until you can provide a confident answer
+5. Prefer contract-local tools (extract_clause, analyze_risk, etc.) for portfolio analysis
+6. Use search_public_web / scrape_public_url only for public external context (regulations, vendor pages) — never send private contract text to them
 5. If you cannot find information, acknowledge uncertainty
 6. Always use the final_answer tool when ready to conclude`;
   }

@@ -17,6 +17,13 @@ import OpenAI from 'openai';
 import { createOpenAIClient, hasAIClientConfig } from '@/lib/openai-client';
 import { prisma } from '@/lib/prisma';
 import { hybridSearch } from '@/lib/rag/advanced-rag.service';
+import {
+  isFirecrawlWebResearchEnabled,
+  searchPublicWeb,
+  scrapePublicUrl,
+  FirecrawlNotEnabledError,
+  UnsafeUrlError,
+} from '@repo/utils';
 
 // =============================================================================
 // TYPES
@@ -207,6 +214,61 @@ const CHAT_TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
     },
   },
 ];
+
+/** Optional public-web tools — only registered when Firecrawl web research is enabled. */
+const WEB_RESEARCH_TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
+  {
+    type: 'function',
+    function: {
+      name: 'search_public_web',
+      description:
+        'Search the public internet for regulations, vendor terms, market/pricing pages, or general legal context. ' +
+        'PUBLIC WEB ONLY — never use for tenant contracts, private documents, or uploaded PDFs. ' +
+        'Prefer internal contract tools for questions about the customer portfolio.',
+      parameters: {
+        type: 'object',
+        properties: {
+          query: {
+            type: 'string',
+            description: 'Web search query (e.g. "Swiss FADP data transfer requirements")',
+          },
+          limit: {
+            type: 'number',
+            description: 'Max results (1-10)',
+            default: 5,
+          },
+        },
+        required: ['query'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'scrape_public_url',
+      description:
+        'Fetch a single public HTTP(S) page as clean markdown for research. ' +
+        'PUBLIC WEB ONLY — rejects localhost/private IPs. Never scrape internal systems or upload contract files.',
+      parameters: {
+        type: 'object',
+        properties: {
+          url: {
+            type: 'string',
+            description: 'Public https URL to scrape',
+          },
+        },
+        required: ['url'],
+      },
+    },
+  },
+];
+
+function getChatTools(): OpenAI.Chat.Completions.ChatCompletionTool[] {
+  if (isFirecrawlWebResearchEnabled()) {
+    return [...CHAT_TOOLS, ...WEB_RESEARCH_TOOLS];
+  }
+  return CHAT_TOOLS;
+}
 
 // =============================================================================
 // TOOL EXECUTORS
@@ -650,6 +712,66 @@ async function executeGetSupplierInfo(
   }
 }
 
+async function executeSearchPublicWeb(
+  args: { query: string; limit?: number },
+  _tenantId: string
+): Promise<AgenticToolResult> {
+  const start = Date.now();
+  try {
+    const data = await searchPublicWeb(args.query, { limit: args.limit });
+    return {
+      toolName: 'search_public_web',
+      success: true,
+      data,
+      executionTimeMs: Date.now() - start,
+    };
+  } catch (error) {
+    const message =
+      error instanceof FirecrawlNotEnabledError || error instanceof UnsafeUrlError
+        ? error.message
+        : error instanceof Error
+          ? error.message
+          : 'Public web search failed';
+    return {
+      toolName: 'search_public_web',
+      success: false,
+      data: null,
+      error: message,
+      executionTimeMs: Date.now() - start,
+    };
+  }
+}
+
+async function executeScrapePublicUrl(
+  args: { url: string },
+  _tenantId: string
+): Promise<AgenticToolResult> {
+  const start = Date.now();
+  try {
+    const data = await scrapePublicUrl(args.url);
+    return {
+      toolName: 'scrape_public_url',
+      success: true,
+      data,
+      executionTimeMs: Date.now() - start,
+    };
+  } catch (error) {
+    const message =
+      error instanceof FirecrawlNotEnabledError || error instanceof UnsafeUrlError
+        ? error.message
+        : error instanceof Error
+          ? error.message
+          : 'Public URL scrape failed';
+    return {
+      toolName: 'scrape_public_url',
+      success: false,
+      data: null,
+      error: message,
+      executionTimeMs: Date.now() - start,
+    };
+  }
+}
+
 // Tool executor registry
 const TOOL_EXECUTORS: Record<string, (args: any, tenantId: string) => Promise<AgenticToolResult>> = {
   search_contracts: executeSearchContracts,
@@ -658,6 +780,8 @@ const TOOL_EXECUTORS: Record<string, (args: any, tenantId: string) => Promise<Ag
   get_spend_analysis: executeGetSpendAnalysis,
   get_risk_assessment: executeGetRiskAssessment,
   get_supplier_info: executeGetSupplierInfo,
+  search_public_web: executeSearchPublicWeb,
+  scrape_public_url: executeScrapePublicUrl,
 };
 
 // =============================================================================
@@ -678,10 +802,8 @@ export async function agenticChat(
   const toolResults: AgenticToolResult[] = [];
   let iterations = 0;
 
-  const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
-    {
-      role: 'system',
-      content: `You are ConTigo AI, an intelligent contract management assistant. You have access to powerful tools to search, analyze, and manage contracts. 
+  const webResearchOn = isFirecrawlWebResearchEnabled();
+  const systemContent = `You are ConTigo AI, an intelligent contract management assistant. You have access to powerful tools to search, analyze, and manage contracts. 
 
 Use the available tools to gather information before answering. You can call multiple tools if needed to fully answer the user's question.
 
@@ -689,7 +811,21 @@ When responding:
 1. Always link to contracts using markdown: [Contract Name](/contracts/CONTRACT_ID)
 2. Provide specific data from tool results
 3. Give actionable recommendations
-4. Be concise but thorough`,
+4. Be concise but thorough${
+    webResearchOn
+      ? `
+
+Public web research tools (search_public_web, scrape_public_url) are available for external context only
+(regulations, public vendor pages, market info). Prefer internal contract tools for portfolio questions.
+Never send private contract text or uploaded document content through web research tools.
+Cite source URLs when you use public web results.`
+      : ''
+  }`;
+
+  const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
+    {
+      role: 'system',
+      content: systemContent,
     },
     ...conversationHistory.map(msg => ({
       role: msg.role as 'user' | 'assistant',
@@ -698,6 +834,8 @@ When responding:
     { role: 'user', content: message },
   ];
 
+  const chatTools = getChatTools();
+
   // Agentic loop - let the model decide which tools to use
   while (iterations < maxIterations) {
     iterations++;
@@ -705,7 +843,7 @@ When responding:
     const response = await openai.chat.completions.create({
       model,
       messages,
-      tools: CHAT_TOOLS,
+      tools: chatTools,
       tool_choice: iterations === 1 ? 'auto' : 'auto', // Let model decide
       temperature: 0.7,
       max_tokens: 2000,
@@ -727,6 +865,12 @@ When responding:
             const data = r.data as any;
             if (data?.contracts) {
               return data.contracts.map((c: any) => c.contractName || c.title || 'Contract');
+            }
+            if (data?.results && Array.isArray(data.results) && data.provider === 'firecrawl') {
+              return data.results.map((hit: any) => hit.url || hit.title).filter(Boolean);
+            }
+            if (data?.provider === 'firecrawl' && data?.url) {
+              return [data.url];
             }
             if (data?.title) {
               return [data.title];
@@ -811,4 +955,4 @@ When responding:
 }
 
 // Export for use in chat route
-export { CHAT_TOOLS, TOOL_EXECUTORS };
+export { CHAT_TOOLS, WEB_RESEARCH_TOOLS, TOOL_EXECUTORS, getChatTools };

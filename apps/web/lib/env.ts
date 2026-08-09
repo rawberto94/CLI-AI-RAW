@@ -118,6 +118,16 @@ const envSchema = z.object({
   OPENAI_BREAKER_COOLDOWN_MS: z.coerce.number().default(30000),
   OPENAI_BREAKER_FAILURE_THRESHOLD: z.coerce.number().default(5),
 
+  // ── Public web research (Firecrawl) — agents/chat only, not OCR ───────
+  // Off by default. When enabled, agents may search/scrape *public* URLs.
+  // Never route tenant contract bytes through this integration.
+  ENABLE_FIRECRAWL_WEB_RESEARCH: boolString,
+  FIRECRAWL_API_KEY: optionalString,
+  FIRECRAWL_API_BASE_URL: optionalUrl,
+  FIRECRAWL_MAX_MARKDOWN_CHARS: z.coerce.number().optional(),
+  FIRECRAWL_MAX_SEARCH_RESULTS: z.coerce.number().optional(),
+  FIRECRAWL_TIMEOUT_MS: z.coerce.number().optional(),
+
   // ── OCR / Vision ───────────────────────────────────────────────────────
   OCR_DEFAULT_PROVIDER: z.enum(['azure', 'google', 'aws', 'tesseract']).default('azure'),
   OCR_FALLBACK_CHAIN: optionalString,
