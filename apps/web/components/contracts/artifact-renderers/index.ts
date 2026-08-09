@@ -7,3 +7,4 @@ export { ClausesRenderer } from './ClausesRenderer';
 export { FinancialRenderer } from './FinancialRenderer';
 export { RiskRenderer } from './RiskRenderer';
 export { ComplianceRenderer } from './ComplianceRenderer';
+export { PolicyRenderer } from './PolicyRenderer';

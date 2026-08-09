@@ -55,7 +55,8 @@ type RiskCategory =
   | 'operational'
   | 'deadline'
   | 'legal'
-  | 'counterparty';
+  | 'counterparty'
+  | 'policy';
 
 interface RiskSummary {
   totalRisks: number;
@@ -79,6 +80,7 @@ const RISK_CATEGORIES: { key: RiskCategory; label: string; icon: React.ElementTy
   { key: 'deadline', label: 'Deadline', icon: Clock, color: 'text-orange-500' },
   { key: 'legal', label: 'Legal', icon: FileWarning, color: 'text-purple-500' },
   { key: 'counterparty', label: 'Counterparty', icon: Shield, color: 'text-indigo-500' },
+  { key: 'policy', label: 'Policy', icon: Scale, color: 'text-violet-500' },
 ];
 
 const SEVERITY_COLORS: Record<string, string> = {

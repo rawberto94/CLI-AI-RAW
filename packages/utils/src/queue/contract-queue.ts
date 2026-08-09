@@ -31,6 +31,7 @@ export const QUEUE_NAMES = {
   RATE_CARD_IMPORT: 'rate-card-import',
   BENCHMARK_CALCULATION: 'benchmark-calculation',
   EMBEDDING_REFRESH: 'embedding-refresh',
+  POLICY_EVALUATION: 'policy-evaluation',
 } as const;
 
 export const JOB_NAMES = {
@@ -44,6 +45,7 @@ export const JOB_NAMES = {
   IMPORT_RATE_CARDS: 'import-rate-cards',
   CALCULATE_BENCHMARKS: 'calculate-benchmarks',
   REFRESH_EMBEDDINGS: 'refresh-embeddings',
+  EVALUATE_POLICY: 'evaluate-policy',
 } as const;
 
 // Job data types
@@ -122,6 +124,16 @@ export interface CategorizationJobData {
   autoApplyThreshold?: number;
   priority?: 'high' | 'normal' | 'low';
   source?: 'upload' | 'manual' | 'bulk' | 'scheduled';
+  traceId?: string;
+  requestId?: string;
+}
+
+export interface PolicyEvaluationJobData {
+  contractId: string;
+  tenantId: string;
+  packId?: string;
+  triggeredBy?: 'pipeline' | 'manual' | 'rerun' | 'backfill' | 'dryrun';
+  allowSemantic?: boolean;
   traceId?: string;
   requestId?: string;
 }

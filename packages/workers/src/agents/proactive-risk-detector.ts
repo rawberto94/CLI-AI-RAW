@@ -94,6 +94,7 @@ export enum RiskType {
   PRICING_ANOMALY = 'pricing_anomaly',
   AMBIGUOUS_LANGUAGE = 'ambiguous_language',
   OBLIGATION_CONFLICT = 'obligation_conflict',
+  POLICY_VIOLATION = 'policy_violation',
 }
 
 export enum RiskSeverity {
@@ -155,6 +156,7 @@ export class ProactiveRiskDetector {
     risks.push(...await this.detectPricingAnomalies(contractType, tenantId, artifacts));
     risks.push(...await this.detectAmbiguousLanguage(contractText));
     risks.push(...await this.detectObligationConflicts(artifacts));
+    risks.push(...await this.detectPolicyViolations(contractId, tenantId, artifacts));
 
     // Calculate risk score
     const { overallRiskScore, criticalCount, highCount, mediumCount, lowCount } = this.calculateRiskScore(risks);
@@ -428,6 +430,72 @@ Only include genuinely missing clauses — do NOT flag clauses that ARE present.
           evidence: riskData.risks?.map((r: any) => r.title).join(', ') || 'Multiple high-risk factors',
           impact: 'Significant financial and legal exposure',
           recommendation: 'Review liability terms and add protective caps',
+          autoFixable: false,
+          requiresHumanReview: true,
+        });
+      }
+    }
+
+    return risks;
+  }
+
+  /**
+   * Surface unwaived CRITICAL policy findings as proactive risks
+   */
+  private async detectPolicyViolations(
+    contractId: string,
+    tenantId: string,
+    artifacts?: Record<string, any>,
+  ): Promise<DetectedRisk[]> {
+    const risks: DetectedRisk[] = [];
+
+    // Prefer live PolicyFinding rows; fall back to POLICY_CHECK artifact
+    try {
+      const prisma = getClient();
+      const findings = await (prisma as any).policyFinding.findMany({
+        where: {
+          tenantId,
+          contractId,
+          status: { in: ['VIOLATION', 'INCONSISTENCY', 'MISSING'] },
+          severity: { in: ['CRITICAL', 'BLOCKER', 'critical', 'blocker'] },
+          waiverId: null,
+        },
+        take: 20,
+        orderBy: { createdAt: 'desc' },
+      });
+      for (const f of findings) {
+        risks.push({
+          type: RiskType.POLICY_VIOLATION,
+          severity: RiskSeverity.CRITICAL,
+          title: f.title || `Policy violation: ${f.ruleCode}`,
+          description: f.detail || 'Unwaived critical policy finding',
+          evidence: Array.isArray(f.evidence)
+            ? f.evidence.map((e: any) => e.quote).filter(Boolean).join(' | ').slice(0, 500)
+            : f.ruleCode,
+          impact: 'Contract may fail gate review or create compliance exposure',
+          recommendation: f.remediation || 'Remediate or request a policy waiver',
+          autoFixable: false,
+          requiresHumanReview: true,
+        });
+      }
+    } catch {
+      /* table may not exist yet */
+    }
+
+    if (risks.length === 0 && artifacts?.POLICY_CHECK) {
+      const data = artifacts.POLICY_CHECK;
+      if (data.status === 'FAIL' || (data.criticalCount || 0) > 0) {
+        risks.push({
+          type: RiskType.POLICY_VIOLATION,
+          severity: RiskSeverity.CRITICAL,
+          title: 'Policy pack evaluation failed',
+          description: `Policy status ${data.status} with score ${data.policyScore ?? 'n/a'}`,
+          evidence: (data.findings || [])
+            .slice(0, 5)
+            .map((f: any) => f.ruleCode || f.title)
+            .join(', '),
+          impact: 'Gate-mode packs will route this contract to review',
+          recommendation: 'Open Policy tab and resolve critical findings',
           autoFixable: false,
           requiresHumanReview: true,
         });

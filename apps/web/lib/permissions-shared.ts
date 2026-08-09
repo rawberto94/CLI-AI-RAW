@@ -19,6 +19,7 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
     'dashboard:view',
     'reports:view',
     'chat:view',
+    'policy:read',
   ],
   
   // Member - standard team member
@@ -35,6 +36,7 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
     'collaborators:view',
     'comments:create',
     'comments:edit_own',
+    'policy:read',
   ],
   
   // Manager - team/department lead
@@ -63,6 +65,9 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
     'analytics:view',
     'workflow:manage',
     'comments:moderate',
+    'policy:read',
+    'policy:manage',
+    'policy:waive',
   ],
   
   // Admin - full administrative access
@@ -100,6 +105,9 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
     'comments:edit_own',
     'comments:moderate',
     'comments:delete',
+    'policy:read',
+    'policy:manage',
+    'policy:waive',
   ],
   
   // Owner - tenant owner with full control
@@ -143,6 +151,9 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
     'comments:edit_own',
     'comments:moderate',
     'comments:delete',
+    'policy:read',
+    'policy:manage',
+    'policy:waive',
   ],
 };
 

@@ -1,0 +1,94 @@
+{
+  "name": "Consistency Checks",
+  "description": "Zero-token internal coherence rules: dates, values, payment terms, parties, currency.",
+  "mode": "advisory",
+  "isDefault": false,
+  "rules": [
+    {
+      "code": "CONS-DATES",
+      "title": "Effective date must be before expiration date",
+      "kind": "FIELD",
+      "severity": "HIGH",
+      "category": "other",
+      "assert": {
+        "path": "overview.effectiveDate",
+        "op": "lt",
+        "pathB": "overview.expirationDate",
+        "onMissing": "pass"
+      }
+    },
+    {
+      "code": "CONS-VALUE",
+      "title": "Total value approximately equals line items total (±2%)",
+      "kind": "FIELD",
+      "severity": "MEDIUM",
+      "category": "payment",
+      "assert": {
+        "path": "financial.totalValue",
+        "op": "exists",
+        "onMissing": "pass"
+      },
+      "remediation": "Reconcile contract total value with sum of line items."
+    },
+    {
+      "code": "CONS-VALUE-MATCH",
+      "title": "Line items total within range of total value",
+      "kind": "FIELD",
+      "severity": "MEDIUM",
+      "category": "payment",
+      "assert": {
+        "path": "financial.lineItemsTotal",
+        "op": "exists",
+        "onMissing": "pass"
+      }
+    },
+    {
+      "code": "CONS-NOTICE-TERM",
+      "title": "Renewal notice period less than term length",
+      "kind": "FIELD",
+      "severity": "MEDIUM",
+      "category": "renewal",
+      "assert": {
+        "path": "renewal.noticePeriodDays",
+        "op": "exists",
+        "onMissing": "pass"
+      }
+    },
+    {
+      "code": "CONS-CURRENCY",
+      "title": "Currency is specified when total value is set",
+      "kind": "FIELD",
+      "severity": "LOW",
+      "category": "payment",
+      "assert": {
+        "path": "financial.currency",
+        "op": "exists",
+        "onMissing": "flag"
+      }
+    },
+    {
+      "code": "CONS-PARTIES",
+      "title": "At least one party is identified",
+      "kind": "FIELD",
+      "severity": "HIGH",
+      "category": "other",
+      "assert": {
+        "path": "overview.parties",
+        "op": "exists",
+        "onMissing": "flag"
+      }
+    },
+    {
+      "code": "CONS-PAYMENT-META",
+      "title": "Payment terms days are extractable",
+      "kind": "FIELD",
+      "severity": "LOW",
+      "category": "payment",
+      "assert": {
+        "path": "financial.paymentTermsDays",
+        "op": "exists",
+        "onMissing": "pass"
+      }
+    }
+  ]
+}

@@ -1,0 +1,98 @@
+{
+  "name": "Data Protection",
+  "description": "DPA/GDPR-oriented checks: processor obligations, sub-processors, breach notification, transfer mechanism, retention.",
+  "mode": "advisory",
+  "isDefault": false,
+  "rules": [
+    {
+      "code": "DPA-001",
+      "title": "Data processing obligations present",
+      "kind": "PATTERN",
+      "severity": "CRITICAL",
+      "category": "data_protection",
+      "match": {
+        "mode": "must_match",
+        "patterns": ["data processing", "personal data", "data controller", "data processor", "GDPR"],
+        "isRegex": false,
+        "caseSensitive": false
+      }
+    },
+    {
+      "code": "DPA-002",
+      "title": "Sub-processor consent required",
+      "kind": "PATTERN",
+      "severity": "HIGH",
+      "category": "data_protection",
+      "match": {
+        "mode": "must_match",
+        "patterns": ["sub-processor", "subprocessor", "sub-contractor.*data", "prior written consent.*process"],
+        "isRegex": true,
+        "caseSensitive": false
+      }
+    },
+    {
+      "code": "DPA-003",
+      "title": "Breach notification within 72 hours",
+      "kind": "PATTERN",
+      "severity": "CRITICAL",
+      "category": "data_protection",
+      "match": {
+        "mode": "must_match",
+        "patterns": ["72 hours", "seventy-two hours", "without undue delay", "breach notification"],
+        "isRegex": false,
+        "caseSensitive": false
+      },
+      "remediation": "Require personal data breach notification within 72 hours of becoming aware."
+    },
+    {
+      "code": "DPA-004",
+      "title": "International transfer mechanism named",
+      "kind": "PATTERN",
+      "severity": "HIGH",
+      "category": "data_protection",
+      "match": {
+        "mode": "must_match",
+        "patterns": ["standard contractual clauses", "SCCs", "adequacy decision", "transfer mechanism", "Binding Corporate Rules"],
+        "isRegex": false,
+        "caseSensitive": false
+      }
+    },
+    {
+      "code": "DPA-005",
+      "title": "Retention / deletion obligations",
+      "kind": "PATTERN",
+      "severity": "MEDIUM",
+      "category": "data_protection",
+      "match": {
+        "mode": "must_match",
+        "patterns": ["return or delete", "deletion of personal data", "retention period", "securely destroy"],
+        "isRegex": false,
+        "caseSensitive": false
+      }
+    },
+    {
+      "code": "DPA-006",
+      "title": "No unrestricted data transfer",
+      "kind": "PATTERN",
+      "severity": "HIGH",
+      "category": "data_protection",
+      "match": {
+        "mode": "must_not_match",
+        "patterns": ["may transfer personal data to any country", "without restriction.*transfer.*personal data"],
+        "isRegex": true,
+        "caseSensitive": false
+      }
+    },
+    {
+      "code": "DPA-SEM-001",
+      "title": "Processor acts only on documented instructions",
+      "kind": "SEMANTIC",
+      "severity": "HIGH",
+      "category": "data_protection",
+      "semantic": {
+        "question": "Does the contract require the processor to process personal data only on documented instructions from the controller?",
+        "expected": "yes"
+      }
+    }
+  ]
+}

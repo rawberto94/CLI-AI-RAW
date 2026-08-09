@@ -47,6 +47,7 @@ import {
 import { cn } from '@/lib/utils'
 import { getTenantId } from '@/lib/tenant';
 import { toast } from 'sonner'
+import { PolicyPackSelect } from '@/components/contracts/PolicyPackSelect'
 
 // ============ TYPES ============
 
@@ -110,6 +111,7 @@ export function QuickUploadModal({
   const [isUploading, setIsUploading] = useState(false)
   const [category, setCategory] = useState(defaultCategory || '')
   const [ocrMode, setOcrMode] = useState('auto')
+  const [policyPackId, setPolicyPackId] = useState<string | null>(null)
   const [showSuccess, setShowSuccess] = useState(false)
   const [uploadedContractIds, setUploadedContractIds] = useState<string[]>([])
   
@@ -189,6 +191,9 @@ export function QuickUploadModal({
     }
     if (ocrMode && ocrMode !== 'auto') {
       formData.append('ocrMode', ocrMode)
+    }
+    if (policyPackId) {
+      formData.append('policyPackId', policyPackId)
     }
     
     try {
@@ -427,6 +432,11 @@ export function QuickUploadModal({
                 </div>
               )}
               
+              {/* Policy pack (optional override) */}
+              {files.length > 0 && (
+                <PolicyPackSelect value={policyPackId} onChange={setPolicyPackId} />
+              )}
+
               {/* OCR Processing Mode */}
               {files.length > 0 && (
                 <div className="space-y-2">

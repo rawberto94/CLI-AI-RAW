@@ -37,6 +37,7 @@ import {
   AmendmentsArtifact,
   ContactsArtifact,
 } from '@/components/artifacts/ArtifactCards';
+import { PolicyRenderer } from '@/components/contracts/artifact-renderers/PolicyRenderer';
 
 interface EnhancedArtifactViewerProps {
   type: string;
@@ -1466,6 +1467,8 @@ export function EnhancedArtifactViewer({
         return renderFinancial(data);
       case 'RISK':
         return renderRisk(data);
+      case 'POLICY_CHECK':
+        return <PolicyRenderer data={data} />;
       case 'COMPLIANCE':
         return renderCompliance(data);
       case 'CLAUSES':

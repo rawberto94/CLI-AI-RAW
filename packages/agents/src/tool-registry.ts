@@ -372,6 +372,77 @@ const BUILT_IN_TOOLS: ToolDefinition[] = [
     },
   },
   {
+    id: 'policy-check',
+    name: 'Policy Check',
+    description: 'Evaluate a contract against the tenant policy pack and return findings',
+    version: '1.0.0',
+    category: 'analysis',
+    tags: ['contract', 'policy', 'compliance', 'governance'],
+    parameters: z.object({
+      contractId: z.string(),
+      packId: z.string().optional(),
+    }),
+    returnType: z.object({
+      status: z.string(),
+      policyScore: z.number(),
+      criticalCount: z.number(),
+      findings: z.array(z.object({
+        ruleCode: z.string(),
+        status: z.string(),
+        severity: z.string(),
+        title: z.string(),
+      })),
+    }),
+    execute: async (params, context) => {
+      try {
+        const { evaluatePolicyPack } = await import('@repo/data-orchestration/services/policy/index');
+        const result = await evaluatePolicyPack({
+          tenantId: context.tenantId,
+          contractId: (params as any).contractId,
+          packId: (params as any).packId,
+          triggeredBy: 'manual',
+          allowSemantic: process.env.POLICY_SEMANTIC_RULES === 'true',
+        });
+        return {
+          status: result.status,
+          policyScore: result.policyScore,
+          criticalCount: result.criticalCount,
+          findings: result.findings
+            .filter((f) => f.status !== 'PASS')
+            .slice(0, 25)
+            .map((f) => ({
+              ruleCode: f.ruleCode,
+              status: f.status,
+              severity: f.severity,
+              title: f.title,
+            })),
+        };
+      } catch (e: any) {
+        return {
+          status: 'INDETERMINATE',
+          policyScore: 0,
+          criticalCount: 0,
+          findings: [{ ruleCode: 'ERR', status: 'INSUFFICIENT_EVIDENCE', severity: 'LOW', title: e?.message || 'Policy check failed' }],
+        };
+      }
+    },
+    examples: [
+      {
+        name: 'Run policy check',
+        description: 'Evaluate contract against default policy pack',
+        input: { contractId: 'clxxx' },
+      },
+    ],
+    metadata: {
+      author: 'ConTigo Platform',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      avgExecutionTimeMs: 1500,
+      successRate: 0.9,
+      costEstimate: 50,
+    },
+  },
+  {
     id: 'clause-extractor',
     name: 'Clause Extractor',
     description: 'Extract specific clauses from contract documents',
@@ -663,6 +734,13 @@ export class ToolRegistryService extends EventEmitter {
       name: 'Contract Risk Review',
       description: 'Analyze a contract then extract risk-related clauses (sequential)',
       toolIds: ['contract-analyzer', 'clause-extractor'],
+      composition: 'sequential',
+    });
+    this.registerComposedTool({
+      id: 'contract-policy-review',
+      name: 'Contract Policy Review',
+      description: 'Analyze a contract then run policy pack evaluation',
+      toolIds: ['contract-analyzer', 'policy-check'],
       composition: 'sequential',
     });
     this.registerComposedTool({

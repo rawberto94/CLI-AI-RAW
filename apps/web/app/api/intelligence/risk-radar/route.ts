@@ -64,9 +64,32 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
         contractId: true,
         overallScore: true,
         complianceScore: true,
-      },
+        policyScore: true,
+        policyStatus: true,
+        policyViolationCount: true,
+      } as any,
     });
-    const healthScoreMap = new Map(healthScores.map(h => [h.contractId, h]));
+    const healthScoreMap = new Map(healthScores.map((h: any) => [h.contractId, h]));
+
+    // Latest policy evaluation per contract (fallback if health columns empty)
+    const policyEvals = await (prisma as any).policyEvaluation
+      .findMany({
+        where: { tenantId, contractId: { in: contractIds } },
+        orderBy: { createdAt: 'desc' },
+        select: {
+          contractId: true,
+          status: true,
+          policyScore: true,
+          criticalCount: true,
+          highCount: true,
+        },
+        take: 500,
+      })
+      .catch(() => []);
+    const policyByContract = new Map<string, any>();
+    for (const row of policyEvals) {
+      if (!policyByContract.has(row.contractId)) policyByContract.set(row.contractId, row);
+    }
 
     const now = new Date();
     const risks: RiskItem[] = [];
@@ -169,6 +192,64 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
           factors: [
             `Compliance score: ${complianceScore}/100`,
             ...(contract.contractType ? [`Contract type: ${contract.contractType}`] : []),
+          ],
+        });
+      }
+
+      // Policy pack compliance risks
+      const policyEval = policyByContract.get(contract.id);
+      const policyScore =
+        typeof (healthData as any)?.policyScore === 'number'
+          ? (healthData as any).policyScore
+          : policyEval && policyEval.status !== 'INDETERMINATE'
+            ? policyEval.policyScore
+            : null;
+      const policyStatus =
+        (healthData as any)?.policyStatus || policyEval?.status || null;
+      const policyViolations =
+        (healthData as any)?.policyViolationCount ??
+        ((policyEval?.criticalCount || 0) + (policyEval?.highCount || 0));
+
+      if (
+        policyStatus === 'FAIL' ||
+        policyStatus === 'REVIEW' ||
+        (policyScore !== null && policyScore < 70)
+      ) {
+        const severity =
+          policyStatus === 'FAIL' || (policyScore !== null && policyScore < 40)
+            ? 'critical'
+            : policyStatus === 'REVIEW' || (policyScore !== null && policyScore < 70)
+              ? 'high'
+              : 'medium';
+        risks.push({
+          id: `risk-${++riskIdCounter}`,
+          contractId: contract.id,
+          contractName: name,
+          supplierName: supplier,
+          riskCategory: 'policy',
+          severity,
+          score:
+            policyScore !== null
+              ? 100 - policyScore
+              : policyStatus === 'FAIL'
+                ? 85
+                : 60,
+          trend: policyStatus === 'FAIL' ? 'increasing' : 'stable',
+          description:
+            policyStatus === 'FAIL'
+              ? `Policy gate failed with ${policyViolations} critical/high violation(s).`
+              : policyStatus === 'REVIEW'
+                ? 'Policy evaluation requires human review.'
+                : `Policy score ${policyScore}/100 is below threshold.`,
+          detectedAt: now.toISOString(),
+          recommendedAction:
+            policyStatus === 'FAIL'
+              ? 'Review policy findings and remediate or waive critical rules'
+              : 'Open the Policy tab and resolve outstanding findings',
+          factors: [
+            ...(policyScore !== null ? [`Policy score: ${policyScore}/100`] : []),
+            ...(policyStatus ? [`Status: ${policyStatus}`] : []),
+            ...(policyViolations ? [`Violations: ${policyViolations}`] : []),
           ],
         });
       }

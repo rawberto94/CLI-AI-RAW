@@ -884,6 +884,29 @@ export async function generateArtifactsJob(
         }
       }
 
+      if (plan.policyEvaluation) {
+        try {
+          await queueService.addJob(
+            QUEUE_NAMES.POLICY_EVALUATION,
+            JOB_NAMES.EVALUATE_POLICY,
+            {
+              contractId,
+              tenantId,
+              triggeredBy: 'pipeline',
+              traceId: trace.traceId,
+            },
+            {
+              priority: 30,
+              delay: 1500,
+              jobId: `policy-${contractId}`,
+            },
+          );
+          logger.info({ contractId, traceId: trace.traceId }, 'Queued policy evaluation after artifact generation');
+        } catch (policyError) {
+          logger.warn({ contractId, policyError }, 'Failed to queue policy evaluation');
+        }
+      }
+
       // Kick off the agent intelligence pass (split mode).
       // OCR worker returns early in split mode and never reaches its legacy enqueue;
       // this is the canonical post-artifact agent tick. Deterministic jobId dedupes

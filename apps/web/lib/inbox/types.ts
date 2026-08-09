@@ -9,7 +9,8 @@ export type InboxItemType =
   | 'metadata_review'
   | 'rfx_award'
   | 'compliance_alert'
-  | 'renewal_decision';
+  | 'renewal_decision'
+  | 'policy_violation';
 
 export type InboxRisk = 'critical' | 'high' | 'medium' | 'low';
 

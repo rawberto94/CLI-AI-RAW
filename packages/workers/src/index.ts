@@ -12,6 +12,7 @@ import { registerWebhookWorker } from './webhook-worker';
 import { registerRAGIndexingWorker } from './rag-indexing-worker';
 import { registerMetadataExtractionWorker } from './metadata-extraction-worker';
 import { registerCategorizationWorker } from './categorization-worker';
+import { registerPolicyEvaluationWorker } from './policy-evaluation-worker';
 import { registerRenewalAlertWorker, scheduleRenewalCheck } from './renewal-alert-worker';
 import { registerObligationTrackerWorker, scheduleObligationCheck } from './obligation-tracker-worker';
 import { registerAgentOrchestratorWorker } from './agent-orchestrator-worker';
@@ -156,6 +157,7 @@ async function startWorkers() {
     const ragWorker = registerRAGIndexingWorker();
     const metadataWorker = registerMetadataExtractionWorker();
     const categorizationWorker = registerCategorizationWorker();
+    const policyEvaluationWorker = registerPolicyEvaluationWorker();
     const renewalAlertWorker = registerRenewalAlertWorker();
     const obligationTrackerWorker = registerObligationTrackerWorker();
     const agentOrchestratorWorker = registerAgentOrchestratorWorker();
@@ -225,6 +227,7 @@ async function startWorkers() {
     metricsCollector.registerWorker('rag-indexing', ragWorker);
     metricsCollector.registerWorker('metadata-extraction', metadataWorker);
     metricsCollector.registerWorker('categorization', categorizationWorker);
+    metricsCollector.registerWorker('policy-evaluation', policyEvaluationWorker);
     metricsCollector.registerWorker('renewal-alert', renewalAlertWorker);
     metricsCollector.registerWorker('obligation-tracker', obligationTrackerWorker);
     metricsCollector.registerWorker('agent-orchestrator', agentOrchestratorWorker);
@@ -343,6 +346,7 @@ async function startWorkers() {
       { worker: ragWorker, queue: 'rag-indexing' },
       { worker: metadataWorker, queue: 'metadata-extraction' },
       { worker: categorizationWorker, queue: 'contract-categorization' },
+      { worker: policyEvaluationWorker, queue: 'policy-evaluation' },
       { worker: agentOrchestratorWorker, queue: 'agent-orchestration' },
       { worker: renewalAlertWorker, queue: 'renewal-alerts' },
       { worker: obligationTrackerWorker, queue: 'obligation-tracking' },
@@ -370,6 +374,7 @@ async function startWorkers() {
         'rag-indexing (auto-embeddings)',
         'metadata-extraction (AI metadata)',
         'categorization (AI classification)',
+        'policy-evaluation (policy pack checks)',
         'renewal-alerts (deadline monitoring)',
         'obligation-tracker (SLA & milestone monitoring)',
         'agent-orchestrator (manager agent loop)',
@@ -412,6 +417,7 @@ async function startWorkers() {
         (ragWorker as any).close(),
         (metadataWorker as any).close(),
         (categorizationWorker as any).close(),
+        (policyEvaluationWorker as any).close(),
         (renewalAlertWorker as any).close(),
         (obligationTrackerWorker as any).close(),
         (agentOrchestratorWorker as any).close(),

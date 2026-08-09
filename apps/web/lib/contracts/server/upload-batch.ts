@@ -65,6 +65,25 @@ export async function postBatchUploadContracts(
 
     const formData = await request.formData();
     const files = formData.getAll('files');
+
+    // Optional policy pack override (tenant-validated)
+    const requestedPolicyPackId = (formData.get('policyPackId') as string | null) || null;
+    let policyPackId: string | null = null;
+    if (requestedPolicyPackId) {
+      const pack = await (prisma as any).policyPack.findFirst({
+        where: {
+          id: requestedPolicyPackId,
+          tenantId,
+          status: { in: ['active', 'draft'] },
+        },
+        select: { id: true },
+      });
+      if (!pack) {
+        return createErrorResponse(context, 'BAD_REQUEST', 'Invalid policyPackId for tenant', 400);
+      }
+      policyPackId = pack.id;
+    }
+
     if (!files.length) {
       return createErrorResponse(context, 'BAD_REQUEST', 'No files provided', 400);
     }
@@ -185,7 +204,8 @@ export async function postBatchUploadContracts(
             checksum: contentHash,
             status: 'UPLOADED',
             isDeleted: false,
-          },
+            ...(policyPackId ? { policyPackId } : {}),
+          } as any,
         });
 
         const processingJob = await prisma.processingJob.create({

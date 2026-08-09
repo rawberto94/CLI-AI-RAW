@@ -155,7 +155,11 @@
   "globalEnv": [
     "NODE_ENV",
     "CI",
-    "VERCEL"
+    "VERCEL",
+    "POLICY_PACKS_ENABLED",
+    "AUTO_POLICY_EVALUATION",
+    "POLICY_SEMANTIC_RULES",
+    "POLICY_SEMANTIC_MODEL"
   ],
   "globalDependencies": [
     "pnpm-lock.yaml",

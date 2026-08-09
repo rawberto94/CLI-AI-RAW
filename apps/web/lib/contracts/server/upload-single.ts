@@ -613,6 +613,20 @@ export async function postContractUpload(
       lifecycle: formData.get('lifecycle') as string | null,
     };
 
+    // Optional policy pack override — must belong to this tenant
+    const requestedPolicyPackId = (formData.get('policyPackId') as string | null) || null;
+    let policyPackId: string | null = null;
+    if (requestedPolicyPackId) {
+      const pack = await (prisma as any).policyPack.findFirst({
+        where: { id: requestedPolicyPackId, tenantId, status: { in: ['active', 'draft'] } },
+        select: { id: true },
+      });
+      if (!pack) {
+        return createErrorResponse(context, 'VALIDATION_ERROR', 'Invalid policyPackId for tenant', 400);
+      }
+      policyPackId = pack.id;
+    }
+
     const idempotencyKey = formData.get('idempotency_key') as string | undefined;
     const { result: transactionResult, wasExecuted } = await (async () => {
       try {
@@ -649,6 +663,7 @@ export async function postContractUpload(
             category: metadata.category || undefined,
             uploadedAt: new Date(),
             checksum: contentHash,
+            ...(policyPackId ? { policyPackId } : {}),
           },
           idempotencyKey,
         });
@@ -674,7 +689,8 @@ export async function postContractUpload(
               category: metadata.category || undefined,
               uploadedAt: new Date(),
               checksum: contentHash,
-            },
+              ...(policyPackId ? { policyPackId } : {}),
+            } as any,
           });
 
           const processingJob = await transaction.processingJob.create({

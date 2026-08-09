@@ -48,6 +48,8 @@ export const GET = withAuthApiHandler(async (req: NextRequest, ctx) => {
       rfxEvents,
       complianceAlerts,
       renewalAlerts,
+      policyFindings,
+      indeterminateEvals,
     ] = await Promise.all([
       // 1. Agent field writes
       prisma.aiDecision.findMany({
@@ -153,6 +155,41 @@ export const GET = withAuthApiHandler(async (req: NextRequest, ctx) => {
         orderBy: { expirationDate: 'asc' },
         take: 50,
       }),
+
+      // 6a. Unwaived critical policy findings
+      (prisma as any).policyFinding.findMany({
+        where: {
+          tenantId,
+          status: { in: ['VIOLATION', 'INCONSISTENCY', 'MISSING'] },
+          severity: { in: ['CRITICAL', 'BLOCKER', 'critical', 'blocker'] },
+          waiverId: null,
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 50,
+        select: {
+          id: true,
+          contractId: true,
+          ruleCode: true,
+          title: true,
+          detail: true,
+          severity: true,
+          createdAt: true,
+        },
+      }).catch(() => []),
+
+      // 6b. Indeterminate policy evaluations (could not check)
+      (prisma as any).policyEvaluation.findMany({
+        where: { tenantId, status: 'INDETERMINATE' },
+        orderBy: { createdAt: 'desc' },
+        take: 30,
+        select: {
+          id: true,
+          contractId: true,
+          status: true,
+          coverage: true,
+          createdAt: true,
+        },
+      }).catch(() => []),
     ]);
 
     const items: InboxItem[] = [];
@@ -360,6 +397,58 @@ export const GET = withAuthApiHandler(async (req: NextRequest, ctx) => {
       });
     }
 
+    // Policy violations
+    for (const finding of policyFindings || []) {
+      const risk: InboxRisk =
+        String(finding.severity).toUpperCase() === 'BLOCKER' ||
+        String(finding.severity).toUpperCase() === 'CRITICAL'
+          ? 'critical'
+          : 'high';
+      items.push({
+        id: `policy-${finding.id}`,
+        type: 'policy_violation',
+        title: `Policy: ${finding.title || finding.ruleCode}`,
+        description: finding.detail,
+        risk,
+        riskScore: RISK_SCORE[risk],
+        value: 0,
+        deadline: null,
+        deepLink: `/contracts/${finding.contractId}?tab=policy_check`,
+        contractId: finding.contractId,
+        requestedAt: finding.createdAt?.toISOString?.() ?? new Date().toISOString(),
+        agentId: 'policy-evaluation',
+        actions: [
+          { kind: 'approve', label: 'Waive', actionId: `policy-${finding.id}` },
+          { kind: 'reject', label: 'Escalate', actionId: `policy-${finding.id}` },
+          { kind: 'open', label: 'View contract', actionId: `policy-${finding.id}` },
+        ],
+        context: {
+          ruleCode: finding.ruleCode,
+          severity: finding.severity,
+          findingId: finding.id,
+        },
+      });
+    }
+
+    for (const ev of indeterminateEvals || []) {
+      items.push({
+        id: `policy-indet-${ev.id}`,
+        type: 'policy_violation',
+        title: 'Policy check indeterminate',
+        description: `Coverage ${Math.round((ev.coverage || 0) * 100)}% — document may lack extractable text`,
+        risk: 'medium',
+        riskScore: RISK_SCORE.medium,
+        value: 0,
+        deadline: null,
+        deepLink: `/contracts/${ev.contractId}?tab=policy_check`,
+        contractId: ev.contractId,
+        requestedAt: ev.createdAt?.toISOString?.() ?? new Date().toISOString(),
+        agentId: 'policy-evaluation',
+        actions: [{ kind: 'open', label: 'View contract', actionId: `policy-indet-${ev.id}` }],
+        context: { evaluationId: ev.id, coverage: ev.coverage },
+      });
+    }
+
     // Renewals
     for (const contract of renewalAlerts) {
       const daysToExpiry = contract.expirationDate
@@ -506,6 +595,59 @@ export const POST = withAuthApiHandler(async (req: NextRequest, ctx) => {
         status: 'opened',
         message: 'Open the contract to complete metadata review',
         deepLink: `/contracts/${id.replace(/^metadata-/, '')}?tab=details`,
+      });
+    }
+
+    if (type === 'policy_violation') {
+      const findingId = id.replace(/^policy-/, '').replace(/^policy-indet-/, '');
+      if (action === 'approve') {
+        // Request waiver (pending until manager with policy:waive approves)
+        const finding = await (prisma as any).policyFinding.findFirst({
+          where: { id: findingId, tenantId },
+        });
+        if (!finding) {
+          return createErrorResponse(ctx, 'NOT_FOUND', 'Policy finding not found', 404);
+        }
+        const waiver = await (prisma as any).policyWaiver.upsert({
+          where: {
+            tenantId_contractId_ruleCode: {
+              tenantId,
+              contractId: finding.contractId,
+              ruleCode: finding.ruleCode,
+            },
+          },
+          create: {
+            tenantId,
+            contractId: finding.contractId,
+            ruleCode: finding.ruleCode,
+            reason: notes || 'Waived from inbox',
+            requestedBy: userId,
+            status: 'pending',
+          },
+          update: {
+            reason: notes || 'Waived from inbox',
+            requestedBy: userId,
+            status: 'pending',
+          },
+        });
+        return createSuccessResponse(ctx, {
+          type,
+          status: 'waiver_requested',
+          waiverId: waiver.id,
+        });
+      }
+      if (action === 'reject' || action === 'escalate') {
+        return createSuccessResponse(ctx, {
+          type,
+          status: 'escalated',
+          message: 'Escalated for legal review',
+          deepLink: `/contracts/${findingId}`,
+        });
+      }
+      return createSuccessResponse(ctx, {
+        type,
+        status: 'opened',
+        deepLink: `/contracts/${findingId}?tab=policy_check`,
       });
     }
 

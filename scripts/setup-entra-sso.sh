@@ -29,6 +29,14 @@ CLIENT_SECRET=""
 TENANT_ID=""
 SKIP_CREATE=false
 
+# Optional env-var inputs (prefer over CLI args so secrets stay out of shell history)
+CLIENT_ID="${AZURE_AD_CLIENT_ID:-${CLIENT_ID:-}}"
+CLIENT_SECRET="${AZURE_AD_CLIENT_SECRET:-${CLIENT_SECRET:-}}"
+TENANT_ID="${AZURE_AD_TENANT_ID:-${TENANT_ID:-}}"
+if [[ -n "${AZURE_AD_CLIENT_ID:-}" && -n "${AZURE_AD_CLIENT_SECRET:-}" ]]; then
+  SKIP_CREATE=true
+fi
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --client-id) CLIENT_ID="$2"; shift 2 ;;
@@ -66,7 +74,29 @@ if ! $SKIP_CREATE; then
       --enable-id-token-issuance true \
       --enable-access-token-issuance false \
       -o json 2>&1); then
-    fail "Cannot create app registration (need Application Administrator). Re-run with --skip-create and provide --client-id/--client-secret from portal."
+    echo ""
+    warn "Cannot create app registration with the current identity."
+    warn "Logged-in user is often a *guest* without Application Administrator."
+    echo ""
+    echo "  Portal path (Entra Application / Global Admin on tenant $TENANT_ID):"
+    echo "  1. https://portal.azure.com → Microsoft Entra ID → App registrations → New registration"
+    echo "  2. Name: $APP_NAME"
+    echo "  3. Accounts: Single tenant"
+    echo "  4. Redirect URI (Web):"
+    echo "       $CALLBACK"
+    echo "       $CALLBACK_ACA"
+    echo "  5. Authentication → Implicit grant → enable ID tokens"
+    echo "  6. Certificates & secrets → New client secret (copy value once)"
+    echo "  7. API permissions → Microsoft Graph delegated: openid, profile, email, User.Read"
+    echo "     → Grant admin consent"
+    echo ""
+    echo "  Then wire production (values never committed to git):"
+    echo "    bash scripts/setup-entra-sso.sh --skip-create \\"
+    echo "      --tenant-id $TENANT_ID \\"
+    echo "      --client-id <appId> \\"
+    echo "      --client-secret <secret>"
+    echo ""
+    fail "Need Application Administrator (or provide --skip-create credentials)."
   fi
   CLIENT_ID=$(echo "$APP_JSON" | python3 -c 'import sys,json; print(json.load(sys.stdin)["appId"])')
   ok "App created: $CLIENT_ID"

@@ -4142,6 +4142,33 @@ export async function processOCRArtifactJob(
       }
     }
 
+
+    // 8.5 Auto-queue policy pack evaluation
+    if (!hasCompleteFailure && plan.policyEvaluation) {
+      try {
+        jobLogger.info({ plan }, 'Queueing automatic policy evaluation');
+        const queueService = getQueueService();
+        await queueService.addJob(
+          QUEUE_NAMES.POLICY_EVALUATION,
+          JOB_NAMES.EVALUATE_POLICY,
+          {
+            contractId,
+            tenantId,
+            triggeredBy: 'pipeline',
+            traceId: trace.traceId,
+          },
+          {
+            priority: 30,
+            delay: 1500,
+            jobId: `policy-${contractId}`,
+          }
+        );
+        jobLogger.info('Policy evaluation job queued successfully');
+      } catch (policyError) {
+        jobLogger.warn({ error: policyError }, 'Failed to queue policy evaluation, contract still processed successfully');
+      }
+    }
+
     // 9. RAG indexing is now handled by the queued RAG_INDEXING worker (queued above).
     // Removed duplicate inline reindex here to avoid double-indexing.
 

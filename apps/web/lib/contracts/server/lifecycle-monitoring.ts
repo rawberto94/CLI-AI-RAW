@@ -1037,6 +1037,17 @@ export async function postContractHealthScoreSync(
         endDate: true,
         artifacts: { select: { type: true, data: true } } as any,
         contractMetadata: { select: { riskScore: true, complianceStatus: true, dataQualityScore: true } } as any,
+        policyEvaluations: {
+          take: 1,
+          orderBy: { createdAt: 'desc' },
+          select: {
+            status: true,
+            policyScore: true,
+            criticalCount: true,
+            highCount: true,
+            needsReviewCount: true,
+          },
+        } as any,
       },
     });
 
@@ -1047,6 +1058,9 @@ export async function postContractHealthScoreSync(
       try {
         const artifacts = contract.artifacts || [];
         const metadata = contract.contractMetadata;
+        const policyEval = (contract as any).policyEvaluations?.[0] as
+          | { status: string; policyScore: number; criticalCount: number; highCount: number; needsReviewCount: number }
+          | undefined;
 
         const scores = {
           risk: 70,
@@ -1055,6 +1069,7 @@ export async function postContractHealthScoreSync(
           operational: 70,
           renewalReadiness: 50,
           documentQuality: 50,
+          policy: 70 as number | null,
         };
         const factors: Array<{ name: string; score: number; weight: number }> = [];
         const strengths: string[] = [];
@@ -1064,14 +1079,38 @@ export async function postContractHealthScoreSync(
         const riskArtifact = artifacts.find((artifact) => artifact.type === 'RISK');
         if (riskArtifact) {
           const riskData = riskArtifact.data as any;
-          const overallRisk = riskData?.overallRiskLevel || 'MEDIUM';
-          scores.risk = overallRisk === 'LOW' ? 85 : overallRisk === 'HIGH' ? 40 : 65;
-          if (overallRisk === 'LOW') {
+          // Prefer numeric riskScore (higher = riskier) → invert to health score
+          if (typeof riskData?.riskScore === 'number' && Number.isFinite(riskData.riskScore)) {
+            const clamped = Math.min(100, Math.max(0, riskData.riskScore));
+            scores.risk = Math.round(100 - clamped);
+          } else {
+            const overallRiskRaw = String(riskData?.overallRisk ?? riskData?.overallRiskLevel ?? 'MEDIUM');
+            const overallRisk = overallRiskRaw.toUpperCase();
+            scores.risk =
+              overallRisk === 'LOW' ? 85 : overallRisk === 'HIGH' || overallRisk === 'CRITICAL' ? 40 : 65;
+          }
+          if (scores.risk >= 80) {
             strengths.push('Low overall risk profile');
-          } else if (overallRisk === 'HIGH') {
+          } else if (scores.risk < 50) {
             weaknesses.push('High risk factors identified');
           }
-          factors.push({ name: 'Risk Analysis', score: scores.risk, weight: 0.25 });
+          factors.push({ name: 'Risk Analysis', score: scores.risk, weight: 0.20 });
+        }
+
+        // Policy compliance factor — excluded when INDETERMINATE or missing
+        if (policyEval && policyEval.status !== 'INDETERMINATE') {
+          scores.policy = typeof policyEval.policyScore === 'number' ? policyEval.policyScore : 70;
+          factors.push({ name: 'Policy Compliance', score: scores.policy, weight: 0.15 });
+          if (policyEval.criticalCount > 0) {
+            weaknesses.push(`${policyEval.criticalCount} critical policy violation(s)`);
+          } else if (policyEval.status === 'PASS') {
+            strengths.push('Fully compliant with policy pack');
+          }
+          if (policyEval.needsReviewCount > 0) {
+            opportunities.push('Review inconclusive policy checks');
+          }
+        } else {
+          scores.policy = null;
         }
 
         const complianceArtifact = artifacts.find((artifact) => artifact.type === 'COMPLIANCE');
@@ -1084,14 +1123,14 @@ export async function postContractHealthScoreSync(
             weaknesses.push('Compliance gaps detected');
             opportunities.push('Review compliance issues');
           }
-          factors.push({ name: 'Compliance Analysis', score: scores.compliance, weight: 0.20 });
+          factors.push({ name: 'Compliance Analysis', score: scores.compliance, weight: 0.15 });
         } else if (metadata?.complianceStatus) {
           scores.compliance = metadata.complianceStatus === 'compliant'
             ? 90
             : metadata.complianceStatus === 'non-compliant'
               ? 30
               : 60;
-          factors.push({ name: 'Compliance Status', score: scores.compliance, weight: 0.20 });
+          factors.push({ name: 'Compliance Status', score: scores.compliance, weight: 0.15 });
         }
 
         const artifactCount = artifacts.length;
@@ -1124,13 +1163,10 @@ export async function postContractHealthScoreSync(
           factors.push({ name: 'Renewal Timeline', score: scores.renewalReadiness, weight: 0.10 });
         }
 
+        // Weighted mean over *present* factors only (renormalize) — fixes unconditional weights bug
+        const totalWeight = factors.reduce((s, f) => s + f.weight, 0) || 1;
         const overallScore = Math.round(
-          scores.risk * 0.25
-            + scores.compliance * 0.20
-            + scores.financial * 0.20
-            + scores.operational * 0.15
-            + scores.renewalReadiness * 0.10
-            + scores.documentQuality * 0.10,
+          factors.reduce((s, f) => s + f.score * f.weight, 0) / totalWeight,
         );
 
         const alertLevel = overallScore < 40
@@ -1152,17 +1188,36 @@ export async function postContractHealthScoreSync(
         if (scores.renewalReadiness < 50) {
           activeAlerts.push({ type: 'RENEWAL', message: 'Renewal attention needed', severity: 'medium' });
         }
+        if (policyEval && (policyEval.status === 'FAIL' || policyEval.status === 'REVIEW')) {
+          activeAlerts.push({
+            type: 'POLICY',
+            message:
+              policyEval.status === 'FAIL'
+                ? `${policyEval.criticalCount} critical policy violation(s)`
+                : 'Policy review required',
+            severity: policyEval.status === 'FAIL' ? 'critical' : 'high',
+          });
+        }
+
+        const policyScoreSql = scores.policy;
+        const policyViolationCount =
+          policyEval && policyEval.status !== 'INDETERMINATE'
+            ? (policyEval.criticalCount || 0) + (policyEval.highCount || 0)
+            : 0;
+        const policyStatusSql = policyEval?.status ?? null;
 
         const id = `hs_${contract.id}`;
         await prisma.$executeRaw`
           INSERT INTO contract_health_scores (
             id, contract_id, tenant_id, overall_score, risk_score, compliance_score,
             financial_score, operational_score, renewal_readiness, document_quality,
+            policy_score, policy_violation_count, policy_status,
             factors, strengths, weaknesses, opportunities, score_change, trend_direction,
             trend_history, alert_level, active_alerts, alert_count, calculated_at, created_at, updated_at
           ) VALUES (
             ${id}, ${contract.id}, ${contract.tenantId}, ${overallScore}, ${scores.risk}, ${scores.compliance},
             ${scores.financial}, ${scores.operational}, ${scores.renewalReadiness}, ${scores.documentQuality},
+            ${policyScoreSql}, ${policyViolationCount}, ${policyStatusSql},
             ${JSON.stringify(factors)}::jsonb, ${JSON.stringify(strengths)}::jsonb, 
             ${JSON.stringify(weaknesses)}::jsonb, ${JSON.stringify(opportunities)}::jsonb,
             0, 'stable', '[]'::jsonb, ${alertLevel}, ${JSON.stringify(activeAlerts)}::jsonb, 
@@ -1176,6 +1231,9 @@ export async function postContractHealthScoreSync(
             operational_score = EXCLUDED.operational_score,
             renewal_readiness = EXCLUDED.renewal_readiness,
             document_quality = EXCLUDED.document_quality,
+            policy_score = EXCLUDED.policy_score,
+            policy_violation_count = EXCLUDED.policy_violation_count,
+            policy_status = EXCLUDED.policy_status,
             factors = EXCLUDED.factors,
             strengths = EXCLUDED.strengths,
             weaknesses = EXCLUDED.weaknesses,

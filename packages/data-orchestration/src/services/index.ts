@@ -686,3 +686,18 @@ export {
   type VisualEdge,
   type LayoutConfig,
 } from './contract-hierarchy.service';
+
+// Policy Pack evaluation engine
+export {
+  evaluatePolicyPack,
+  dryRunPolicyPack,
+  resolvePacksForContract,
+  buildContractFacts,
+  unwrapVal,
+  evaluateOp,
+  scoreFindings,
+  evaluateFieldRules,
+  evaluatePatternRules,
+  rulesFromPlaybook,
+  importPackFromPlaybook,
+} from './policy';

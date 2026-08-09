@@ -149,6 +149,7 @@ const navigationConfig: NavigationGroupConfig[] = [
         children: [
           { key: 'templates', href: '/templates', icon: FolderKanban, audiences: ['legal'], demo: 'hide' },
           { key: 'playbooks', href: '/playbooks', icon: Gavel, audiences: ['legal'], demo: 'hide' },
+          { key: 'policy-packs', href: '/policy-packs', icon: Shield, audiences: ['legal'], demo: 'hide' },
         ],
       }
     ],

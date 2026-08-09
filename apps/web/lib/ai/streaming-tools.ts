@@ -154,6 +154,31 @@ export const STREAMING_TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
   {
     type: 'function',
     function: {
+      name: 'get_policy_findings',
+      description: 'Get the latest policy pack evaluation and findings for a specific contract (violations, score, status).',
+      parameters: {
+        type: 'object',
+        properties: {
+          contractId: { type: 'string', description: 'Contract ID to inspect' },
+        },
+        required: ['contractId'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_policy_summary',
+      description: 'Portfolio rollup of policy compliance: counts by status, average score, most-violated rules.',
+      parameters: {
+        type: 'object',
+        properties: {},
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
       name: 'get_supplier_info',
       description: 'Get information about a supplier including total contracts, spend, relationship duration, and risk posture.',
       parameters: {
@@ -589,6 +614,10 @@ export async function executeTool(
         return await executeSpendAnalysis(validArgs, tenantId, start);
       case 'get_risk_assessment':
         return await executeRiskAssessment(tenantId, start);
+      case 'get_policy_findings':
+        return await executeGetPolicyFindings(validArgs, tenantId, start);
+      case 'get_policy_summary':
+        return await executeGetPolicySummary(tenantId, start);
       case 'get_supplier_info':
         return await executeSupplierInfo(validArgs, tenantId, start);
       case 'start_workflow':
@@ -1217,6 +1246,74 @@ async function executeRiskAssessment(tenantId: string, start: number): Promise<T
     },
     executionTimeMs: Date.now() - start,
     suggestedActions: [{ label: '🔴 Risk', action: 'navigate:/risk' }],
+  };
+}
+
+// ── Policy findings ───────────────────────────────────────────────────
+
+async function executeGetPolicyFindings(
+  args: Record<string, unknown>,
+  tenantId: string,
+  start: number,
+): Promise<ToolResult> {
+  const contractId = String(args.contractId || '');
+  if (!contractId) {
+    return {
+      toolName: 'get_policy_findings',
+      success: false,
+      error: 'contractId required',
+      executionTimeMs: Date.now() - start,
+    };
+  }
+  const evaluation = await (prisma as any).policyEvaluation.findFirst({
+    where: { contractId, tenantId },
+    orderBy: { createdAt: 'desc' },
+    include: {
+      findings: {
+        where: { status: { not: 'PASS' } },
+        take: 50,
+      },
+      pack: { select: { name: true, version: true, mode: true } },
+    },
+  });
+  return {
+    toolName: 'get_policy_findings',
+    success: true,
+    data: evaluation || { message: 'No policy evaluation yet for this contract' },
+    executionTimeMs: Date.now() - start,
+    suggestedActions: evaluation
+      ? [{ label: 'View contract', action: `navigate:/contracts/${contractId}?tab=policy_check` }]
+      : [],
+  };
+}
+
+async function executeGetPolicySummary(tenantId: string, start: number): Promise<ToolResult> {
+  const recent = await (prisma as any).policyEvaluation.findMany({
+    where: { tenantId },
+    orderBy: { createdAt: 'desc' },
+    take: 500,
+    select: { contractId: true, status: true, policyScore: true, criticalCount: true },
+  }).catch(() => []);
+  const latest = new Map<string, any>();
+  for (const row of recent) {
+    if (!latest.has(row.contractId)) latest.set(row.contractId, row);
+  }
+  const byStatus: Record<string, number> = {};
+  let scoreSum = 0;
+  for (const row of latest.values()) {
+    byStatus[row.status] = (byStatus[row.status] || 0) + 1;
+    scoreSum += row.policyScore || 0;
+  }
+  return {
+    toolName: 'get_policy_summary',
+    success: true,
+    data: {
+      contractsEvaluated: latest.size,
+      byStatus,
+      avgPolicyScore: latest.size ? Math.round(scoreSum / latest.size) : null,
+    },
+    executionTimeMs: Date.now() - start,
+    suggestedActions: [{ label: 'Policy packs', action: 'navigate:/policy-packs' }],
   };
 }
 

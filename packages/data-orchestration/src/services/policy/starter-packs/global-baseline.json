@@ -1,0 +1,153 @@
+{
+  "name": "Global Baseline (buy-side)",
+  "description": "Core buy-side governance checks: liability, indemnity, payment, renewal, assignment, audit rights.",
+  "mode": "advisory",
+  "isDefault": true,
+  "rules": [
+    {
+      "code": "LIAB-001",
+      "title": "Liability cap must be present",
+      "kind": "FIELD",
+      "severity": "CRITICAL",
+      "category": "limitation_of_liability",
+      "assert": { "path": "financial.liabilityCapAmount", "op": "exists", "onMissing": "flag" },
+      "escalateToSemantic": true,
+      "semantic": {
+        "question": "Does the contract include a monetary cap on the supplier's aggregate liability?",
+        "expected": "yes"
+      },
+      "remediation": "Add an aggregate liability cap not exceeding 12 months of fees."
+    },
+    {
+      "code": "LIAB-002",
+      "title": "Liability cap must not exceed 12 months of fees",
+      "kind": "FIELD",
+      "severity": "CRITICAL",
+      "category": "limitation_of_liability",
+      "assert": { "path": "financial.liabilityCapMonths", "op": "lte", "value": 12, "onMissing": "escalate" },
+      "escalateToSemantic": true,
+      "semantic": {
+        "question": "Is the supplier's aggregate liability capped at or below 12 months of fees?",
+        "expected": "yes"
+      }
+    },
+    {
+      "code": "RF-UNLIMITED-LIAB",
+      "title": "No unlimited liability language",
+      "kind": "PATTERN",
+      "severity": "CRITICAL",
+      "category": "limitation_of_liability",
+      "match": {
+        "mode": "must_not_match",
+        "patterns": ["unlimited liability", "without limitation as to amount", "liability shall be unlimited"],
+        "isRegex": false,
+        "caseSensitive": false
+      },
+      "remediation": "Replace unlimited liability with a capped liability clause."
+    },
+    {
+      "code": "RF-UNLIMITED-INDEM",
+      "title": "No unlimited indemnification",
+      "kind": "PATTERN",
+      "severity": "CRITICAL",
+      "category": "indemnification",
+      "match": {
+        "mode": "must_not_match",
+        "patterns": ["indemnify.*without limitation", "unlimited indemnification", "fully indemnify and hold harmless without limit"],
+        "isRegex": true,
+        "caseSensitive": false
+      }
+    },
+    {
+      "code": "TERM-001",
+      "title": "Termination for convenience notice >= 30 days",
+      "kind": "FIELD",
+      "severity": "HIGH",
+      "category": "termination",
+      "assert": { "path": "renewal.noticePeriodDays", "op": "gte", "value": 30, "onMissing": "escalate" },
+      "escalateToSemantic": true,
+      "semantic": {
+        "question": "Can the customer terminate for convenience with at least 30 days notice?",
+        "expected": "yes"
+      }
+    },
+    {
+      "code": "PAY-001",
+      "title": "Payment terms must not exceed 60 days",
+      "kind": "FIELD",
+      "severity": "HIGH",
+      "category": "payment",
+      "assert": { "path": "financial.paymentTermsDays", "op": "lte", "value": 60, "onMissing": "flag" },
+      "remediation": "Negotiate payment terms of Net 30 or Net 45; max Net 60."
+    },
+    {
+      "code": "REN-001",
+      "title": "No auto-renewal without notice window",
+      "kind": "FIELD",
+      "severity": "HIGH",
+      "category": "renewal",
+      "assert": { "path": "renewal.autoRenewal", "op": "eq", "value": false, "onMissing": "pass" },
+      "escalateToSemantic": true,
+      "semantic": {
+        "question": "If the contract auto-renews, is there a clear customer notice window to opt out?",
+        "expected": "yes"
+      }
+    },
+    {
+      "code": "GOV-001",
+      "title": "Governing law must be specified",
+      "kind": "FIELD",
+      "severity": "MEDIUM",
+      "category": "dispute_resolution",
+      "assert": { "path": "overview.governingLaw", "op": "exists", "onMissing": "flag" }
+    },
+    {
+      "code": "RF-ASSIGN-FREE",
+      "title": "Assignment requires consent",
+      "kind": "PATTERN",
+      "severity": "MEDIUM",
+      "category": "assignment",
+      "match": {
+        "mode": "must_match",
+        "patterns": ["shall not assign", "may not assign", "assignment.*prior written consent", "not assignable"],
+        "isRegex": true,
+        "caseSensitive": false
+      },
+      "remediation": "Add assignment restriction requiring prior written consent."
+    },
+    {
+      "code": "RF-AUDIT",
+      "title": "Audit rights present",
+      "kind": "PATTERN",
+      "severity": "MEDIUM",
+      "category": "compliance",
+      "match": {
+        "mode": "must_match",
+        "patterns": ["audit rights", "right to audit", "books and records", "inspect.*records"],
+        "isRegex": true,
+        "caseSensitive": false
+      }
+    },
+    {
+      "code": "RF-CONF",
+      "title": "Confidentiality clause present",
+      "kind": "PATTERN",
+      "severity": "MEDIUM",
+      "category": "confidentiality",
+      "match": {
+        "mode": "must_match",
+        "patterns": ["confidential information", "non-disclosure", "keep confidential"],
+        "isRegex": false,
+        "caseSensitive": false
+      }
+    },
+    {
+      "code": "CLAUSE-LIAB",
+      "title": "Limitation of liability clause present",
+      "kind": "FIELD",
+      "severity": "HIGH",
+      "category": "limitation_of_liability",
+      "assert": { "path": "clauses.present.limitation_of_liability", "op": "eq", "value": true, "onMissing": "flag" }
+    }
+  ]
+}

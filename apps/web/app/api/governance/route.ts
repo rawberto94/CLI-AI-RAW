@@ -73,6 +73,53 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
     }
   }
 
+  // Unwaived policy findings → governance risk flags
+  try {
+    const policyFindings = await (prisma as any).policyFinding.findMany({
+      where: {
+        tenantId,
+        status: { in: ['VIOLATION', 'INCONSISTENCY', 'MISSING'] },
+        severity: { in: ['CRITICAL', 'BLOCKER', 'HIGH', 'critical', 'blocker', 'high'] },
+        waiverId: null,
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+      select: {
+        id: true,
+        contractId: true,
+        ruleCode: true,
+        title: true,
+        detail: true,
+        severity: true,
+        status: true,
+      },
+    });
+    const contractTitles = new Map(
+      contractsWithRisk.map((c) => [
+        c.id,
+        c.contractTitle || c.originalName || c.fileName || null,
+      ]),
+    );
+    for (const f of policyFindings) {
+      const sev = String(f.severity || 'high').toLowerCase();
+      const severity = sev === 'blocker' ? 'critical' : sev;
+      riskFlags.push({
+        id: `policy-${f.id}`,
+        type: 'policy_violation',
+        severity,
+        title: f.title || f.ruleCode,
+        contract: contractTitles.get(f.contractId) || null,
+        contractId: f.contractId,
+        status: 'open',
+        description: f.detail,
+      });
+      totalViolations++;
+      if (severity === 'critical') criticalCount++;
+    }
+  } catch {
+    // policy tables may be absent on older deploys
+  }
+
   // Calculate compliance score based on risk analysis
   const totalContracts = contractsWithRisk.length;
   const contractsWithIssues = riskFlags.length;

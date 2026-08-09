@@ -557,6 +557,11 @@ model Contract {
   // Optimistic Locking for Metadata
   metadataVersion               Int       @default(1) // Version number for optimistic locking on metadata updates
 
+  // Policy pack override (upload-time selection; null = auto-resolve)
+  policyPackId        String?                  @map("policy_pack_id")
+  policyPack          PolicyPack?              @relation(fields: [policyPackId], references: [id], onDelete: SetNull)
+  policyEvaluations   PolicyEvaluation[]
+
   artifacts           Artifact[]
   clauses             Clause[]
   client              Party?                   @relation("ClientContracts", fields: [clientId], references: [id])
@@ -637,6 +642,7 @@ model Contract {
   @@index([viewCount(sort: Desc)])
   @@index([lastViewedAt(sort: Desc)])
   @@index([checksum])
+  @@index([policyPackId])
   // Soft delete & full-text search indexes
   @@index([tenantId, isDeleted])
   @@index([tenantId, isDeleted, status])
@@ -2109,6 +2115,7 @@ enum ArtifactType {
   INTELLIGENCE_BRIEF
   NEGOTIATION_PLAYBOOK
   CONTRACT_COMPARISON
+  POLICY_CHECK
 }
 
 enum RunStatus {
@@ -4278,6 +4285,11 @@ model ContractHealthScore {
   renewalReadiness Int @default(0) @map("renewal_readiness") // How ready for renewal
   documentQuality  Int @default(0) @map("document_quality") // Quality of contract doc
 
+  // Policy pack compliance (optional; null when never evaluated)
+  policyScore          Int?    @map("policy_score")
+  policyViolationCount Int     @default(0) @map("policy_violation_count")
+  policyStatus         String? @map("policy_status")
+
   // Score Breakdown
   factors       Json @default("[]") // Detailed factor breakdown
   strengths     Json @default("[]") // Contract strengths
@@ -4733,6 +4745,7 @@ model Playbook {
   fallbackPositions PlaybookFallback[]
   drafts            ContractDraft[]
   reviews           LegalReview[]
+  policyPacks       PolicyPack[]
 
   @@unique([tenantId, name, version])
   @@index([tenantId])
@@ -6453,3 +6466,182 @@ model IntegrationEvent {
   @@index([tenantId, resourceId, id])
   @@map("integration_events")
 }
+
+
+// ============================================================================
+// ============================================================================
+// POLICY PACKS (upload-time governance checks)
+// ============================================================================
+
+model PolicyPack {
+  id          String    @id @default(cuid())
+  tenantId    String    @map("tenant_id")
+  name        String
+  description String?   @db.Text
+  version     Int       @default(1)
+  status      String    @default("draft") // draft | active | archived
+  mode        String    @default("advisory") // advisory | gate
+  /// Optional link to the playbook this pack was derived from
+  playbookId  String?   @map("playbook_id")
+  /// Scoping: which contracts this pack applies to (same shape as PolicyRule.appliesTo)
+  scope       Json      @default("{}")
+  /// Severity penalty weights + thresholds; null = engine defaults
+  scoring     Json      @default("{}")
+  isDefault   Boolean   @default(false) @map("is_default")
+  publishedAt DateTime? @map("published_at")
+  createdBy   String    @map("created_by")
+  updatedBy   String?   @map("updated_by")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  rules       PolicyRule[]
+  evaluations PolicyEvaluation[]
+  playbook    Playbook?  @relation(fields: [playbookId], references: [id], onDelete: SetNull)
+  contracts   Contract[]
+
+  @@unique([tenantId, name, version])
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@index([tenantId, isDefault])
+  @@map("policy_packs")
+}
+
+model PolicyRule {
+  id                 String   @id @default(cuid())
+  packId             String   @map("pack_id")
+  code               String // stable, human-authored: LIAB-001
+  title              String
+  kind               String // FIELD | PATTERN | SEMANTIC
+  severity           String   @default("medium")
+  category           String
+  appliesTo          Json     @default("{}") @map("applies_to")
+  assert             Json? // FIELD rules
+  match              Json? // PATTERN rules
+  semantic           Json? // SEMANTIC rules / escalation question
+  escalateToSemantic Boolean  @default(false) @map("escalate_to_semantic")
+  remediation        String?  @db.Text
+  playbookClauseId   String?  @map("playbook_clause_id")
+  reference          String?
+  sortOrder          Int      @default(0) @map("sort_order")
+  isActive           Boolean  @default(true) @map("is_active")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  pack     PolicyPack      @relation(fields: [packId], references: [id], onDelete: Cascade)
+  findings PolicyFinding[]
+
+  @@unique([packId, code])
+  @@index([packId])
+  @@index([packId, isActive])
+  @@index([category])
+  @@map("policy_rules")
+}
+
+model PolicyEvaluation {
+  id          String @id @default(cuid())
+  tenantId    String @map("tenant_id")
+  contractId  String @map("contract_id")
+  packId      String @map("pack_id")
+  packVersion Int    @map("pack_version")
+
+  status      String // PASS | PASS_WITH_NOTES | REVIEW | FAIL | INDETERMINATE
+  policyScore Int    @map("policy_score") // 0-100, 100 = fully compliant
+  penalty     Int    @default(0) // raw penalty before clamping
+
+  applicableRules Int   @default(0) @map("applicable_rules")
+  evaluatedRules  Int   @default(0) @map("evaluated_rules")
+  coverage        Float @default(0)
+
+  criticalCount    Int @default(0) @map("critical_count")
+  highCount        Int @default(0) @map("high_count")
+  mediumCount      Int @default(0) @map("medium_count")
+  lowCount         Int @default(0) @map("low_count")
+  waivedCount      Int @default(0) @map("waived_count")
+  needsReviewCount Int @default(0) @map("needs_review_count")
+
+  /// sha256(packVersionId + rawTextHash + factsHash) — idempotency key
+  inputsHash     String @map("inputs_hash")
+  /// Which fact paths were resolvable; drives the coverage guard + debugging
+  factsSnapshot  Json   @default("{}") @map("facts_snapshot")
+  scoringVersion String @default("v1") @map("scoring_version")
+
+  llmCalls      Int      @default(0) @map("llm_calls")
+  tokensUsed    Int?     @map("tokens_used")
+  estimatedCost Float?   @map("estimated_cost")
+  durationMs    Int?     @map("duration_ms")
+  triggeredBy   String   @default("pipeline") @map("triggered_by") // pipeline | manual | rerun | backfill | dryrun
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  pack     PolicyPack      @relation(fields: [packId], references: [id], onDelete: Cascade)
+  contract Contract        @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  findings PolicyFinding[]
+
+  @@unique([contractId, packId, inputsHash])
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@index([contractId, createdAt(sort: Desc)])
+  @@index([tenantId, policyScore])
+  @@map("policy_evaluations")
+}
+
+model PolicyFinding {
+  id           String @id @default(cuid())
+  evaluationId String @map("evaluation_id")
+  tenantId     String @map("tenant_id")
+  contractId   String @map("contract_id")
+  ruleId       String @map("rule_id")
+  ruleCode     String @map("rule_code")
+
+  status   String // VIOLATION | INCONSISTENCY | MISSING | INSUFFICIENT_EVIDENCE | PASS
+  severity String
+  category String
+  title    String
+  detail   String @db.Text
+  /// [{ quote, startOffset, endOffset, page?, artifactType? }]
+  evidence Json   @default("[]")
+  /// Deterministic score contribution — every point on the dashboard is traceable
+  penaltyContribution Int   @default(0) @map("penalty_contribution")
+  confidence          Float @default(1)
+  method              String // field | pattern | semantic
+  observedValue       Json?  @map("observed_value")
+  expectedValue       Json?  @map("expected_value")
+  remediation         String? @db.Text
+  /// AiDecision row for semantic verdicts — inspectability + revert
+  aiDecisionId String? @map("ai_decision_id")
+
+  waiverId  String?  @map("waiver_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  evaluation PolicyEvaluation @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+  rule       PolicyRule       @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  waiver     PolicyWaiver?    @relation(fields: [waiverId], references: [id], onDelete: SetNull)
+
+  @@index([evaluationId])
+  @@index([tenantId, severity])
+  @@index([contractId, status])
+  @@index([ruleCode])
+  @@map("policy_findings")
+}
+
+model PolicyWaiver {
+  id          String    @id @default(cuid())
+  tenantId    String    @map("tenant_id")
+  contractId  String    @map("contract_id")
+  ruleCode    String    @map("rule_code")
+  scope       String    @default("contract") // contract | rule_global
+  reason      String    @db.Text
+  requestedBy String    @map("requested_by")
+  approvedBy  String?   @map("approved_by")
+  status      String    @default("pending") // pending | approved | rejected | expired
+  expiresAt   DateTime? @map("expires_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  findings PolicyFinding[]
+
+  @@unique([tenantId, contractId, ruleCode])
+  @@index([tenantId, status])
+  @@index([contractId])
+  @@map("policy_waivers")
+}
+

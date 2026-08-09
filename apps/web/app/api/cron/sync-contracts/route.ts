@@ -197,6 +197,38 @@ export const POST = withCronHandler(async (request, ctx) => {
         else if (overallScore < 60) alertLevel = 'high';
         else if (overallScore < 75) alertLevel = 'medium';
 
+        // Preserve policy_* columns if already set by policy evaluation worker.
+        // Cron must not wipe them to null on every sync.
+        const latestPolicy = await (prisma as any).policyEvaluation
+          .findFirst({
+            where: { contractId: contract.id, tenantId },
+            orderBy: { createdAt: 'desc' },
+            select: {
+              policyScore: true,
+              status: true,
+              criticalCount: true,
+              highCount: true,
+            },
+          })
+          .catch(() => null);
+
+        const policyFields =
+          latestPolicy && latestPolicy.status !== 'INDETERMINATE'
+            ? {
+                policyScore: latestPolicy.policyScore,
+                policyViolationCount:
+                  (latestPolicy.criticalCount || 0) + (latestPolicy.highCount || 0),
+                policyStatus: latestPolicy.status,
+              }
+            : existing
+              ? {
+                  // Keep existing policy columns when no new evaluation
+                  policyScore: (existing as any).policyScore ?? undefined,
+                  policyViolationCount: (existing as any).policyViolationCount ?? undefined,
+                  policyStatus: (existing as any).policyStatus ?? undefined,
+                }
+              : {};
+
         await prisma.contractHealthScore.upsert({
           where: { contractId: contract.id },
           update: {
@@ -209,6 +241,7 @@ export const POST = withCronHandler(async (request, ctx) => {
             alertLevel,
             calculatedAt: now,
             updatedAt: now,
+            ...policyFields,
           },
           create: {
             contractId: contract.id,
@@ -221,6 +254,7 @@ export const POST = withCronHandler(async (request, ctx) => {
             trendDirection: trend,
             alertLevel,
             calculatedAt: now,
+            ...policyFields,
           },
         });
 

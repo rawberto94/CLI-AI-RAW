@@ -64,6 +64,34 @@ export async function applyContractChangeSideEffects(
     realtimePublished: false,
   };
 
+  // Re-run policy evaluation when facts change (idempotent via inputsHash)
+  try {
+    if (process.env.AUTO_POLICY_EVALUATION === 'true' && process.env.POLICY_PACKS_ENABLED !== 'false') {
+      const { getQueueService, QUEUE_NAMES, JOB_NAMES } = await import('@repo/utils/queue/contract-queue');
+      const qs = getQueueService();
+      await qs.addJob(
+        QUEUE_NAMES.POLICY_EVALUATION,
+        JOB_NAMES.EVALUATE_POLICY,
+        {
+          contractId,
+          tenantId,
+          triggeredBy: 'rerun',
+        },
+        {
+          priority: 40,
+          delay: 2000,
+          jobId: `policy-rerun-${contractId}-${Date.now()}`,
+        },
+      );
+    }
+  } catch (error) {
+    logger.warn('Policy re-evaluation enqueue failed', {
+      error: (error as Error).message,
+      contractId,
+      source,
+    });
+  }
+
   // 1. Invalidate caches
   try {
     contractCache.invalidate(`contract:${tenantId}:${contractId}`);

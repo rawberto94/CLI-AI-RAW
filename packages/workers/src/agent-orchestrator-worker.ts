@@ -200,7 +200,7 @@ export async function runAgentOrchestrationJob(
       
       // Generate goal-based plan
       const allArtifactTypes = ['OVERVIEW', 'CLAUSES', 'OBLIGATIONS', 'FINANCIAL', 'PRICING_ANALYSIS', 
-                                'RISK', 'COMPLIANCE', 'AMENDMENTS', 'NEGOTIATION_POINTS', 'RENEWAL'];
+                                'RISK', 'COMPLIANCE', 'POLICY_CHECK', 'AMENDMENTS', 'NEGOTIATION_POINTS', 'RENEWAL'];
       goalPlan = reasoner.generateGoalPlan(userIntent, allArtifactTypes);
       
       logger.info({

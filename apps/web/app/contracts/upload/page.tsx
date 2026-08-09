@@ -27,6 +27,7 @@ import { usePermissions } from '@/hooks/usePermissions'
 
 import { UploadDropZone } from './components'
 import { UploadMetadataReviewDialog } from './components'
+import { PolicyPackSelect } from '@/components/contracts/PolicyPackSelect'
 import { generateUUID, humanizeUploadError } from '@/lib/utils'
 
 // ── Types & Utilities ────────────────────────────────────────────────────────
@@ -60,6 +61,7 @@ interface UploadMetadataReviewItem {
 const UPLOAD_CONCURRENCY = 4
 const OCR_MODEL = 'azure-ch'
 const PROCESSING_MODE = 'standard'
+// Policy pack selection is sticky via PolicyPackSelect sessionStorage
 
 /** Effective per-file progress (0-100) for the aggregate bar. Uploading uses
  *  real byte-level progress weighted to the upload phase; processing sits at
@@ -92,6 +94,7 @@ export default function UploadPage() {
   const [reviewQueue, setReviewQueue] = useState<UploadMetadataReviewItem[]>([])
   const [activeReview, setActiveReview] = useState<UploadMetadataReviewItem | null>(null)
   const [skipAllMetadataReview, setSkipAllMetadataReview] = useState(false)
+  const [policyPackId, setPolicyPackId] = useState<string | null>(null)
 
   // Clear stale HMR state on mount + cleanup on unmount
   useEffect(() => {
@@ -176,6 +179,9 @@ export default function UploadPage() {
     formData.append('dataMode', dataMode)
     formData.append('ocrMode', OCR_MODEL)
     formData.append('processingMode', PROCESSING_MODE)
+    if (policyPackId) {
+      formData.append('policyPackId', policyPackId)
+    }
 
     try {
       // Update to uploading with 0% progress
@@ -586,6 +592,9 @@ export default function UploadPage() {
 
       <div className="max-w-4xl mx-auto p-6 space-y-6">
         {/* Drop Zone */}
+        <div className="max-w-sm mb-4">
+          <PolicyPackSelect value={policyPackId} onChange={setPolicyPackId} />
+        </div>
         <UploadDropZone onDrop={onDrop} disabled={isUploading} />
 
         {!isDemo && reviewQueue.length > 0 && !activeReview && !skipAllMetadataReview && (
