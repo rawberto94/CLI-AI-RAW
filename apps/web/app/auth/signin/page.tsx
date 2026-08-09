@@ -83,7 +83,12 @@ function SignInForm() {
   const [ssoLoading, setSsoLoading] = useState<string | null>(null);
   const [showWelcome, setShowWelcome] = useState(false);
   const [providers, setProviders] = useState<string[]>(["credentials"]);
-  const [ssoProviders, setSsoProviders] = useState<Array<{ id: string; name: string; protocol: string }>>([]);
+  const [ssoProviders, setSsoProviders] = useState<
+    Array<{ id: string; name: string; protocol: string; loginUrl?: string; global?: boolean; enabled?: boolean }>
+  >([]);
+  // Optional tenant/org id for tenant-scoped SAML/OIDC (query ?tenantId= or typed)
+  const urlTenantId = searchParams.get("tenantId") || searchParams.get("tenant") || "";
+  const [orgTenantId, setOrgTenantId] = useState(urlTenantId);
 
   useEffect(() => {
     fetch("/api/auth/providers-list")
@@ -93,15 +98,18 @@ function SignInForm() {
       })
       .then((data) => setProviders(data.providers || ["credentials"]))
       .catch(() => setProviders(["credentials"]));
+  }, []);
 
-    fetch("/api/auth/sso-providers")
+  useEffect(() => {
+    const qs = orgTenantId ? `?tenantId=${encodeURIComponent(orgTenantId)}` : "";
+    fetch(`/api/auth/sso-providers${qs}`)
       .then((res) => {
         if (!res.ok) throw new Error("Not OK");
         return res.json();
       })
       .then((data) => setSsoProviders(data.data?.providers || []))
       .catch(() => setSsoProviders([]));
-  }, []);
+  }, [orgTenantId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -300,9 +308,9 @@ function SignInForm() {
                       : "Continue with GitHub"}
                   </Button>
                 )}
-                {/* Dynamic SAML/OIDC providers from admin config */}
+                {/* Dynamic tenant SAML/OIDC providers (require org/tenant id) */}
                 {ssoProviders
-                  .filter((p) => !providers.includes(p.id))
+                  .filter((p) => !p.global && !providers.includes(p.id) && p.enabled !== false)
                   .map((provider) => (
                     <Button
                       key={provider.id}
@@ -310,12 +318,23 @@ function SignInForm() {
                       variant="outline"
                       className="w-full h-10 justify-center gap-2.5 rounded-lg text-sm font-medium"
                       onClick={() => {
-                        if (provider.protocol === 'saml') {
-                          // SAML: redirect to IdP SSO URL (simplified)
-                          window.location.href = `/api/auth/saml/init?id=${provider.id}`;
-                        } else {
-                          handleSSOSignIn(provider.id);
+                        setSsoLoading(provider.id);
+                        if (provider.loginUrl) {
+                          const url = new URL(provider.loginUrl, window.location.origin);
+                          url.searchParams.set("callbackUrl", callbackUrl);
+                          window.location.href = url.toString();
+                          return;
                         }
+                        if (!orgTenantId) {
+                          setError("Enter your organization ID to use this SSO provider.");
+                          setSsoLoading(null);
+                          return;
+                        }
+                        const path =
+                          provider.protocol === "saml"
+                            ? `/api/auth/saml/init?tenantId=${encodeURIComponent(orgTenantId)}&id=${encodeURIComponent(provider.id)}&callbackUrl=${encodeURIComponent(callbackUrl)}`
+                            : `/api/auth/oidc/init?tenantId=${encodeURIComponent(orgTenantId)}&id=${encodeURIComponent(provider.id)}&callbackUrl=${encodeURIComponent(callbackUrl)}`;
+                        window.location.href = path;
                       }}
                       disabled={ssoLoading !== null}
                     >
@@ -326,6 +345,22 @@ function SignInForm() {
                     </Button>
                   ))}
               </div>
+
+              {/* Optional org id for tenant-scoped SSO when not in URL */}
+              {ssoProviders.some((p) => !p.global) && !urlTenantId && (
+                <div className="mt-3">
+                  <Label htmlFor="orgTenantId" className="text-xs text-slate-500">
+                    Organization ID (for company SSO)
+                  </Label>
+                  <Input
+                    id="orgTenantId"
+                    value={orgTenantId}
+                    onChange={(e) => setOrgTenantId(e.target.value.trim())}
+                    placeholder="tenant-uuid"
+                    className="mt-1 h-9 text-sm"
+                  />
+                </div>
+              )}
 
               <div className="relative my-6">
                 <div className="absolute inset-0 flex items-center">
