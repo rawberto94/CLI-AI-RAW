@@ -1,4 +1,4 @@
-import { isTenantAdminRole, normalizeRole } from '@/lib/permissions';
+import { isTenantAdminRole, normalizeRole } from '@/lib/permissions-shared';
 
 export type NavigationAudience = 'all' | 'operator' | 'legal' | 'commercial' | 'oversight' | 'admin';
 

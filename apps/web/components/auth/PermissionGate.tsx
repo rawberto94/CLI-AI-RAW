@@ -7,7 +7,7 @@
 
 import type { ReactNode } from 'react';
 import { usePermissions } from '@/hooks/usePermissions';
-import type { RbacRole } from '@/lib/permissions';
+import type { RbacRole } from '@/lib/permissions-shared';
 
 export interface PermissionGateProps {
   /** Single permission required */

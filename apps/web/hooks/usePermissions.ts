@@ -15,7 +15,7 @@ import {
   normalizeRole,
   roleHasAnyPermission,
   type RbacRole,
-} from '@/lib/permissions';
+} from '@/lib/permissions-shared';
 
 export function usePermissions() {
   const { data: session, status } = useSession();
