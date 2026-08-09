@@ -55,27 +55,27 @@ export class SectionErrorBoundary extends Component<
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <Card className="border-red-200 bg-red-50/50">
-            <CardContent className="py-6 text-center">
-              <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-red-100 mb-3">
+          <Card className="overflow-hidden rounded-xl border border-red-200 bg-red-50/40 shadow-sm">
+            <CardContent className="py-7 text-center">
+              <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-full bg-red-100">
                 <AlertTriangle className="h-5 w-5 text-red-600" />
               </div>
-              <h4 className="text-sm font-semibold text-red-800 mb-1">
+              <h4 className="mb-1 text-sm font-semibold leading-5 text-red-800">
                 {this.props.sectionName 
                   ? `Failed to load ${this.props.sectionName}`
                   : 'Something went wrong'
                 }
               </h4>
-              <p className="text-xs text-red-600 mb-4 max-w-xs mx-auto">
+              <p className="mx-auto mb-4 max-w-xs text-xs font-medium leading-4 text-red-600">
                 This section encountered an error but the rest of the page is still available.
               </p>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={this.handleReset}
-                className="border-red-200 text-red-700 hover:bg-red-100"
+                className="h-8 border-red-200 text-xs font-medium text-red-700 hover:bg-red-100"
               >
-                <RefreshCw className="h-4 w-4 mr-1.5" />
+                <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
                 Try again
               </Button>
             </CardContent>

@@ -14,6 +14,7 @@ import {
   Clock,
   ArrowRight as _ArrowRight,
 } from 'lucide-react'
+import { detailUi } from './detail-ui'
 
 interface TimelineEvent {
   key: string
@@ -119,14 +120,14 @@ export const ContractTimeline = memo(function ContractTimeline({
     : 0
   
   return (
-    <Card className={cn("border-slate-200", className)}>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+    <Card className={cn(detailUi.card, className)}>
+      <CardHeader className={detailUi.cardHeader}>
+        <CardTitle className={detailUi.cardTitle}>
           <Clock className="h-4 w-4 text-violet-500" />
           Contract Lifecycle
         </CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className={detailUi.cardContent}>
         <div className="relative">
           {/* Progress Line */}
           <div className="absolute left-4 top-4 bottom-4 w-0.5 bg-slate-200">
@@ -139,7 +140,7 @@ export const ContractTimeline = memo(function ContractTimeline({
           </div>
           
           {/* Events */}
-          <div className="space-y-4">
+          <div className="space-y-3">
             {events.map((event, idx) => {
               const colorMap: Record<string, string> = {
                 blue: 'bg-violet-100 text-violet-600 border-violet-200',
@@ -150,11 +151,11 @@ export const ContractTimeline = memo(function ContractTimeline({
               }
               
               const statusIcon = {
-                completed: <CheckCircle2 className="h-3 w-3 text-violet-500" />,
+                completed: <CheckCircle2 className="h-3.5 w-3.5 text-violet-500" />,
                 current: <div className="w-2 h-2 bg-violet-500 rounded-full animate-pulse" />,
                 upcoming: <div className="w-2 h-2 bg-slate-300 rounded-full" />,
                 warning: <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse" />,
-                missed: <AlertTriangle className="h-3 w-3 text-red-500" />,
+                missed: <AlertTriangle className="h-3.5 w-3.5 text-red-500" />,
               }
               
               const daysInfo = event.date 
@@ -171,29 +172,29 @@ export const ContractTimeline = memo(function ContractTimeline({
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: idx * 0.1 }}
-                  className="relative flex items-start gap-4 pl-10"
+                  className="relative flex items-start gap-4 pl-11"
                 >
                   {/* Icon */}
                   <div className={cn(
-                    "absolute left-0 w-8 h-8 rounded-full flex items-center justify-center border",
+                    "absolute left-0 w-8 h-8 rounded-full flex items-center justify-center border shadow-sm bg-white",
                     colorMap[event.color]
                   )}>
                     {event.icon}
                   </div>
                   
                   {/* Content */}
-                  <div className="flex-1 min-w-0 pt-0.5">
-                    <div className="flex items-center gap-2 mb-0.5">
-                      <span className="text-sm font-medium text-slate-800">{event.label}</span>
+                  <div className={cn(detailUi.tileRow, 'flex-1 min-w-0 flex-col items-start gap-1 py-2.5')}>
+                    <div className="flex w-full items-center gap-2">
+                      <span className={detailUi.fieldValue}>{event.label}</span>
                       {statusIcon[event.status]}
                     </div>
-                    <div className="flex items-center gap-2 text-xs">
-                      <span className="text-slate-600">
+                    <div className="flex flex-wrap items-center gap-2 text-xs leading-4">
+                      <span className="font-medium text-slate-500">
                         {event.date ? format(event.date, 'MMM d, yyyy') : '—'}
                       </span>
                       {daysInfo && (
                         <span className={cn(
-                          "px-1.5 py-0.5 rounded",
+                          "rounded-full px-1.5 py-0.5 font-medium",
                           event.status === 'warning' || event.status === 'missed'
                             ? 'bg-amber-100 text-amber-700'
                             : event.status === 'completed'

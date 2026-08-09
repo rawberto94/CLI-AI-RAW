@@ -1035,97 +1035,137 @@ export function AgentApprovalQueue({
     <div className={`space-y-4 ${className}`} role="main" aria-label="Agent Approval Queue">
       {/* SSE Exhaustion Banner */}
       {isReconnectExhausted && (
-        <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-center justify-between" role="alert">
-          <div className="flex items-center gap-2 text-red-700 text-sm">
+        <div
+          className="flex items-center justify-between gap-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5"
+          role="alert"
+        >
+          <div className="flex items-center gap-2 text-sm text-rose-700">
             <WifiOff className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
             <span>Real-time connection lost. Updates may be delayed.</span>
           </div>
-          <Button size="sm" variant="outline" onClick={sseReconnect} className="text-red-700 border-red-300 hover:bg-red-100" aria-label="Reconnect to real-time updates">
-            <RotateCcw className="h-3 w-3 mr-1" />
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={sseReconnect}
+            className="h-8 rounded-lg border-rose-200 text-rose-700 hover:bg-rose-100"
+            aria-label="Reconnect to real-time updates"
+          >
+            <RotateCcw className="mr-1 h-3 w-3" />
             Reconnect
           </Button>
         </div>
       )}
 
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h2 className="text-xl font-semibold text-gray-900">Agent Approval Queue</h2>
-          {awaitingCount > 0 && (
-            <p className="text-sm text-yellow-600 mt-1" aria-live="polite">
-              {awaitingCount} item{awaitingCount !== 1 ? 's' : ''} awaiting your approval
-              {fieldWrites.length > 0
-                ? ` (${fieldWrites.length} field change${fieldWrites.length !== 1 ? 's' : ''})`
-                : ''}
-            </p>
-          )}
+      {/* Toolbar */}
+      <div className="flex flex-col gap-3 rounded-xl border border-slate-200/90 bg-slate-50/70 p-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-sm font-semibold text-slate-900">Queue</p>
+            {awaitingCount > 0 ? (
+              <span
+                className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-800"
+                aria-live="polite"
+              >
+                {awaitingCount} awaiting
+                {fieldWrites.length > 0 ? ` · ${fieldWrites.length} field` : ''}
+              </span>
+            ) : (
+              <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
+                Clear
+              </span>
+            )}
+          </div>
+          <p className="mt-0.5 text-xs text-slate-500">
+            Review goals and field-change proposals before agents write
+          </p>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
-          {/* Search */}
+        <div className="flex flex-wrap items-center gap-2">
           <div className="relative">
-            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" aria-hidden="true" />
+            <Search
+              className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400"
+              aria-hidden="true"
+            />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search goals..."
-              className="pl-8 pr-3 py-1.5 border rounded-md text-sm w-48 focus:ring-2 focus:ring-violet-400 focus:outline-none"
+              placeholder="Search…"
+              className="h-8 w-44 rounded-lg border border-slate-200 bg-white py-1.5 pl-8 pr-3 text-sm focus:border-violet-300 focus:outline-none focus:ring-2 focus:ring-violet-100"
               aria-label="Search goals"
             />
           </div>
 
-          {/* Type Filter */}
-          <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="px-3 py-1.5 border rounded-md text-sm" aria-label="Filter by goal type">
-            <option value="all">All Types</option>
-            {goalTypes.map(t => (
-              <option key={t} value={t}>{t.replace(/_/g, ' ')}</option>
+          <select
+            value={typeFilter}
+            onChange={(e) => setTypeFilter(e.target.value)}
+            className="h-8 rounded-lg border border-slate-200 bg-white px-2.5 text-sm"
+            aria-label="Filter by goal type"
+          >
+            <option value="all">All types</option>
+            {goalTypes.map((t) => (
+              <option key={t} value={t}>
+                {t.replace(/_/g, ' ')}
+              </option>
             ))}
           </select>
 
-          {/* Status Filter */}
-          <select value={filter} onChange={(e) => setFilter(e.target.value as 'all' | 'awaiting')} className="px-3 py-1.5 border rounded-md text-sm" aria-label="Filter by status">
-            <option value="awaiting">Awaiting Approval</option>
-            <option value="all">All Goals</option>
+          <select
+            value={filter}
+            onChange={(e) => setFilter(e.target.value as 'all' | 'awaiting')}
+            className="h-8 rounded-lg border border-slate-200 bg-white px-2.5 text-sm"
+            aria-label="Filter by status"
+          >
+            <option value="awaiting">Awaiting</option>
+            <option value="all">All goals</option>
           </select>
 
-          {/* SSE indicator */}
           <span
-            className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${sseConnected ? 'bg-green-500' : 'bg-gray-300'}`}
+            className={`h-2.5 w-2.5 flex-shrink-0 rounded-full ${sseConnected ? 'bg-emerald-500' : 'bg-slate-300'}`}
             title={sseConnected ? 'Live updates connected' : 'Live updates disconnected'}
             aria-label={sseConnected ? 'Live updates connected' : 'Live updates disconnected'}
             role="status"
           />
 
-          {/* Refresh */}
-          <Button variant="ghost" size="sm" onClick={fetchGoals} disabled={loading} aria-label="Refresh goals">
-            <RotateCcw className={`h-5 w-5 ${loading ? 'animate-spin' : ''}`} />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={fetchGoals}
+            disabled={loading}
+            className="h-8 rounded-lg border-slate-200"
+            aria-label="Refresh goals"
+          >
+            <RotateCcw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
           </Button>
         </div>
       </div>
 
-      {/* Error */}
       {error && (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700" role="alert">{error}</div>
+        <div
+          className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm text-rose-700"
+          role="alert"
+        >
+          {error}
+        </div>
       )}
 
-      {/* Loading skeletons */}
       {loading && goals.length === 0 && (
-        <div className="space-y-4" aria-busy="true" aria-label="Loading goals">
+        <div className="space-y-3" aria-busy="true" aria-label="Loading goals">
           <GoalCardSkeleton />
           <GoalCardSkeleton />
           <GoalCardSkeleton />
         </div>
       )}
 
-      {/* Empty state */}
       {!loading && filteredGoals.length === 0 && filteredFieldWrites.length === 0 && (
-        <div className="text-center py-12 bg-gray-50 rounded-lg">
-          <CheckCircle2 className="h-12 w-12 text-green-500 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900">
-            {searchQuery || typeFilter !== 'all' ? 'No matching items' : 'All caught up!'}
+        <div className="flex flex-col items-center rounded-xl border border-dashed border-slate-200 bg-slate-50/50 px-6 py-14 text-center">
+          <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl border border-slate-200 bg-white shadow-sm">
+            <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+          </div>
+          <h3 className="text-sm font-medium text-slate-800">
+            {searchQuery || typeFilter !== 'all' ? 'No matching items' : 'All caught up'}
           </h3>
-          <p className="text-gray-500 mt-1">
+          <p className="mt-1 max-w-sm text-xs leading-relaxed text-slate-500">
             {searchQuery || typeFilter !== 'all'
               ? 'Try adjusting your search or filters.'
               : 'No goals or field changes are awaiting approval right now.'}

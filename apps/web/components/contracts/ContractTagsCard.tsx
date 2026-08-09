@@ -9,6 +9,7 @@ import { Tag, X, Plus, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getTagStyle } from '@/lib/tag-colors';
 import { toast } from 'sonner';
+import { detailUi } from '@/app/contracts/[id]/components/detail-ui';
 
 interface ContractTagsCardProps {
   contractId: string;
@@ -61,22 +62,22 @@ export function ContractTagsCard({ contractId, tenantId, initialTags = [], onCha
   }, [contractId, tenantId, onChanged]);
 
   return (
-    <Card className="overflow-hidden border border-slate-200 shadow-sm bg-white">
-      <CardHeader className="pb-3 border-b border-slate-100">
-        <CardTitle className="text-base font-semibold text-slate-800 flex items-center gap-2">
+    <Card className={detailUi.card}>
+      <CardHeader className={detailUi.cardHeader}>
+        <CardTitle className={detailUi.cardTitle}>
           <Tag className="h-4 w-4 text-violet-500" />
           Tags
         </CardTitle>
       </CardHeader>
-      <CardContent className="p-4 space-y-3">
-        <div className="flex flex-wrap gap-2 min-h-[28px]">
+      <CardContent className={cn(detailUi.cardContent, 'space-y-3')}>
+        <div className="flex flex-wrap gap-2 min-h-[32px]">
           {tags.length === 0 ? (
-            <span className="text-sm text-slate-400">No tags yet — add one below</span>
+            <span className={detailUi.fieldEmpty}>No tags yet — add one below</span>
           ) : tags.map(tag => (
             <Badge
               key={tag}
               variant="secondary"
-              className={cn('px-2 py-0.5 flex items-center gap-1.5 text-xs font-medium border', getTagStyle(tag))}
+              className={cn('px-2.5 py-1 flex items-center gap-1.5 border', detailUi.fieldBadge, getTagStyle(tag))}
             >
               {tag}
               <button
@@ -97,14 +98,14 @@ export function ContractTagsCard({ contractId, tenantId, initialTags = [], onCha
             onChange={e => setInput(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addTag(input); } }}
             placeholder="Type a tag and press Enter"
-            className="h-8 text-sm"
+            className={detailUi.fieldInput}
           />
           <Button
             size="sm"
             variant="outline"
             onClick={() => addTag(input)}
             disabled={!input.trim() || busy === 'add'}
-            className="h-8 px-3"
+            className={cn(detailUi.headerBtn, 'px-3')}
           >
             {busy === 'add' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
           </Button>

@@ -175,9 +175,9 @@ export const ContractFloatingActions = memo(function ContractFloatingActions({
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="fixed bottom-6 right-6 z-50"
+        className="fixed bottom-6 right-6 z-50 no-print"
       >
-        <div className="flex items-center gap-1.5 bg-white/95 backdrop-blur-xl border border-slate-200 rounded-full shadow-lg px-2 py-1.5">
+        <div className="flex items-center gap-1 rounded-full border border-slate-200/90 bg-white/95 px-2 py-1.5 shadow-lg shadow-slate-900/10 backdrop-blur-xl">
           <TooltipProvider delayDuration={300}>
             {/* Favorite */}
             <Tooltip>
@@ -189,8 +189,8 @@ export const ContractFloatingActions = memo(function ContractFloatingActions({
                   disabled={isFavoriting}
                   aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
                   className={cn(
-                    "h-9 w-9 rounded-full transition-colors",
-                    isFavorite && "text-yellow-500 hover:text-yellow-600"
+                    "h-9 w-9 rounded-full text-slate-600 transition-colors hover:bg-slate-100",
+                    isFavorite && "text-amber-500 hover:text-amber-600 hover:bg-amber-50"
                   )}
                 >
                   {isFavoriting ? (
@@ -213,8 +213,8 @@ export const ContractFloatingActions = memo(function ContractFloatingActions({
                   disabled={isTogglingReminder}
                   aria-label={hasReminder ? 'Disable expiry reminder' : 'Set expiry reminder'}
                   className={cn(
-                    "h-9 w-9 rounded-full transition-colors",
-                    hasReminder && "text-violet-500 hover:text-violet-600"
+                    "h-9 w-9 rounded-full text-slate-600 transition-colors hover:bg-slate-100",
+                    hasReminder && "text-violet-600 hover:text-violet-700 hover:bg-violet-50"
                   )}
                 >
                   {isTogglingReminder ? (
@@ -229,7 +229,7 @@ export const ContractFloatingActions = memo(function ContractFloatingActions({
               <TooltipContent>{hasReminder ? 'Disable reminder' : 'Set expiry reminder'}</TooltipContent>
             </Tooltip>
 
-            <div className="w-px h-6 bg-slate-200" />
+            <div className="mx-0.5 h-6 w-px bg-slate-200" />
 
             {/* Export Dropdown */}
             <DropdownMenu>
@@ -239,7 +239,7 @@ export const ContractFloatingActions = memo(function ContractFloatingActions({
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-9 w-9 rounded-full transition-colors"
+                      className="h-9 w-9 rounded-full text-slate-600 transition-colors hover:bg-slate-100"
                       disabled={!!exportingFormat}
                       aria-label={exportingFormat ? `Exporting as ${exportingFormat.toUpperCase()}` : 'Export contract'}
                     >
@@ -288,7 +288,7 @@ export const ContractFloatingActions = memo(function ContractFloatingActions({
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-9 w-9 rounded-full transition-colors"
+                      className="h-9 w-9 rounded-full text-slate-600 transition-colors hover:bg-slate-100"
                       aria-label="More contract actions"
                     >
                       <MoreHorizontal className="h-4 w-4" />

@@ -19,6 +19,7 @@ import {
   ArrowRight,
 } from 'lucide-react'
 import { KeyTermBadge } from '@/components/contracts/detail/KeyTermBadge'
+import { detailUi } from './detail-ui'
 
 interface Party {
   id?: string
@@ -50,10 +51,12 @@ interface SummaryTabProps {
   riskLevel: 'low' | 'medium' | 'high'
 }
 
-const sectionCardClassName = 'flex h-full flex-col overflow-hidden rounded-lg border border-slate-200/90 bg-white shadow-sm'
-const sectionHeaderClassName = 'flex min-h-[56px] flex-col justify-center border-b border-slate-100 bg-slate-50/80 px-4 py-3'
-const sectionTitleClassName = 'flex items-center gap-2 text-sm font-semibold text-slate-800'
-const sectionContentClassName = 'flex flex-1 flex-col px-4 py-4'
+const sectionCardClassName = cn(detailUi.card, 'flex h-full flex-col')
+const sectionHeaderClassName = detailUi.cardHeader
+const sectionTitleClassName = detailUi.cardTitle
+const sectionContentClassName = cn(detailUi.cardContent, 'gap-0')
+const fieldLabelClassName = 'text-xs font-medium leading-4 uppercase tracking-wide text-slate-400'
+const fieldValueClassName = detailUi.fieldValueMuted
 
 function formatCurrencyValue(value?: number | string | null, currency?: string | null): string {
   if (value == null || value === '') return 'Needs review'
@@ -105,13 +108,13 @@ const ExecutiveSummary = memo(function ExecutiveSummary({
         </CardTitle>
       </CardHeader>
       <CardContent className={sectionContentClassName}>
-        <p className="text-sm text-slate-600 leading-relaxed">
+        <p className="text-sm font-medium leading-5 text-slate-600">
           {summary || 'Contract summary will appear here once processing is complete.'}
         </p>
         
         {keyTerms && keyTerms.length > 0 && (
           <div className="mt-4 border-t border-slate-100 pt-3">
-            <p className="text-[11px] font-medium text-slate-500 uppercase tracking-wide mb-2">
+            <p className="text-xs font-medium leading-4 text-slate-500 uppercase tracking-wide mb-2">
               Key Terms Identified
             </p>
             <div className="flex flex-wrap gap-1.5">
@@ -166,11 +169,11 @@ const DecisionSnapshot = memo(function DecisionSnapshot({
       <CardContent className={sectionContentClassName}>
         <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
           {facts.map(({ label, value, icon: Icon }) => (
-            <div key={label} className="flex min-h-[58px] items-center gap-3 rounded-lg border border-slate-100 bg-slate-50/70 px-3 py-2.5">
+            <div key={label} className={cn(detailUi.tileRow, 'min-h-[58px]')}>
               <Icon className="h-4 w-4 shrink-0 text-slate-500" />
               <div className="min-w-0">
-                <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">{label}</p>
-                <p className="truncate text-sm font-medium capitalize text-slate-800">{value}</p>
+                <p className={fieldLabelClassName}>{label}</p>
+                <p className={cn(fieldValueClassName, 'truncate capitalize')}>{value}</p>
               </div>
             </div>
           ))}
@@ -214,9 +217,9 @@ const NextActionsCard = memo(function NextActionsCard({
         {actions.length > 0 ? (
           <div className="grid gap-2 sm:grid-cols-2">
             {actions.slice(0, 4).map(action => (
-              <div key={action} className="flex items-center gap-2 rounded-lg border border-slate-100 bg-white px-3 py-2 text-sm text-slate-700">
-                <CheckCircle2 className="h-3.5 w-3.5 text-slate-400" />
-                <span>{action}</span>
+              <div key={action} className={cn(detailUi.tileRow, 'text-sm text-slate-700')}>
+                <CheckCircle2 className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                <span className="min-w-0">{action}</span>
               </div>
             ))}
           </div>
@@ -263,15 +266,9 @@ const PartiesCard = memo(function PartiesCard({ parties }: { parties: Party[] })
             return (
               <div 
                 key={party.id || party.legalName || party.name || `party-${i}`}
-                className={cn(
-                  'flex min-h-[60px] items-center gap-3 rounded-lg border px-3 py-2.5',
-                  isClient ? "bg-violet-50 border-violet-100" : "bg-violet-50 border-violet-100"
-                )}
+                className={cn(detailUi.tileRow, 'min-h-[60px] bg-violet-50/70 border-violet-100')}
               >
-                <div className={cn(
-                  'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg',
-                  isClient ? "bg-violet-100" : "bg-violet-100"
-                )}>
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-100">
                   {isClient ? (
                     <Building className="h-4 w-4 text-violet-600" />
                   ) : (
@@ -279,16 +276,13 @@ const PartiesCard = memo(function PartiesCard({ parties }: { parties: Party[] })
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-slate-800 truncate">{name}</p>
+                  <p className={cn(fieldValueClassName, 'truncate')}>{name}</p>
                   <div className="flex items-center gap-2">
-                    <p className={cn(
-                      "text-xs font-medium",
-                      isClient ? "text-violet-600" : "text-violet-600"
-                    )}>
+                    <p className="text-xs font-medium leading-4 text-violet-600">
                       {party.role || 'Party'}
                     </p>
                     {party.legalForm && (
-                      <span className="text-xs text-slate-400">· {party.legalForm}</span>
+                      <span className="text-xs leading-4 text-slate-400">· {party.legalForm}</span>
                     )}
                   </div>
                 </div>
@@ -326,9 +320,9 @@ const KeyDatesCard = memo(function KeyDatesCard({
             <div className="flex min-h-[58px] items-center justify-between gap-4 rounded-lg border border-slate-100 bg-slate-50/70 px-3 py-2.5">
               <div className="flex min-w-0 items-center gap-3">
                 <FileText className="h-4 w-4 text-violet-600" />
-                <span className="text-sm font-medium text-slate-700">Signed</span>
+                <span className={cn(fieldValueClassName, 'text-slate-700')}>Signed</span>
               </div>
-              <span className="shrink-0 text-right text-sm font-semibold text-violet-700">
+              <span className="shrink-0 text-right text-sm font-semibold leading-5 text-violet-700">
                 {formatDate(signatureDate)}
               </span>
             </div>
@@ -337,9 +331,9 @@ const KeyDatesCard = memo(function KeyDatesCard({
           <div className="flex min-h-[58px] items-center justify-between gap-4 rounded-lg border border-slate-100 bg-slate-50/70 px-3 py-2.5">
             <div className="flex min-w-0 items-center gap-3">
               <CheckCircle2 className="h-4 w-4 text-violet-600" />
-              <span className="text-sm font-medium text-slate-700">Start Date</span>
+              <span className={cn(fieldValueClassName, 'text-slate-700')}>Start Date</span>
             </div>
-            <span className="shrink-0 text-right text-sm font-semibold text-violet-700">
+            <span className="shrink-0 text-right text-sm font-semibold leading-5 text-violet-700">
               {startDate ? formatDate(startDate) : '—'}
             </span>
           </div>
@@ -360,7 +354,7 @@ const KeyDatesCard = memo(function KeyDatesCard({
               )}
               <div>
                 <span className={cn(
-                  "text-sm font-medium",
+                  fieldValueClassName,
                   isExpired ? "text-red-700" :
                   isExpiringSoon ? "text-amber-700" : "text-slate-600"
                 )}>
@@ -368,7 +362,7 @@ const KeyDatesCard = memo(function KeyDatesCard({
                 </span>
                 {daysRemaining !== null && daysRemaining > 0 && (
                   <p className={cn(
-                    "text-xs",
+                    "text-xs leading-4",
                     isExpiringSoon ? "text-amber-600" : "text-slate-500"
                   )}>
                     {daysRemaining} days remaining
@@ -377,7 +371,7 @@ const KeyDatesCard = memo(function KeyDatesCard({
               </div>
             </div>
             <span className={cn(
-              'shrink-0 text-right text-sm font-semibold',
+              'shrink-0 text-right text-sm font-semibold leading-5',
               isExpired ? "text-red-700" :
               isExpiringSoon ? "text-amber-700" : "text-slate-700"
             )}>
@@ -389,9 +383,9 @@ const KeyDatesCard = memo(function KeyDatesCard({
             <div className="flex min-h-[58px] items-center justify-between gap-4 rounded-lg border border-slate-200/80 bg-slate-50 px-3 py-2.5">
               <div className="flex min-w-0 items-center gap-3">
                 <Bell className="h-4 w-4 text-slate-500" />
-                <span className="text-sm font-medium text-slate-600">Notice Period</span>
+                <span className={cn(fieldValueClassName, 'text-slate-600')}>Notice Period</span>
               </div>
-              <span className="shrink-0 text-right text-sm font-medium text-slate-700">{noticePeriod}</span>
+              <span className={cn(fieldValueClassName, 'shrink-0 text-right text-slate-700')}>{noticePeriod}</span>
             </div>
           )}
         </div>
@@ -438,8 +432,8 @@ const RisksCard = memo(function RisksCard({
                 risk.level?.toLowerCase() === 'medium' ? 'bg-amber-500' : 'bg-red-500'
               )} />
               <div className="min-w-0">
-                <p className="text-sm font-medium text-slate-800">{risk.category}</p>
-                <p className="text-xs text-slate-500 line-clamp-2">{risk.description}</p>
+                <p className={fieldValueClassName}>{risk.category}</p>
+                <p className="text-xs leading-4 text-slate-500 line-clamp-2">{risk.description}</p>
               </div>
             </div>
           ))}

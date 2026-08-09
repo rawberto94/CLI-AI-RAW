@@ -264,11 +264,11 @@ export function ContractIntelligenceBrief({
   // Loading state
   if (isLoading) {
     return (
-      <Card className={cn("border-slate-200", className)}>
-        <CardContent className="py-8">
+      <Card className={cn("overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-sm", className)}>
+        <CardContent className="py-10">
           <div className="flex items-center justify-center gap-3">
             <Loader2 className="h-5 w-5 text-violet-500 animate-spin" />
-            <span className="text-sm text-slate-500">Loading intelligence brief...</span>
+            <span className="text-sm font-medium leading-5 text-slate-500">Loading intelligence brief...</span>
           </div>
         </CardContent>
       </Card>
@@ -278,27 +278,27 @@ export function ContractIntelligenceBrief({
   // Empty state — offer to generate
   if (!brief) {
     return (
-      <Card className={cn("border-slate-200 border-dashed", className)}>
-        <CardContent className="py-10">
-          <div className="text-center max-w-md mx-auto">
+      <Card className={cn("overflow-hidden rounded-xl border border-dashed border-slate-200 bg-white shadow-sm", className)}>
+        <CardContent className="py-12">
+          <div className="mx-auto max-w-md text-center">
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 shadow-lg shadow-violet-500/20 mb-4"
+              className="mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 shadow-lg shadow-violet-500/20"
             >
               <Brain className="h-7 w-7 text-white" />
             </motion.div>
-            <h3 className="text-base font-semibold text-slate-900 mb-2">
+            <h3 className="mb-1.5 text-sm font-semibold leading-5 text-slate-900">
               Contract Intelligence Brief
             </h3>
-            <p className="text-sm text-slate-500 mb-6 leading-relaxed">
+            <p className="mb-6 text-sm font-medium leading-5 text-slate-500">
               Generate an AI-powered intelligence brief with executive summary, risk analysis,
               unusual clause detection, negotiation leverage points, and action items.
             </p>
             <Button
               onClick={() => generateMutation.mutate()}
               disabled={generateMutation.isPending}
-              className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-md"
+              className="h-9 bg-violet-600 text-sm font-medium shadow-sm hover:bg-violet-700"
             >
               {generateMutation.isPending ? (
                 <>
@@ -328,22 +328,22 @@ export function ContractIntelligenceBrief({
       className={cn("space-y-4", className)}
     >
       {/* Header Card */}
-      <Card className="border-slate-200 overflow-hidden">
+      <Card className="overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-sm">
         <div className={cn("h-1", risk.bg)} />
-        <CardHeader className="pb-3">
-          <div className="flex items-start justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-md">
+        <CardHeader className="border-b border-slate-100 bg-slate-50/80 px-4 py-3">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 shadow-md">
                 <Brain className="h-5 w-5 text-white" />
               </div>
-              <div>
-                <CardTitle className="text-base">Intelligence Brief</CardTitle>
-                <p className="text-xs text-slate-500 mt-0.5">
+              <div className="min-w-0">
+                <CardTitle className="text-sm font-semibold leading-5 text-slate-800">Intelligence Brief</CardTitle>
+                <p className="mt-0.5 text-xs font-medium leading-4 text-slate-500">
                   AI-generated analysis for {contractName || 'this contract'}
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex shrink-0 items-center gap-2">
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -364,7 +364,7 @@ export function ContractIntelligenceBrief({
                 size="sm"
                 onClick={() => generateMutation.mutate()}
                 disabled={generateMutation.isPending}
-                className="h-8 gap-1.5 text-xs"
+                className="h-8 gap-1.5 text-xs font-medium leading-4"
               >
                 {generateMutation.isPending ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />

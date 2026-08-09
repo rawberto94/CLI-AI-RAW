@@ -26,6 +26,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { EmptyState } from './EmptyState'
+import { detailUi } from './detail-ui'
 
 interface Note {
   id: string
@@ -97,8 +98,8 @@ const NoteItem = memo(function NoteItem({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.95 }}
       className={cn(
-        "p-3 rounded-lg border transition-colors",
-        note.isPinned ? "bg-amber-50 border-amber-200" : "bg-white border-slate-200"
+        detailUi.fieldCell,
+        note.isPinned ? "bg-amber-50/60 border-amber-200" : ""
       )}
     >
       <div className="flex items-start gap-3">
@@ -111,13 +112,13 @@ const NoteItem = memo(function NoteItem({
         
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-2 mb-1">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-slate-800">{note.author.name}</span>
-              <span className="text-xs text-slate-400">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className={detailUi.fieldValue}>{note.author.name}</span>
+              <span className="text-xs leading-4 text-slate-400">
                 {formatDistanceToNow(note.createdAt, { addSuffix: true })}
               </span>
               {note.updatedAt && (
-                <span className="text-xs text-slate-400">(edited)</span>
+                <span className="text-xs leading-4 text-slate-400">(edited)</span>
               )}
               {note.isPinned && (
                 <Pin className="h-3 w-3 text-amber-500 fill-amber-500" />
@@ -126,7 +127,7 @@ const NoteItem = memo(function NoteItem({
             
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-400 hover:text-slate-600">
+                <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-slate-600">
                   <MoreVertical className="h-3.5 w-3.5" />
                 </Button>
               </DropdownMenuTrigger>
@@ -164,7 +165,7 @@ const NoteItem = memo(function NoteItem({
               <Textarea
                 value={editContent}
                 onChange={(e) => setEditContent(e.target.value)}
-                className="min-h-[80px] text-sm"
+                className={cn(detailUi.fieldTextarea, 'min-h-[80px]')}
                 placeholder="Edit your note..."
               />
               <div className="flex items-center gap-2 justify-end">
@@ -173,6 +174,7 @@ const NoteItem = memo(function NoteItem({
                   size="sm" 
                   onClick={() => { setIsEditing(false); setEditContent(note.content) }}
                   disabled={isSaving}
+                  className={detailUi.headerBtn}
                 >
                   Cancel
                 </Button>
@@ -186,7 +188,7 @@ const NoteItem = memo(function NoteItem({
               </div>
             </div>
           ) : (
-            <p className="text-sm text-slate-600 whitespace-pre-wrap">{note.content}</p>
+            <p className={cn(detailUi.fieldValueMuted, 'whitespace-pre-wrap font-normal')}>{note.content}</p>
           )}
         </div>
       </div>
@@ -231,14 +233,14 @@ export const ContractNotes = memo(function ContractNotes({
   })
   
   return (
-    <Card className="border-slate-200">
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+    <Card className={detailUi.card}>
+      <CardHeader className={detailUi.cardHeader}>
+        <div className="flex items-center justify-between gap-2">
+          <CardTitle className={detailUi.cardTitle}>
             <MessageSquare className="h-4 w-4 text-violet-500" />
             Notes & Comments
             {notes.length > 0 && (
-              <span className="ml-1 px-1.5 py-0.5 text-xs bg-slate-100 text-slate-600 rounded-full">
+              <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-xs font-medium leading-4 text-slate-600">
                 {notes.length}
               </span>
             )}
@@ -248,7 +250,7 @@ export const ContractNotes = memo(function ContractNotes({
               variant="outline" 
               size="sm" 
               onClick={() => setShowInput(true)}
-              className="h-7 text-xs"
+              className={detailUi.headerBtn}
             >
               <Reply className="h-3.5 w-3.5 mr-1.5" />
               Add Note
@@ -256,7 +258,7 @@ export const ContractNotes = memo(function ContractNotes({
           )}
         </div>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className={cn(detailUi.cardContent, 'space-y-3')}>
         {/* Add Note Input */}
         <AnimatePresence>
           {showInput && (
@@ -270,7 +272,7 @@ export const ContractNotes = memo(function ContractNotes({
                 value={newNote}
                 onChange={(e) => setNewNote(e.target.value)}
                 placeholder="Add a note or comment..."
-                className="min-h-[80px] text-sm"
+                className={cn(detailUi.fieldTextarea, 'min-h-[80px]')}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
                     handleAdd()
@@ -278,13 +280,14 @@ export const ContractNotes = memo(function ContractNotes({
                 }}
               />
               <div className="flex items-center justify-between">
-                <p className="text-xs text-slate-400">⌘+Enter to submit</p>
+                <p className="text-xs leading-4 text-slate-400">⌘+Enter to submit</p>
                 <div className="flex items-center gap-2">
                   <Button 
                     variant="ghost" 
                     size="sm" 
                     onClick={() => { setShowInput(false); setNewNote('') }}
                     disabled={isAdding}
+                    className={detailUi.headerBtn}
                   >
                     Cancel
                   </Button>
@@ -292,6 +295,7 @@ export const ContractNotes = memo(function ContractNotes({
                     size="sm" 
                     onClick={handleAdd}
                     disabled={isAdding || !newNote.trim()}
+                    className={detailUi.headerBtnPrimary}
                   >
                     {isAdding ? (
                       <Loader2 className="h-4 w-4 animate-spin" />

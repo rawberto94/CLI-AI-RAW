@@ -21,6 +21,7 @@ import {
   Scale,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { detailUi } from '@/app/contracts/[id]/components/detail-ui'
 
 // ============ TYPES ============
 
@@ -126,7 +127,7 @@ function ScoreCard({ title, icon, value, subtitle, score, maxScore = 100, colorS
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-sm font-medium text-slate-600">{title}</span>
                   <div className="flex items-center gap-2">
-                    <span className={cn("text-2xl font-bold", colorScheme.text)}>{value}</span>
+                    <span className={cn("text-sm font-semibold leading-5 tabular-nums", colorScheme.text)}>{value}</span>
                     {isExpanded ? <ChevronDown className="h-4 w-4 text-slate-400" /> : <ChevronRight className="h-4 w-4 text-slate-400" />}
                   </div>
                 </div>
@@ -200,7 +201,7 @@ function CompactTile({ label, value, icon, percent, active, onClick, colorScheme
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-baseline justify-between gap-2">
-          <span className="text-[11px] uppercase tracking-wide text-slate-500 font-medium truncate">{label}</span>
+          <span className="text-xs uppercase tracking-wide text-slate-500 font-medium leading-4 truncate">{label}</span>
           <span className={cn("text-sm font-semibold tabular-nums", colorScheme.text)}>{value}</span>
         </div>
         <div className="mt-1 h-1 w-full bg-slate-100 rounded-full overflow-hidden">
@@ -247,11 +248,11 @@ export function ContractScoresCard({
   const toggle = (k: MetricKey) => setActive(prev => (prev === k ? null : k))
 
   return (
-    <Card className={cn("overflow-hidden border-slate-200", className)}>
-      <CardHeader className="py-2.5 px-4 border-b bg-slate-50/50">
+    <Card className={cn(detailUi.card, className)}>
+      <CardHeader className={detailUi.cardHeader}>
         <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2 text-sm font-medium text-slate-700">
-            <Activity className="h-4 w-4 text-violet-600" />
+          <div className={detailUi.cardTitle}>
+            <Activity className="h-4 w-4 text-violet-500" />
             <span>Scores & Assessment</span>
             {isProcessing && <RefreshCw className="h-3.5 w-3.5 animate-spin text-slate-400 ml-1" />}
           </div>
@@ -261,7 +262,7 @@ export function ContractScoresCard({
               size="sm"
               onClick={onRefresh}
               disabled={isProcessing}
-              className="h-7 w-7 p-0 text-slate-500"
+              className="h-8 w-8 p-0 text-slate-500"
               aria-label="Refresh scores"
             >
               <RefreshCw className={cn("h-3.5 w-3.5", isProcessing && "animate-spin")} />
@@ -270,8 +271,8 @@ export function ContractScoresCard({
         </div>
       </CardHeader>
 
-      <CardContent className="p-3">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+      <CardContent className={cn(detailUi.cardContent, 'pt-3')}>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
           <CompactTile
             label="Risk"
             value={riskLevel === 'unknown' ? '—' : riskLevel.charAt(0).toUpperCase() + riskLevel.slice(1)}
@@ -384,7 +385,7 @@ export function ContractScoresCard({
           </div>
         )}
 
-        <p className="mt-2 text-[11px] text-slate-400 flex items-center gap-1">
+        <p className="mt-2 text-xs leading-4 text-slate-400 flex items-center gap-1">
           <HelpCircle className="h-3 w-3" />
           Click a tile for details
         </p>

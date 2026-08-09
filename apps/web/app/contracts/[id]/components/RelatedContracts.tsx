@@ -20,6 +20,7 @@ import {
   RefreshCw,
   Layers,
 } from 'lucide-react'
+import { detailUi } from './detail-ui'
 
 interface RelatedContract {
   id: string
@@ -55,35 +56,35 @@ const ContractCard = memo(function ContractCard({ contract }: { contract: Relate
   return (
     <Link href={`/contracts/${contract.id}`}>
       <motion.div
-        whileHover={{ scale: 1.02 }}
-        whileTap={{ scale: 0.98 }}
-        className="p-3 rounded-lg border border-slate-200 hover:border-slate-300 hover:shadow-sm bg-white transition-all cursor-pointer group"
+        whileHover={{ y: -1 }}
+        whileTap={{ scale: 0.99 }}
+        className={cn(detailUi.fieldCell, 'cursor-pointer group hover:border-violet-200')}
       >
         <div className="flex items-start gap-3">
-          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-violet-100 to-purple-100 flex items-center justify-center shrink-0">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-100 to-purple-100 flex items-center justify-center shrink-0">
             <FileText className="h-4 w-4 text-violet-600" />
           </div>
           
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
-              <p className="text-sm font-medium text-slate-800 truncate group-hover:text-violet-600 transition-colors">
+              <p className={cn(detailUi.fieldValue, 'truncate group-hover:text-violet-700 transition-colors')}>
                 {contract.filename}
               </p>
               <ChevronRight className="h-4 w-4 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
             </div>
             
             <div className="flex flex-wrap items-center gap-1.5 mb-2">
-              <Badge className={cn("text-[10px] font-medium border-0", relationship.color)}>
+              <Badge className={cn(detailUi.fieldBadge, "border-0", relationship.color)}>
                 {relationship.label}
               </Badge>
               {contract.similarity && contract.similarity >= 70 && (
-                <Badge variant="outline" className="text-[10px] border-slate-200">
+                <Badge variant="outline" className={cn(detailUi.fieldBadge, 'border-slate-200')}>
                   {contract.similarity}% match
                 </Badge>
               )}
             </div>
             
-            <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500">
+            <div className="flex flex-wrap items-center gap-3 text-xs leading-4 text-slate-500">
               {contract.clientName && (
                 <span className="flex items-center gap-1">
                   <Users className="h-3 w-3" />
@@ -112,11 +113,11 @@ const ContractCard = memo(function ContractCard({ contract }: { contract: Relate
 
 const LoadingSkeleton = memo(function LoadingSkeleton() {
   return (
-    <div className="space-y-2">
+    <div className="space-y-2.5">
       {[1, 2, 3].map((i) => (
-        <div key={i} className="p-3 rounded-lg border border-slate-200">
+        <div key={i} className={detailUi.fieldCell}>
           <div className="flex items-start gap-3">
-            <Skeleton className="w-9 h-9 rounded-lg" />
+            <Skeleton className="w-9 h-9 rounded-xl" />
             <div className="flex-1 space-y-2">
               <Skeleton className="h-4 w-3/4" />
               <Skeleton className="h-3 w-1/2" />
@@ -175,14 +176,14 @@ export const RelatedContracts = memo(function RelatedContracts({
   }
   
   return (
-    <Card className={cn("border-slate-200", className)}>
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+    <Card className={cn(detailUi.card, className)}>
+      <CardHeader className={detailUi.cardHeader}>
+        <div className="flex items-center justify-between gap-2">
+          <CardTitle className={detailUi.cardTitle}>
             <Layers className="h-4 w-4 text-violet-500" />
             Related Contracts
             {contracts.length > 0 && (
-              <span className="ml-1 px-1.5 py-0.5 text-xs bg-slate-100 text-slate-600 rounded-full">
+              <span className="ml-0.5 rounded-full bg-slate-100 px-1.5 py-0.5 text-xs font-medium leading-4 text-slate-600">
                 {contracts.length}
               </span>
             )}
@@ -192,25 +193,25 @@ export const RelatedContracts = memo(function RelatedContracts({
               variant="ghost" 
               size="icon" 
               onClick={fetchRelated}
-              className="h-7 w-7 text-slate-400 hover:text-slate-600"
+              className="h-8 w-8 text-slate-400 hover:text-slate-600"
             >
               <RefreshCw className="h-3.5 w-3.5" />
             </Button>
           )}
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className={detailUi.cardContent}>
         {loading ? (
           <LoadingSkeleton />
         ) : error ? (
-          <div className="text-center py-4">
-            <p className="text-sm text-slate-500">{error}</p>
-            <Button variant="ghost" size="sm" onClick={fetchRelated} className="mt-2">
+          <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-6 text-center">
+            <p className={detailUi.fieldEmpty}>{error}</p>
+            <Button variant="ghost" size="sm" onClick={fetchRelated} className={cn(detailUi.headerBtn, 'mt-2')}>
               Try again
             </Button>
           </div>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-2.5">
             <AnimatePresence mode="popLayout">
               {contracts.slice(0, 5).map((contract, idx) => (
                 <motion.div

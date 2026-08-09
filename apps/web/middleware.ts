@@ -315,7 +315,17 @@ const CONTRACT_AI_SUBPATHS = [
   '/reprocess',
 ];
 
+// Unauthenticated read-only discovery endpoints the sign-in page fetches on every
+// mount. They must NOT draw from the strict 'auth' anonymous budget (10/min), which
+// exists to slow credential brute-force — otherwise five sign-in page loads in a
+// minute rate-limit the user out of their own login screen.
+const AUTH_DISCOVERY_PATHS = [
+  '/api/auth/providers-list',
+  '/api/auth/sso-providers',
+];
+
 function getEndpointCategory(pathname: string): string {
+  if (AUTH_DISCOVERY_PATHS.some((p) => matchesRoutePrefix(pathname, p))) return 'read';
   if (pathname.startsWith('/api/auth/')) return 'auth'; // M14: Auth-specific rate limits
   if (pathname.includes('/ai/')) return 'ai';
   if (pathname.startsWith('/api/contracts/') && CONTRACT_AI_SUBPATHS.some((p) => pathname.includes(p))) {

@@ -84,6 +84,19 @@ import {
   resolveDocumentTitle,
   titleFromSummary,
 } from '@/lib/contracts/metadata-display';
+import { detailUi } from '@/app/contracts/[id]/components/detail-ui';
+
+// ============ FIELD TYPOGRAPHY / SURFACE TOKENS ============
+// Shared with the rest of the contract detail page via detailUi.
+
+const FIELD_LABEL_CLASS = detailUi.fieldLabel;
+const FIELD_VALUE_CLASS = detailUi.fieldValue;
+const FIELD_VALUE_MUTED_CLASS = detailUi.fieldValueMuted;
+const FIELD_VALUE_EMPHASIS_CLASS = detailUi.fieldValueEmphasis;
+const FIELD_EMPTY_CLASS = detailUi.fieldEmpty;
+const FIELD_BADGE_CLASS = detailUi.fieldBadge;
+const FIELD_INPUT_CLASS = detailUi.fieldInput;
+const FIELD_TEXTAREA_CLASS = detailUi.fieldTextarea;
 
 // ============ DEBOUNCE HOOK ============
 
@@ -528,7 +541,9 @@ function CopyableValue({ value, className }: { value: string; className?: string
   
   return (
     <span className={cn("inline-flex items-center gap-2 group", className)}>
-      <span className="font-mono text-sm bg-slate-100 px-2.5 py-1 rounded-md border border-slate-200">{value}</span>
+      <span className={cn(FIELD_VALUE_CLASS, 'font-mono bg-slate-100 px-2.5 py-1 rounded-md border border-slate-200')}>
+        {value}
+      </span>
       <motion.button 
         onClick={handleCopy}
         className="opacity-0 group-hover:opacity-100 transition-all p-1.5 hover:bg-slate-100 rounded-lg"
@@ -592,20 +607,20 @@ function PartyCard({ party, index, isEditing, onChange, onRemove }: PartyDisplay
               value={displayName}
               onChange={(e) => onChange({ ...party, legalName: e.target.value })}
               placeholder="Company name"
-              className="h-9 font-medium"
+              className={cn(FIELD_INPUT_CLASS, 'font-medium')}
             />
             <div className="grid grid-cols-2 gap-2">
               <Input
                 value={party.role || ''}
                 onChange={(e) => onChange({ ...party, role: e.target.value })}
                 placeholder="Role (e.g., Client)"
-                className="h-8 text-sm"
+                className={FIELD_INPUT_CLASS}
               />
               <Input
                 value={party.legalForm || ''}
                 onChange={(e) => onChange({ ...party, legalForm: e.target.value })}
                 placeholder="Legal form (e.g., GmbH)"
-                className="h-8 text-sm"
+                className={FIELD_INPUT_CLASS}
               />
             </div>
           </div>
@@ -628,28 +643,28 @@ function PartyCard({ party, index, isEditing, onChange, onRemove }: PartyDisplay
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.05 }}
-      className="flex items-center gap-4 p-4 bg-white border border-slate-100 rounded-xl hover:border-violet-200 hover:shadow-sm transition-all"
+      className="flex items-center gap-3.5 rounded-xl border border-slate-200/80 bg-white p-3.5 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-all hover:border-violet-200 hover:shadow-sm"
     >
-      <div className="p-2.5 bg-gradient-to-br from-violet-50 to-purple-50 rounded-xl shrink-0">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-50 to-purple-50">
         {party.role?.toLowerCase().includes('client') ? (
-          <Briefcase className="h-5 w-5 text-violet-600" />
+          <Briefcase className="h-4 w-4 text-violet-600" />
         ) : (
-          <Building2 className="h-5 w-5 text-violet-600" />
+          <Building2 className="h-4 w-4 text-violet-600" />
         )}
       </div>
       
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <h4 className="font-semibold text-slate-900 truncate">
-            {displayName || <span className="text-slate-400 italic">Party not extracted</span>}
+          <h4 className={cn(FIELD_VALUE_CLASS, 'truncate')}>
+            {displayName || <span className={FIELD_EMPTY_CLASS}>Party not extracted</span>}
           </h4>
         </div>
         <div className="flex items-center gap-2 mt-0.5">
-          <Badge variant="secondary" className="text-xs font-normal bg-slate-100 text-slate-600 hover:bg-slate-100">
+          <Badge variant="secondary" className={cn(FIELD_BADGE_CLASS, 'font-normal bg-slate-100 text-slate-600 hover:bg-slate-100')}>
             {displayRole}
           </Badge>
           {party.legalForm && (
-            <span className="text-xs text-slate-500">{party.legalForm}</span>
+            <span className="text-xs leading-4 text-slate-500">{party.legalForm}</span>
           )}
         </div>
       </div>
@@ -755,34 +770,32 @@ function MetadataSection({
       <CollapsibleTrigger asChild>
         <div 
           className={cn(
-            "flex items-center justify-between p-3 rounded-lg transition-all cursor-pointer border",
-            isOpen 
-              ? "bg-white border-slate-200 shadow-sm"
-              : "bg-slate-50/80 hover:bg-white border-transparent hover:border-slate-200"
+            detailUi.sectionTrigger,
+            isOpen ? detailUi.sectionTriggerOpen : detailUi.sectionTriggerClosed
           )}
         >
-          <div className="flex items-center gap-3">
-            <div className={cn(
-              "p-2 rounded-lg",
-              isOpen ? "bg-violet-50" : "bg-slate-100"
-            )}>
+          <div className="flex items-center gap-3 min-w-0">
+            <div className={isOpen ? detailUi.sectionIconOpen : detailUi.sectionIconClosed}>
               <Icon className={cn("h-4 w-4", isOpen ? "text-violet-600" : "text-slate-500")} />
             </div>
-            <div className="text-left">
-              <div className="flex items-center gap-2">
-                <span className="font-medium text-slate-800 text-sm">{config.label}</span>
+            <div className="text-left min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className={detailUi.sectionTitle}>{config.label}</span>
                 {attentionFields.length > 0 && (
-                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-amber-50 text-amber-700 border-amber-200">
+                  <Badge variant="outline" className={cn(FIELD_BADGE_CLASS, 'px-1.5 py-0 bg-amber-50 text-amber-700 border-amber-200')}>
                     {attentionFields.length} flagged
                   </Badge>
                 )}
               </div>
+              {config.description && (
+                <p className={cn(detailUi.sectionMeta, 'mt-0.5 truncate')}>{config.description}</p>
+              )}
             </div>
           </div>
           
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             {!isOpen && fields.length > 0 && attentionFields.length === 0 && (
-              <span className="text-xs text-slate-400">{fields.length} fields</span>
+              <span className={detailUi.sectionMeta}>{fields.length} fields</span>
             )}
             <ChevronDown className={cn(
               "h-4 w-4 text-slate-400 transition-transform",
@@ -793,8 +806,8 @@ function MetadataSection({
       </CollapsibleTrigger>
       
       <CollapsibleContent>
-        <div className="mt-3 pl-2 pr-2 pb-2">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="mt-3">
+          <div className={detailUi.sectionBody}>
             {section === 'parties' ? (
               <div className="col-span-2 space-y-2">
                 {(() => {
@@ -837,7 +850,7 @@ function MetadataSection({
                       parties.push({ legalName: '' });
                       onChange('external_parties', parties);
                     }}
-                    className="w-full h-10 border-dashed border-slate-300 text-slate-600 hover:bg-slate-50"
+                    className="w-full h-10 rounded-xl border-dashed border-slate-300 text-sm font-medium text-slate-600 hover:bg-slate-50 hover:border-violet-300"
                   >
                     <Plus className="h-4 w-4 mr-2" />
                     Add party
@@ -1111,6 +1124,10 @@ function MetadataField({
     }
   };
   
+  const emptyValue = (label = 'Not specified') => (
+    <span className={FIELD_EMPTY_CLASS}>{label}</span>
+  );
+
   const renderValue = () => {
     // Special handling for certain fields
     if (field.key === 'document_number') {
@@ -1122,9 +1139,9 @@ function MetadataField({
       try {
         const displayNames = new Intl.DisplayNames(['en'], { type: 'language' });
         const name = displayNames.of(String(value));
-        return <span className="text-slate-900">{name || String(value)}</span>;
+        return <span className={FIELD_VALUE_CLASS}>{name || String(value)}</span>;
       } catch {
-        return <span className="text-slate-900">{String(value)}</span>;
+        return <span className={FIELD_VALUE_CLASS}>{String(value)}</span>;
       }
     }
     
@@ -1135,27 +1152,33 @@ function MetadataField({
       return (
         <span className="inline-flex items-center gap-2 flex-wrap">
           {value ? (
-            <span className="text-lg font-bold text-violet-700">{formatCurrency(Number(value), currency)}</span>
+            <span className={FIELD_VALUE_EMPHASIS_CLASS}>{formatCurrency(Number(value), currency)}</span>
           ) : (
-            <span className="text-slate-400 italic">Not specified</span>
+            emptyValue()
           )}
           {trust && <FieldTrustChip trust={trust.trust} confidence={trust.confidence} />}
         </span>
       );
     }
+
+    // Other decimals / integers (amounts, months, etc.) share the same value size
+    if (field.type === 'decimal' || field.type === 'integer') {
+      if (value === null || value === undefined || value === '') return emptyValue();
+      return <span className={FIELD_VALUE_CLASS}>{String(value)}</span>;
+    }
     
     if (field.type === 'date') {
       return value ? (
-        <span className="font-medium">{formatDate(String(value))}</span>
+        <span className={FIELD_VALUE_CLASS}>{formatDate(String(value))}</span>
       ) : (
-        <span className="text-slate-400 italic">Not specified</span>
+        emptyValue()
       );
     }
     
     if (field.type === 'boolean') {
       return (
         <Badge variant="outline" className={cn(
-          "font-medium",
+          FIELD_BADGE_CLASS,
           value 
             ? "bg-violet-50 text-violet-700 border-violet-200" 
             : "bg-slate-50 text-slate-600 border-slate-200"
@@ -1166,9 +1189,18 @@ function MetadataField({
     }
     
     if (field.type === 'enum') {
-      if (field.key === 'payment_type') return formatPaymentType(value as PaymentType) || <span className="text-slate-400 italic">Not specified</span>;
-      if (field.key === 'billing_frequency_type') return formatBillingFrequency(value as BillingFrequencyType) || <span className="text-slate-400 italic">Not specified</span>;
-      if (field.key === 'periodicity') return formatPeriodicity(value as Periodicity) || <span className="text-slate-400 italic">Not specified</span>;
+      if (field.key === 'payment_type') {
+        const label = formatPaymentType(value as PaymentType);
+        return label ? <span className={FIELD_VALUE_CLASS}>{label}</span> : emptyValue();
+      }
+      if (field.key === 'billing_frequency_type') {
+        const label = formatBillingFrequency(value as BillingFrequencyType);
+        return label ? <span className={FIELD_VALUE_CLASS}>{label}</span> : emptyValue();
+      }
+      if (field.key === 'periodicity') {
+        const label = formatPeriodicity(value as Periodicity);
+        return label ? <span className={FIELD_VALUE_CLASS}>{label}</span> : emptyValue();
+      }
       if (field.key === 'signature_status') {
         const statusConfig: Record<string, { label: string; className: string }> = {
           signed: { label: '✓ Signed', className: 'bg-violet-50 text-violet-700 border-violet-200' },
@@ -1178,10 +1210,10 @@ function MetadataField({
         };
         const cfg = statusConfig[value as string] || statusConfig.unknown;
         return value ? (
-          <Badge variant="outline" className={cn("font-medium", cfg.className)}>
+          <Badge variant="outline" className={cn(FIELD_BADGE_CLASS, cfg.className)}>
             {cfg.label}
           </Badge>
-        ) : <span className="text-slate-400 italic">Not specified</span>;
+        ) : emptyValue();
       }
       if (field.key === 'document_classification') {
         const classLabels: Record<string, string> = {
@@ -1203,12 +1235,12 @@ function MetadataField({
         return (
           <div className="space-y-1.5">
             {value ? (
-              <Badge variant="outline" className="bg-violet-50 text-violet-700 border-violet-200 font-medium">
+              <Badge variant="outline" className={cn(FIELD_BADGE_CLASS, 'bg-violet-50 text-violet-700 border-violet-200')}>
                 {classLabels[value as string] || String(value)}
               </Badge>
-            ) : <span className="text-slate-400 italic">Not specified</span>}
+            ) : emptyValue()}
             {classificationWarning ? (
-              <div className="flex items-start gap-1.5 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-2 py-1.5">
+              <div className="flex items-start gap-1.5 text-xs leading-4 text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-2 py-1.5">
                 <AlertTriangle className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
                 <span>{String(classificationWarning)}</span>
               </div>
@@ -1216,11 +1248,15 @@ function MetadataField({
           </div>
         );
       }
-      return value ? String(value) : <span className="text-slate-400 italic">Not specified</span>;
+      return value ? (
+        <span className={FIELD_VALUE_CLASS}>{String(value)}</span>
+      ) : emptyValue();
     }
     
     if (field.type === 'fk') {
-      return value ? String(value) : <span className="text-slate-400 italic">Not assigned</span>;
+      return value ? (
+        <span className={FIELD_VALUE_CLASS}>{String(value)}</span>
+      ) : emptyValue('Not assigned');
     }
     
     if (field.type === 'array_fk') {
@@ -1228,20 +1264,20 @@ function MetadataField({
         return (
           <div className="flex flex-wrap gap-1.5">
             {value.map((v, i) => (
-              <Badge key={i} variant="outline" className="bg-slate-50 text-slate-700 border-slate-200">
+              <Badge key={i} variant="outline" className={cn(FIELD_BADGE_CLASS, 'bg-slate-50 text-slate-700 border-slate-200')}>
                 {String(v)}
               </Badge>
             ))}
           </div>
         );
       }
-      return <span className="text-slate-400 italic">Not assigned</span>;
+      return emptyValue('Not assigned');
     }
     
     return value ? (
-      <span className="text-slate-900">{String(value)}</span>
+      <span className={FIELD_VALUE_CLASS}>{String(value)}</span>
     ) : (
-      <span className="text-slate-400 italic">Not specified</span>
+      emptyValue()
     );
   };
   
@@ -1253,7 +1289,7 @@ function MetadataField({
             value={String(fieldValue || '')}
             onChange={(e) => updateDraftValue(e.target.value)}
             placeholder={`Enter ${field.label.toLowerCase()}...`}
-            className="min-h-[100px] text-sm bg-white border-slate-200 focus:border-indigo-400 focus:ring-indigo-400/20 rounded-xl resize-none"
+            className={FIELD_TEXTAREA_CLASS}
           />
         );
       }
@@ -1262,7 +1298,7 @@ function MetadataField({
           value={String(fieldValue || '')}
           onChange={(e) => updateDraftValue(e.target.value)}
           placeholder={`Enter ${field.label.toLowerCase()}...`}
-          className="h-10 text-sm bg-white border-slate-200 focus:border-indigo-400 focus:ring-indigo-400/20 rounded-lg"
+          className={FIELD_INPUT_CLASS}
         />
       );
     }
@@ -1277,7 +1313,7 @@ function MetadataField({
             updateDraftValue(rawValue === '' ? '' : field.type === 'integer' ? Number.parseInt(rawValue, 10) : Number.parseFloat(rawValue));
           }}
           placeholder="0"
-          className="h-10 text-sm bg-white border-slate-200 focus:border-indigo-400 focus:ring-indigo-400/20 rounded-lg font-mono"
+          className={cn(FIELD_INPUT_CLASS, 'font-mono')}
         />
       );
     }
@@ -1288,7 +1324,7 @@ function MetadataField({
           value={Array.isArray(fieldValue) ? fieldValue.join(', ') : String(fieldValue || '')}
           onChange={(e) => updateDraftValue(e.target.value)}
           placeholder={`Enter ${field.label.toLowerCase()} separated by commas...`}
-          className="h-10 text-sm bg-white border-slate-200 focus:border-indigo-400 focus:ring-indigo-400/20 rounded-lg"
+          className={FIELD_INPUT_CLASS}
         />
       );
     }
@@ -1299,7 +1335,7 @@ function MetadataField({
           type="date"
           value={toDateInputValue(fieldValue)}
           onChange={(e) => updateDraftValue(e.target.value)}
-          className="h-10 text-sm bg-white border-slate-200 focus:border-indigo-400 focus:ring-indigo-400/20 rounded-lg"
+          className={FIELD_INPUT_CLASS}
         />
       );
     }
@@ -1312,7 +1348,7 @@ function MetadataField({
             onCheckedChange={updateDraftValue}
             className="data-[state=checked]:bg-violet-600"
           />
-          <span className="text-sm text-slate-600">{fieldValue ? 'Yes' : 'No'}</span>
+          <span className={cn(FIELD_VALUE_MUTED_CLASS, 'text-slate-600')}>{fieldValue ? 'Yes' : 'No'}</span>
         </div>
       );
     }
@@ -1336,12 +1372,12 @@ function MetadataField({
       
       return (
         <Select value={String(fieldValue || '')} onValueChange={updateDraftValue}>
-          <SelectTrigger className="h-10 text-sm bg-white border-slate-200 focus:border-indigo-400 focus:ring-indigo-400/20 rounded-lg">
+          <SelectTrigger className={FIELD_INPUT_CLASS}>
             <SelectValue placeholder={`Select ${field.label.toLowerCase()}...`} />
           </SelectTrigger>
           <SelectContent className="rounded-xl">
             {field.enum.map(opt => (
-              <SelectItem key={opt} value={opt} className="rounded-lg">
+              <SelectItem key={opt} value={opt} className="rounded-lg text-sm">
                 {getEnumLabel(opt)}
               </SelectItem>
             ))}
@@ -1354,7 +1390,7 @@ function MetadataField({
       <Input 
         value={String(fieldValue || '')} 
         onChange={(e) => updateDraftValue(e.target.value)}
-        className="h-10 text-sm bg-white border-slate-200 focus:border-indigo-400 focus:ring-indigo-400/20 rounded-lg" 
+        className={FIELD_INPUT_CLASS} 
       />
     );
   };
@@ -1374,55 +1410,60 @@ function MetadataField({
   return (
     <div 
       className={cn(
-        "relative flex flex-col p-3 rounded-lg transition-all",
-        needsAttention 
-          ? 'bg-amber-50/50 border border-amber-200' 
-          : isVerified 
-            ? 'bg-violet-50/30 border border-violet-100' 
-            : 'bg-slate-50 border border-transparent hover:border-slate-200',
+        needsAttention
+          ? detailUi.fieldCellAttention
+          : isVerified
+            ? detailUi.fieldCellVerified
+            : detailUi.fieldCell,
         colSpan
       )}
     >
       {/* Field Label Row */}
-      <div className="flex items-center justify-between mb-1.5">
-        <div className="flex items-center gap-1.5">
-          <Label className="text-xs font-medium text-slate-600">
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <Label className={cn(FIELD_LABEL_CLASS, 'truncate')}>
             {field.label}
           </Label>
-          {field.required && isFieldRequired(field.key, contractType ?? null) && <span className="text-red-400 text-xs">*</span>}
-          {isVerified && <CheckCircle2 className="h-3 w-3 text-emerald-500" />}
+          {field.required && isFieldRequired(field.key, contractType ?? null) && (
+            <span className="text-red-400 text-xs leading-4 shrink-0">*</span>
+          )}
+          {isVerified && <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />}
           {needsAttention && (
             <TooltipProvider>
               <Tooltip>
-                <TooltipTrigger><AlertTriangle className="h-3 w-3 text-amber-500" /></TooltipTrigger>
-                <TooltipContent side="top" className="text-xs">{getAttentionMessage()}</TooltipContent>
+                <TooltipTrigger><AlertTriangle className="h-3.5 w-3.5 text-amber-500 shrink-0" /></TooltipTrigger>
+                <TooltipContent side="top" className="text-xs leading-4">{getAttentionMessage()}</TooltipContent>
               </Tooltip>
             </TooltipProvider>
           )}
         </div>
         
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-0.5 shrink-0 opacity-70 hover:opacity-100 transition-opacity">
           {!isVerified && !isEditing && field.key !== 'document_number' && (
             <button
               onClick={handleMarkVerified}
               disabled={isVerifying}
-              className="p-1 hover:bg-violet-50 rounded text-slate-400 hover:text-violet-600"
+              className="p-1.5 hover:bg-violet-50 rounded-md text-slate-400 hover:text-violet-600 transition-colors"
               title={needsAttention ? 'Verify this field to clear the flag' : 'Mark as verified'}
             >
-              {isVerifying ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3" />}
+              {isVerifying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
             </button>
           )}
           {!isEditing && canEdit && !isFieldEditing && (
-            <button onClick={() => setIsFieldEditing(true)} className="p-1 hover:bg-slate-100 rounded text-slate-400 hover:text-slate-600">
-              <Pencil className="h-3 w-3" />
+            <button
+              onClick={() => setIsFieldEditing(true)}
+              className="p-1.5 hover:bg-slate-100 rounded-md text-slate-400 hover:text-slate-700 transition-colors"
+              aria-label={`Edit ${field.label}`}
+            >
+              <Pencil className="h-3.5 w-3.5" />
             </button>
           )}
           {isFieldEditing && (
             <div className="flex items-center gap-0.5">
-              <button onClick={handleSaveField} disabled={isFieldSaving} className="p-1 hover:bg-emerald-50 rounded text-emerald-600 disabled:opacity-50" aria-label="Save field">
-                {isFieldSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+              <button onClick={handleSaveField} disabled={isFieldSaving} className="p-1.5 hover:bg-emerald-50 rounded-md text-emerald-600 disabled:opacity-50" aria-label="Save field">
+                {isFieldSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
               </button>
-              <button onClick={handleCancelField} disabled={isFieldSaving} className="p-1 hover:bg-red-50 rounded text-red-500 disabled:opacity-50" aria-label="Cancel editing"><X className="h-3 w-3" /></button>
+              <button onClick={handleCancelField} disabled={isFieldSaving} className="p-1.5 hover:bg-red-50 rounded-md text-red-500 disabled:opacity-50" aria-label="Cancel editing"><X className="h-3.5 w-3.5" /></button>
             </div>
           )}
         </div>
@@ -1430,13 +1471,14 @@ function MetadataField({
       
       {/* Field Value/Input */}
       {showEditMode && canEdit ? (
-        <div className="mt-1.5">
+        <div className="mt-0.5">
           {renderInput()}
         </div>
       ) : (
         <div 
           className={cn(
-            "text-sm mt-0.5 text-slate-700",
+            FIELD_VALUE_MUTED_CLASS,
+            'min-h-[1.25rem] flex items-center',
             canEdit && !isEditing && "cursor-pointer hover:text-slate-900"
           )}
           onClick={() => {
@@ -2031,31 +2073,31 @@ export function EnhancedContractMetadataSection({
   
   return (
     <>
-    <Card className="overflow-hidden border border-slate-200 shadow-sm bg-white">
-      {/* Clean header */}
-      <CardHeader className="pb-4 border-b border-slate-100">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <CardTitle className="text-lg font-semibold text-slate-800">
-              Contract Metadata
-            </CardTitle>
-            <CardDescription className="text-xs text-slate-500 mt-0.5">
-              {isEditing
-                ? 'Make changes and click Save'
-                : reviewStatus
-                  ? `Reviewed by ${reviewStatus.reviewedBy} on ${formatDate(reviewStatus.reviewedAt)}`
-                  : fieldsNeedingAttention.length > 0
-                    ? `${fieldsNeedingAttention.length} field${fieldsNeedingAttention.length === 1 ? '' : 's'} need review`
-                    : 'All extracted values look good'}
-            </CardDescription>
-          </div>
+    <Card className={detailUi.card}>
+      {/* Clean header — matches summary/tags card language */}
+      <CardHeader className={cn(detailUi.cardHeader, 'sm:flex-row sm:items-center sm:justify-between gap-3')}>
+        <div className="min-w-0">
+          <CardTitle className={detailUi.cardTitle}>
+            <FileText className="h-4 w-4 text-violet-500" />
+            Contract Metadata
+          </CardTitle>
+          <CardDescription className={detailUi.cardDescription}>
+            {isEditing
+              ? 'Make changes and click Save'
+              : reviewStatus
+                ? `Reviewed by ${reviewStatus.reviewedBy} on ${formatDate(reviewStatus.reviewedAt)}`
+                : fieldsNeedingAttention.length > 0
+                  ? `${fieldsNeedingAttention.length} field${fieldsNeedingAttention.length === 1 ? '' : 's'} need review`
+                  : 'All extracted values look good'}
+          </CardDescription>
+        </div>
           
           {/* Action buttons */}
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
             {!isEditing ? (
               <>
                 {fieldsNeedingAttention.length > 0 && (
-                  <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 border-amber-200">
+                  <Badge variant="outline" className={cn(FIELD_BADGE_CLASS, 'bg-amber-50 text-amber-700 border-amber-200')}>
                     {fieldsNeedingAttention.length} need review
                   </Badge>
                 )}
@@ -2065,7 +2107,7 @@ export function EnhancedContractMetadataSection({
                     variant="outline"
                     onClick={handleConfirmReviewed}
                     disabled={isConfirmingReview}
-                    className="h-8 text-xs text-emerald-700 border-emerald-200 hover:bg-emerald-50"
+                    className={cn(detailUi.headerBtn, 'text-emerald-700 border-emerald-200 hover:bg-emerald-50')}
                   >
                     {isConfirmingReview ? (
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -2076,7 +2118,7 @@ export function EnhancedContractMetadataSection({
                   </Button>
                 )}
                 {reviewStatus && (
-                  <Badge variant="outline" className="text-xs bg-emerald-50 text-emerald-700 border-emerald-200">
+                  <Badge variant="outline" className={cn(FIELD_BADGE_CLASS, 'bg-emerald-50 text-emerald-700 border-emerald-200')}>
                     <CheckCircle2 className="h-3 w-3 mr-1" />
                     Reviewed
                   </Badge>
@@ -2086,7 +2128,7 @@ export function EnhancedContractMetadataSection({
                   variant="outline"
                   onClick={handleAIExtraction}
                   disabled={isExtractingAI}
-                  className="h-8 text-xs"
+                  className={detailUi.headerBtn}
                 >
                   {isExtractingAI ? (
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -2098,7 +2140,7 @@ export function EnhancedContractMetadataSection({
                 <Button 
                   size="sm" 
                   onClick={() => setIsEditing(true)}
-                  className="h-8 text-xs bg-violet-600 hover:bg-violet-700"
+                  className={detailUi.headerBtnPrimary}
                 >
                   <Pencil className="h-3.5 w-3.5 mr-1.5" />
                   Edit
@@ -2111,7 +2153,7 @@ export function EnhancedContractMetadataSection({
                   variant="outline" 
                   onClick={handleCancel}
                   disabled={isSaving}
-                  className="h-8 text-xs"
+                  className={detailUi.headerBtn}
                 >
                   Cancel
                 </Button>
@@ -2119,7 +2161,7 @@ export function EnhancedContractMetadataSection({
                   size="sm" 
                   onClick={handleSave}
                   disabled={isSaving}
-                  className="h-8 text-xs bg-violet-600 hover:bg-violet-700"
+                  className={detailUi.headerBtnPrimary}
                 >
                   {isSaving ? (
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -2130,10 +2172,9 @@ export function EnhancedContractMetadataSection({
               </div>
             )}
           </div>
-        </div>
       </CardHeader>
       
-      <CardContent className="p-4 space-y-3">
+      <CardContent className={cn(detailUi.cardContent, 'space-y-3')}>
         {/* Success Message */}
         <AnimatePresence>
           {saveSuccess && (

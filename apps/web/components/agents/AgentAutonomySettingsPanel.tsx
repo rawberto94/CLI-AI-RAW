@@ -166,23 +166,29 @@ export function AgentAutonomySettingsPanel() {
   }
 
   return (
-    <div className="max-w-3xl space-y-4">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Shield className="h-5 w-5 text-violet-600" />
+    <div className="mx-auto max-w-3xl space-y-4">
+      <Card className="overflow-hidden rounded-xl border-slate-200/90 shadow-sm">
+        <div className="h-1 bg-gradient-to-r from-violet-500 to-purple-500" />
+        <CardHeader className="border-b border-slate-100 bg-slate-50/60">
+          <CardTitle className="flex items-center gap-2 text-base font-semibold text-slate-900">
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-violet-100 bg-violet-50">
+              <Shield className="h-4 w-4 text-violet-600" />
+            </span>
             Agent autonomy
           </CardTitle>
-          <CardDescription>
+          <CardDescription className="text-xs leading-relaxed text-slate-500">
             Control when agents may write without approval. New agents default to{' '}
-            <strong>Review</strong> — nothing is auto-upgraded silently.
+            <strong className="font-semibold text-slate-700">Review</strong> — nothing is
+            auto-upgraded silently.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-6 pt-5">
           <div>
-            <label className="text-sm font-medium">Agent</label>
+            <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Agent
+            </label>
             <select
-              className="mt-1 w-full rounded-md border px-3 py-2 text-sm"
+              className="mt-1.5 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 shadow-sm focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100"
               value={selectedAgent}
               onChange={(e) => setSelectedAgent(e.target.value)}
             >
@@ -199,8 +205,10 @@ export function AgentAutonomySettingsPanel() {
           </div>
 
           <div>
-            <p className="text-sm font-medium mb-2">Mode</p>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Mode
+            </p>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
               {(Object.keys(MODE_META) as AutonomyMode[]).map((m) => {
                 const meta = MODE_META[m];
                 const Icon = meta.icon;
@@ -213,28 +221,30 @@ export function AgentAutonomySettingsPanel() {
                     className={cn(
                       'rounded-xl border p-3 text-left transition-all',
                       active
-                        ? 'border-violet-500 ring-2 ring-violet-200 bg-violet-50/50'
-                        : 'border-slate-200 hover:border-slate-300',
+                        ? 'border-violet-300 bg-violet-50/70 ring-2 ring-violet-100'
+                        : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50',
                     )}
                   >
                     <div className="flex items-center gap-2">
-                      <Icon className="h-4 w-4" />
-                      <span className="font-semibold text-sm">{meta.label}</span>
+                      <Icon className={cn('h-4 w-4', active ? 'text-violet-600' : 'text-slate-500')} />
+                      <span className="text-sm font-semibold text-slate-900">{meta.label}</span>
                       {active && (
-                        <Badge className={cn('ml-auto text-[10px]', meta.color)}>{m}</Badge>
+                        <Badge className={cn('ml-auto border text-[10px]', meta.color)}>{m}</Badge>
                       )}
                     </div>
-                    <p className="mt-1 text-xs text-muted-foreground">{meta.description}</p>
+                    <p className="mt-1.5 text-xs leading-relaxed text-slate-500">
+                      {meta.description}
+                    </p>
                   </button>
                 );
               })}
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div>
-              <label className="text-sm font-medium">
-                Confidence threshold ({Math.round(draft.confidenceThreshold * 100)}%)
+              <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Confidence ({Math.round(draft.confidenceThreshold * 100)}%)
               </label>
               <input
                 type="range"
@@ -245,12 +255,14 @@ export function AgentAutonomySettingsPanel() {
                 onChange={(e) =>
                   setDraft((d) => ({ ...d, confidenceThreshold: Number(e.target.value) }))
                 }
-                className="mt-2 w-full"
+                className="mt-3 w-full accent-violet-600"
                 disabled={draft.mode !== 'auto'}
               />
             </div>
             <div>
-              <label className="text-sm font-medium">Cost ceiling (optional)</label>
+              <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Cost ceiling
+              </label>
               <input
                 type="number"
                 min={0}
@@ -262,14 +274,16 @@ export function AgentAutonomySettingsPanel() {
                     costThreshold: e.target.value === '' ? null : Number(e.target.value),
                   }))
                 }
-                className="mt-1 w-full rounded-md border px-3 py-2 text-sm"
+                className="mt-1.5 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm shadow-sm disabled:bg-slate-50"
                 disabled={draft.mode !== 'auto'}
               />
             </div>
             <div>
-              <label className="text-sm font-medium">Max risk for auto</label>
+              <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Max risk for auto
+              </label>
               <select
-                className="mt-1 w-full rounded-md border px-3 py-2 text-sm"
+                className="mt-1.5 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm shadow-sm disabled:bg-slate-50"
                 value={draft.riskThreshold}
                 onChange={(e) =>
                   setDraft((d) => ({ ...d, riskThreshold: e.target.value as RiskLevel }))
@@ -284,16 +298,20 @@ export function AgentAutonomySettingsPanel() {
             </div>
           </div>
 
-          <div className="flex items-center justify-between gap-3 pt-2 border-t">
-            <div className="text-sm text-muted-foreground flex items-center gap-2">
-              Current:
+          <div className="flex items-center justify-between gap-3 border-t border-slate-100 pt-4">
+            <div className="flex items-center gap-2 text-xs text-slate-500">
+              Current
               <Badge className={cn('border', modeBadge.color)}>{modeBadge.label}</Badge>
             </div>
-            <Button onClick={save} disabled={saving === selectedAgent}>
+            <Button
+              onClick={save}
+              disabled={saving === selectedAgent}
+              className="rounded-lg bg-violet-600 hover:bg-violet-700"
+            >
               {saving === selectedAgent ? (
-                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                <Loader2 className="mr-1 h-4 w-4 animate-spin" />
               ) : (
-                <Save className="h-4 w-4 mr-1" />
+                <Save className="mr-1 h-4 w-4" />
               )}
               Save
             </Button>
@@ -302,21 +320,28 @@ export function AgentAutonomySettingsPanel() {
       </Card>
 
       {configs.length > 0 && (
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Configured agents</CardTitle>
+        <Card className="rounded-xl border-slate-200/90 shadow-sm">
+          <CardHeader className="border-b border-slate-100 bg-slate-50/60 pb-3">
+            <CardTitle className="text-sm font-semibold text-slate-900">
+              Configured agents
+            </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2">
+          <CardContent className="space-y-2 pt-4">
             {configs.map((c) => (
               <div
                 key={`${c.agentId}-${c.actionType}`}
-                className="flex items-center justify-between rounded-lg border px-3 py-2 text-sm"
+                className="flex items-center justify-between rounded-xl border border-slate-200/80 bg-white px-3 py-2.5 text-sm"
               >
                 <div>
-                  <p className="font-medium font-mono text-xs">{c.agentId}</p>
-                  <p className="text-xs text-muted-foreground">{c.actionType}</p>
+                  <p className="font-mono text-xs font-medium text-slate-800">{c.agentId}</p>
+                  <p className="text-[11px] text-slate-500">{c.actionType}</p>
                 </div>
-                <Badge className={cn('border capitalize', MODE_META[c.mode as AutonomyMode]?.color)}>
+                <Badge
+                  className={cn(
+                    'border capitalize',
+                    MODE_META[c.mode as AutonomyMode]?.color,
+                  )}
+                >
                   {c.mode}
                 </Badge>
               </div>

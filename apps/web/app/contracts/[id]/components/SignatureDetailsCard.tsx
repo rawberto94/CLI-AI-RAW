@@ -56,15 +56,15 @@ const SignatoryRow = memo(function SignatoryRow({
 }) {
   return (
     <div className={cn(
-      "flex items-center justify-between p-3 rounded-lg border transition-colors",
+      "flex items-center justify-between rounded-xl border p-3.5 transition-colors",
       signatory.status === 'signed' ? "bg-emerald-50/50 border-emerald-100" :
       signatory.status === 'pending' ? "bg-amber-50/50 border-amber-100" :
       signatory.status === 'declined' ? "bg-red-50/50 border-red-100" :
       "bg-slate-50/50 border-slate-100"
     )}>
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 min-w-0">
         <div className={cn(
-          "p-2 rounded-full",
+          "rounded-xl p-2 shrink-0",
           signatory.status === 'signed' ? "bg-emerald-100" :
           signatory.status === 'pending' ? "bg-amber-100" :
           signatory.status === 'declined' ? "bg-red-100" :
@@ -80,7 +80,7 @@ const SignatoryRow = memo(function SignatoryRow({
         </div>
         <div>
           <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-slate-900">{signatory.name}</span>
+            <span className="text-sm font-medium leading-5 text-slate-900">{signatory.name}</span>
             {signatory.status === 'signed' && (
               <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
             )}
@@ -91,7 +91,7 @@ const SignatoryRow = memo(function SignatoryRow({
           {signatory.organization && (
             <div className="flex items-center gap-1 mt-0.5">
               <Building2 className="h-3 w-3 text-slate-400" />
-              <span className="text-[10px] text-slate-400">{signatory.organization}</span>
+              <span className="text-xs font-medium leading-4 text-slate-400">{signatory.organization}</span>
             </div>
           )}
         </div>
@@ -100,10 +100,10 @@ const SignatoryRow = memo(function SignatoryRow({
       <div className="flex items-center gap-2">
         {signatory.status === 'signed' && signatory.signedAt && (
           <div className="text-right">
-            <Badge className="text-[10px] bg-emerald-100 text-emerald-700 border-0">
+            <Badge className="border-0 bg-emerald-100 text-xs font-medium leading-4 text-emerald-700">
               Signed
             </Badge>
-            <p className="text-[10px] text-slate-400 mt-0.5">
+            <p className="mt-0.5 text-xs font-medium leading-4 text-slate-400">
               {new Date(signatory.signedAt).toLocaleDateString()}
             </p>
           </div>
@@ -111,7 +111,7 @@ const SignatoryRow = memo(function SignatoryRow({
         
         {signatory.status === 'pending' && (
           <div className="flex items-center gap-2">
-            <Badge className="text-[10px] bg-amber-100 text-amber-700 border-0">
+            <Badge className="border-0 bg-amber-100 text-xs font-medium leading-4 text-amber-700">
               Pending
             </Badge>
             {onSendReminder && signatory.email && (
@@ -137,13 +137,13 @@ const SignatoryRow = memo(function SignatoryRow({
         )}
         
         {signatory.status === 'declined' && (
-          <Badge className="text-[10px] bg-red-100 text-red-700 border-0">
+          <Badge className="border-0 bg-red-100 text-xs font-medium leading-4 text-red-700">
             Declined
           </Badge>
         )}
         
         {signatory.status === 'not_required' && (
-          <Badge className="text-[10px] bg-slate-100 text-slate-600 border-0">
+          <Badge className="border-0 bg-slate-100 text-xs font-medium leading-4 text-slate-600">
             Optional
           </Badge>
         )}
@@ -219,34 +219,33 @@ export const SignatureDetailsCard = memo(function SignatureDetailsCard({
 
   return (
     <Card className={cn(
-      "overflow-hidden border-0 shadow-sm bg-white",
+      "overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-sm",
       className
     )}>
       {/* Header */}
       <div className={cn(
-        "p-4 sm:p-5 border-b",
+        "border-b px-4 py-3.5",
         statusConfig.bgColor,
         statusConfig.borderColor
       )}>
         <div className="flex items-start justify-between gap-4">
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 items-center gap-3">
             <div className={cn(
-              "p-2.5 rounded-lg bg-white shadow-sm",
-              statusConfig.borderColor,
-              "border"
+              "rounded-xl border bg-white p-2.5 shadow-sm",
+              statusConfig.borderColor
             )}>
               <StatusIcon className={cn("h-5 w-5", statusConfig.iconColor)} />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-sm sm:text-base font-semibold text-slate-900">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h3 className="text-sm font-semibold leading-5 text-slate-900">
                   Signature Status
                 </h3>
-                <Badge className={cn("text-[10px] sm:text-xs border-0", statusConfig.badgeClass)}>
+                <Badge className={cn("border-0 text-xs font-medium leading-4", statusConfig.badgeClass)}>
                   {statusConfig.label}
                 </Badge>
               </div>
-              <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+              <p className="mt-0.5 text-xs font-medium leading-4 text-slate-500">
                 {statusConfig.description}
               </p>
             </div>
@@ -254,25 +253,25 @@ export const SignatureDetailsCard = memo(function SignatureDetailsCard({
           
           {/* Progress indicator */}
           {totalRequired > 0 && (
-            <div className="text-right">
-              <span className="text-lg sm:text-xl font-bold text-slate-900">
+            <div className="shrink-0 text-right">
+              <span className="text-sm font-semibold leading-5 text-slate-900">
                 {signedCount}/{totalRequired}
               </span>
-              <p className="text-[10px] sm:text-xs text-slate-500">signatures</p>
+              <p className="text-xs font-medium leading-4 text-slate-500">signatures</p>
             </div>
           )}
         </div>
         
         {/* Metadata row */}
-        <div className="flex flex-wrap items-center gap-3 sm:gap-4 mt-3 pt-3 border-t border-white/50">
+        <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-white/50 pt-3">
           {signatureDate && (
-            <div className="flex items-center gap-1.5 text-xs text-slate-600">
+            <div className="flex items-center gap-1.5 text-xs font-medium leading-4 text-slate-600">
               <Calendar className="h-3.5 w-3.5" />
               <span>Signed {new Date(signatureDate).toLocaleDateString()}</span>
             </div>
           )}
           {signatureMethod && signatureMethod !== 'unknown' && (
-            <div className="flex items-center gap-1.5 text-xs text-slate-600">
+            <div className="flex items-center gap-1.5 text-xs font-medium leading-4 text-slate-600">
               <FileSignature className="h-3.5 w-3.5" />
               <span>{methodLabels[signatureMethod]}</span>
             </div>
@@ -280,14 +279,14 @@ export const SignatureDetailsCard = memo(function SignatureDetailsCard({
         </div>
       </div>
       
-      <div className="p-4 sm:p-5">
+      <div className="p-4">
         {/* AI Analysis */}
         {signatureAnalysis && (
-          <div className="mb-4 pb-4 border-b border-slate-100">
-            <span className="text-xs font-medium text-slate-500 uppercase tracking-wide block mb-2">
+          <div className="mb-4 border-b border-slate-100 pb-4">
+            <span className="mb-2 block text-xs font-medium leading-4 text-slate-500">
               AI Analysis
             </span>
-            <p className="text-sm text-slate-700 leading-relaxed">
+            <p className="text-sm font-medium leading-5 text-slate-700">
               {signatureAnalysis}
             </p>
           </div>
@@ -297,11 +296,11 @@ export const SignatureDetailsCard = memo(function SignatureDetailsCard({
         {signatories.length > 0 && (
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-slate-500 uppercase tracking-wide">
+              <span className="text-xs font-medium leading-4 text-slate-500">
                 Signatories ({signatories.length})
               </span>
               {pendingCount > 0 && (
-                <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-200">
+                <Badge variant="outline" className="border-amber-200 text-xs font-medium leading-4 text-amber-600">
                   {pendingCount} pending
                 </Badge>
               )}
@@ -320,9 +319,9 @@ export const SignatureDetailsCard = memo(function SignatureDetailsCard({
         
         {/* Empty state for signatories */}
         {signatories.length === 0 && status !== 'unknown' && (
-          <div className="text-center py-4">
-            <p className="text-sm text-slate-500">No signatories identified</p>
-            <p className="text-xs text-slate-400 mt-1">
+          <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-6 text-center">
+            <p className="text-sm font-medium leading-5 text-slate-500">No signatories identified</p>
+            <p className="mt-1 text-xs font-medium leading-4 text-slate-400">
               Run AI extraction to detect signatories
             </p>
           </div>

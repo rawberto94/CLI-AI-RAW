@@ -54,7 +54,7 @@ export function StatusBadge({ status }: { status: string }) {
   const shouldAnimate = 'animate' in statusConfig && statusConfig.animate
 
   return (
-    <Badge variant="outline" className={cn('gap-1.5 font-medium border', statusConfig.bg, statusConfig.text)}>
+    <Badge variant="outline" className={cn('gap-1.5 border text-xs font-medium leading-4', statusConfig.bg, statusConfig.text)}>
       <Icon className={cn('h-3 w-3', shouldAnimate && 'animate-spin')} />
       {statusConfig.label}
     </Badge>

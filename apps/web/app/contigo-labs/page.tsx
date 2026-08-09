@@ -124,6 +124,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { FloatingAIBubble } from '@/components/ai/FloatingAIBubble';
 import { MarkdownContent } from '@/components/ai/MarkdownContent';
 import { AgentObservabilityDashboard } from '@/components/agents/AgentObservabilityDashboard';
+import { labsUi, labsTone, type LabsToneKey } from './labs-ui';
 
 // Message type for chat interface
 interface Message {
@@ -226,8 +227,9 @@ export default function ContigoLabsPage() {
     try {
       const res = await fetch('/api/agents/status');
       if (res.ok) {
-        const data = await res.json();
-        setStatus(data);
+        const payload = await res.json();
+        // APIs return { success, data }; prefer unwrapped payload for overview/metrics
+        setStatus(payload?.data ?? payload);
       }
     } catch (error) {
       console.error('Failed to fetch status:', error);
@@ -287,60 +289,70 @@ export default function ContigoLabsPage() {
   }, [activeTab]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
-      <div className="max-w-[1600px] mx-auto px-6 sm:px-8 lg:px-10 pt-6">
+    <div className={labsUi.page}>
+      <div className={cn(labsUi.shell, 'pt-5')}>
         <PageBreadcrumb />
       </div>
       {/* Header */}
-      <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-100 dark:border-slate-800 sticky top-0 z-30">
-        <div className="max-w-[1600px] mx-auto px-6 sm:px-8 lg:px-10 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-600 via-purple-600 to-pink-600 flex items-center justify-center shadow-lg shadow-violet-500/20 hover:shadow-violet-500/30 hover:scale-105 transition-all duration-300">
-                <Rocket className="w-6 h-6 text-white" />
+      <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/90 backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/90">
+        <div className={cn(labsUi.shell, 'py-3.5')}>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-600 shadow-sm">
+                <Rocket className="h-5 w-5 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-black bg-gradient-to-r from-violet-700 via-purple-600 to-pink-600 bg-clip-text text-transparent">
+                <h1 className="text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-50">
                   Contigo Labs
                 </h1>
-                <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
-                  AI-Powered Contract Intelligence Hub
+                <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                  AI agents, approvals, and contract intelligence
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
-              {/* Connection Status */}
-              <Badge 
+            <div className="flex flex-wrap items-center gap-2">
+              <span
                 className={cn(
-                  "text-xs font-bold px-3 py-1.5 rounded-lg border-transparent",
-                  sse.connected 
-                    ? "bg-emerald-50 text-emerald-700" 
-                    : "bg-amber-50 text-amber-700"
+                  labsUi.chip,
+                  sse.connected ? labsUi.chipEmerald : labsUi.chipAmber,
                 )}
               >
-                <span className={cn("w-2 h-2 rounded-full mr-2", sse.connected ? "bg-emerald-500 animate-pulse" : "bg-amber-500 animate-pulse")} />
-                {sse.connected ? 'Live' : 'Connecting...'}
-              </Badge>
-
-              {/* Quick Stats */}
-              {status?.overview && (
-                <div className="flex items-center gap-2">
-                  <Badge className="bg-emerald-50 text-emerald-700 border-transparent font-bold px-3 py-1.5 rounded-lg">
-                    <Bot className="w-3.5 h-3.5 mr-1.5" />
-                    {status.overview.activeAgents} Active
-                  </Badge>
-                  {(sse.pendingApprovals > 0 || status.overview.pendingApprovals > 0) && (
-                    <Badge className="bg-red-50 text-red-700 border-transparent font-bold px-3 py-1.5 rounded-lg animate-pulse">
-                      <Bell className="w-3.5 h-3.5 mr-1.5" />
-                      {sse.pendingApprovals || status.overview.pendingApprovals} Pending
-                    </Badge>
+                <span
+                  className={cn(
+                    'h-1.5 w-1.5 rounded-full',
+                    sse.connected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500 animate-pulse',
                   )}
-                </div>
+                />
+                {sse.connected ? 'Live' : 'Connecting…'}
+              </span>
+
+              {status?.overview && (
+                <>
+                  <span className={cn(labsUi.chip, labsUi.chipNeutral)}>
+                    <Bot className="h-3.5 w-3.5 text-slate-500" />
+                    {status.overview.activeAgents} active
+                  </span>
+                  {(sse.pendingApprovals > 0 || status.overview.pendingApprovals > 0) && (
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('approvals')}
+                      className={cn(labsUi.chip, labsUi.chipAmber, 'cursor-pointer hover:bg-amber-100')}
+                    >
+                      <Bell className="h-3.5 w-3.5" />
+                      {sse.pendingApprovals || status.overview.pendingApprovals} pending
+                    </button>
+                  )}
+                </>
               )}
 
-              <Button variant="outline" size="sm" onClick={fetchStatus} className="h-9 rounded-lg border-slate-200 hover:bg-slate-50 font-semibold transition-all">
-                <RefreshCw className={cn("w-4 h-4 mr-2", loading && "animate-spin")} />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={fetchStatus}
+                className="h-8 rounded-lg border-slate-200 text-xs font-medium"
+              >
+                <RefreshCw className={cn('mr-1.5 h-3.5 w-3.5', loading && 'animate-spin')} />
                 Refresh
               </Button>
             </div>
@@ -349,93 +361,67 @@ export default function ContigoLabsPage() {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-[1600px] mx-auto px-6 sm:px-8 lg:px-10 py-6">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+      <main className={cn(labsUi.shell, 'py-5')}>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-5">
           {/* Navigation Tabs */}
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm p-1.5">
-            <TabsList className="w-full justify-start bg-transparent h-auto p-0 gap-1 flex-wrap">
-              <TabsTrigger 
-                value="dashboard" 
-                className="data-[state=active]:bg-violet-100 data-[state=active]:text-violet-700 rounded-xl px-4 py-2.5 transition-all hover:bg-slate-100"
-              >
-                <LayoutGrid className="w-4 h-4 mr-2" />
-                Dashboard
-              </TabsTrigger>
-              <TabsTrigger 
-                value="agents" 
-                className="data-[state=active]:bg-violet-100 data-[state=active]:text-violet-700 rounded-xl px-4 py-2.5 transition-all hover:bg-slate-100"
-              >
-                <Bot className="w-4 h-4 mr-2" />
-                Agents
-                <Badge variant="secondary" className="ml-2 text-xs bg-white/50">22</Badge>
-              </TabsTrigger>
-              <TabsTrigger 
-                value="approvals" 
-                className="data-[state=active]:bg-violet-100 data-[state=active]:text-violet-700 rounded-xl px-4 py-2.5 transition-all hover:bg-slate-100"
-              >
-                <ListChecks className="w-4 h-4 mr-2" />
-                Approvals
-                {status?.overview?.pendingApprovals > 0 && (
-                  <Badge variant="destructive" className="ml-2 text-xs animate-pulse">
-                    {status.overview.pendingApprovals}
-                  </Badge>
-                )}
-              </TabsTrigger>
-              <TabsTrigger 
-                value="rfx-studio" 
-                className="data-[state=active]:bg-violet-100 data-[state=active]:text-violet-700 rounded-xl px-4 py-2.5 transition-all hover:bg-slate-100"
-              >
-                <Gavel className="w-4 h-4 mr-2" />
-                RFx Studio
-              </TabsTrigger>
-              <TabsTrigger 
-                value="chat" 
-                className="data-[state=active]:bg-violet-100 data-[state=active]:text-violet-700 rounded-xl px-4 py-2.5 transition-all hover:bg-slate-100"
-              >
-                <MessageSquare className="w-4 h-4 mr-2" />
-                Chat
-              </TabsTrigger>
-              <TabsTrigger 
-                value="analytics" 
-                className="data-[state=active]:bg-violet-100 data-[state=active]:text-violet-700 rounded-xl px-4 py-2.5 transition-all hover:bg-slate-100"
-              >
-                <BarChart3 className="w-4 h-4 mr-2" />
-                Analytics
-              </TabsTrigger>
-              <TabsTrigger 
-                value="toolbox" 
-                className="data-[state=active]:bg-violet-100 data-[state=active]:text-violet-700 rounded-xl px-4 py-2.5 transition-all hover:bg-slate-100"
-              >
-                <Wrench className="w-4 h-4 mr-2" />
-                Toolbox
-              </TabsTrigger>
-              <TabsTrigger
-                value="knowledge"
-                className="data-[state=active]:bg-violet-100 data-[state=active]:text-violet-700 rounded-xl px-4 py-2.5 transition-all hover:bg-slate-100"
-              >
-                <GitBranch className="w-4 h-4 mr-2" />
-                Knowledge
-              </TabsTrigger>
-              <TabsTrigger
-                value="observability"
-                className="data-[state=active]:bg-violet-100 data-[state=active]:text-violet-700 rounded-xl px-4 py-2.5 transition-all hover:bg-slate-100"
-              >
-                <Gauge className="w-4 h-4 mr-2" />
-                Observability
-              </TabsTrigger>
+          <div className={cn(labsUi.card, 'p-1.5')}>
+            <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1 rounded-lg bg-slate-50/90 p-1 dark:bg-slate-800/50">
+              {(
+                [
+                  { value: 'dashboard', icon: LayoutGrid, label: 'Dashboard' },
+                  { value: 'agents', icon: Bot, label: 'Agents', badge: String(status?.overview?.totalAgents || 22) },
+                  {
+                    value: 'approvals',
+                    icon: ListChecks,
+                    label: 'Approvals',
+                    alert: status?.overview?.pendingApprovals > 0 ? status.overview.pendingApprovals : undefined,
+                  },
+                  { value: 'rfx-studio', icon: Gavel, label: 'RFx Studio' },
+                  { value: 'chat', icon: MessageSquare, label: 'Chat' },
+                  { value: 'analytics', icon: BarChart3, label: 'Analytics' },
+                  { value: 'toolbox', icon: Wrench, label: 'Toolbox' },
+                  { value: 'knowledge', icon: GitBranch, label: 'Knowledge' },
+                  { value: 'observability', icon: Gauge, label: 'Observability' },
+                ] as const
+              ).map((tab) => {
+                const Icon = tab.icon;
+                return (
+                  <TabsTrigger
+                    key={tab.value}
+                    value={tab.value}
+                    className={labsUi.tabActive}
+                  >
+                    <Icon className="mr-1.5 h-3.5 w-3.5 opacity-80" />
+                    {tab.label}
+                    {'badge' in tab && tab.badge && (
+                      <span className="ml-1.5 rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-600">
+                        {tab.badge}
+                      </span>
+                    )}
+                    {'alert' in tab && tab.alert != null && (
+                      <span className="ml-1.5 rounded-md bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800">
+                        {tab.alert}
+                      </span>
+                    )}
+                  </TabsTrigger>
+                );
+              })}
             </TabsList>
           </div>
 
           {/* Dashboard Tab */}
           <TabsContent value="dashboard" className="m-0 space-y-6">
-            <DashboardOverview status={status} loading={loading} />
+            <DashboardOverview
+              status={status}
+              loading={loading}
+              onOpenAgents={() => setActiveTab('agents')}
+              onOpenApprovals={() => setActiveTab('approvals')}
+            />
           </TabsContent>
 
           {/* Agents Tab */}
           <TabsContent value="agents" className="m-0">
-            <div className="h-[calc(100vh-280px)]">
-              <UnifiedAgentInterface />
-            </div>
+            <UnifiedAgentInterface />
           </TabsContent>
 
           {/* Approvals Tab — real HITL queue (goals + agent field writes) */}
@@ -482,21 +468,26 @@ export default function ContigoLabsPage() {
 // DASHBOARD OVERVIEW
 // ============================================================================
 
-function DashboardOverview({ status, loading }: { status: any; loading: boolean }) {
+function DashboardOverview({
+  status,
+  loading,
+  onOpenAgents,
+  onOpenApprovals,
+}: {
+  status: any;
+  loading: boolean;
+  onOpenAgents?: () => void;
+  onOpenApprovals?: () => void;
+}) {
   if (loading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {[1, 2, 3, 4].map(i => (
-          <Card key={i} className="animate-pulse border-transparent shadow-sm rounded-2xl">
-            <CardContent className="p-6">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="h-3 bg-slate-200 rounded-full w-24 mb-4" />
-                  <div className="h-10 bg-slate-200 rounded-xl w-20 mb-3" />
-                  <div className="h-3 bg-slate-100 rounded-full w-32" />
-                </div>
-                <div className="w-14 h-14 bg-slate-200 rounded-2xl" />
-              </div>
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
+        {[1, 2, 3, 4].map((i) => (
+          <Card key={i} className={cn(labsUi.card, 'animate-pulse')}>
+            <CardContent className="p-4">
+              <div className="mb-3 h-3 w-24 rounded bg-slate-100" />
+              <div className="mb-2 h-8 w-16 rounded-lg bg-slate-100" />
+              <div className="h-3 w-28 rounded bg-slate-50" />
             </CardContent>
           </Card>
         ))}
@@ -504,35 +495,41 @@ function DashboardOverview({ status, loading }: { status: any; loading: boolean 
     );
   }
 
+  const totalAgents = status?.overview?.totalAgents || Object.keys(AGENT_CLUSTERS).reduce(
+    (n, id) => n + (AGENT_CLUSTERS as any)[id].agents.length,
+    0,
+  ) || 22;
+
   return (
-    <div className="space-y-6">
-      {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="space-y-5">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
         <StatCard
-          title="Active Agents"
+          title="Active agents"
           value={status?.overview?.activeAgents || 0}
-          total={22}
+          total={totalAgents}
           icon={Bot}
           color="violet"
-          description="Currently operational"
+          description="Healthy in the last 24h"
+          onClick={onOpenAgents}
         />
         <StatCard
-          title="Pending Approvals"
+          title="Pending approvals"
           value={status?.overview?.pendingApprovals || 0}
           icon={ListChecks}
           color="amber"
           description="Awaiting your decision"
           alert={status?.overview?.pendingApprovals > 0}
+          onClick={onOpenApprovals}
         />
         <StatCard
-          title="RFx Studio"
+          title="RFx opportunities"
           value={status?.metrics?.totalOpportunities || 0}
           icon={Gavel}
           color="emerald"
-          description="Opportunities detected"
+          description="Detected by Scout"
         />
         <StatCard
-          title="Success Rate"
+          title="Success rate"
           value={`${Math.round(status?.metrics?.successRate || 0)}%`}
           icon={Gauge}
           color="blue"
@@ -540,59 +537,57 @@ function DashboardOverview({ status, loading }: { status: any; loading: boolean 
         />
       </div>
 
-      {/* Agent Clusters */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {Object.values(AGENT_CLUSTERS).map(cluster => (
-          <ClusterCard key={cluster.id} cluster={cluster} />
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
+        {Object.values(AGENT_CLUSTERS).map((cluster) => (
+          <ClusterCard key={cluster.id} cluster={cluster} onOpenAgents={onOpenAgents} />
         ))}
       </div>
 
-      {/* Quick Actions */}
-      <Card className="border-transparent shadow-sm bg-white dark:bg-slate-900 rounded-2xl overflow-hidden">
-        <div className="h-1 bg-gradient-to-r from-amber-400 via-amber-500 to-orange-500" />
-        <CardHeader className="pb-4 border-b border-slate-100 dark:border-slate-800">
-          <CardTitle className="flex items-center gap-3 text-xl font-bold text-slate-900 dark:text-white">
-            <div className="w-10 h-10 bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400 rounded-xl flex items-center justify-center shadow-sm">
-              <Zap className="w-5 h-5" />
-            </div>
-            Quick Actions
-          </CardTitle>
-          <CardDescription className="text-sm font-medium text-slate-500 dark:text-slate-400">Common tasks and shortcuts</CardDescription>
-        </CardHeader>
-        <CardContent className="pt-6">
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <Card className={labsUi.card}>
+        <div className={cn('h-1 bg-gradient-to-r', labsTone.amber.bar)} />
+        <div className={labsUi.cardHeader}>
+          <div className={labsUi.cardTitle}>
+            <span className={cn(labsUi.iconWell, labsUi.iconWellAmber)}>
+              <Zap className="h-4 w-4" />
+            </span>
+            Quick actions
+          </div>
+          <p className={labsUi.cardDescription}>Jump into common agent workflows</p>
+        </div>
+        <CardContent className={labsUi.cardContent}>
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
             <QuickActionButton
               icon={Target}
-              label="Scout Opportunities"
-              description="Find RFx opportunities"
+              label="Scout opportunities"
+              description="Find RFx signals"
               href="/contigo-labs?tab=rfx-studio"
               color="emerald"
             />
             <QuickActionButton
               icon={MessageSquare}
               label="Ask Sage"
-              description="Natural language search"
+              description="Natural language"
               href="/contigo-labs?tab=chat"
               color="violet"
             />
             <QuickActionButton
               icon={Gavel}
               label="Create RFx"
-              description="Start new sourcing"
+              description="Start sourcing"
               href="/requests/new"
               color="amber"
             />
             <QuickActionButton
               icon={GitBranch}
-              label="Knowledge Graph"
-              description="Explore relationships"
+              label="Knowledge graph"
+              description="Relationships"
               href="/contigo-labs?tab=knowledge"
               color="blue"
             />
             <QuickActionButton
               icon={Wrench}
-              label="AI Toolbox"
-              description="Run AI tools directly"
+              label="AI toolbox"
+              description="Run tools"
               href="/contigo-labs?tab=toolbox"
               color="rose"
             />
@@ -600,186 +595,263 @@ function DashboardOverview({ status, loading }: { status: any; loading: boolean 
         </CardContent>
       </Card>
 
-      {/* Recent Activity */}
-      <Card className="border-transparent shadow-sm bg-white dark:bg-slate-900 rounded-2xl overflow-hidden">
-        <div className="h-1 bg-gradient-to-r from-blue-400 via-blue-500 to-indigo-500" />
-        <CardHeader className="pb-4 border-b border-slate-100 dark:border-slate-800">
-          <CardTitle className="flex items-center gap-3 text-xl font-bold text-slate-900 dark:text-white">
-            <div className="w-10 h-10 bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400 rounded-xl flex items-center justify-center shadow-sm">
-              <Clock className="w-5 h-5" />
+      <Card className={labsUi.card}>
+        <div className={cn('h-1 bg-gradient-to-r', labsTone.blue.bar)} />
+        <div className={labsUi.cardHeader}>
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <div className={labsUi.cardTitle}>
+                <span className={cn(labsUi.iconWell, labsUi.iconWellBlue)}>
+                  <Clock className="h-4 w-4" />
+                </span>
+                Recent activity
+              </div>
+              <p className={labsUi.cardDescription}>Latest agent events across your tenant</p>
             </div>
-            Recent Activity
-          </CardTitle>
-        </CardHeader>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 rounded-lg border-slate-200 text-xs"
+              onClick={onOpenAgents}
+            >
+              Open agents
+            </Button>
+          </div>
+        </div>
         <CardContent className="p-0">
-          <ScrollArea className="h-[400px] px-6 py-4">
-            {status?.recentActivity?.length > 0 ? (
-              <div className="space-y-3">
-                {status.recentActivity.map((activity: any) => (
-                  <ActivityRow key={activity.id} activity={activity} />
-                ))}
+          {status?.recentActivity?.length > 0 ? (
+            <div className="divide-y divide-slate-100 max-h-[360px] overflow-auto">
+              {status.recentActivity.map((activity: any) => (
+                <ActivityRow key={activity.id} activity={activity} />
+              ))}
+            </div>
+          ) : (
+            <div className={cn(labsUi.empty, 'm-4')}>
+              <div className={labsUi.emptyIcon}>
+                <Bot className="h-5 w-5 text-slate-400" />
               </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center h-full text-center py-16">
-                <div className="w-20 h-20 bg-slate-50 dark:bg-slate-800 rounded-2xl flex items-center justify-center mb-4">
-                  <Bot className="w-10 h-10 text-slate-300 dark:text-slate-600" />
-                </div>
-                <p className="font-bold text-slate-700 dark:text-slate-300">No recent activity</p>
-                <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-1">Agents are currently idle</p>
-              </div>
-            )}
-          </ScrollArea>
+              <p className={labsUi.emptyTitle}>No recent activity</p>
+              <p className={labsUi.emptyBody}>
+                Agents are idle. Run a goal, open Chat, or scan RFx to populate this feed.
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
   );
 }
 
-function StatCard({ title, value, total, icon: Icon, color, description, alert }: any) {
-  const colors: Record<string, { bg: string; icon: string; border: string }> = {
-    violet: { bg: 'bg-violet-50', icon: 'bg-violet-100 text-violet-600', border: 'border-l-violet-500' },
-    amber: { bg: 'bg-amber-50', icon: 'bg-amber-100 text-amber-600', border: 'border-l-amber-500' },
-    emerald: { bg: 'bg-emerald-50', icon: 'bg-emerald-100 text-emerald-600', border: 'border-l-emerald-500' },
-    blue: { bg: 'bg-blue-50', icon: 'bg-blue-100 text-blue-600', border: 'border-l-blue-500' },
-  };
-
-  const c = colors[color] || colors.violet;
+function StatCard({
+  title,
+  value,
+  total,
+  icon: Icon,
+  color,
+  description,
+  alert,
+  onClick,
+}: {
+  title: string;
+  value: string | number;
+  total?: number;
+  icon: any;
+  color: LabsToneKey;
+  description: string;
+  alert?: boolean;
+  onClick?: () => void;
+}) {
+  const tone = labsTone[color] || labsTone.violet;
+  const Comp: any = onClick ? 'button' : 'div';
 
   return (
-    <Card className={cn(
-      "border-l-4 border-transparent shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1 rounded-2xl bg-white dark:bg-slate-900 overflow-hidden", 
-      alert ? "border-l-red-500" : c.border
-    )}>
-      <CardContent className="p-6">
-        <div className="flex items-start justify-between">
-          <div>
-            <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">{title}</p>
-            <p className="text-4xl font-black tracking-tight text-slate-900 dark:text-white">
+    <Comp
+      type={onClick ? 'button' : undefined}
+      onClick={onClick}
+      className={cn(
+        labsUi.card,
+        'w-full text-left transition-all',
+        onClick && 'cursor-pointer hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md',
+        alert && 'ring-1 ring-amber-200',
+      )}
+    >
+      <div className={cn('h-1 bg-gradient-to-r', alert ? labsTone.amber.bar : tone.bar)} />
+      <CardContent className="p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className={labsUi.sectionLabel}>{title}</p>
+            <p className="mt-1.5 text-3xl font-semibold tracking-tight tabular-nums text-slate-900 dark:text-white">
               {value}
-              {total && <span className="text-lg text-slate-400 dark:text-slate-500 font-semibold ml-1">/{total}</span>}
+              {total != null && (
+                <span className="ml-1 text-base font-medium text-slate-400">/{total}</span>
+              )}
             </p>
-            <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-2 flex items-center gap-1.5">
-              {alert && <AlertTriangle className="w-3.5 h-3.5 text-red-500" />}
+            <p className="mt-1.5 flex items-center gap-1 text-xs font-medium text-slate-500">
+              {alert && <AlertTriangle className="h-3.5 w-3.5 text-amber-600" />}
               {description}
             </p>
           </div>
-          <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center shadow-sm", c.icon)}>
-            <Icon className="w-7 h-7" />
+          <div className={cn(labsUi.iconWell, 'h-10 w-10 rounded-xl', tone.well)}>
+            <Icon className="h-5 w-5" />
           </div>
         </div>
       </CardContent>
-    </Card>
+    </Comp>
   );
 }
 
-function ClusterCard({ cluster }: { cluster: any }) {
+function ClusterCard({
+  cluster,
+  onOpenAgents,
+}: {
+  cluster: any;
+  onOpenAgents?: () => void;
+}) {
   return (
-    <Card className="group hover:shadow-xl transition-all duration-300 border-transparent hover:border-violet-200 dark:hover:border-violet-700 bg-white dark:bg-slate-900 rounded-2xl overflow-hidden">
-      <CardContent className="p-0">
-        <div className={cn("h-1.5 bg-gradient-to-r", cluster.gradient)} />
-        <div className="p-6">
-          <div className="flex items-center gap-4 mb-5">
-            <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center text-2xl shadow-md bg-gradient-to-br", cluster.gradient)}>
-              {cluster.emoji}
-            </div>
-            <div>
-              <h3 className="font-bold text-lg text-slate-900 dark:text-white">{cluster.name}</h3>
-              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{cluster.description}</p>
-            </div>
+    <Card className={cn(labsUi.card, 'transition-all hover:border-slate-300 hover:shadow-md')}>
+      <div className={cn('h-1 bg-gradient-to-r', cluster.gradient || labsTone.violet.bar)} />
+      <CardContent className="p-4">
+        <div className="mb-3 flex items-center gap-3">
+          <div
+            className={cn(
+              'flex h-10 w-10 items-center justify-center rounded-xl text-lg shadow-sm',
+              'bg-gradient-to-br text-white',
+              cluster.gradient || labsTone.violet.bar,
+            )}
+          >
+            {cluster.emoji}
           </div>
-          
-          <div className="space-y-2">
-            {cluster.agents.map((agent: any) => (
-              <div 
-                key={agent.id}
-                className="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 hover:shadow-sm transition-all duration-200 cursor-pointer border border-transparent hover:border-slate-100 dark:hover:border-slate-700 group/agent"
-              >
-                <div className="w-10 h-10 rounded-lg bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-xl group-hover/agent:scale-110 transition-transform shadow-sm">
-                  {agent.avatar}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="font-bold text-sm text-slate-900 dark:text-white group-hover/agent:text-violet-700 dark:group-hover/agent:text-violet-400 transition-colors">{agent.codename}</p>
-                    <span className="text-[10px] font-mono text-violet-500 dark:text-violet-400 opacity-0 group-hover/agent:opacity-100 transition-opacity">@{agent.codename.toLowerCase()}</span>
-                  </div>
-                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400 truncate">{agent.description}</p>
-                </div>
-                <Badge className={cn(
-                  "text-[10px] uppercase tracking-wider font-bold border-transparent px-2 py-0.5 rounded-md",
-                  agent.status === 'active' ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400" 
-                  : agent.status === 'coming soon' ? "bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400"
-                  : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
-                )}>
-                  {agent.status}
-                </Badge>
+          <div className="min-w-0 flex-1">
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-white">{cluster.name}</h3>
+            <p className="truncate text-xs text-slate-500">{cluster.description}</p>
+          </div>
+          <span className={cn(labsUi.chip, labsUi.chipNeutral)}>{cluster.agents.length}</span>
+        </div>
+
+        <div className="space-y-1.5">
+          {cluster.agents.slice(0, 5).map((agent: any) => (
+            <button
+              key={agent.id}
+              type="button"
+              onClick={onOpenAgents}
+              className="group/agent flex w-full items-center gap-2.5 rounded-lg border border-transparent px-2 py-2 text-left transition-all hover:border-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/60"
+            >
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-100 bg-slate-50 text-base dark:border-slate-700 dark:bg-slate-800">
+                {agent.avatar}
               </div>
-            ))}
-          </div>
-          <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-3 text-center">Hover an agent to see its @mention — use it in Chat to invoke directly</p>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5">
+                  <p className="truncate text-xs font-semibold text-slate-900 group-hover/agent:text-violet-700 dark:text-white">
+                    {agent.codename}
+                  </p>
+                  <span className="hidden font-mono text-[10px] text-violet-500 sm:inline">
+                    @{String(agent.codename || '').toLowerCase()}
+                  </span>
+                </div>
+                <p className="truncate text-[11px] text-slate-500">{agent.description}</p>
+              </div>
+              <span
+                className={cn(
+                  'rounded-md border px-1.5 py-0.5 text-[10px] font-semibold capitalize',
+                  agent.status === 'active'
+                    ? 'border-emerald-100 bg-emerald-50 text-emerald-700'
+                    : 'border-slate-200 bg-slate-50 text-slate-500',
+                )}
+              >
+                {agent.status}
+              </span>
+            </button>
+          ))}
+          {cluster.agents.length > 5 && (
+            <button
+              type="button"
+              onClick={onOpenAgents}
+              className="w-full rounded-lg py-1.5 text-center text-[11px] font-medium text-violet-600 hover:bg-violet-50"
+            >
+              +{cluster.agents.length - 5} more in directory
+            </button>
+          )}
         </div>
       </CardContent>
     </Card>
   );
 }
 
-function QuickActionButton({ icon: Icon, label, description, href, color }: any) {
-  const colorMap: Record<string, { hover: string; iconBg: string; iconActive: string }> = {
-    violet: { hover: 'hover:bg-violet-50 hover:border-violet-200 hover:shadow-violet-100/50', iconBg: 'bg-violet-100 text-violet-600', iconActive: 'group-hover:bg-violet-600 group-hover:text-white' },
-    amber: { hover: 'hover:bg-amber-50 hover:border-amber-200 hover:shadow-amber-100/50', iconBg: 'bg-amber-100 text-amber-600', iconActive: 'group-hover:bg-amber-600 group-hover:text-white' },
-    emerald: { hover: 'hover:bg-emerald-50 hover:border-emerald-200 hover:shadow-emerald-100/50', iconBg: 'bg-emerald-100 text-emerald-600', iconActive: 'group-hover:bg-emerald-600 group-hover:text-white' },
-    blue: { hover: 'hover:bg-blue-50 hover:border-blue-200 hover:shadow-blue-100/50', iconBg: 'bg-blue-100 text-blue-600', iconActive: 'group-hover:bg-blue-600 group-hover:text-white' },
-    rose: { hover: 'hover:bg-rose-50 hover:border-rose-200 hover:shadow-rose-100/50', iconBg: 'bg-rose-100 text-rose-600', iconActive: 'group-hover:bg-rose-600 group-hover:text-white' },
-  };
-
-  const c = colorMap[color] || colorMap.violet;
+function QuickActionButton({
+  icon: Icon,
+  label,
+  description,
+  href,
+  color,
+}: {
+  icon: any;
+  label: string;
+  description: string;
+  href: string;
+  color: LabsToneKey;
+}) {
+  const tone = labsTone[color] || labsTone.violet;
 
   return (
     <Link
       href={href}
       className={cn(
-        "group flex flex-col items-center text-center p-6 rounded-2xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg",
-        c.hover
+        'group flex flex-col rounded-xl border border-slate-200/90 bg-white p-3.5 transition-all hover:-translate-y-0.5 hover:shadow-md dark:border-slate-800 dark:bg-slate-900',
+        tone.soft,
       )}
     >
-      <div className={cn(
-        "w-14 h-14 rounded-2xl flex items-center justify-center mb-4 transition-all duration-300 shadow-sm",
-        c.iconBg, c.iconActive
-      )}>
-        <Icon className="w-6 h-6" />
+      <div className={cn(labsUi.iconWell, 'mb-3 h-10 w-10 rounded-xl', tone.well)}>
+        <Icon className="h-5 w-5" />
       </div>
-      <p className="font-bold text-slate-900 dark:text-white mb-1.5">{label}</p>
-      <p className="text-xs font-medium text-slate-500 dark:text-slate-400 leading-relaxed">{description}</p>
+      <p className="text-sm font-semibold text-slate-900 dark:text-white">{label}</p>
+      <p className="mt-0.5 text-xs leading-relaxed text-slate-500">{description}</p>
     </Link>
   );
 }
 
 function ActivityRow({ activity }: { activity: any }) {
+  const high = activity.importance === 'high' || activity.importance === 'critical';
   return (
-    <div className="group flex items-start gap-4 p-4 rounded-xl hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-all duration-200 border border-transparent hover:border-slate-100 dark:hover:border-slate-700">
+    <div className="flex items-start gap-3 px-4 py-3 transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-800/40">
       <div className="relative">
-        <Avatar className="w-11 h-11 border-2 border-white dark:border-slate-800 shadow-sm group-hover:scale-105 transition-transform">
-          <AvatarFallback className="text-lg bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-600">{activity.agentAvatar}</AvatarFallback>
+        <Avatar className="h-9 w-9 border border-slate-100 shadow-sm">
+          <AvatarFallback className="bg-slate-100 text-sm dark:bg-slate-800">
+            {activity.agentAvatar || '🤖'}
+          </AvatarFallback>
         </Avatar>
-        {activity.importance === 'high' && (
-          <span className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-red-500 border-2 border-white rounded-full animate-pulse" />
+        {high && (
+          <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-rose-500" />
         )}
       </div>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center justify-between mb-1">
-          <p className="font-bold text-sm text-slate-900 dark:text-white group-hover:text-violet-700 dark:group-hover:text-violet-400 transition-colors">{activity.title}</p>
-          <Badge className={cn(
-            "text-[10px] uppercase tracking-wider px-2 py-0.5 border-transparent font-bold rounded-md",
-            activity.importance === 'high' ? "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400" : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
-          )}>
-            {activity.importance}
-          </Badge>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-start justify-between gap-2">
+          <p className="truncate text-sm font-medium text-slate-900 dark:text-white">
+            {activity.title}
+          </p>
+          <span
+            className={cn(
+              'shrink-0 rounded-md border px-1.5 py-0.5 text-[10px] font-semibold capitalize',
+              high
+                ? 'border-rose-100 bg-rose-50 text-rose-700'
+                : 'border-slate-200 bg-slate-50 text-slate-600',
+            )}
+          >
+            {activity.importance || 'normal'}
+          </span>
         </div>
-        <p className="text-sm font-medium text-slate-500 dark:text-slate-400 truncate mb-2">{activity.description}</p>
-        <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 dark:text-slate-500">
-          <Clock className="w-3 h-3" />
-          {new Date(activity.timestamp).toLocaleString(undefined, { 
-            month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' 
-          })}
+        {activity.description && (
+          <p className="mt-0.5 truncate text-xs text-slate-500">{activity.description}</p>
+        )}
+        <div className="mt-1.5 flex items-center gap-1.5 text-[11px] font-medium text-slate-400">
+          <Clock className="h-3 w-3" />
+          {activity.timestamp
+            ? new Date(activity.timestamp).toLocaleString(undefined, {
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+              })
+            : '—'}
         </div>
       </div>
     </div>
@@ -792,23 +864,25 @@ function ActivityRow({ activity }: { activity: any }) {
 
 function ApprovalsView() {
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg shadow-amber-500/20">
-            <ListChecks className="w-6 h-6 text-white" />
-          </div>
-          <div>
-            <h2 className="text-2xl font-black text-slate-900">Approval Queue</h2>
-            <p className="text-slate-500 font-medium">
-              Goals awaiting human approval and agent field-change proposals
-            </p>
+    <div className="space-y-4">
+      <Card className={labsUi.card}>
+        <div className={cn('h-1 bg-gradient-to-r', labsTone.amber.bar)} />
+        <div className={labsUi.cardHeader}>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <span className={cn(labsUi.iconWell, labsUi.iconWellAmber, 'h-10 w-10 rounded-xl')}>
+                <ListChecks className="h-5 w-5" />
+              </span>
+              <div>
+                <div className={labsUi.cardTitle}>Approval queue</div>
+                <p className={labsUi.cardDescription}>
+                  Human-in-the-loop goals and agent field-change proposals
+                </p>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
-
-      <Card className="border-transparent shadow-sm rounded-2xl bg-white overflow-hidden">
-        <CardContent className="p-4 sm:p-6">
+        <CardContent className="p-4 sm:p-5">
           <AgentApprovalQueue />
         </CardContent>
       </Card>

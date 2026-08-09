@@ -14,8 +14,6 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { useSession } from 'next-auth/react';
 import { AgentAutonomySettingsPanel } from '@/components/agents/AgentAutonomySettingsPanel';
 import {
   Bot,
@@ -30,20 +28,15 @@ import {
   MessageSquare,
   Settings,
   History,
-  Filter,
   Search,
-  ChevronRight,
   Loader2,
   RefreshCw,
   ThumbsUp,
   ThumbsDown,
   ExternalLink,
   FileText,
-  Calendar,
-  DollarSign,
   Zap,
   Target,
-  BarChart3,
   Users,
   Gavel,
   Lightbulb,
@@ -53,7 +46,6 @@ import {
   Wrench,
   RotateCcw,
   BookOpen,
-  Microscope,
   GitMerge,
   Beaker,
 } from 'lucide-react';
@@ -64,6 +56,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 import {
   Dialog,
   DialogContent,
@@ -72,15 +65,175 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useDataMode } from '@/contexts/DataModeContext';
+import { unwrapApiResponseData } from '@/lib/api-fetch';
+
+// ============================================================================
+// VISUAL TOKENS — full static class names (Tailwind cannot see dynamic `bg-${x}-100`)
+// ============================================================================
+
+type Tone =
+  | 'rose'
+  | 'emerald'
+  | 'orange'
+  | 'violet'
+  | 'amber'
+  | 'blue'
+  | 'indigo'
+  | 'cyan'
+  | 'teal'
+  | 'pink'
+  | 'slate'
+  | 'green'
+  | 'purple'
+  | 'yellow'
+  | 'fuchsia'
+  | 'lime';
+
+const TONE: Record<
+  Tone,
+  { wrap: string; icon: string; bar: string; soft: string; chip: string }
+> = {
+  rose: {
+    wrap: 'bg-rose-50 border-rose-100',
+    icon: 'text-rose-600',
+    bar: 'from-rose-500 to-red-500',
+    soft: 'bg-rose-50/60',
+    chip: 'bg-rose-50 text-rose-700 border-rose-100',
+  },
+  emerald: {
+    wrap: 'bg-emerald-50 border-emerald-100',
+    icon: 'text-emerald-600',
+    bar: 'from-emerald-500 to-teal-500',
+    soft: 'bg-emerald-50/60',
+    chip: 'bg-emerald-50 text-emerald-700 border-emerald-100',
+  },
+  orange: {
+    wrap: 'bg-orange-50 border-orange-100',
+    icon: 'text-orange-600',
+    bar: 'from-orange-500 to-amber-500',
+    soft: 'bg-orange-50/60',
+    chip: 'bg-orange-50 text-orange-700 border-orange-100',
+  },
+  violet: {
+    wrap: 'bg-violet-50 border-violet-100',
+    icon: 'text-violet-600',
+    bar: 'from-violet-500 to-purple-500',
+    soft: 'bg-violet-50/60',
+    chip: 'bg-violet-50 text-violet-700 border-violet-100',
+  },
+  amber: {
+    wrap: 'bg-amber-50 border-amber-100',
+    icon: 'text-amber-600',
+    bar: 'from-amber-500 to-yellow-500',
+    soft: 'bg-amber-50/60',
+    chip: 'bg-amber-50 text-amber-800 border-amber-100',
+  },
+  blue: {
+    wrap: 'bg-blue-50 border-blue-100',
+    icon: 'text-blue-600',
+    bar: 'from-blue-500 to-indigo-500',
+    soft: 'bg-blue-50/60',
+    chip: 'bg-blue-50 text-blue-700 border-blue-100',
+  },
+  indigo: {
+    wrap: 'bg-indigo-50 border-indigo-100',
+    icon: 'text-indigo-600',
+    bar: 'from-indigo-500 to-violet-500',
+    soft: 'bg-indigo-50/60',
+    chip: 'bg-indigo-50 text-indigo-700 border-indigo-100',
+  },
+  cyan: {
+    wrap: 'bg-cyan-50 border-cyan-100',
+    icon: 'text-cyan-600',
+    bar: 'from-cyan-500 to-sky-500',
+    soft: 'bg-cyan-50/60',
+    chip: 'bg-cyan-50 text-cyan-700 border-cyan-100',
+  },
+  teal: {
+    wrap: 'bg-teal-50 border-teal-100',
+    icon: 'text-teal-600',
+    bar: 'from-teal-500 to-emerald-500',
+    soft: 'bg-teal-50/60',
+    chip: 'bg-teal-50 text-teal-700 border-teal-100',
+  },
+  pink: {
+    wrap: 'bg-pink-50 border-pink-100',
+    icon: 'text-pink-600',
+    bar: 'from-pink-500 to-rose-500',
+    soft: 'bg-pink-50/60',
+    chip: 'bg-pink-50 text-pink-700 border-pink-100',
+  },
+  slate: {
+    wrap: 'bg-slate-100 border-slate-200',
+    icon: 'text-slate-600',
+    bar: 'from-slate-500 to-slate-600',
+    soft: 'bg-slate-50',
+    chip: 'bg-slate-50 text-slate-700 border-slate-200',
+  },
+  green: {
+    wrap: 'bg-green-50 border-green-100',
+    icon: 'text-green-600',
+    bar: 'from-green-500 to-emerald-500',
+    soft: 'bg-green-50/60',
+    chip: 'bg-green-50 text-green-700 border-green-100',
+  },
+  purple: {
+    wrap: 'bg-purple-50 border-purple-100',
+    icon: 'text-purple-600',
+    bar: 'from-purple-500 to-violet-500',
+    soft: 'bg-purple-50/60',
+    chip: 'bg-purple-50 text-purple-700 border-purple-100',
+  },
+  yellow: {
+    wrap: 'bg-yellow-50 border-yellow-100',
+    icon: 'text-yellow-700',
+    bar: 'from-yellow-500 to-amber-500',
+    soft: 'bg-yellow-50/60',
+    chip: 'bg-yellow-50 text-yellow-800 border-yellow-100',
+  },
+  fuchsia: {
+    wrap: 'bg-fuchsia-50 border-fuchsia-100',
+    icon: 'text-fuchsia-600',
+    bar: 'from-fuchsia-500 to-pink-500',
+    soft: 'bg-fuchsia-50/60',
+    chip: 'bg-fuchsia-50 text-fuchsia-700 border-fuchsia-100',
+  },
+  lime: {
+    wrap: 'bg-lime-50 border-lime-100',
+    icon: 'text-lime-700',
+    bar: 'from-lime-500 to-green-500',
+    soft: 'bg-lime-50/60',
+    chip: 'bg-lime-50 text-lime-800 border-lime-100',
+  },
+};
+
+/** Map legacy color keys used in AGENT_CONFIGS → Tone */
+const COLOR_TO_TONE: Record<string, Tone> = {
+  red: 'rose',
+  emerald: 'emerald',
+  orange: 'orange',
+  violet: 'violet',
+  amber: 'amber',
+  blue: 'blue',
+  indigo: 'indigo',
+  cyan: 'cyan',
+  teal: 'teal',
+  pink: 'pink',
+  slate: 'slate',
+  green: 'green',
+  purple: 'purple',
+  yellow: 'yellow',
+  fuchsia: 'fuchsia',
+  lime: 'lime',
+};
+
+function toneOf(color?: string): (typeof TONE)[Tone] {
+  const key = COLOR_TO_TONE[color || 'slate'] || 'slate';
+  return TONE[key];
+}
 
 // ============================================================================
 // TYPES
@@ -346,24 +499,60 @@ const AGENT_CONFIGS: Record<string, {
 };
 
 // Cluster configuration
-const CLUSTER_CONFIG: Record<string, { name: string; emoji: string; color: string; description: string }> = {
-  guardians: { name: 'Guardians', emoji: '🛡️', color: 'red', description: 'Compliance & Risk Protection' },
-  oracles: { name: 'Oracles', emoji: '🔮', color: 'violet', description: 'Intelligence & Discovery' },
-  operators: { name: 'Operators', emoji: '⚡', color: 'cyan', description: 'Execution & Monitoring' },
-  strategists: { name: 'Strategists', emoji: '🎯', color: 'purple', description: 'Workflow & Planning' },
-  evolution: { name: 'Evolution', emoji: '🧬', color: 'green', description: 'Learning & Improvement' },
+const CLUSTER_CONFIG: Record<
+  string,
+  { name: string; emoji: string; color: string; description: string; tone: Tone }
+> = {
+  guardians: {
+    name: 'Guardians',
+    emoji: '🛡️',
+    color: 'red',
+    tone: 'rose',
+    description: 'Compliance & risk protection',
+  },
+  oracles: {
+    name: 'Oracles',
+    emoji: '🔮',
+    color: 'violet',
+    tone: 'violet',
+    description: 'Intelligence & discovery',
+  },
+  operators: {
+    name: 'Operators',
+    emoji: '⚡',
+    color: 'cyan',
+    tone: 'cyan',
+    description: 'Execution & monitoring',
+  },
+  strategists: {
+    name: 'Strategists',
+    emoji: '🎯',
+    color: 'purple',
+    tone: 'purple',
+    description: 'Workflow & planning',
+  },
+  evolution: {
+    name: 'Evolution',
+    emoji: '🧬',
+    color: 'green',
+    tone: 'emerald',
+    description: 'Learning & improvement',
+  },
 };
+
+const SUB_TAB =
+  'rounded-lg px-3.5 py-2 text-sm font-medium text-slate-600 data-[state=active]:bg-white data-[state=active]:text-violet-700 data-[state=active]:shadow-sm transition-all';
 
 // ============================================================================
 // MAIN COMPONENT
 // ============================================================================
 
 export function UnifiedAgentInterface() {
-  const { data: session } = useSession();
   const { isRealData } = useDataMode();
   const [activities, setActivities] = useState<AgentActivity[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'pending' | 'completed'>('all');
+  const [activityQuery, setActivityQuery] = useState('');
   const [selectedActivity, setSelectedActivity] = useState<AgentActivity | null>(null);
   const [approvalDialogOpen, setApprovalDialogOpen] = useState(false);
   const [feedbackDialogOpen, setFeedbackDialogOpen] = useState(false);
@@ -379,85 +568,112 @@ export function UnifiedAgentInterface() {
     }
 
     try {
-      // Fetch both status and activities in parallel
+      // Fetch status, activities, and approvals in parallel
       const [statusRes, activitiesRes, approvalsRes] = await Promise.all([
         fetch('/api/agents/status'),
         fetch('/api/agents/activities?limit=50'),
         fetch('/api/agents/approvals'),
       ]);
 
+      // APIs wrap payloads as { success, data }; always unwrap before reading fields.
       if (statusRes.ok) {
-        const statusData = await statusRes.json();
-        // Update stats from status API
+        const statusData = unwrapApiResponseData<Record<string, unknown>>(await statusRes.json());
         void statusData;
       }
 
+      let transformedActivities: AgentActivity[] = [];
       if (activitiesRes.ok) {
-        const activitiesData = await activitiesRes.json();
-        // Transform API response to AgentActivity format
-        const transformedActivities: AgentActivity[] = activitiesData.activities.map((a: any) => ({
+        const activitiesPayload = unwrapApiResponseData<{ activities?: any[] }>(
+          await activitiesRes.json(),
+        );
+        const list = Array.isArray(activitiesPayload?.activities)
+          ? activitiesPayload.activities
+          : Array.isArray((activitiesPayload as any)?.data?.activities)
+            ? (activitiesPayload as any).data.activities
+            : [];
+
+        transformedActivities = list.map((a: any) => ({
           id: a.id,
-          agentName: a.agentCodename || 'Agent',
+          agentName: a.agentCodename || a.agentName || 'Agent',
           agentId: a.agentId || 'unknown',
           icon: 'Bot',
-          status: mapActivityStatus(a.status, a.type),
-          title: a.title || 'Agent Activity',
-          description: a.description || '',
+          status: mapActivityStatus(a.status || a.outcome || '', a.type || a.eventType || ''),
+          title: a.title || a.eventType || 'Agent Activity',
+          description: a.description || a.reasoning || '',
           contractId: a.contractId,
           contractName: a.contractId ? 'Related Contract' : undefined,
-          priority: mapActivityPriority(a.importance, a.type),
-          createdAt: a.timestamp,
+          priority: mapActivityPriority(a.importance || a.priority || 'normal', a.type || ''),
+          createdAt: a.timestamp || a.createdAt || a.requestedAt || new Date().toISOString(),
           requiresApproval: false,
         }));
-        setActivities(transformedActivities);
+      } else if (activitiesRes.status >= 500) {
+        toast.error('Agent activities temporarily unavailable');
       }
 
+      let approvalActivities: AgentActivity[] = [];
       if (approvalsRes.ok) {
-        const approvalsData = await approvalsRes.json();
-        // Transform approvals into activities that need approval
-        const approvalActivities: AgentActivity[] = approvalsData.approvals.map((a: any) => ({
+        const approvalsPayload = unwrapApiResponseData<{ approvals?: any[] }>(
+          await approvalsRes.json(),
+        );
+        const list = Array.isArray(approvalsPayload?.approvals)
+          ? approvalsPayload.approvals
+          : Array.isArray((approvalsPayload as any)?.data?.approvals)
+            ? (approvalsPayload as any).data.approvals
+            : [];
+
+        approvalActivities = list.map((a: any) => ({
           id: a.id,
-          agentName: a.agentCodename || 'Agent',
-          agentId: a.agentId,
+          agentName: a.agentCodename || a.agentName || 'Agent',
+          agentId: a.agentId || 'unknown',
           icon: 'Shield',
-          status: 'waiting_for_approval',
-          title: a.title,
-          description: a.description,
+          status: 'waiting_for_approval' as const,
+          title: a.title || 'Approval required',
+          description: a.description || '',
           contractId: a.contractId,
           contractName: a.context?.contractTitle,
-          priority: a.priority as Priority,
-          createdAt: a.requestedAt,
+          priority: (a.priority as Priority) || 'medium',
+          createdAt: a.requestedAt || a.createdAt || new Date().toISOString(),
           requiresApproval: true,
           approvalContext: {
-            type: mapApprovalType(a.type),
+            type: mapApprovalType(a.type || 'custom'),
             recommendation: a.recommendation?.reason || 'Review and approve',
-            reasoning: a.reasoning || a.description,
-            confidence: a.recommendation?.confidence || 0.8,
-            impact: a.context?.savings ? {
-              type: 'savings',
-              value: a.context.savings,
-              currency: '$',
-            } : undefined,
-            alternatives: a.alternatives?.map((alt: any) => alt.reason),
+            reasoning: a.reasoning || a.description || '',
+            confidence: a.recommendation?.confidence ?? 0.8,
+            impact: a.context?.savings
+              ? {
+                  type: 'savings' as const,
+                  value: a.context.savings,
+                  currency: '$',
+                }
+              : undefined,
+            alternatives: Array.isArray(a.alternatives)
+              ? a.alternatives.map((alt: any) =>
+                  typeof alt === 'string' ? alt : alt?.reason || alt?.label || String(alt),
+                )
+              : undefined,
             risks: a.context?.risks,
             actions: [
-              { id: 'approve', label: 'Approve', type: 'approve', primary: true },
-              { id: 'reject', label: 'Reject', type: 'reject' },
-              { id: 'modify', label: 'Request Changes', type: 'modify' },
+              { id: 'approve', label: 'Approve', type: 'approve' as const, primary: true },
+              { id: 'reject', label: 'Reject', type: 'reject' as const },
+              { id: 'modify', label: 'Request Changes', type: 'modify' as const },
             ],
           },
         }));
-        
-        // Merge with existing activities
-        setActivities(prev => {
-          const existingIds = new Set(prev.map(a => a.id));
-          const newApprovals = approvalActivities.filter(a => !existingIds.has(a.id));
-          return [...newApprovals, ...prev];
-        });
+      } else if (approvalsRes.status >= 500) {
+        toast.error('Approvals temporarily unavailable');
       }
+
+      // Approvals first so HITL items surface above general activity
+      const existingIds = new Set(approvalActivities.map((a) => a.id));
+      const merged = [
+        ...approvalActivities,
+        ...transformedActivities.filter((a) => !existingIds.has(a.id)),
+      ];
+      setActivities(merged);
     } catch (error) {
       console.error('Failed to fetch agent data:', error);
       toast.error('Failed to load agent data');
+      setActivities([]);
     } finally {
       setLoading(false);
     }
@@ -522,10 +738,19 @@ export function UnifiedAgentInterface() {
   };
 
   // Filter activities
-  const filteredActivities = activities.filter(a => {
-    if (filter === 'pending') return a.requiresApproval && a.status === 'waiting_for_approval';
-    if (filter === 'completed') return a.status === 'completed';
-    return true;
+  const filteredActivities = activities.filter((a) => {
+    if (filter === 'pending' && !(a.requiresApproval && a.status === 'waiting_for_approval')) {
+      return false;
+    }
+    if (filter === 'completed' && a.status !== 'completed') return false;
+    const q = activityQuery.trim().toLowerCase();
+    if (!q) return true;
+    return (
+      a.title.toLowerCase().includes(q) ||
+      (a.description || '').toLowerCase().includes(q) ||
+      (a.agentName || '').toLowerCase().includes(q) ||
+      (a.agentId || '').toLowerCase().includes(q)
+    );
   });
 
   // Stats
@@ -536,194 +761,198 @@ export function UnifiedAgentInterface() {
     critical: activities.filter(a => a.priority === 'critical').length,
   };
 
+  const agentCount = Object.keys(AGENT_CONFIGS).length;
+
   return (
-    <div className="h-full flex flex-col bg-slate-50/50">
-      {/* Header */}
-      <div className="bg-white border-b px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-pink-500 flex items-center justify-center">
-              <Brain className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <h1 className="text-xl font-semibold flex items-center gap-2">
-                Contigo Lab
-                <Badge variant="outline" className="text-xs font-normal">19 Agents</Badge>
-              </h1>
-              <p className="text-sm text-muted-foreground">
-                🛡️ Guardians • 🔮 Oracles • ⚡ Operators • 🎯 Strategists • 🧬 Evolution
-              </p>
-            </div>
+    <div className="overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-sm">
+      {/* Toolbar */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-slate-50/70 px-5 py-3.5">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-violet-600 shadow-sm">
+            <Brain className="h-4 w-4 text-white" />
           </div>
-
-          <div className="flex items-center gap-4">
-            {/* Quick Stats */}
-            <div className="flex items-center gap-2">
-              {stats.pending > 0 && (
-                <Badge variant="secondary" className="bg-amber-100 text-amber-700">
-                  <Clock className="w-3 h-3 mr-1" />
-                  {stats.pending} Pending
-                </Badge>
-              )}
-              {stats.critical > 0 && (
-                <Badge variant="destructive">
-                  <AlertTriangle className="w-3 h-3 mr-1" />
-                  {stats.critical} Critical
-                </Badge>
-              )}
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-sm font-semibold text-slate-900">Agent command center</h2>
+              <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-medium text-slate-600">
+                {agentCount} agents
+              </span>
             </div>
-
-            <Button variant="outline" size="sm" onClick={fetchData}>
-              <RefreshCw className={cn("w-4 h-4 mr-2", loading && "animate-spin")} />
-              Refresh
-            </Button>
+            <p className="text-xs text-slate-500">
+              Directory, live activity, and autonomy controls
+            </p>
           </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          {stats.pending > 0 && (
+            <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-800">
+              <Clock className="h-3 w-3" />
+              {stats.pending} pending
+            </span>
+          )}
+          {stats.critical > 0 && (
+            <span className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-medium text-rose-700">
+              <AlertTriangle className="h-3 w-3" />
+              {stats.critical} critical
+            </span>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={fetchData}
+            className="h-8 rounded-lg border-slate-200 text-xs font-medium"
+          >
+            <RefreshCw className={cn('mr-1.5 h-3.5 w-3.5', loading && 'animate-spin')} />
+            Refresh
+          </Button>
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="flex-1 overflow-hidden">
-        <Tabs defaultValue="activities" className="h-full flex flex-col">
-          <div className="bg-white border-b px-6">
-            <TabsList className="w-full justify-start bg-transparent border-0 p-0">
-              <TabsTrigger value="activities" className="rounded-none border-b-2 border-transparent data-[state=active]:border-violet-500 data-[state=active]:bg-transparent">
-                <Bot className="w-4 h-4 mr-2" />
-                Activities
-                {stats.pending > 0 && (
-                  <span className="ml-2 px-1.5 py-0.5 text-xs bg-amber-100 text-amber-700 rounded-full">
-                    {stats.pending}
-                  </span>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="agents" className="rounded-none border-b-2 border-transparent data-[state=active]:border-violet-500 data-[state=active]:bg-transparent">
-                <Sparkles className="w-4 h-4 mr-2" />
-                Agent Directory
-              </TabsTrigger>
-              <TabsTrigger value="history" className="rounded-none border-b-2 border-transparent data-[state=active]:border-violet-500 data-[state=active]:bg-transparent">
-                <History className="w-4 h-4 mr-2" />
-                History
-              </TabsTrigger>
-              <TabsTrigger value="settings" className="rounded-none border-b-2 border-transparent data-[state=active]:border-violet-500 data-[state=active]:bg-transparent">
-                <Settings className="w-4 h-4 mr-2" />
-                Settings
-              </TabsTrigger>
-            </TabsList>
-          </div>
+      <Tabs defaultValue="agents" className="flex flex-col">
+        <div className="border-b border-slate-100 px-4 py-2.5">
+          <TabsList className="h-auto w-full justify-start gap-1 rounded-lg bg-slate-100/80 p-1">
+            <TabsTrigger value="agents" className={SUB_TAB}>
+              <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+              Directory
+            </TabsTrigger>
+            <TabsTrigger value="activities" className={SUB_TAB}>
+              <Bot className="mr-1.5 h-3.5 w-3.5" />
+              Activities
+              {stats.pending > 0 && (
+                <span className="ml-1.5 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800">
+                  {stats.pending}
+                </span>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="history" className={SUB_TAB}>
+              <History className="mr-1.5 h-3.5 w-3.5" />
+              History
+            </TabsTrigger>
+            <TabsTrigger value="settings" className={SUB_TAB}>
+              <Settings className="mr-1.5 h-3.5 w-3.5" />
+              Settings
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
-          {/* Activities Tab */}
-          <TabsContent value="activities" className="flex-1 overflow-hidden m-0">
-            <div className="h-full flex">
-              {/* Activity List */}
-              <div className="w-96 border-r bg-white flex flex-col">
-                {/* Filters */}
-                <div className="p-4 border-b space-y-3">
-                  <div className="flex gap-2">
-                    <Button
-                      variant={filter === 'all' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setFilter('all')}
+        {/* Directory first — the main visual surface */}
+        <TabsContent value="agents" className="m-0 p-5">
+          <AgentDirectory />
+        </TabsContent>
+
+        <TabsContent value="activities" className="m-0">
+          <div className="flex min-h-[520px] flex-col lg:flex-row">
+            <div className="flex w-full flex-col border-b border-slate-100 lg:w-[360px] lg:border-b-0 lg:border-r">
+              <div className="space-y-3 border-b border-slate-100 p-4">
+                <div className="flex flex-wrap gap-1.5">
+                  {(
+                    [
+                      { id: 'all', label: 'All' },
+                      { id: 'pending', label: 'Pending' },
+                      { id: 'completed', label: 'Done' },
+                    ] as const
+                  ).map((f) => (
+                    <button
+                      key={f.id}
+                      type="button"
+                      onClick={() => setFilter(f.id)}
+                      className={cn(
+                        'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
+                        filter === f.id
+                          ? 'border-violet-200 bg-violet-50 text-violet-700'
+                          : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50',
+                      )}
                     >
-                      All
-                    </Button>
-                    <Button
-                      variant={filter === 'pending' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setFilter('pending')}
-                    >
-                      Pending
-                    </Button>
-                    <Button
-                      variant={filter === 'completed' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setFilter('completed')}
-                    >
-                      Completed
-                    </Button>
-                  </div>
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input placeholder="Search activities..." className="pl-9" />
-                  </div>
+                      {f.label}
+                    </button>
+                  ))}
                 </div>
-
-                {/* Activity List */}
-                <ScrollArea className="flex-1">
-                  {loading ? (
-                    <div className="p-4 space-y-4">
-                      {[1, 2, 3].map(i => (
-                        <div key={i} className="animate-pulse space-y-2">
-                          <div className="h-4 bg-slate-200 rounded w-3/4" />
-                          <div className="h-3 bg-slate-200 rounded w-1/2" />
-                        </div>
-                      ))}
-                    </div>
-                  ) : filteredActivities.length === 0 ? (
-                    <div className="p-8 text-center text-muted-foreground">
-                      <Bot className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                      <p>No activities found</p>
-                    </div>
-                  ) : (
-                    <div className="divide-y">
-                      {filteredActivities.map(activity => (
-                        <ActivityCard
-                          key={activity.id}
-                          activity={activity}
-                          selected={selectedActivity?.id === activity.id}
-                          onClick={() => setSelectedActivity(activity)}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </ScrollArea>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                  <Input
+                    value={activityQuery}
+                    onChange={(e) => setActivityQuery(e.target.value)}
+                    placeholder="Search activities…"
+                    className="h-9 rounded-lg border-slate-200 pl-9 text-sm"
+                  />
+                </div>
               </div>
 
-              {/* Activity Detail */}
-              <div className="flex-1 bg-slate-50/50 p-6 overflow-auto">
-                {selectedActivity ? (
-                  <ActivityDetail
-                    activity={selectedActivity}
-                    onApprove={() => setApprovalDialogOpen(true)}
-                    onFeedback={() => setFeedbackDialogOpen(true)}
-                  />
-                ) : (
-                  <div className="h-full flex items-center justify-center text-muted-foreground">
-                    <div className="text-center">
-                      <Bot className="w-16 h-16 mx-auto mb-4 opacity-30" />
-                      <p>Select an activity to view details</p>
+              <ScrollArea className="max-h-[480px] flex-1">
+                {loading ? (
+                  <div className="space-y-3 p-4">
+                    {[1, 2, 3, 4].map((i) => (
+                      <div key={i} className="animate-pulse space-y-2 rounded-xl border border-slate-100 p-3">
+                        <div className="h-3.5 w-3/4 rounded bg-slate-100" />
+                        <div className="h-3 w-1/2 rounded bg-slate-100" />
+                      </div>
+                    ))}
+                  </div>
+                ) : filteredActivities.length === 0 ? (
+                  <div className="flex flex-col items-center px-6 py-16 text-center">
+                    <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl border border-slate-200 bg-slate-50">
+                      <Bot className="h-6 w-6 text-slate-400" />
                     </div>
+                    <p className="text-sm font-medium text-slate-800">No activity yet</p>
+                    <p className="mt-1 max-w-[220px] text-xs leading-relaxed text-slate-500">
+                      When agents run goals or raise approvals, they show up here.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-1 p-2">
+                    {filteredActivities.map((activity) => (
+                      <ActivityCard
+                        key={activity.id}
+                        activity={activity}
+                        selected={selectedActivity?.id === activity.id}
+                        onClick={() => setSelectedActivity(activity)}
+                      />
+                    ))}
                   </div>
                 )}
-              </div>
+              </ScrollArea>
             </div>
-          </TabsContent>
 
-          {/* Agents Directory */}
-          <TabsContent value="agents" className="flex-1 overflow-auto m-0 p-6">
-            <AgentDirectory />
-          </TabsContent>
+            <div className="flex-1 bg-slate-50/40 p-5">
+              {selectedActivity ? (
+                <ActivityDetail
+                  activity={selectedActivity}
+                  onApprove={() => setApprovalDialogOpen(true)}
+                  onFeedback={() => setFeedbackDialogOpen(true)}
+                />
+              ) : (
+                <div className="flex h-full min-h-[360px] flex-col items-center justify-center text-center">
+                  <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border border-slate-200 bg-white shadow-sm">
+                    <Bot className="h-7 w-7 text-slate-300" />
+                  </div>
+                  <p className="text-sm font-medium text-slate-700">Select an activity</p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    Review details, confidence, and approve recommendations
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </TabsContent>
 
-          {/* History */}
-          <TabsContent value="history" className="flex-1 overflow-auto m-0 p-6">
-            <ActivityHistory />
-          </TabsContent>
+        <TabsContent value="history" className="m-0 p-5">
+          <ActivityHistory />
+        </TabsContent>
 
-          {/* Settings */}
-          <TabsContent value="settings" className="flex-1 overflow-auto m-0 p-6">
-            <AgentSettings />
-          </TabsContent>
-        </Tabs>
-      </div>
+        <TabsContent value="settings" className="m-0 p-5">
+          <AgentSettings />
+        </TabsContent>
+      </Tabs>
 
-      {/* Approval Dialog */}
       <Dialog open={approvalDialogOpen} onOpenChange={setApprovalDialogOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl rounded-xl">
           <DialogHeader>
-            <DialogTitle>Review Agent Recommendation</DialogTitle>
+            <DialogTitle>Review recommendation</DialogTitle>
             <DialogDescription>
-              Review the agent&apos;s recommendation before taking action
+              Confirm the agent&apos;s proposal before it is applied
             </DialogDescription>
           </DialogHeader>
-
           {selectedActivity?.approvalContext && (
             <ApprovalDialogContent
               context={selectedActivity.approvalContext}
@@ -733,29 +962,25 @@ export function UnifiedAgentInterface() {
         </DialogContent>
       </Dialog>
 
-      {/* Feedback Dialog */}
       <Dialog open={feedbackDialogOpen} onOpenChange={setFeedbackDialogOpen}>
-        <DialogContent>
+        <DialogContent className="rounded-xl">
           <DialogHeader>
-            <DialogTitle>Provide Feedback</DialogTitle>
-            <DialogDescription>
-              Help us improve our AI agents
-            </DialogDescription>
+            <DialogTitle>Provide feedback</DialogTitle>
+            <DialogDescription>Help improve agent recommendations</DialogDescription>
           </DialogHeader>
-
           <Textarea
-            placeholder="What did you think of this agent's recommendation?"
+            placeholder="What worked or didn’t about this recommendation?"
             value={feedback}
             onChange={(e) => setFeedback(e.target.value)}
             rows={4}
+            className="rounded-lg border-slate-200"
           />
-
           <DialogFooter>
-            <Button variant="outline" onClick={() => setFeedbackDialogOpen(false)}>
+            <Button variant="outline" onClick={() => setFeedbackDialogOpen(false)} className="rounded-lg">
               Cancel
             </Button>
-            <Button onClick={submitFeedback}>
-              Submit Feedback
+            <Button onClick={submitFeedback} className="rounded-lg bg-violet-600 hover:bg-violet-700">
+              Submit
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -783,46 +1008,52 @@ function ActivityCard({
     color: 'slate',
   };
   const Icon = config.icon;
+  const tone = toneOf(config.color);
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
+    <button
+      type="button"
       onClick={onClick}
       className={cn(
-        "p-4 cursor-pointer hover:bg-slate-50 transition-colors",
-        selected && "bg-violet-50 hover:bg-violet-50"
+        'w-full rounded-xl border p-3 text-left transition-all',
+        selected
+          ? 'border-violet-200 bg-violet-50/70 shadow-sm'
+          : 'border-transparent bg-transparent hover:border-slate-200 hover:bg-slate-50',
       )}
     >
       <div className="flex items-start gap-3">
-        <div className={cn(
-          "w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0",
-          `bg-${config.color}-100`
-        )}>
-          <Icon className={cn("w-5 h-5", `text-${config.color}-600`)} />
+        <div
+          className={cn(
+            'flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg border',
+            tone.wrap,
+          )}
+        >
+          <Icon className={cn('h-4 w-4', tone.icon)} />
         </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <p className="font-medium text-sm truncate">{activity.title}</p>
+        <div className="min-w-0 flex-1">
+          <div className="mb-1 flex items-center gap-2">
+            <p className="truncate text-sm font-medium text-slate-900">{activity.title}</p>
             {activity.requiresApproval && activity.status === 'waiting_for_approval' && (
-              <Badge variant="secondary" className="text-xs bg-amber-100 text-amber-700">
-                Action Needed
-              </Badge>
+              <span className="shrink-0 rounded-full border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800">
+                Action
+              </span>
             )}
           </div>
-          <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
-            {activity.description}
-          </p>
-          <div className="flex items-center gap-2 text-xs">
+          {activity.description && (
+            <p className="mb-2 line-clamp-2 text-xs leading-relaxed text-slate-500">
+              {activity.description}
+            </p>
+          )}
+          <div className="flex flex-wrap items-center gap-1.5">
             <StatusBadge status={activity.status} />
             <PriorityBadge priority={activity.priority} />
-            <span className="text-muted-foreground">
+            <span className="text-[11px] text-slate-400">
               {formatRelativeTime(activity.createdAt)}
             </span>
           </div>
         </div>
       </div>
-    </motion.div>
+    </button>
   );
 }
 
@@ -839,141 +1070,146 @@ function ActivityDetail({
     name: activity.agentName,
     icon: Bot,
     color: 'slate',
+    avatar: '🤖',
+    codename: activity.agentName,
+    cluster: 'operators',
   };
   const Icon = config.icon;
+  const tone = toneOf(config.color);
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
-      {/* Header */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-start justify-between">
-            <div className="flex items-center gap-4">
-              <div className={cn(
-                "w-12 h-12 rounded-xl flex items-center justify-center",
-                `bg-${config.color}-100`
-              )}>
-                <Icon className={cn("w-6 h-6", `text-${config.color}-600`)} />
+    <div className="mx-auto max-w-3xl space-y-4">
+      <Card className="overflow-hidden rounded-xl border-slate-200/90 shadow-sm">
+        <div className={cn('h-1 bg-gradient-to-r', tone.bar)} />
+        <CardHeader className="pb-3">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div
+                className={cn(
+                  'flex h-11 w-11 items-center justify-center rounded-xl border',
+                  tone.wrap,
+                )}
+              >
+                <Icon className={cn('h-5 w-5', tone.icon)} />
               </div>
               <div>
-                <CardTitle className="text-xl">{activity.title}</CardTitle>
-                <p className="text-sm text-muted-foreground mt-1 flex items-center gap-2">
-                  <span className="font-medium text-foreground">{config.avatar} {config.codename}</span>
-                  <span className="text-xs px-1.5 py-0.5 bg-slate-100 rounded text-slate-500">{config.cluster}</span>
-                  <span>• {formatRelativeTime(activity.createdAt)}</span>
+                <CardTitle className="text-base font-semibold text-slate-900">
+                  {activity.title}
+                </CardTitle>
+                <p className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                  <span className="font-medium text-slate-700">
+                    {config.avatar} {config.codename}
+                  </span>
+                  <span className="rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 capitalize text-slate-500">
+                    {config.cluster}
+                  </span>
+                  <span>{formatRelativeTime(activity.createdAt)}</span>
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <StatusBadge status={activity.status} size="lg" />
-            </div>
+            <StatusBadge status={activity.status} size="lg" />
           </div>
         </CardHeader>
         <CardContent>
-          <p className="text-muted-foreground">{activity.description}</p>
+          <p className="text-sm leading-relaxed text-slate-600">{activity.description}</p>
 
           {activity.contractId && (
-            <div className="mt-4 p-3 bg-slate-50 rounded-lg">
-              <p className="text-sm font-medium mb-1">Related Contract</p>
-              <a
-                href={`/contracts/${activity.contractId}`}
-                className="text-sm text-violet-600 hover:underline flex items-center gap-1"
-              >
-                <FileText className="w-4 h-4" />
-                {activity.contractName || 'View Contract'}
-                <ExternalLink className="w-3 h-3" />
-              </a>
-            </div>
+            <a
+              href={`/contracts/${activity.contractId}`}
+              className="mt-4 flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-violet-700 transition-colors hover:border-violet-200 hover:bg-violet-50"
+            >
+              <FileText className="h-4 w-4" />
+              <span className="font-medium">{activity.contractName || 'View contract'}</span>
+              <ExternalLink className="ml-auto h-3.5 w-3.5 opacity-60" />
+            </a>
           )}
         </CardContent>
       </Card>
 
-      {/* Approval Section */}
-      {activity.requiresApproval && activity.status === 'waiting_for_approval' && activity.approvalContext && (
-        <Card className="border-amber-200 bg-amber-50/50">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <AlertTriangle className="w-5 h-5 text-amber-600" />
-              Approval Required
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <p className="font-medium mb-2">Recommendation</p>
-              <p className="text-muted-foreground">{activity.approvalContext.recommendation}</p>
-            </div>
+      {activity.requiresApproval &&
+        activity.status === 'waiting_for_approval' &&
+        activity.approvalContext && (
+          <Card className="overflow-hidden rounded-xl border-amber-200/80 bg-amber-50/40 shadow-sm">
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-sm font-semibold text-amber-900">
+                <AlertTriangle className="h-4 w-4 text-amber-600" />
+                Approval required
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-amber-800/70">
+                  Recommendation
+                </p>
+                <p className="text-sm leading-relaxed text-slate-700">
+                  {activity.approvalContext.recommendation}
+                </p>
+              </div>
 
-            {activity.approvalContext.impact && (
-              <div className="flex items-center gap-4 p-3 bg-white rounded-lg">
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-violet-600">
-                    {activity.approvalContext.impact.type === 'savings' ? '+' : '-'}
+              {activity.approvalContext.impact && (
+                <div className="rounded-xl border border-white bg-white/80 px-4 py-3 shadow-sm">
+                  <p className="text-2xl font-semibold tabular-nums text-violet-700">
+                    {activity.approvalContext.impact.type === 'savings' ? '+' : ''}
                     {activity.approvalContext.impact.currency}
                     {activity.approvalContext.impact.value.toLocaleString()}
                   </p>
-                  <p className="text-xs text-muted-foreground uppercase">
+                  <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
                     Estimated {activity.approvalContext.impact.type}
                   </p>
                 </div>
+              )}
+
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  onClick={onApprove}
+                  className="rounded-lg bg-violet-600 hover:bg-violet-700"
+                >
+                  <CheckCircle className="mr-1.5 h-4 w-4" />
+                  Review & decide
+                </Button>
+                <Button variant="outline" onClick={onFeedback} className="rounded-lg border-slate-200">
+                  <MessageSquare className="mr-1.5 h-4 w-4" />
+                  Feedback
+                </Button>
               </div>
-            )}
+            </CardContent>
+          </Card>
+        )}
 
-            <div className="flex gap-3">
-              <Button onClick={onApprove} className="flex-1">
-                <CheckCircle className="w-4 h-4 mr-2" />
-                Review & Decide
-              </Button>
-              <Button variant="outline" onClick={onFeedback}>
-                <MessageSquare className="w-4 h-4 mr-2" />
-                Feedback
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Result Section */}
       {activity.result && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Result</CardTitle>
+        <Card className="rounded-xl border-slate-200/90 shadow-sm">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-semibold text-slate-900">Result</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-muted-foreground">{activity.result.summary}</p>
-
+            <p className="text-sm leading-relaxed text-slate-600">{activity.result.summary}</p>
             {activity.result.artifacts && activity.result.artifacts.length > 0 && (
-              <div className="mt-4">
-                <p className="font-medium mb-2">Generated Artifacts</p>
-                <div className="flex flex-wrap gap-2">
-                  {activity.result.artifacts.map((artifact, i) => (
-                    <Button key={i} variant="outline" size="sm" asChild>
-                      <a href={artifact.url} target="_blank" rel="noopener noreferrer">
-                        <FileText className="w-4 h-4 mr-2" />
-                        {artifact.name}
-                      </a>
-                    </Button>
-                  ))}
-                </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {activity.result.artifacts.map((artifact, i) => (
+                  <Button key={i} variant="outline" size="sm" asChild className="rounded-lg">
+                    <a href={artifact.url} target="_blank" rel="noopener noreferrer">
+                      <FileText className="mr-1.5 h-3.5 w-3.5" />
+                      {artifact.name}
+                    </a>
+                  </Button>
+                ))}
               </div>
             )}
           </CardContent>
         </Card>
       )}
 
-      {/* Feedback */}
       {activity.status === 'completed' && (
-        <div className="flex items-center justify-center gap-4 py-4">
-          <p className="text-sm text-muted-foreground">Was this helpful?</p>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={onFeedback}>
-              <ThumbsUp className="w-4 h-4 mr-2" />
-              Yes
-            </Button>
-            <Button variant="outline" size="sm" onClick={onFeedback}>
-              <ThumbsDown className="w-4 h-4 mr-2" />
-              No
-            </Button>
-          </div>
+        <div className="flex items-center justify-center gap-3 py-2">
+          <p className="text-xs text-slate-500">Was this helpful?</p>
+          <Button variant="outline" size="sm" onClick={onFeedback} className="h-8 rounded-lg">
+            <ThumbsUp className="mr-1.5 h-3.5 w-3.5" />
+            Yes
+          </Button>
+          <Button variant="outline" size="sm" onClick={onFeedback} className="h-8 rounded-lg">
+            <ThumbsDown className="mr-1.5 h-3.5 w-3.5" />
+            No
+          </Button>
         </div>
       )}
     </div>
@@ -990,74 +1226,86 @@ function ApprovalDialogContent({
   const [notes, setNotes] = useState('');
 
   return (
-    <div className="space-y-6">
-      {/* Reasoning */}
-      <div className="p-4 bg-slate-50 rounded-lg">
-        <p className="font-medium mb-2">Agent Reasoning</p>
-        <p className="text-sm text-muted-foreground">{context.reasoning}</p>
-        <div className="mt-2 flex items-center gap-2">
-          <span className="text-sm">Confidence:</span>
-          <div className="flex-1 h-2 bg-slate-200 rounded-full overflow-hidden">
+    <div className="space-y-5">
+      <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4">
+        <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
+          Agent reasoning
+        </p>
+        <p className="text-sm leading-relaxed text-slate-700">{context.reasoning}</p>
+        <div className="mt-3 flex items-center gap-2">
+          <span className="text-xs font-medium text-slate-500">Confidence</span>
+          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-200">
             <div
-              className="h-full bg-violet-500 rounded-full"
-              style={{ width: `${context.confidence * 100}%` }}
+              className="h-full rounded-full bg-violet-500"
+              style={{ width: `${Math.min(100, Math.max(0, context.confidence * 100))}%` }}
             />
           </div>
-          <span className="text-sm font-medium">{Math.round(context.confidence * 100)}%</span>
+          <span className="text-xs font-semibold tabular-nums text-slate-700">
+            {Math.round(context.confidence * 100)}%
+          </span>
         </div>
       </div>
 
-      {/* Risks & Alternatives */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {context.risks && context.risks.length > 0 && (
-          <div className="p-4 border border-red-200 bg-red-50 rounded-lg">
-            <p className="font-medium text-red-700 mb-2 flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4" />
-              Potential Risks
+          <div className="rounded-xl border border-rose-100 bg-rose-50/60 p-4">
+            <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-rose-800">
+              <AlertTriangle className="h-3.5 w-3.5" />
+              Potential risks
             </p>
-            <ul className="text-sm space-y-1">
+            <ul className="space-y-1.5 text-xs leading-relaxed text-rose-700">
               {context.risks.map((risk, i) => (
-                <li key={i} className="text-red-600">• {risk}</li>
+                <li key={i} className="flex gap-1.5">
+                  <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-rose-400" />
+                  {risk}
+                </li>
               ))}
             </ul>
           </div>
         )}
 
         {context.alternatives && context.alternatives.length > 0 && (
-          <div className="p-4 border border-blue-200 bg-blue-50 rounded-lg">
-            <p className="font-medium text-blue-700 mb-2 flex items-center gap-2">
-              <Lightbulb className="w-4 h-4" />
+          <div className="rounded-xl border border-blue-100 bg-blue-50/60 p-4">
+            <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-blue-800">
+              <Lightbulb className="h-3.5 w-3.5" />
               Alternatives
             </p>
-            <ul className="text-sm space-y-1">
+            <ul className="space-y-1.5 text-xs leading-relaxed text-blue-700">
               {context.alternatives.map((alt, i) => (
-                <li key={i} className="text-blue-600">• {alt}</li>
+                <li key={i} className="flex gap-1.5">
+                  <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-blue-400" />
+                  {alt}
+                </li>
               ))}
             </ul>
           </div>
         )}
       </div>
 
-      {/* Notes */}
       <div>
-        <Label htmlFor="notes">Notes (optional)</Label>
+        <Label htmlFor="notes" className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+          Notes (optional)
+        </Label>
         <Textarea
           id="notes"
-          placeholder="Add any additional context or conditions..."
+          placeholder="Add context or conditions…"
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           rows={3}
+          className="mt-1.5 rounded-lg border-slate-200"
         />
       </div>
 
-      {/* Actions */}
-      <div className="flex gap-3">
-        {context.actions.map(action => (
+      <div className="flex flex-wrap gap-2">
+        {context.actions.map((action) => (
           <Button
             key={action.id}
             variant={action.dangerous ? 'destructive' : action.primary ? 'default' : 'outline'}
             onClick={() => onAction(action, notes)}
-            className="flex-1"
+            className={cn(
+              'flex-1 rounded-lg',
+              action.primary && !action.dangerous && 'bg-violet-600 hover:bg-violet-700',
+            )}
           >
             {action.label}
           </Button>
@@ -1072,15 +1320,15 @@ function ApprovalDialogContent({
 // ============================================================================
 
 function StatusBadge({ status, size = 'sm' }: { status: AgentStatus; size?: 'sm' | 'lg' }) {
-  const styles = {
-    idle: 'bg-slate-100 text-slate-700',
-    working: 'bg-blue-100 text-blue-700 animate-pulse',
-    waiting_for_approval: 'bg-amber-100 text-amber-700',
-    completed: 'bg-green-100 text-green-700',
-    error: 'bg-red-100 text-red-700',
+  const styles: Record<AgentStatus, string> = {
+    idle: 'bg-slate-50 text-slate-600 border-slate-200',
+    working: 'bg-blue-50 text-blue-700 border-blue-100',
+    waiting_for_approval: 'bg-amber-50 text-amber-800 border-amber-200',
+    completed: 'bg-emerald-50 text-emerald-700 border-emerald-100',
+    error: 'bg-rose-50 text-rose-700 border-rose-100',
   };
 
-  const icons = {
+  const icons: Record<AgentStatus, typeof Loader2 | null> = {
     idle: null,
     working: Loader2,
     waiting_for_approval: Clock,
@@ -1088,31 +1336,47 @@ function StatusBadge({ status, size = 'sm' }: { status: AgentStatus; size?: 'sm'
     error: XCircle,
   };
 
-  const Icon = icons[status];
+  const safe = styles[status] ? status : 'idle';
+  const Icon = icons[safe];
 
   return (
-    <span className={cn(
-      "inline-flex items-center gap-1 rounded-full font-medium",
-      size === 'sm' ? "px-2 py-0.5 text-xs" : "px-3 py-1 text-sm",
-      styles[status]
-    )}>
-      {Icon && <Icon className={cn(size === 'sm' ? 'w-3 h-3' : 'w-4 h-4', status === 'working' && 'animate-spin')} />}
-      {status.replace(/_/g, ' ')}
+    <span
+      className={cn(
+        'inline-flex items-center gap-1 rounded-full border font-medium capitalize',
+        size === 'sm' ? 'px-2 py-0.5 text-[11px]' : 'px-2.5 py-1 text-xs',
+        styles[safe],
+      )}
+    >
+      {Icon && (
+        <Icon
+          className={cn(
+            size === 'sm' ? 'h-3 w-3' : 'h-3.5 w-3.5',
+            safe === 'working' && 'animate-spin',
+          )}
+        />
+      )}
+      {safe.replace(/_/g, ' ')}
     </span>
   );
 }
 
 function PriorityBadge({ priority }: { priority: Priority }) {
-  const styles = {
-    low: 'bg-slate-100 text-slate-700',
-    medium: 'bg-blue-100 text-blue-700',
-    high: 'bg-orange-100 text-orange-700',
-    critical: 'bg-red-100 text-red-700',
+  const styles: Record<Priority, string> = {
+    low: 'bg-slate-50 text-slate-600 border-slate-200',
+    medium: 'bg-blue-50 text-blue-700 border-blue-100',
+    high: 'bg-orange-50 text-orange-700 border-orange-100',
+    critical: 'bg-rose-50 text-rose-700 border-rose-100',
   };
+  const safePriority: Priority = styles[priority] ? priority : 'medium';
 
   return (
-    <span className={cn("px-2 py-0.5 text-xs rounded-full font-medium", styles[priority])}>
-      {priority}
+    <span
+      className={cn(
+        'rounded-full border px-2 py-0.5 text-[11px] font-medium capitalize',
+        styles[safePriority],
+      )}
+    >
+      {safePriority}
     </span>
   );
 }
@@ -1129,6 +1393,9 @@ const AUTONOMY_MODE_BADGE: Record<string, string> = {
 
 function AgentDirectory() {
   const [modes, setModes] = useState<Record<string, string>>({});
+  const [query, setQuery] = useState('');
+  const [clusterFilter, setClusterFilter] = useState<string>('all');
+  const [modeFilter, setModeFilter] = useState<string>('all');
 
   useEffect(() => {
     let cancelled = false;
@@ -1137,10 +1404,10 @@ function AgentDirectory() {
         const res = await fetch('/api/agents/autonomy');
         if (!res.ok) return;
         const json = await res.json();
-        const configs = (json.data ?? json).configs ?? [];
+        const payload = unwrapApiResponseData<{ configs?: Array<{ agentId: string; actionType: string; mode: string }> }>(json);
+        const configs = payload?.configs ?? (json as any)?.configs ?? [];
         const map: Record<string, string> = {};
         for (const c of configs as Array<{ agentId: string; actionType: string; mode: string }>) {
-          // Prefer agent_write / agent_goal generic rows for badge display
           if (!map[c.agentId] || c.actionType === 'agent_write' || c.actionType === 'agent_goal') {
             map[c.agentId] = c.mode;
           }
@@ -1155,93 +1422,252 @@ function AgentDirectory() {
     };
   }, []);
 
-  // Group agents by cluster
-  const agentsByCluster = Object.entries(AGENT_CONFIGS).reduce((acc, [id, config]) => {
+  const q = query.trim().toLowerCase();
+
+  const filteredEntries = Object.entries(AGENT_CONFIGS).filter(([id, config]) => {
+    if (clusterFilter !== 'all' && config.cluster !== clusterFilter) return false;
+    const mode = modes[id] || 'review';
+    if (modeFilter !== 'all' && mode !== modeFilter) return false;
+    if (!q) return true;
+    return (
+      config.codename.toLowerCase().includes(q) ||
+      config.name.toLowerCase().includes(q) ||
+      config.description.toLowerCase().includes(q) ||
+      id.toLowerCase().includes(q)
+    );
+  });
+
+  const agentsByCluster = filteredEntries.reduce((acc, [id, config]) => {
     if (!acc[config.cluster]) acc[config.cluster] = [];
     acc[config.cluster].push([id, config]);
     return acc;
   }, {} as Record<string, [string, typeof AGENT_CONFIGS[string]][]>);
 
+  const clusterOrder = Object.keys(CLUSTER_CONFIG);
+  const orderedClusters = [
+    ...clusterOrder.filter((id) => agentsByCluster[id]?.length),
+    ...Object.keys(agentsByCluster).filter((id) => !clusterOrder.includes(id)),
+  ];
+
   return (
-    <div className="space-y-8">
-      {Object.entries(agentsByCluster).map(([clusterId, agents]) => {
-        const cluster = CLUSTER_CONFIG[clusterId];
-        return (
-          <div key={clusterId}>
-            <div className="flex items-center gap-2 mb-4">
-              <span className="text-2xl">{cluster.emoji}</span>
-              <div>
-                <h3 className="font-semibold text-lg">{cluster.name}</h3>
-                <p className="text-sm text-muted-foreground">{cluster.description}</p>
-              </div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {agents.map(([id, config]) => {
-                const Icon = config.icon;
-                const mode = modes[id] || 'review';
-                return (
-                  <Card key={id} className="hover:shadow-md transition-shadow group">
-                    <CardContent className="p-4">
-                      <div className="flex items-start gap-3">
-                        <div className={cn(
-                          "w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0",
-                          `bg-${config.color}-100`
-                        )}>
-                          <Icon className={cn("w-5 h-5", `text-${config.color}-600`)} />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-lg">{config.avatar}</span>
-                            <h4 className="font-semibold">{config.codename}</h4>
-                            <Badge
-                              variant="outline"
-                              className={cn(
-                                'ml-auto text-[10px] capitalize',
-                                AUTONOMY_MODE_BADGE[mode] || AUTONOMY_MODE_BADGE.review,
-                              )}
-                              title="Autonomy mode (default review)"
-                            >
-                              {mode}
-                            </Badge>
-                          </div>
-                          <p className="text-xs text-muted-foreground truncate">{config.name}</p>
-                          <p className="text-sm text-muted-foreground mt-2">{config.description}</p>
-                          <div className="mt-3 flex gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="flex-1 text-xs"
-                              onClick={() => {
-                                // Jump to settings tab via hash-like query if parent listens;
-                                // otherwise user uses Settings tab.
-                                toast.info(`Set autonomy for ${config.codename} in the Settings tab`);
-                              }}
-                            >
-                              Configure
-                            </Button>
-                            <Button size="sm" className="flex-1 text-xs">
-                              Run
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
+    <div className="space-y-5">
+      {/* Filters */}
+      <div className="flex flex-col gap-3 rounded-xl border border-slate-200/90 bg-slate-50/60 p-3 sm:flex-row sm:items-center">
+        <div className="relative min-w-0 flex-1">
+          <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+          <Input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search agents by name, role, or id…"
+            className="h-9 rounded-lg border-slate-200 bg-white pl-9 text-sm"
+          />
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          <button
+            type="button"
+            onClick={() => setClusterFilter('all')}
+            className={cn(
+              'rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors',
+              clusterFilter === 'all'
+                ? 'border-violet-200 bg-violet-50 text-violet-700'
+                : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50',
+            )}
+          >
+            All clusters
+          </button>
+          {Object.entries(CLUSTER_CONFIG).map(([id, c]) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setClusterFilter(id)}
+              className={cn(
+                'rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors',
+                clusterFilter === id
+                  ? 'border-violet-200 bg-violet-50 text-violet-700'
+                  : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50',
+              )}
+            >
+              {c.emoji} {c.name}
+            </button>
+          ))}
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {(['all', 'suggest', 'review', 'auto'] as const).map((m) => (
+            <button
+              key={m}
+              type="button"
+              onClick={() => setModeFilter(m)}
+              className={cn(
+                'rounded-full border px-2.5 py-1 text-[11px] font-medium capitalize transition-colors',
+                modeFilter === m
+                  ? 'border-slate-300 bg-slate-900 text-white'
+                  : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50',
+              )}
+            >
+              {m === 'all' ? 'Any mode' : m}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between text-xs text-slate-500">
+        <span>
+          Showing{' '}
+          <span className="font-semibold text-slate-700">{filteredEntries.length}</span> of{' '}
+          {Object.keys(AGENT_CONFIGS).length} agents
+        </span>
+        {(query || clusterFilter !== 'all' || modeFilter !== 'all') && (
+          <button
+            type="button"
+            className="font-medium text-violet-600 hover:text-violet-700"
+            onClick={() => {
+              setQuery('');
+              setClusterFilter('all');
+              setModeFilter('all');
+            }}
+          >
+            Clear filters
+          </button>
+        )}
+      </div>
+
+      {orderedClusters.length === 0 ? (
+        <div className="flex flex-col items-center rounded-xl border border-dashed border-slate-200 bg-slate-50/50 px-6 py-14 text-center">
+          <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl border border-slate-200 bg-white shadow-sm">
+            <Search className="h-5 w-5 text-slate-400" />
           </div>
-        );
-      })}
+          <p className="text-sm font-medium text-slate-800">No agents match</p>
+          <p className="mt-1 max-w-sm text-xs text-slate-500">
+            Try a different search or clear the cluster / mode filters.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-8">
+          {orderedClusters.map((clusterId) => {
+            const agents = agentsByCluster[clusterId];
+            const cluster = CLUSTER_CONFIG[clusterId] || {
+              name: clusterId,
+              emoji: '🤖',
+              color: 'slate',
+              tone: 'slate' as Tone,
+              description: 'Agent cluster',
+            };
+            const clusterTone = TONE[cluster.tone] || TONE.slate;
+            return (
+              <section key={clusterId}>
+                <div className="mb-3 flex items-center gap-3">
+                  <div
+                    className={cn(
+                      'flex h-9 w-9 items-center justify-center rounded-lg border text-base',
+                      clusterTone.wrap,
+                    )}
+                  >
+                    {cluster.emoji}
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold text-slate-900">{cluster.name}</h3>
+                    <p className="text-xs text-slate-500">{cluster.description}</p>
+                  </div>
+                  <span className="ml-auto rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-500">
+                    {agents.length}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+                  {agents.map(([id, config]) => {
+                    const Icon = config.icon;
+                    const mode = modes[id] || 'review';
+                    const tone = toneOf(config.color);
+                    return (
+                      <Card
+                        key={id}
+                        className="group overflow-hidden rounded-xl border-slate-200/90 bg-white shadow-sm transition-all hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md"
+                      >
+                        <div className={cn('h-1 bg-gradient-to-r', tone.bar)} />
+                        <CardContent className="p-4">
+                          <div className="flex items-start gap-3">
+                            <div
+                              className={cn(
+                                'flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl border',
+                                tone.wrap,
+                              )}
+                            >
+                              <Icon className={cn('h-5 w-5', tone.icon)} />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <h4 className="text-sm font-semibold text-slate-900">
+                                  {config.codename}
+                                </h4>
+                                <span className="font-mono text-[10px] text-violet-500">
+                                  @{config.codename.toLowerCase()}
+                                </span>
+                                <Badge
+                                  variant="outline"
+                                  className={cn(
+                                    'ml-auto h-5 border text-[10px] font-semibold capitalize',
+                                    AUTONOMY_MODE_BADGE[mode] || AUTONOMY_MODE_BADGE.review,
+                                  )}
+                                  title="Autonomy mode"
+                                >
+                                  {mode}
+                                </Badge>
+                              </div>
+                              <p className="mt-0.5 truncate text-[11px] font-medium text-slate-400">
+                                {config.name}
+                              </p>
+                              <p className="mt-2 text-xs leading-relaxed text-slate-600">
+                                {config.description}
+                              </p>
+                              <div className="mt-3 flex gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-8 flex-1 rounded-lg border-slate-200 text-xs font-medium"
+                                  onClick={() => {
+                                    toast.info(`Set autonomy for ${config.codename} in Settings`);
+                                  }}
+                                >
+                                  Configure
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  className="h-8 flex-1 rounded-lg bg-violet-600 text-xs font-medium hover:bg-violet-700"
+                                  onClick={() => {
+                                    toast.message(`${config.codename} ready`, {
+                                      description: 'Open Chat and @mention this agent to invoke it.',
+                                    });
+                                  }}
+                                >
+                                  Run
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              </section>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
 
 function ActivityHistory() {
   return (
-    <div className="text-center text-muted-foreground py-12">
-      <History className="w-12 h-12 mx-auto mb-4 opacity-50" />
-      <p>Activity history will appear here</p>
+    <div className="flex flex-col items-center rounded-xl border border-dashed border-slate-200 bg-slate-50/50 px-6 py-16 text-center">
+      <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl border border-slate-200 bg-white shadow-sm">
+        <History className="h-5 w-5 text-slate-400" />
+      </div>
+      <p className="text-sm font-medium text-slate-800">No history yet</p>
+      <p className="mt-1 max-w-sm text-xs leading-relaxed text-slate-500">
+        Completed agent runs and decisions will be archived here for audit and learning.
+      </p>
     </div>
   );
 }
@@ -1256,7 +1682,9 @@ function AgentSettings() {
 // ============================================================================
 
 function formatRelativeTime(dateString: string): string {
+  if (!dateString) return '—';
   const date = new Date(dateString);
+  if (Number.isNaN(date.getTime())) return '—';
   const now = new Date();
   const diff = now.getTime() - date.getTime();
   const minutes = Math.floor(diff / 60000);
@@ -1383,5 +1811,3 @@ function getDemoActivities(): AgentActivity[] {
     },
   ];
 }
-
-import { Label } from '@/components/ui/label';

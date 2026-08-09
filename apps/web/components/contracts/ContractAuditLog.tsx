@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { detailUi } from '@/app/contracts/[id]/components/detail-ui';
 import { Badge } from '@/components/ui/badge';
 import {
   Select,
@@ -225,26 +226,27 @@ export function ContractAuditLog({
   };
 
   return (
-    <Card className={cn("w-full", className)}>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              <History className="h-5 w-5" />
+    <Card className={cn(detailUi.card, "w-full", className)}>
+      <CardHeader className={detailUi.cardHeader}>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <CardTitle className={detailUi.cardTitle}>
+              <History className="h-4 w-4 text-violet-500" />
               Audit Log
             </CardTitle>
-            <CardDescription>
+            <CardDescription className={detailUi.cardDescription}>
               Complete history of all actions performed on this contract
             </CardDescription>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <Button 
               variant="outline" 
               size="sm"
               onClick={fetchLogs}
               disabled={loading}
+              className={detailUi.headerBtn}
             >
-              <RefreshCw className={cn("h-4 w-4 mr-1", loading && "animate-spin")} />
+              <RefreshCw className={cn("h-3.5 w-3.5 mr-1", loading && "animate-spin")} />
               Refresh
             </Button>
             <Button 
@@ -252,8 +254,9 @@ export function ContractAuditLog({
               size="sm"
               onClick={exportLogs}
               disabled={!logs || logs.length === 0}
+              className={detailUi.headerBtn}
             >
-              <Download className="h-4 w-4 mr-1" />
+              <Download className="h-3.5 w-3.5 mr-1" />
               Export
             </Button>
           </div>
@@ -261,39 +264,39 @@ export function ContractAuditLog({
 
         {/* Summary Stats */}
         {summary && (
-          <div className="grid grid-cols-4 gap-4 mt-4">
-            <div className="bg-muted/50 rounded-lg p-3">
-              <div className="text-2xl font-bold">{summary.totalActions}</div>
-              <div className="text-sm text-muted-foreground">Total Actions</div>
+          <div className="mt-3 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+            <div className={cn(detailUi.tileRow, 'flex-col items-start gap-0.5 py-2.5')}>
+              <div className={cn(detailUi.fieldValueEmphasis)}>{summary.totalActions}</div>
+              <div className={detailUi.fieldLabel}>Total Actions</div>
             </div>
-            <div className="bg-muted/50 rounded-lg p-3">
-              <div className="text-2xl font-bold">{summary.uniqueUsers}</div>
-              <div className="text-sm text-muted-foreground">Unique Users</div>
+            <div className={cn(detailUi.tileRow, 'flex-col items-start gap-0.5 py-2.5')}>
+              <div className={detailUi.fieldValueEmphasis}>{summary.uniqueUsers}</div>
+              <div className={detailUi.fieldLabel}>Unique Users</div>
             </div>
-            <div className="bg-muted/50 rounded-lg p-3">
-              <div className="text-2xl font-bold">
+            <div className={cn(detailUi.tileRow, 'flex-col items-start gap-0.5 py-2.5')}>
+              <div className={detailUi.fieldValueEmphasis}>
                 {summary.byCategory['modification'] || 0}
               </div>
-              <div className="text-sm text-muted-foreground">Modifications</div>
+              <div className={detailUi.fieldLabel}>Modifications</div>
             </div>
-            <div className="bg-muted/50 rounded-lg p-3">
-              <div className="text-2xl font-bold">
+            <div className={cn(detailUi.tileRow, 'flex-col items-start gap-0.5 py-2.5')}>
+              <div className={detailUi.fieldValueEmphasis}>
                 {summary.byCategory['access'] || 0}
               </div>
-              <div className="text-sm text-muted-foreground">Access Events</div>
+              <div className={detailUi.fieldLabel}>Access Events</div>
             </div>
           </div>
         )}
 
         {/* Filters */}
-        <div className="flex items-center gap-4 mt-4">
+        <div className="mt-3 flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">Filters:</span>
+            <Filter className="h-3.5 w-3.5 text-slate-400" />
+            <span className={detailUi.fieldLabel}>Filters</span>
           </div>
           
           <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-            <SelectTrigger className="w-[140px]">
+            <SelectTrigger className={cn(detailUi.fieldInput, 'w-[140px]')}>
               <SelectValue placeholder="Category" />
             </SelectTrigger>
             <SelectContent>

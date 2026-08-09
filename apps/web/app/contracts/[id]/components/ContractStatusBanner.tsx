@@ -250,17 +250,17 @@ export const ContractStatusBanner = memo(function ContractStatusBanner({
 
   // Render all banners
   return (
-    <div className="space-y-2 mb-4">
+    <div className="space-y-2.5">
       {normalizedFailedArtifactTypes.length > 0 && (
-        <div className="space-y-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-amber-700">
+        <div className="space-y-3 rounded-xl border border-amber-200 bg-amber-50 p-3.5 text-amber-700 shadow-sm">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-start gap-3">
               <AlertTriangle className="h-5 w-5 shrink-0" />
               <div className="min-w-0">
-                <div className="font-semibold">
+                <div className="text-sm font-semibold leading-5">
                   Partial analysis: {normalizedFailedArtifactTypes.length} section{normalizedFailedArtifactTypes.length === 1 ? '' : 's'} need regeneration
                 </div>
-                <div className="text-sm">
+                <div className="mt-0.5 text-sm font-medium leading-5 text-amber-700/90">
                   Regenerate these sections before relying on the full AI analysis.
                 </div>
               </div>
@@ -272,9 +272,9 @@ export const ContractStatusBanner = memo(function ContractStatusBanner({
                 variant="outline"
                 onClick={onRetryAllArtifacts}
                 disabled={isRetryingAllArtifacts}
-                className="border-amber-300 text-amber-700 hover:bg-amber-100"
+                className="h-8 border-amber-300 text-xs font-medium text-amber-700 hover:bg-amber-100"
               >
-                {isRetryingAllArtifacts && <Clock className="h-3 w-3 mr-1 animate-spin" />}
+                {isRetryingAllArtifacts && <Clock className="h-3.5 w-3.5 mr-1 animate-spin" />}
                 Regenerate all
               </Button>
             )}
@@ -338,16 +338,16 @@ export const ContractStatusBanner = memo(function ContractStatusBanner({
           <div
             key={banner.type || index}
             className={cn(
-              "flex items-center gap-3 p-3 border rounded-xl",
+              "flex items-center gap-3 rounded-xl border p-3.5 shadow-sm",
               banner.bgClass,
               banner.textClass
             )}
           >
             <Icon className="h-5 w-5 shrink-0" />
             <div className="flex-1 min-w-0">
-              <span className="font-semibold">{banner.title}</span>
-              <span className="mx-2 hidden sm:inline">·</span>
-              <span className="block sm:inline text-sm">{banner.subtitle}</span>
+              <span className="text-sm font-semibold leading-5">{banner.title}</span>
+              <span className="mx-2 hidden sm:inline text-sm opacity-60">·</span>
+              <span className="block sm:inline text-sm font-medium leading-5 opacity-90">{banner.subtitle}</span>
             </div>
             <div className="flex items-center gap-2 shrink-0">
               {hasSecondaryAction && (
@@ -355,7 +355,7 @@ export const ContractStatusBanner = memo(function ContractStatusBanner({
                   size="sm" 
                   variant="ghost" 
                   onClick={handleSecondaryAction}
-                  className={cn("hidden sm:inline-flex text-xs", banner.buttonClass)}
+                  className={cn("hidden h-8 sm:inline-flex text-xs font-medium", banner.buttonClass)}
                 >
                   {banner.secondaryButtonText}
                 </Button>
@@ -365,7 +365,7 @@ export const ContractStatusBanner = memo(function ContractStatusBanner({
                   size="sm" 
                   variant="outline" 
                   onClick={handleAction}
-                  className={cn(banner.buttonClass)}
+                  className={cn("h-8 text-xs font-medium", banner.buttonClass)}
                 >
                   <span className="hidden sm:inline">{banner.buttonText}</span>
                   <span className="sm:hidden">Action</span>
@@ -378,7 +378,7 @@ export const ContractStatusBanner = memo(function ContractStatusBanner({
       {hiddenCount > 0 && !expanded && (
         <button
           onClick={() => setExpanded(true)}
-          className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-700 transition-colors px-1"
+          className="flex items-center gap-1.5 px-1 text-xs font-medium leading-4 text-slate-500 transition-colors hover:text-slate-700"
         >
           <ChevronDown className="h-3.5 w-3.5" />
           {hiddenCount} more {hiddenCount === 1 ? 'alert' : 'alerts'}
@@ -387,7 +387,7 @@ export const ContractStatusBanner = memo(function ContractStatusBanner({
       {expanded && hiddenCount > 0 && (
         <button
           onClick={() => setExpanded(false)}
-          className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-700 transition-colors px-1"
+          className="flex items-center gap-1.5 px-1 text-xs font-medium leading-4 text-slate-500 transition-colors hover:text-slate-700"
         >
           <ChevronUp className="h-3.5 w-3.5" />
           Show fewer

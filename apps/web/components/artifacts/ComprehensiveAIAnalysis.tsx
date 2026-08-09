@@ -295,38 +295,38 @@ function AnalysisSection({
   return (
     <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
       <Card className={cn(
-        "overflow-hidden border-slate-200/80 shadow-sm hover:shadow-md transition-shadow duration-200",
+        "overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-sm transition-shadow duration-200 hover:shadow-md",
         status === 'missing' && "opacity-75"
       )}>
         {/* Header with gradient bar */}
         <div className={cn("h-1", bgGradient)} />
         
         <CollapsibleTrigger asChild>
-          <CardHeader className="cursor-pointer hover:bg-slate-50/50 transition-colors py-4 px-5">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
+          <CardHeader className="cursor-pointer px-4 py-3.5 transition-colors hover:bg-slate-50/50 sm:px-5">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex min-w-0 items-center gap-3">
                 <div className={cn(
-                  "w-10 h-10 rounded-xl flex items-center justify-center shadow-sm",
+                  "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl shadow-sm",
                   iconColor
                 )}>
                   <Icon className="h-5 w-5 text-white" />
                 </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <CardTitle className="text-base font-semibold text-slate-800">{title}</CardTitle>
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <CardTitle className="text-sm font-semibold leading-5 text-slate-800">{title}</CardTitle>
                     {badge && (
-                      <Badge variant="secondary" className="text-xs px-2 py-0.5">
+                      <Badge variant="secondary" className="px-2 py-0.5 text-xs font-medium leading-4">
                         {badge}
                       </Badge>
                     )}
                   </div>
-                  <CardDescription className="text-xs text-slate-500 mt-0.5">
+                  <CardDescription className="mt-0.5 text-xs font-medium leading-4 text-slate-500">
                     {description}
                   </CardDescription>
                 </div>
               </div>
               
-              <div className="flex items-center gap-3">
+              <div className="flex shrink-0 items-center gap-2.5">
                 {/* Status indicator */}
                 <TooltipProvider>
                   <Tooltip>
@@ -334,7 +334,7 @@ function AnalysisSection({
                       {statusIcons[status]}
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p className="text-xs capitalize">{status.replace('-', ' ')}</p>
+                      <p className="text-xs capitalize leading-4">{status.replace('-', ' ')}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -342,16 +342,16 @@ function AnalysisSection({
                 {/* Score badge */}
                 {score !== undefined && (
                   <div className={cn(
-                    "px-3 py-1.5 rounded-lg border text-sm font-semibold flex items-center gap-1.5",
+                    "flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-sm font-semibold leading-5",
                     scoreColors[scoreColor]
                   )}>
                     <span>{score}</span>
-                    {scoreLabel && <span className="text-xs font-normal opacity-75">{scoreLabel}</span>}
+                    {scoreLabel && <span className="text-xs font-medium leading-4 opacity-75">{scoreLabel}</span>}
                   </div>
                 )}
                 
                 <ChevronDown className={cn(
-                  "h-5 w-5 text-slate-400 transition-transform duration-200",
+                  "h-4 w-4 text-slate-400 transition-transform duration-200",
                   isExpanded && "rotate-180"
                 )} />
               </div>
@@ -360,7 +360,7 @@ function AnalysisSection({
         </CollapsibleTrigger>
         
         <CollapsibleContent>
-          <CardContent className="pt-0 px-5 pb-5">
+          <CardContent className="px-4 pb-4 pt-0 sm:px-5 sm:pb-5">
             {children}
           </CardContent>
         </CollapsibleContent>

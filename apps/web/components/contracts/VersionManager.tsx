@@ -36,6 +36,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { detailUi } from '@/app/contracts/[id]/components/detail-ui'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -448,22 +449,22 @@ export function VersionManager({
   const currentVersion = versions.find(v => v.isActive) || versions[versions.length - 1]
 
   return (
-    <Card className={cn("", className)}>
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="p-2 bg-gradient-to-br from-violet-500 to-purple-600 rounded-lg">
+    <Card className={cn(detailUi.card, className)}>
+      <CardHeader className={detailUi.cardHeader}>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 p-2 shadow-sm">
               <History className="h-4 w-4 text-white" />
             </div>
-            <div>
-              <CardTitle className="text-base">Version History</CardTitle>
-              <CardDescription className="text-xs">
-                {versions.length} version{versions.length !== 1 ? 's' : ''} • Current: v{currentVersion?.versionNumber || 1}
+            <div className="min-w-0">
+              <CardTitle className={detailUi.cardTitle}>Version History</CardTitle>
+              <CardDescription className={detailUi.cardDescription}>
+                {versions.length} version{versions.length !== 1 ? 's' : ''} · Current: v{currentVersion?.versionNumber || 1}
               </CardDescription>
             </div>
           </div>
           
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -471,9 +472,9 @@ export function VersionManager({
                     variant="outline" 
                     size="sm"
                     onClick={() => setShowSnapshotDialog(true)}
-                    className="h-8"
+                    className={detailUi.headerBtn}
                   >
-                    <Camera className="h-3 w-3 mr-1" />
+                    <Camera className="h-3.5 w-3.5 mr-1" />
                     Snapshot
                   </Button>
                 </TooltipTrigger>
@@ -484,16 +485,16 @@ export function VersionManager({
             <Button 
               size="sm"
               onClick={() => setShowUploadDialog(true)}
-              className="h-8 bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600"
+              className={detailUi.headerBtnPrimary}
             >
-              <Upload className="h-3 w-3 mr-1" />
+              <Upload className="h-3.5 w-3.5 mr-1" />
               New Version
             </Button>
           </div>
         </div>
       </CardHeader>
       
-      <CardContent>
+      <CardContent className={detailUi.cardContent}>
         {isLoading ? (
           <div className="flex items-center justify-center py-8">
             <Loader2 className="h-6 w-6 animate-spin text-slate-400" />

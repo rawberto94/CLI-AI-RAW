@@ -21,7 +21,7 @@ export function CopyableId({ id }: { id: string }) {
             type="button"
             onClick={copyId}
             aria-label={copied ? 'Copied contract id' : 'Copy contract id'}
-            className="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-slate-700 font-mono transition-colors"
+            className="inline-flex items-center gap-1 rounded-md px-1 py-0.5 font-mono text-xs font-medium leading-4 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700"
           >
             {copied ? (
               <>

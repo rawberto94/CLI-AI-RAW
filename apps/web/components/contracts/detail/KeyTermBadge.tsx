@@ -20,7 +20,7 @@ export function KeyTermBadge({ term }: { term: KeyTerm }) {
       'Unknown Term'
   
   return (
-    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-700">
+    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium leading-4 bg-slate-100 text-slate-700">
       {displayText}
     </span>
   )

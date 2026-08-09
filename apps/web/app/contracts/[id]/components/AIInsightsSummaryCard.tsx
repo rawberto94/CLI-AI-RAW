@@ -21,6 +21,7 @@ import {
   RefreshCw,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { detailUi } from './detail-ui'
 
 interface AIInsight {
   id: string
@@ -73,7 +74,7 @@ const InsightBadge = ({ type }: { type: AIInsight['type'] }) => {
   }[type]
   
   return (
-    <Badge className={cn("text-[10px] border-0", config.className)}>
+    <Badge className={cn(detailUi.fieldBadge, "border-0", config.className)}>
       {config.label}
     </Badge>
   )
@@ -115,28 +116,25 @@ export const AIInsightsSummaryCard = memo(function AIInsightsSummaryCard({
   }
 
   return (
-    <Card className={cn(
-      'flex h-full flex-col overflow-hidden rounded-lg border border-slate-200/90 bg-white shadow-sm',
-      className
-    )}>
+    <Card className={cn(detailUi.card, 'flex h-full flex-col', className)}>
       {/* Header */}
-      <div className="flex min-h-[64px] flex-col justify-center border-b border-slate-100 bg-slate-50/80 p-4">
+      <div className={cn(detailUi.cardHeader, 'min-h-[64px]')}>
         <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="rounded-lg bg-slate-900 p-2 shadow-sm">
-              <Sparkles className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="rounded-xl bg-violet-600 p-2 shadow-sm">
+              <Sparkles className="h-4 w-4 text-white" />
             </div>
-            <div>
-              <h3 className="text-sm sm:text-base font-semibold text-slate-900 flex items-center gap-2">
+            <div className="min-w-0">
+              <h3 className={cn(detailUi.cardTitle, 'flex-wrap')}>
                 Review Findings
                 {insights.length > 0 && (
-                  <Badge variant="secondary" className="text-[10px]">
+                  <Badge variant="secondary" className={detailUi.fieldBadge}>
                     {insights.length} open
                   </Badge>
                 )}
               </h3>
               {extractionDate && (
-                <p className="text-[10px] sm:text-xs text-slate-500 mt-0.5">
+                <p className={cn(detailUi.cardDescription)}>
                   Last analyzed {new Date(extractionDate).toLocaleDateString()}
                 </p>
               )}
@@ -149,7 +147,7 @@ export const AIInsightsSummaryCard = memo(function AIInsightsSummaryCard({
               variant="ghost"
               onClick={onRefresh}
               disabled={isRefreshing}
-              className="text-xs text-violet-600 hover:text-violet-700 hover:bg-violet-50"
+              className={cn(detailUi.headerBtn, 'text-violet-600 hover:text-violet-700 hover:bg-violet-50')}
             >
               <RefreshCw className={cn("h-3.5 w-3.5 mr-1", isRefreshing && "animate-spin")} />
               {isRefreshing ? 'Analyzing...' : 'Refresh'}
@@ -159,21 +157,21 @@ export const AIInsightsSummaryCard = memo(function AIInsightsSummaryCard({
         
         {/* Quick Stats */}
         {insightStats.total > 0 && (
-          <div className="mt-3 flex flex-wrap items-center gap-3">
+          <div className="mt-3 flex flex-wrap items-center gap-2">
             {insightStats.risks > 0 && (
-              <div className="flex items-center gap-1.5 rounded-full border border-red-100 bg-red-50 px-2.5 py-1 text-xs text-red-600">
+              <div className={cn(detailUi.chip, 'border-red-100 bg-red-50 text-red-600')}>
                 <AlertTriangle className="h-3.5 w-3.5" />
                 <span>{insightStats.risks} risk{insightStats.risks > 1 ? 's' : ''}</span>
               </div>
             )}
             {insightStats.opportunities > 0 && (
-              <div className="flex items-center gap-1.5 rounded-full border border-emerald-100 bg-emerald-50 px-2.5 py-1 text-xs text-emerald-600">
+              <div className={cn(detailUi.chip, 'border-emerald-100 bg-emerald-50 text-emerald-600')}>
                 <TrendingUp className="h-3.5 w-3.5" />
                 <span>{insightStats.opportunities} opportunit{insightStats.opportunities > 1 ? 'ies' : 'y'}</span>
               </div>
             )}
             {insightStats.obligations > 0 && (
-              <div className="flex items-center gap-1.5 rounded-full border border-amber-100 bg-amber-50 px-2.5 py-1 text-xs text-amber-600">
+              <div className={cn(detailUi.chip, 'border-amber-100 bg-amber-50 text-amber-600')}>
                 <Target className="h-3.5 w-3.5" />
                 <span>{insightStats.obligations} obligation{insightStats.obligations > 1 ? 's' : ''}</span>
               </div>
@@ -182,12 +180,12 @@ export const AIInsightsSummaryCard = memo(function AIInsightsSummaryCard({
         )}
       </div>
       
-      <div className="flex flex-1 flex-col space-y-4 p-4">
+      <div className={cn(detailUi.cardContent, 'space-y-3.5')}>
         {/* Contract Summary */}
         {contractSummary && (
-          <div className="rounded-lg border border-slate-200/80 bg-slate-50/80 p-3">
-            <div className="mb-2 flex items-center justify-between">
-              <span className="text-xs font-medium text-slate-500 uppercase tracking-wide">
+          <div className={cn(detailUi.tileRow, 'flex-col items-stretch gap-2 py-3')}>
+            <div className="flex items-center justify-between">
+              <span className={detailUi.fieldLabel}>
                 Summary
               </span>
               <button
@@ -197,7 +195,7 @@ export const AIInsightsSummaryCard = memo(function AIInsightsSummaryCard({
                 <Copy className="h-3.5 w-3.5" />
               </button>
             </div>
-            <p className="text-sm text-slate-700 leading-relaxed line-clamp-3">
+            <p className={cn(detailUi.fieldValueMuted, 'line-clamp-3 font-normal')}>
               {contractSummary}
             </p>
           </div>
@@ -205,18 +203,18 @@ export const AIInsightsSummaryCard = memo(function AIInsightsSummaryCard({
         
         {/* Key Terms */}
         {keyTerms && keyTerms.length > 0 && (
-          <div className="rounded-lg border border-slate-200/80 bg-slate-50/80 p-3">
-            <span className="text-xs font-medium text-slate-500 uppercase tracking-wide block mb-2">
+          <div className={cn(detailUi.tileRow, 'flex-col items-stretch gap-2 py-3')}>
+            <span className={detailUi.fieldLabel}>
               Key Terms
             </span>
             <div className="flex flex-wrap gap-2">
               {keyTerms.slice(0, 6).map((item) => (
                 <div
                   key={item.term}
-                  className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-slate-50 border border-slate-100"
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2 py-1"
                 >
-                  <span className="text-[10px] sm:text-xs font-medium text-slate-600">{item.term}:</span>
-                  <span className="text-[10px] sm:text-xs text-slate-900">{item.value}</span>
+                  <span className={cn(detailUi.fieldBadge, 'text-slate-500')}>{item.term}:</span>
+                  <span className={cn(detailUi.fieldBadge, 'text-slate-900')}>{item.value}</span>
                 </div>
               ))}
             </div>
@@ -225,8 +223,8 @@ export const AIInsightsSummaryCard = memo(function AIInsightsSummaryCard({
         
         {/* Insights List */}
         {sortedInsights.length > 0 ? (
-          <div className="space-y-3.5">
-            <span className="text-xs font-medium text-slate-500 uppercase tracking-wide block">
+          <div className="space-y-2.5">
+            <span className={detailUi.fieldLabel}>
               Attention Items
             </span>
             <AnimatePresence mode="popLayout">
@@ -238,7 +236,7 @@ export const AIInsightsSummaryCard = memo(function AIInsightsSummaryCard({
                   exit={{ opacity: 0, y: -10 }}
                   transition={{ delay: idx * 0.05 }}
                   className={cn(
-                      'rounded-lg border px-3 py-3 transition-colors',
+                    'rounded-xl border px-3.5 py-3 transition-colors',
                     insight.importance === 'high' 
                       ? "bg-amber-50/50 border-amber-100 hover:bg-amber-50"
                       : "bg-slate-50/50 border-slate-100 hover:bg-slate-50"
@@ -246,7 +244,7 @@ export const AIInsightsSummaryCard = memo(function AIInsightsSummaryCard({
                 >
                   <div className="flex items-start gap-3">
                     <div className={cn(
-                      "p-1.5 rounded-md",
+                      "p-1.5 rounded-lg",
                       insight.type === 'risk' ? "bg-red-100 text-red-600" :
                       insight.type === 'opportunity' ? "bg-emerald-100 text-emerald-600" :
                       insight.type === 'obligation' ? "bg-amber-100 text-amber-600" :
@@ -255,24 +253,24 @@ export const AIInsightsSummaryCard = memo(function AIInsightsSummaryCard({
                       <InsightIcon type={insight.type} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-xs sm:text-sm font-medium text-slate-900">
+                      <div className="flex flex-wrap items-center gap-2 mb-1">
+                        <span className={detailUi.fieldValue}>
                           {insight.title}
                         </span>
                         <InsightBadge type={insight.type} />
                         {insight.importance === 'high' && (
-                          <Badge className="text-[10px] bg-amber-100 text-amber-700 border-0">
+                          <Badge className={cn(detailUi.fieldBadge, 'bg-amber-100 text-amber-700 border-0')}>
                             Important
                           </Badge>
                         )}
                       </div>
-                      <p className="text-xs text-slate-600 line-clamp-2">
+                      <p className="line-clamp-2 text-xs leading-4 text-slate-600">
                         {insight.content}
                       </p>
                       {insight.actionable && insight.action && (
                         <button
                           onClick={insight.action.onClick}
-                          className="mt-2 text-xs text-violet-600 hover:text-violet-700 font-medium flex items-center gap-1"
+                          className="mt-2 inline-flex items-center gap-1 text-xs font-medium leading-4 text-violet-600 hover:text-violet-700"
                         >
                           {insight.action.label}
                           <ChevronRight className="h-3 w-3" />
@@ -285,12 +283,12 @@ export const AIInsightsSummaryCard = memo(function AIInsightsSummaryCard({
             </AnimatePresence>
           </div>
         ) : (
-          <div className="text-center py-6">
-            <div className="p-3 rounded-full bg-slate-100 inline-flex mb-3">
-              <Brain className="h-6 w-6 text-slate-400" />
+          <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-8 text-center">
+            <div className="mb-3 inline-flex rounded-full bg-white p-3 shadow-sm">
+              <Brain className="h-5 w-5 text-slate-400" />
             </div>
-            <p className="text-sm text-slate-500 mb-2">No review findings yet</p>
-            <p className="text-xs text-slate-400">
+            <p className={cn(detailUi.fieldValueMuted, 'mb-1')}>No review findings yet</p>
+            <p className={detailUi.fieldEmpty}>
               Run analysis to generate findings
             </p>
           </div>
@@ -302,7 +300,7 @@ export const AIInsightsSummaryCard = memo(function AIInsightsSummaryCard({
             variant="ghost"
             size="sm"
             onClick={onViewAll}
-            className="w-full mt-4 text-xs text-violet-600 hover:text-violet-700 hover:bg-violet-50"
+            className={cn(detailUi.headerBtn, 'w-full text-violet-600 hover:text-violet-700 hover:bg-violet-50')}
           >
             View all {insights.length} findings
             <ChevronRight className="h-3.5 w-3.5 ml-1" />

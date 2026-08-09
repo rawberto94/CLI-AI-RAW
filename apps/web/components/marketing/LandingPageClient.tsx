@@ -1616,73 +1616,26 @@ export default function LandingPageClient() {
         </div>
       </section>
 
-      {/* About Us / Team Section */}
+      {/* About Us Section */}
       <section id="about" className="py-16 sm:py-24 lg:py-32 px-4 sm:px-6 bg-gradient-to-b from-white via-violet-50/30 to-white relative overflow-hidden">
         <div className="absolute top-0 left-0 w-[600px] h-[600px] bg-gradient-to-br from-violet-200/30 to-transparent rounded-full blur-3xl" />
         <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-gradient-to-tl from-purple-200/30 to-transparent rounded-full blur-3xl" />
 
         <div className="max-w-[1600px] mx-auto relative">
-          <div className="text-center mb-20">
+          <div className="text-center mb-12 sm:mb-16">
             <div className="inline-flex items-center gap-2 bg-gradient-to-r from-violet-50 to-purple-50 border border-violet-200/50 text-violet-700 px-5 py-2.5 rounded-full text-sm font-semibold mb-6 shadow-sm">
               <Users aria-hidden="true" className="w-4 h-4" />
               Born in Zürich
             </div>
             <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 mb-4 sm:mb-6 tracking-tight">
-              Meet the{' '}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-600 to-purple-600">Team</span>
+              Built by{' '}
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-600 to-purple-600">Practitioners</span>
             </h2>
             <p className="text-base sm:text-lg md:text-xl text-gray-600 font-light leading-relaxed max-w-3xl mx-auto">
-              Three professionals from Zürich who lived the pain of contract management first-hand — two from the world of procurement consulting and managed services, one from data architecture — came together to build the solution they always wished existed.
+              ConTigo was created in Zürich by a team that lived the pain of contract management first-hand —
+              combining procurement consulting, managed services, and data architecture to build the solution
+              enterprises always wished existed.
             </p>
-          </div>
-
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-6 sm:gap-8 mb-12 sm:mb-16">
-            {[
-              {
-                name: 'Roberto Ostojic',
-                title: 'Technical Founder',
-                role: 'CEO & CTO',
-                description: 'Creator of the core ConTigo product and codebase. Combines deep technical expertise with hands-on procurement consulting experience to architect a platform that truly understands contract workflows.',
-                gradient: 'from-violet-500 to-purple-600',
-                initial: 'RO',
-              },
-              {
-                name: 'Florian Herhold',
-                title: 'Commercial Founder',
-                role: 'CCO',
-                description: 'Drives go-to-market strategy, sales, and partnerships. Years of experience in procurement consulting and managed services give him first-hand insight into the challenges enterprises face daily.',
-                gradient: 'from-purple-500 to-fuchsia-600',
-                initial: 'FH',
-              },
-              {
-                name: 'Daniel Bartholy',
-                title: 'Data Founder',
-                role: 'Chief Data Architecture',
-                description: 'Owns the data model, integrations, data architecture, and analytics foundations. His expertise ensures ConTigo turns unstructured contract data into structured, actionable intelligence.',
-                gradient: 'from-fuchsia-500 to-pink-600',
-                initial: 'DB',
-              },
-            ].map((member) => (
-              <TiltCard key={member.name}>
-                <div className="relative group h-full">
-                  <div className={`absolute -inset-0.5 bg-gradient-to-br ${member.gradient} rounded-3xl opacity-0 group-hover:opacity-50 blur-xl transition-all duration-500`} />
-                  <div className="relative bg-white p-4 sm:p-8 rounded-3xl border border-gray-100 hover:border-gray-200 h-full transition-all duration-300 group-hover:shadow-2xl text-center">
-                    {/* Avatar */}
-                    <div className="relative mx-auto mb-4 sm:mb-6 w-16 h-16 sm:w-24 sm:h-24">
-                      <div className={`absolute inset-0 bg-gradient-to-br ${member.gradient} rounded-full blur-xl opacity-30 group-hover:opacity-50 transition-opacity`} />
-                      <div className={`relative w-16 h-16 sm:w-24 sm:h-24 bg-gradient-to-br ${member.gradient} rounded-full flex items-center justify-center shadow-lg group-hover:scale-110 transition-all duration-500`}>
-                        <span className="text-lg sm:text-2xl font-bold text-white">{member.initial}</span>
-                      </div>
-                    </div>
-
-                    <h3 className="text-base sm:text-xl font-bold text-gray-900 mb-1">{member.name}</h3>
-                    <p className="text-xs sm:text-sm text-violet-600 font-semibold mb-1">{member.role}</p>
-                    <p className="text-[10px] sm:text-xs text-gray-400 mb-3 sm:mb-4">{member.title}</p>
-                    <p className="text-gray-600 leading-relaxed text-xs sm:text-sm hidden sm:block">{member.description}</p>
-                  </div>
-                </div>
-              </TiltCard>
-            ))}
           </div>
 
           {/* Swiss quality banner */}
@@ -1692,7 +1645,7 @@ export default function LandingPageClient() {
               <div className="grid sm:grid-cols-3 gap-6 sm:gap-8 text-center">
                 {[
                   { icon: Award, label: 'Swiss Engineered', desc: 'Designed and built in Zürich with Swiss precision and quality standards.' },
-                  { icon: Users, label: 'Procurement DNA', desc: 'Founded by consultants who managed procurement for leading enterprises.' },
+                  { icon: Users, label: 'Procurement DNA', desc: 'Built by consultants who managed procurement for leading enterprises.' },
                   { icon: Database, label: 'Data-Driven', desc: 'Intelligent data architecture that transforms contracts into actionable insights.' },
                 ].map((item) => (
                   <div key={item.label} className="flex flex-col items-center">

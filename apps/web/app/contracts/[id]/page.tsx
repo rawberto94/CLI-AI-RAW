@@ -101,8 +101,9 @@ const ContractAuditLog = lazy(() =>
 
 function TabFallback() {
   return (
-    <div className="flex items-center justify-center py-12">
+    <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-slate-200/80 bg-white py-12 shadow-sm">
       <Loader2 className="h-6 w-6 animate-spin text-violet-500" />
+      <p className="text-xs font-medium leading-4 text-slate-400">Loading…</p>
     </div>
   )
 }
@@ -1091,7 +1092,7 @@ export default function ContractDetailPage() {
           className={cn('overflow-auto', showPdfViewer ? 'flex-1' : 'w-full')}
           style={showPdfViewer && !isMobile ? { minWidth: '320px' } : undefined}
         >
-          <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+          <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-6 space-y-4 sm:space-y-5">
             {/* Processing Banner */}
             <AnimatePresence>
               {isProcessing && (
@@ -1100,17 +1101,19 @@ export default function ContractDetailPage() {
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
-                  className="mb-4 sm:mb-6 no-print"
+                  className="no-print"
                 >
-                  <Card className="border-violet-200 bg-violet-50/50">
-                    <CardContent className="py-3 sm:py-4">
+                  <Card className="overflow-hidden rounded-xl border border-violet-200 bg-violet-50/50 shadow-sm">
+                    <CardContent className="py-3.5">
                       <div className="flex items-center gap-3">
-                        <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 text-violet-600 animate-spin" />
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-100">
+                          <Loader2 className="h-4 w-4 text-violet-600 animate-spin" />
+                        </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-violet-900">
+                          <p className="text-sm font-semibold leading-5 text-violet-900">
                             {t('detail.processingTitle')}
                           </p>
-                          <p className="text-xs text-violet-600 truncate">
+                          <p className="truncate text-xs font-medium leading-4 text-violet-600">
                             {contract?.processing?.currentStage || t('detail.analyzingDocument')}
                             {contract?.processing?.progress ? ` — ${contract.processing.progress}%` : ''}
                           </p>
@@ -1146,7 +1149,7 @@ export default function ContractDetailPage() {
 
             {/* Agent HITL: field-change proposals for this contract */}
             {contractId && (
-              <AgentPendingWritesBanner contractId={contractId} className="mt-3" />
+              <AgentPendingWritesBanner contractId={contractId} />
             )}
 
             {/* Quick Overview */}
@@ -1181,27 +1184,27 @@ export default function ContractDetailPage() {
             </SectionErrorBoundary>
 
             {/* Quick Actions Bar */}
-            <div className="flex flex-wrap items-center gap-2 mb-6 sm:mb-8 no-print">
+            <div className="flex flex-wrap items-center gap-2 no-print">
               {contract?.category && (
-                <button onClick={() => openDialog('categorySelector')} className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-white border border-slate-200 hover:border-violet-300 transition-colors" aria-label={`Change category: ${contract.category.name}`}>
+                <button onClick={() => openDialog('categorySelector')} className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium leading-4 text-slate-700 transition-colors hover:border-violet-300 hover:bg-violet-50/50" aria-label={`Change category: ${contract.category.name}`}>
                   <Tag className="h-3 w-3" />
                   {contract.category.name}
                 </button>
               )}
               {!contract?.category && (
-                <button onClick={handleAICategorize} disabled={aiCategorize.isPending} className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-violet-50 border border-violet-200 hover:bg-violet-100 text-violet-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" aria-label="Auto-categorize contract with AI">
+                <button onClick={handleAICategorize} disabled={aiCategorize.isPending} className="inline-flex items-center gap-1.5 rounded-full border border-violet-200 bg-violet-50 px-2.5 py-1 text-xs font-medium leading-4 text-violet-700 transition-colors hover:bg-violet-100 disabled:cursor-not-allowed disabled:opacity-50" aria-label="Auto-categorize contract with AI">
                   {aiCategorize.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
                   {aiCategorize.isPending ? t('detail.categorizing') : t('detail.autoCategorize')}
                 </button>
               )}
               {!isDemo && contract?.signature_status === 'unsigned' && (
-                <button onClick={handleRequestSignature} className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 border border-blue-200 hover:bg-blue-100 text-blue-700 transition-colors" aria-label="Request e-signature for this contract">
+                <button onClick={handleRequestSignature} className="inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-medium leading-4 text-blue-700 transition-colors hover:bg-blue-100" aria-label="Request e-signature for this contract">
                   <PenTool className="h-3 w-3" />
                   {t('detail.requestSignature')}
                 </button>
               )}
               {!isDemo && contract?.signature_status === 'signed' && (
-                <button onClick={handleDownloadSignedCopy} className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-green-50 border border-green-200 hover:bg-green-100 text-green-700 transition-colors" aria-label="Download signed copy of this contract">
+                <button onClick={handleDownloadSignedCopy} className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-medium leading-4 text-emerald-700 transition-colors hover:bg-emerald-100" aria-label="Download signed copy of this contract">
                   <CheckCircle2 className="h-3 w-3" />
                   {t('detail.downloadSigned')}
                 </button>
@@ -1209,28 +1212,28 @@ export default function ContractDetailPage() {
             </div>
 
             {/* Tabs */}
-            <Tabs value={activeTab} onValueChange={setTab} className="space-y-4 sm:space-y-6">
-              <TabsList className="sticky top-0 z-20 grid grid-cols-2 sm:grid-cols-4 gap-1 bg-white/95 backdrop-blur-sm border border-slate-200/60 p-1 rounded-xl shadow-sm h-auto">
-                <TabsTrigger value="overview" className="flex items-center gap-1.5 text-xs sm:text-sm py-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-500 data-[state=active]:to-purple-600 data-[state=active]:text-white rounded-lg transition-all">
+            <Tabs value={activeTab} onValueChange={setTab} className="space-y-4 sm:space-y-5">
+              <TabsList className="sticky top-16 z-20 grid h-auto w-full grid-cols-2 gap-1 rounded-xl border border-slate-200/80 bg-white/95 p-1 shadow-sm backdrop-blur-md sm:grid-cols-4">
+                <TabsTrigger value="overview" className="flex items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-medium leading-4 text-slate-600 transition-all data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-500 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-sm sm:text-sm">
                   <FileText className="h-3.5 w-3.5" />
                   <span>{t('detail.tabs.summary')}</span>
                 </TabsTrigger>
-                <TabsTrigger value="details" className="flex items-center gap-1.5 text-xs sm:text-sm py-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-500 data-[state=active]:to-purple-600 data-[state=active]:text-white rounded-lg transition-all">
+                <TabsTrigger value="details" className="flex items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-medium leading-4 text-slate-600 transition-all data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-500 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-sm sm:text-sm">
                   <Pencil className="h-3.5 w-3.5" />
                   <span>{t('detail.tabs.details')}</span>
                 </TabsTrigger>
-                <TabsTrigger value="activity" className="flex items-center gap-1.5 text-xs sm:text-sm py-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-500 data-[state=active]:to-purple-600 data-[state=active]:text-white rounded-lg transition-all">
+                <TabsTrigger value="activity" className="flex items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-medium leading-4 text-slate-600 transition-all data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-500 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-sm sm:text-sm">
                   <History className="h-3.5 w-3.5" />
                   <span>{t('detail.tabs.activity')}</span>
                 </TabsTrigger>
-                <TabsTrigger value="ai" className="flex items-center gap-1.5 text-xs sm:text-sm py-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-500 data-[state=active]:to-purple-600 data-[state=active]:text-white rounded-lg transition-all">
+                <TabsTrigger value="ai" className="flex items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-medium leading-4 text-slate-600 transition-all data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-500 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-sm sm:text-sm">
                   <Brain className="h-3.5 w-3.5" />
                   <span>{t('detail.tabs.analysis')}</span>
                 </TabsTrigger>
               </TabsList>
 
               {/* Summary Tab */}
-              <TabsContent value="overview" className="space-y-4 sm:space-y-6 mt-0">
+              <TabsContent value="overview" className="mt-0 space-y-4 sm:space-y-5">
                 <ContractSummaryTab
                     summary={metadata.contract_short_description || overviewData?.summary || ''}
                     keyTerms={overviewData?.keyTerms}
@@ -1268,7 +1271,7 @@ export default function ContractDetailPage() {
               </TabsContent>
 
               {/* Details Tab */}
-              <TabsContent value="details" className="space-y-4 sm:space-y-6 mt-0">
+              <TabsContent value="details" className="mt-0 space-y-4 sm:space-y-5">
                 <EnhancedContractMetadataSection
                     contractId={contractId}
                     tenantId={getTenantId()}
@@ -1305,7 +1308,7 @@ export default function ContractDetailPage() {
               </TabsContent>
 
               {/* Activity Tab — lazy-loaded */}
-              <TabsContent value="activity" className="space-y-4 sm:space-y-6 mt-0">
+              <TabsContent value="activity" className="mt-0 space-y-4 sm:space-y-5">
                 <VersionManager
                     contractId={contractId}
                     contractTitle={contract?.filename || 'Contract'}
@@ -1331,7 +1334,7 @@ export default function ContractDetailPage() {
               </TabsContent>
 
               {/* AI Tab — fully lazy-loaded */}
-              <TabsContent value="ai" className="space-y-4 sm:space-y-6 mt-0">
+              <TabsContent value="ai" className="mt-0 space-y-4 sm:space-y-5">
                 <Suspense fallback={<TabFallback />}>
                   {contract?.rawText || contract?.extractedData ? (
                     <>
@@ -1350,20 +1353,26 @@ export default function ContractDetailPage() {
                       </SectionErrorBoundary>
                     </>
                   ) : (
-                    <Card className="border-dashed border-2 border-slate-200">
-                      <CardContent className="py-12 text-center">
-                        <Brain className="h-12 w-12 text-slate-300 mx-auto mb-4" />
-                        <h3 className="text-lg font-semibold text-slate-700 mb-2">{t('detail.aiNotAvailableTitle')}</h3>
-                        <p className="text-sm text-slate-500 mb-4">
+                    <Card className="overflow-hidden rounded-xl border border-dashed border-slate-200 bg-white shadow-sm">
+                      <CardContent className="px-6 py-12 text-center">
+                        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-50">
+                          <Brain className="h-7 w-7 text-violet-400" />
+                        </div>
+                        <h3 className="mb-1.5 text-sm font-semibold leading-5 text-slate-800">{t('detail.aiNotAvailableTitle')}</h3>
+                        <p className="mx-auto mb-5 max-w-md text-sm font-medium leading-5 text-slate-500">
                           {t('detail.aiNotAvailableDescription')}
                         </p>
-                        <div className="flex gap-3 justify-center">
-                          <Button onClick={handleAIExtraction} disabled={aiExtraction.isPending}>
+                        <div className="flex flex-wrap gap-2.5 justify-center">
+                          <Button
+                            onClick={handleAIExtraction}
+                            disabled={aiExtraction.isPending}
+                            className="h-9 bg-violet-600 text-sm font-medium hover:bg-violet-700"
+                          >
                             {aiExtraction.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                             <Sparkles className="h-4 w-4 mr-2" />
                             {t('detail.runAnalysis')}
                           </Button>
-                          <Button variant="outline" onClick={handleAnalyzeWithAI}>
+                          <Button variant="outline" onClick={handleAnalyzeWithAI} className="h-9 text-sm font-medium">
                             <Brain className="h-4 w-4 mr-2" />
                             {t('detail.chatWithAI')}
                           </Button>

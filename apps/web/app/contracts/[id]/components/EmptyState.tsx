@@ -12,6 +12,7 @@ import {
   Search,
   FileQuestion,
 } from 'lucide-react'
+import { detailUi } from './detail-ui'
 
 type EmptyStateType = 'notes' | 'related' | 'timeline' | 'search' | 'general'
 
@@ -70,7 +71,7 @@ export const EmptyState = memo(function EmptyState({
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       className={cn(
-        "flex flex-col items-center justify-center py-8 px-4 text-center",
+        "flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-10 text-center",
         className
       )}
     >
@@ -78,15 +79,15 @@ export const EmptyState = memo(function EmptyState({
         initial={{ scale: 0.8 }}
         animate={{ scale: 1 }}
         transition={{ delay: 0.1, type: "spring", stiffness: 300, damping: 20 }}
-        className="flex items-center justify-center w-14 h-14 rounded-2xl bg-slate-100 text-slate-400 mb-4"
+        className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-slate-400 shadow-sm"
       >
         {icon || config.icon}
       </motion.div>
       
-      <h3 className="text-sm font-semibold text-slate-700 mb-1">
+      <h3 className={cn(detailUi.fieldValue, 'mb-1 text-slate-700')}>
         {title || config.title}
       </h3>
-      <p className="text-xs text-slate-500 max-w-[200px]">
+      <p className={cn(detailUi.fieldEmpty, 'max-w-[240px] not-italic text-slate-500')}>
         {description || config.description}
       </p>
       
@@ -95,7 +96,7 @@ export const EmptyState = memo(function EmptyState({
           variant="outline"
           size="sm"
           onClick={action.onClick}
-          className="mt-4"
+          className={cn(detailUi.headerBtn, 'mt-4')}
         >
           {action.label}
         </Button>
