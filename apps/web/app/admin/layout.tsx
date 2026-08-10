@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
@@ -26,6 +26,11 @@ import {
   Keyboard,
   BarChart3,
   LineChart,
+  Key,
+  Gavel,
+  ScrollText,
+  Activity,
+  Gauge,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -35,84 +40,80 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 
-const adminNavItems = [
+interface AdminNavItem {
+  title: string;
+  href: string;
+  icon: React.ComponentType<{ className?: string }>;
+  exact?: boolean;
+}
+
+interface AdminNavGroup {
+  label: string | null;
+  items: AdminNavItem[];
+}
+
+// This is the single source of truth for admin navigation. The main app rail
+// (components/layout/EnhancedNavigation.tsx) intentionally links only to /admin
+// rather than mirroring these sections.
+const adminNavGroups: AdminNavGroup[] = [
   {
-    title: 'Overview',
-    href: '/admin',
-    icon: LayoutDashboard,
-    exact: true,
+    label: null,
+    items: [
+      { title: 'Overview', href: '/admin', icon: LayoutDashboard, exact: true },
+    ],
   },
   {
-    title: 'Users',
-    href: '/admin/users',
-    icon: Users,
+    label: 'People & Access',
+    items: [
+      { title: 'Users', href: '/admin/users', icon: Users },
+      { title: 'Groups', href: '/admin/groups', icon: UsersRound },
+      { title: 'Departments', href: '/admin/departments', icon: Building2 },
+      { title: 'External Collaborators', href: '/admin/collaborators', icon: ExternalLink },
+    ],
   },
   {
-    title: 'Groups',
-    href: '/admin/groups',
-    icon: UsersRound,
+    label: 'Security & Compliance',
+    items: [
+      { title: 'Security', href: '/admin/security', icon: Shield },
+      { title: 'SSO', href: '/admin/sso', icon: Key },
+      { title: 'Legal Holds', href: '/admin/legal-holds', icon: Gavel },
+      { title: 'Audit Logs', href: '/audit-logs', icon: ScrollText },
+    ],
   },
   {
-    title: 'Departments',
-    href: '/admin/departments',
-    icon: Building2,
+    label: 'Operations',
+    items: [
+      { title: 'Integrations', href: '/admin/integrations', icon: Plug },
+      { title: 'Queue', href: '/admin/queue', icon: ListTodo },
+      { title: 'Job Monitor', href: '/admin/job-monitor', icon: Activity },
+      { title: 'OCR Review', href: '/admin/ocr', icon: ScanText },
+    ],
   },
   {
-    title: 'External Collaborators',
-    href: '/admin/collaborators',
-    icon: ExternalLink,
+    label: 'AI',
+    items: [
+      { title: 'AI Learning', href: '/admin/ai-learning', icon: Brain },
+      { title: 'Model Performance', href: '/admin/model-performance', icon: Cpu },
+      { title: 'A/B Testing', href: '/admin/ab-testing', icon: FlaskConical },
+      { title: 'RAG Quality', href: '/admin/rag-eval', icon: Gauge },
+    ],
   },
   {
-    title: 'Security',
-    href: '/admin/security',
-    icon: Shield,
+    label: 'Analytics',
+    items: [
+      { title: 'Upload Metrics', href: '/admin/upload-metrics', icon: BarChart3 },
+      { title: 'UX Metrics', href: '/admin/ux-metrics', icon: LineChart },
+    ],
   },
   {
-    title: 'Integrations',
-    href: '/admin/integrations',
-    icon: Plug,
-  },
-  {
-    title: 'AI Learning',
-    href: '/admin/ai-learning',
-    icon: Brain,
-  },
-  {
-    title: 'A/B Testing',
-    href: '/admin/ab-testing',
-    icon: FlaskConical,
-  },
-  {
-    title: 'Model Performance',
-    href: '/admin/model-performance',
-    icon: Cpu,
-  },
-  {
-    title: 'OCR Review',
-    href: '/admin/ocr',
-    icon: ScanText,
-  },
-  {
-    title: 'Upload Metrics',
-    href: '/admin/upload-metrics',
-    icon: BarChart3,
-  },
-  {
-    title: 'UX Metrics',
-    href: '/admin/ux-metrics',
-    icon: LineChart,
-  },
-  {
-    title: 'Queue',
-    href: '/admin/queue',
-    icon: ListTodo,
-  },
-  {
-    title: 'Settings',
-    href: '/admin/settings',
-    icon: Settings,
+    label: null,
+    items: [
+      { title: 'Settings', href: '/admin/settings', icon: Settings },
+    ],
   },
 ];
+
+const adminNavItems = adminNavGroups.flatMap((group) => group.items);
 
 export default function AdminLayout({
   children,
@@ -122,6 +123,13 @@ export default function AdminLayout({
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const searchResults = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return adminNavItems;
+    return adminNavItems.filter((item) => item.title.toLowerCase().includes(q));
+  }, [searchQuery]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -134,6 +142,7 @@ export default function AdminLayout({
       // Cmd/Ctrl + K to open search
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
+        setSearchQuery('');
         setSearchOpen(true);
       }
       // Escape to close search
@@ -146,7 +155,7 @@ export default function AdminLayout({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [searchOpen]);
 
-  const isActive = (item: typeof adminNavItems[0]) => {
+  const isActive = (item: AdminNavItem) => {
     if (item.exact) {
       return pathname === item.href;
     }
@@ -204,7 +213,7 @@ export default function AdminLayout({
               <Button 
                 variant="outline" 
                 className="w-full justify-start text-muted-foreground"
-                onClick={() => setSearchOpen(true)}
+                onClick={() => { setSearchQuery(''); setSearchOpen(true); }}
               >
                 <Search className="h-4 w-4 mr-2" />
                 <span>Quick search...</span>
@@ -213,46 +222,57 @@ export default function AdminLayout({
             </div>
           )}
 
-          <nav className={cn(
-            'flex-1 space-y-1',
-            collapsed ? 'px-2' : 'px-2'
-          )}>
-            {adminNavItems.map((item) => {
-              const Icon = item.icon;
-              const active = isActive(item);
+          <nav className="flex-1 overflow-y-auto px-2 pb-4">
+            {adminNavGroups.map((group, groupIndex) => (
+              <div key={group.label ?? `group-${groupIndex}`} className={groupIndex > 0 ? 'mt-4' : undefined}>
+                {group.label && !collapsed && (
+                  <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+                    {group.label}
+                  </p>
+                )}
+                {group.label && collapsed && groupIndex > 0 && (
+                  <div className="mx-2 mb-2 border-t" />
+                )}
+                <div className="space-y-1">
+                  {group.items.map((item) => {
+                    const Icon = item.icon;
+                    const active = isActive(item);
 
-              const NavItem = (
-                <Link key={item.href} href={item.href}>
-                  <div
-                    className={cn(
-                      'flex items-center gap-3 rounded-lg text-sm font-medium transition-colors',
-                      collapsed ? 'justify-center px-2 py-2' : 'px-3 py-2',
-                      active
-                        ? 'bg-primary text-primary-foreground'
-                        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                    )}
-                  >
-                    <Icon className="h-4 w-4 shrink-0" />
-                    {!collapsed && item.title}
-                  </div>
-                </Link>
-              );
+                    const NavItem = (
+                      <Link key={item.href} href={item.href}>
+                        <div
+                          className={cn(
+                            'flex items-center gap-3 rounded-lg text-sm font-medium transition-colors',
+                            collapsed ? 'justify-center px-2 py-2' : 'px-3 py-2',
+                            active
+                              ? 'bg-primary text-primary-foreground'
+                              : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                          )}
+                        >
+                          <Icon className="h-4 w-4 shrink-0" />
+                          {!collapsed && item.title}
+                        </div>
+                      </Link>
+                    );
 
-              if (collapsed) {
-                return (
-                  <Tooltip key={item.href}>
-                    <TooltipTrigger asChild>
-                      {NavItem}
-                    </TooltipTrigger>
-                    <TooltipContent side="right">
-                      {item.title}
-                    </TooltipContent>
-                  </Tooltip>
-                );
-              }
+                    if (collapsed) {
+                      return (
+                        <Tooltip key={item.href}>
+                          <TooltipTrigger asChild>
+                            {NavItem}
+                          </TooltipTrigger>
+                          <TooltipContent side="right">
+                            {item.title}
+                          </TooltipContent>
+                        </Tooltip>
+                      );
+                    }
 
-              return NavItem;
-            })}
+                    return NavItem;
+                  })}
+                </div>
+              </div>
+            ))}
           </nav>
 
           <div className={cn(
@@ -310,25 +330,33 @@ export default function AdminLayout({
                   type="text"
                   placeholder="Search admin pages..."
                   className="flex-1 bg-transparent outline-none text-lg"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
                   autoFocus
                 />
                 <kbd className="text-xs bg-muted px-2 py-1 rounded">ESC</kbd>
               </div>
               <div className="p-2 max-h-80 overflow-y-auto">
-                {adminNavItems.map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      onClick={() => setSearchOpen(false)}
-                      className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-muted transition-colors"
-                    >
-                      <Icon className="h-4 w-4 text-muted-foreground" />
-                      <span>{item.title}</span>
-                    </Link>
-                  );
-                })}
+                {searchResults.length === 0 ? (
+                  <p className="px-3 py-6 text-center text-sm text-muted-foreground">
+                    No admin pages match &ldquo;{searchQuery}&rdquo;
+                  </p>
+                ) : (
+                  searchResults.map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        onClick={() => setSearchOpen(false)}
+                        className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-muted transition-colors"
+                      >
+                        <Icon className="h-4 w-4 text-muted-foreground" />
+                        <span>{item.title}</span>
+                      </Link>
+                    );
+                  })
+                )}
               </div>
             </div>
           </div>

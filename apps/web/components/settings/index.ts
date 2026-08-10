@@ -10,9 +10,6 @@ export { MetadataSchemaEditor } from './MetadataSchemaEditor';
 // Metadata Field Selector - Compact field selection component
 export { MetadataFieldSelector } from './MetadataFieldSelector';
 
-// API Keys Manager - Secure API key management
-export { ApiKeysManager } from './ApiKeysManager';
-
 // Webhooks Manager - Webhook configuration
 export { WebhooksManager } from './WebhooksManager';
 

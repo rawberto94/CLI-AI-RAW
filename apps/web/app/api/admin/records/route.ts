@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, getApiContext} from '@/lib/api-middleware';
+import { isMissingRelationError } from '@/lib/db/missing-relation';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,6 +36,15 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
 
     return createSuccessResponse(ctx, { metrics: (metrics as any[])[0] });
   } catch (error: unknown) {
+    if (isMissingRelationError(error)) {
+      return createSuccessResponse(ctx, {
+        archived: [],
+        certificates: [],
+        metrics: null,
+        storageAvailable: false,
+        warning: 'Records management storage is not provisioned in this environment.',
+      });
+    }
     return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to fetch records. Please try again.', 500);
   }
 });
@@ -71,6 +81,9 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
 
     return createErrorResponse(ctx, 'BAD_REQUEST', 'Action must be archive or delete-defensible', 400);
   } catch (error: unknown) {
+    if (isMissingRelationError(error)) {
+      return createErrorResponse(ctx, 'NOT_IMPLEMENTED', 'Records management storage is not provisioned in this environment.', 501);
+    }
     return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed in records operation. Please try again.', 500);
   }
 });

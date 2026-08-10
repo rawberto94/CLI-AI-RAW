@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, getApiContext} from '@/lib/api-middleware';
+import { isMissingRelationError } from '@/lib/db/missing-relation';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,6 +47,17 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
       policy: (policy as any[])[0] || null,
     });
   } catch (error: unknown) {
+    if (isMissingRelationError(error)) {
+      return createSuccessResponse(ctx, {
+        datasets: null,
+        driftMetrics: [],
+        recentDriftAlerts: 0,
+        exports: null,
+        policy: null,
+        storageAvailable: false,
+        warning: 'AI governance storage is not provisioned in this environment.',
+      });
+    }
     return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to fetch AI governance data. Please try again.', 500);
   }
 });
@@ -99,6 +111,9 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
 
     return createErrorResponse(ctx, 'BAD_REQUEST', 'Invalid type', 400);
   } catch (error: unknown) {
+    if (isMissingRelationError(error)) {
+      return createErrorResponse(ctx, 'NOT_IMPLEMENTED', 'AI governance storage is not provisioned in this environment.', 501);
+    }
     return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed in AI governance operation. Please try again.', 500);
   }
 });

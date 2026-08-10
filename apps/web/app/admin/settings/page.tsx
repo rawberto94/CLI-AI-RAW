@@ -9,9 +9,8 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { 
-  Settings, 
-  Key, 
-  Webhook, 
+  Settings,
+  Webhook,
   ClipboardList,
   Download,
   Shield as _Shield,
@@ -21,21 +20,23 @@ import {
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ApiKeysManager, WebhooksManager } from '@/components/settings';
+import { WebhooksManager } from '@/components/settings';
 import { AuditLogViewer } from '@/components/audit';
 import { ExportManager } from '@/components/export';
 
 
 
+// API keys are managed at /settings/api-tokens (backed by the api_tokens table).
+// The tab that used to live here read from a non-existent `api_keys` table and
+// could only ever render an empty list.
 const tabs = [
-  { id: 'api-keys', label: 'API Keys', icon: Key, gradient: 'from-violet-500 to-purple-500' },
   { id: 'webhooks', label: 'Webhooks', icon: Webhook, gradient: 'from-violet-500 to-pink-500' },
   { id: 'audit', label: 'Audit Log', icon: ClipboardList, gradient: 'from-amber-500 to-orange-500' },
   { id: 'export', label: 'Export', icon: Download, gradient: 'from-violet-500 to-purple-500' },
 ];
 
 export default function AdminSettingsPage() {
-  const [activeTab, setActiveTab] = useState('api-keys');
+  const [activeTab, setActiveTab] = useState('webhooks');
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
@@ -77,7 +78,7 @@ export default function AdminSettingsPage() {
           transition={{ delay: 0.1 }}
         >
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="grid grid-cols-4 gap-2 h-auto p-2 bg-white/80 backdrop-blur-sm shadow-sm">
+            <TabsList className="grid grid-cols-3 gap-2 h-auto p-2 bg-white/80 backdrop-blur-sm shadow-sm">
               {tabs.map(tab => {
                 const Icon = tab.icon;
                 const isActive = activeTab === tab.id;
@@ -98,10 +99,6 @@ export default function AdminSettingsPage() {
                 );
               })}
             </TabsList>
-
-            <TabsContent value="api-keys" className="mt-6">
-              <ApiKeysManager />
-            </TabsContent>
 
             <TabsContent value="webhooks" className="mt-6">
               <WebhooksManager />

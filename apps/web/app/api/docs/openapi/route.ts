@@ -618,16 +618,16 @@ All errors follow the format:
         responses: { '202': { description: 'Deletion request accepted' } },
       },
     },
-    '/api/admin/api-keys': {
+    '/api/admin/api-tokens': {
       get: {
         tags: ['Admin'],
-        summary: 'List API keys',
+        summary: 'List API tokens',
         security: [{ session: [] }],
-        responses: { '200': { description: 'List of API keys' } },
+        responses: { '200': { description: 'List of API tokens' } },
       },
       post: {
         tags: ['Admin'],
-        summary: 'Create API key',
+        summary: 'Create API token',
         security: [{ session: [] }],
         requestBody: {
           content: {
@@ -644,7 +644,7 @@ All errors follow the format:
             },
           },
         },
-        responses: { '201': { description: 'API key created (key shown once)' } },
+        responses: { '201': { description: 'API token created (token shown once)' } },
       },
     },
   },

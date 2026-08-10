@@ -30,16 +30,6 @@ export interface WebhookConfig {
   lastFailureAt?: string;
 }
 
-export interface ApiKeyConfig {
-  id: string;
-  name: string;
-  key?: string;
-  prefix?: string;
-  permissions: string[];
-  createdAt: string;
-  isActive: boolean;
-  lastUsed?: string;
-}
 
 interface WebhookApiRecord {
   id: string;
@@ -55,16 +45,6 @@ interface WebhookApiRecord {
   deadDeliveryCount?: number;
   lastSuccessAt?: string | null;
   lastFailureAt?: string | null;
-}
-
-interface ApiKeyApiRecord {
-  id: string;
-  name: string;
-  key_prefix: string;
-  scopes: string[];
-  is_active: boolean;
-  last_used_at?: string | null;
-  created_at: string;
 }
 
 function mapWebhook(record: WebhookApiRecord): WebhookConfig {
@@ -101,17 +81,6 @@ function mapWebhook(record: WebhookApiRecord): WebhookConfig {
   };
 }
 
-function mapApiKey(record: ApiKeyApiRecord): ApiKeyConfig {
-  return {
-    id: record.id,
-    name: record.name,
-    prefix: record.key_prefix,
-    permissions: record.scopes,
-    createdAt: record.created_at,
-    isActive: record.is_active,
-    lastUsed: record.last_used_at || undefined,
-  };
-}
 
 // =====================
 // Query Keys
@@ -120,7 +89,6 @@ function mapApiKey(record: ApiKeyApiRecord): ApiKeyConfig {
 export const settingsQueryKeys = {
   all: ['settings'] as const,
   webhooks: () => [...settingsQueryKeys.all, 'webhooks'] as const,
-  apiKeys: () => [...settingsQueryKeys.all, 'api-keys'] as const,
   integrations: () => [...settingsQueryKeys.all, 'integrations'] as const,
   preferences: () => [...settingsQueryKeys.all, 'preferences'] as const,
 };
@@ -178,28 +146,6 @@ export function useWebhooksQuery(options: UseWebhooksQueryOptions = {}) {
 // API Keys Hooks
 // =====================
 
-interface UseApiKeysQueryOptions {
-  enabled?: boolean;
-}
-
-/**
- * Hook for fetching API keys list
- */
-export function useApiKeysQuery(options: UseApiKeysQueryOptions = {}) {
-  const { enabled = true } = options;
-
-  return useQuery({
-    queryKey: ['api-keys'],
-    queryFn: async () => {
-      const response = await fetchWithTenant<{ apiKeys: ApiKeyApiRecord[] }>('/api/admin/api-keys');
-      return (response.apiKeys || []).map(mapApiKey);
-    },
-    enabled,
-    staleTime: 30 * 1000,
-    placeholderData: [],
-  });
-}
-
 // =====================
 // Prefetch Helpers
 // =====================
@@ -214,16 +160,6 @@ export function usePrefetchSettings() {
         queryFn: async () => {
           const response = await fetchWithTenant<WebhookApiRecord[]>('/api/webhooks');
           return response.map(mapWebhook);
-        },
-        staleTime: 30 * 1000,
-      });
-    },
-    prefetchApiKeys: () => {
-      queryClient.prefetchQuery({
-        queryKey: ['api-keys'],
-        queryFn: async () => {
-          const response = await fetchWithTenant<{ apiKeys: ApiKeyApiRecord[] }>('/api/admin/api-keys');
-          return (response.apiKeys || []).map(mapApiKey);
         },
         staleTime: 30 * 1000,
       });
@@ -244,9 +180,6 @@ export function useSettingsInvalidation() {
     },
     invalidateWebhooks: () => {
       queryClient.invalidateQueries({ queryKey: ['webhooks'] });
-    },
-    invalidateApiKeys: () => {
-      queryClient.invalidateQueries({ queryKey: ['api-keys'] });
     },
   };
 }

@@ -26,27 +26,6 @@ interface OptimisticMutationOptions<TData, TVariables> {
   propagate?: () => void;
 }
 
-interface ApiKeyData {
-  id: string;
-  name: string;
-  keyPreview: string;
-  permissions: string[];
-  createdAt: string;
-  isActive: boolean;
-  lastUsedAt?: string;
-  expiresAt?: string | null;
-}
-
-interface CreatedApiKeyResponse {
-  apiKey: {
-    key: string;
-    keyPrefix: string;
-    name: string;
-    scopes: string[];
-    expiresAt?: string | null;
-  };
-}
-
 interface WebhookData {
   id: string;
   name: string;
@@ -167,98 +146,6 @@ export function useOptimisticMutation<TData, TVariables>({
 // =====================
 // Settings Hooks
 // =====================
-
-/**
- * API Keys management with optimistic updates
- */
-export function useApiKeys() {
-  return {
-    delete: useDeleteApiKey(),
-    toggle: useToggleApiKey(),
-    create: useCreateApiKey(),
-  };
-}
-
-export function useDeleteApiKey() {
-  const queryClient = useQueryClient();
-  const crossModule = useCrossModuleInvalidation();
-
-  return useMutation({
-    mutationFn: (keyId: string) => 
-      fetchWithTenant(`/api/admin/api-keys?id=${encodeURIComponent(keyId)}`, { method: 'DELETE' }),
-    onMutate: async (keyId) => {
-      await queryClient.cancelQueries({ queryKey: ['api-keys'] });
-      const previous = queryClient.getQueryData<ApiKeyData[]>(['api-keys']);
-      queryClient.setQueryData<ApiKeyData[]>(['api-keys'], (old) => 
-        old?.filter(k => k.id !== keyId) || []
-      );
-      return { previous };
-    },
-    onError: (_, __, context) => {
-      if (context?.previous) {
-        queryClient.setQueryData(['api-keys'], context.previous);
-      }
-      toast.error('Failed to delete API key');
-    },
-    onSuccess: () => {
-      toast.success('API key deleted');
-      crossModule.onIntegrationChange();
-    },
-  });
-}
-
-export function useToggleApiKey() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ keyId, isActive }: { keyId: string; isActive: boolean }) => 
-      fetchWithTenant(`/api/admin/api-keys`, {
-        method: 'PATCH',
-        body: JSON.stringify({ id: keyId, isActive }),
-      }),
-    onMutate: async ({ keyId, isActive }) => {
-      await queryClient.cancelQueries({ queryKey: ['api-keys'] });
-      const previous = queryClient.getQueryData<ApiKeyData[]>(['api-keys']);
-      queryClient.setQueryData<ApiKeyData[]>(['api-keys'], (old) => 
-        old?.map(k => k.id === keyId ? { ...k, isActive } : k) || []
-      );
-      return { previous };
-    },
-    onError: (_, __, context) => {
-      if (context?.previous) {
-        queryClient.setQueryData(['api-keys'], context.previous);
-      }
-      toast.error('Failed to update API key');
-    },
-    onSuccess: (_, { isActive }) => {
-      toast.success(`API key ${isActive ? 'activated' : 'deactivated'}`);
-    },
-  });
-}
-
-export function useCreateApiKey() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (data: { name: string; permissions: string[]; expiresInDays?: number }) => 
-      fetchWithTenant<CreatedApiKeyResponse>('/api/admin/api-keys', {
-        method: 'POST',
-        body: JSON.stringify({
-          name: data.name,
-          scopes: data.permissions,
-          expiresInDays: data.expiresInDays,
-        }),
-      }),
-    onSuccess: (response) => {
-      queryClient.invalidateQueries({ queryKey: ['api-keys'] });
-      toast.success('API key created');
-      return response.apiKey;
-    },
-    onError: () => {
-      toast.error('Failed to create API key');
-    },
-  });
-}
 
 /**
  * Webhooks management with optimistic updates

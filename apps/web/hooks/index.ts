@@ -10,10 +10,6 @@ export * from './use-queries';
 // Optimistic mutations - named exports to avoid conflicts with useContractHealth
 export { 
   useOptimisticMutation,
-  useApiKeys,
-  useDeleteApiKey,
-  useToggleApiKey,
-  useCreateApiKey,
   useWebhooks,
   useDeleteWebhook,
   useToggleWebhook,

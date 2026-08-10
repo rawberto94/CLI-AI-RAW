@@ -37,7 +37,6 @@ import {
   BarChart3,
   Settings,
   Upload,
-  Activity,
   Calendar,
   Menu,
   X,
@@ -51,7 +50,6 @@ import {
   Building2,
   Shield,
   FolderKanban,
-  Database,
   Keyboard,
   RefreshCcw,
   GitBranch,
@@ -67,13 +65,11 @@ import {
   PenTool,
   ScrollText,
   Gavel,
-  Key,
   ArrowLeftRight,
   Gauge,
   Rocket,
   Bot,
   ListChecks,
-  LineChart,
 } from 'lucide-react';
 
 interface NavigationItem {
@@ -259,28 +255,10 @@ const navigationConfig: NavigationGroupConfig[] = [
     groupKey: 'admin',
     audiences: ['admin'],
     requiresAdmin: true,
+    // Single entry point: /admin owns its own sidebar (app/admin/layout.tsx), so
+    // mirroring its sections here just gave admins two competing menus.
     items: [
       { key: 'organization', href: '/admin', icon: Building2, audiences: ['admin'], requiresAdmin: true },
-      {
-        key: 'uxMetrics',
-        href: '/admin/ux-metrics',
-        icon: LineChart,
-        audiences: ['admin'],
-        requiresAdmin: true,
-      },
-      {
-        key: 'system',
-        href: '/audit-logs',
-        icon: ScrollText,
-        audiences: ['admin'],
-        requiresAdmin: true,
-        children: [
-          { key: 'auditLogs', href: '/audit-logs', icon: ScrollText, audiences: ['admin'], demo: 'hide' },
-          { key: 'sso', href: '/admin/sso', icon: Key, audiences: ['admin'], demo: 'hide' },
-          { key: 'queue', href: '/admin/queue', icon: Activity, audiences: ['admin'], demo: 'hide' },
-          { key: 'integrations', href: '/admin/integrations', icon: Database, audiences: ['admin'], demo: 'hide' },
-        ],
-      },
     ],
   },
 ];
