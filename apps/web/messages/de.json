@@ -169,7 +169,7 @@
       },
       "uxMetrics": {
         "name": "UX-Metriken",
-        "desc": "Erfolgsmetriken für agentische Freigaben und Benachrichtigungen"
+        "desc": "Freigaberaten, Benachrichtigungsklicks und HITL-Funnel"
       },
       "settings": {
         "name": "Einstellungen",
@@ -177,7 +177,7 @@
       },
       "organization": {
         "name": "Organisation",
-        "desc": "Mandanten- und Organisationseinrichtung"
+        "desc": "Teammitglieder, Rollen und Mandanteneinstellungen"
       },
       "system": {
         "name": "System",
@@ -198,6 +198,26 @@
       "integrations": {
         "name": "Integrationen",
         "desc": "Datenverbindungen"
+      },
+      "contigoLabs": {
+        "name": "Contigo Labs",
+        "desc": "KI-Agenten, RFx Studio und Freigaben"
+      },
+      "labsAgents": {
+        "name": "Agenten",
+        "desc": "Agenten-Kommandozentrale"
+      },
+      "labsApprovals": {
+        "name": "Freigaben",
+        "desc": "Human-in-the-Loop Freigabewarteschlange"
+      },
+      "labsRfx": {
+        "name": "RFx Studio",
+        "desc": "Sourcing und Beschaffung"
+      },
+      "policy-packs": {
+        "name": "Policy-Pakete",
+        "desc": "Compliance Policy-Pakete"
       }
     }
   },

@@ -363,9 +363,9 @@ export default function ContigoLabsPage() {
       {/* Main Content */}
       <main className={cn(labsUi.shell, 'py-5')}>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-5">
-          {/* Navigation Tabs */}
+          {/* Navigation Tabs — horizontal scroll on narrow viewports */}
           <div className={cn(labsUi.card, 'p-1.5')}>
-            <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1 rounded-lg bg-slate-50/90 p-1 dark:bg-slate-800/50">
+            <TabsList className="flex h-auto w-full flex-nowrap justify-start gap-1 overflow-x-auto rounded-lg bg-slate-50/90 p-1 dark:bg-slate-800/50 [scrollbar-width:thin]">
               {(
                 [
                   { value: 'dashboard', icon: LayoutGrid, label: 'Dashboard' },
@@ -389,12 +389,12 @@ export default function ContigoLabsPage() {
                   <TabsTrigger
                     key={tab.value}
                     value={tab.value}
-                    className={labsUi.tabActive}
+                    className={cn(labsUi.tabActive, 'shrink-0')}
                   >
                     <Icon className="mr-1.5 h-3.5 w-3.5 opacity-80" />
                     {tab.label}
                     {'badge' in tab && tab.badge && (
-                      <span className="ml-1.5 rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-600">
+                      <span className="ml-1.5 rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
                         {tab.badge}
                       </span>
                     )}
@@ -859,7 +859,7 @@ function ActivityRow({ activity }: { activity: any }) {
 }
 
 // ============================================================================
-// PLACEHOLDER VIEWS (TO BE IMPLEMENTED)
+// APPROVALS
 // ============================================================================
 
 function ApprovalsView() {
@@ -948,36 +948,40 @@ function AITemplateStudio() {
   ]);
 
   return (
-    <div className="space-y-6">
-      {/* Header with Mode Switcher */}
-      <Card className="border-transparent shadow-md bg-white">
-        <CardContent className="p-6">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg shadow-violet-200">
-                <Wand2 className="w-6 h-6 text-white" />
-              </div>
+    <div className="space-y-5">
+      <Card className={labsUi.card}>
+        <div className={cn('h-1 bg-gradient-to-r', labsTone.violet.bar)} />
+        <CardContent className="p-4 sm:p-5">
+          <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
+            <div className="flex items-center gap-3">
+              <span className={cn(labsUi.iconWell, labsUi.iconWellViolet, 'h-10 w-10 rounded-xl')}>
+                <Wand2 className="h-5 w-5" />
+              </span>
               <div>
-                <h3 className="font-bold text-xl text-slate-900">AI Template Studio</h3>
-                <p className="text-sm text-muted-foreground mt-1">Generate, customize, and manage RFx templates with AI</p>
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-50">
+                  AI Template Studio
+                </h3>
+                <p className={labsUi.cardDescription}>
+                  Generate, customize, and manage RFx templates
+                </p>
               </div>
             </div>
-            <div className="flex items-center gap-2 bg-slate-50 p-1.5 rounded-xl border border-slate-100">
-              <ModeButton 
-                active={activeMode === 'library'} 
+            <div className="flex items-center gap-1 rounded-lg border border-slate-100 bg-slate-50 p-1 dark:border-slate-800 dark:bg-slate-900/50">
+              <ModeButton
+                active={activeMode === 'library'}
                 onClick={() => setActiveMode('library')}
                 icon={BookOpen}
                 label="Library"
               />
-              <ModeButton 
-                active={activeMode === 'ai-generate'} 
+              <ModeButton
+                active={activeMode === 'ai-generate'}
                 onClick={() => setActiveMode('ai-generate')}
                 icon={Sparkles}
                 label="AI Generate"
                 highlight
               />
-              <ModeButton 
-                active={activeMode === 'upload'} 
+              <ModeButton
+                active={activeMode === 'upload'}
                 onClick={() => setActiveMode('upload')}
                 icon={Upload}
                 label="Import"
@@ -1027,17 +1031,19 @@ function AITemplateStudio() {
 function ModeButton({ active, onClick, icon: Icon, label, highlight }: { active: boolean; onClick: () => void; icon: any; label: string; highlight?: boolean }) {
   return (
     <Button
-      variant={active ? 'default' : 'ghost'}
+      variant="ghost"
       size="sm"
       onClick={onClick}
       className={cn(
-        'gap-2 px-4 py-2 rounded-lg transition-all duration-300',
-        active ? 'bg-violet-600 text-white shadow-md hover:bg-violet-700' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50',
-        highlight && !active && 'text-violet-600 hover:text-violet-700 hover:bg-violet-50'
+        'h-8 gap-1.5 rounded-lg px-3 text-xs font-medium transition-all',
+        active
+          ? 'bg-white text-violet-700 shadow-sm hover:bg-white dark:bg-slate-900 dark:text-violet-300'
+          : 'text-slate-600 hover:bg-white/80 hover:text-slate-900',
+        highlight && !active && 'text-violet-600 hover:bg-violet-50 hover:text-violet-700',
       )}
     >
-      <Icon className={cn("w-4 h-4", highlight && !active && "text-violet-500")} />
-      <span className="font-medium">{label}</span>
+      <Icon className={cn('h-3.5 w-3.5', highlight && !active && 'text-violet-500')} />
+      <span>{label}</span>
     </Button>
   );
 }
@@ -1060,7 +1066,7 @@ function TemplateLibrary({ templates, onSelect, onEdit }: { templates: TemplateL
   return (
     <div className="space-y-4">
       {/* Filters */}
-      <Card className="p-4 border-transparent shadow-sm bg-white">
+      <Card className={cn(labsUi.card, "p-4")}>
         <div className="flex items-center gap-4 flex-wrap">
           <div className="flex-1 min-w-[200px]">
             <div className="relative">
@@ -1154,7 +1160,7 @@ function TemplateLibraryCard({ template, onSelect, onEdit }: { template: Templat
   };
 
   return (
-    <Card className="group hover:shadow-xl transition-all duration-300 cursor-pointer overflow-hidden border-transparent hover:border-violet-200 bg-white hover:-translate-y-1">
+    <Card className={cn(labsUi.card, 'group cursor-pointer transition-all hover:border-violet-200 hover:shadow-md')}>
       <CardContent className="p-5">
         <div className="flex items-start justify-between mb-4">
           <Badge className={cn('text-xs px-2.5 py-0.5 font-medium', typeColors[template.type])} variant="outline">
@@ -1372,7 +1378,7 @@ Include sections for: introduction, scope of work, vendor qualifications${config
     <div className="space-y-4">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Configuration Panel */}
-        <Card className="lg:col-span-1 p-6 space-y-6 border-transparent shadow-sm bg-white">
+        <Card className={cn(labsUi.card, "lg:col-span-1 space-y-6 p-6")}>
           <h4 className="font-semibold flex items-center gap-2 text-slate-900">
             <Sliders className="w-4 h-4 text-violet-500" />
             Configuration
@@ -1490,7 +1496,7 @@ Include sections for: introduction, scope of work, vendor qualifications${config
         </Card>
 
         {/* Prompt & Generation Panel */}
-        <Card className="lg:col-span-2 p-6 border-transparent shadow-sm bg-white">
+        <Card className={cn(labsUi.card, "lg:col-span-2 p-6")}>
           <div className="space-y-6">
             <div>
               <h4 className="font-semibold flex items-center gap-2 mb-2 text-slate-900">
@@ -1583,7 +1589,7 @@ Include sections for: introduction, scope of work, vendor qualifications${config
       </div>
 
       {/* Example Templates */}
-      <Card className="p-6 border-transparent shadow-sm bg-white">
+      <Card className={cn(labsUi.card, "p-6")}>
         <h4 className="font-semibold mb-6 flex items-center gap-2 text-slate-900 text-lg">
           <BookOpen className="w-5 h-5 text-blue-500" />
           Example Templates You Can Generate
@@ -1785,7 +1791,7 @@ function TemplateImporter({ onImported }: { onImported: (t: TemplateLibraryItem)
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
-      <Card className="p-8 border-transparent shadow-md bg-white">
+      <Card className={cn(labsUi.card, "p-8")}>
         <div className="space-y-8">
           <div className="text-center">
             <div className="w-20 h-20 rounded-full bg-violet-50 flex items-center justify-center mx-auto mb-6 shadow-inner">
@@ -1894,7 +1900,7 @@ function TemplateImporter({ onImported }: { onImported: (t: TemplateLibraryItem)
         </div>
       </Card>
 
-      <Card className="p-6 border-transparent shadow-sm bg-white">
+      <Card className={cn(labsUi.card, "p-6")}>
         <h4 className="font-semibold mb-6 text-slate-900 text-lg">Supported Import Sources</h4>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="flex items-start gap-4 p-4 rounded-xl bg-slate-50/50 border border-slate-100">
@@ -1987,7 +1993,7 @@ function TemplateBuilder({ template, onSave, onPreview }: { template: RFxTemplat
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-400px)]">
       {/* Sidebar - Section List */}
-      <Card className="lg:col-span-1 overflow-hidden flex flex-col border-transparent shadow-sm bg-white">
+      <Card className={cn(labsUi.card, "lg:col-span-1 flex flex-col overflow-hidden")}>
         <CardHeader className="border-b border-slate-100 p-5 bg-slate-50/50">
           <div className="flex items-center justify-between">
             <CardTitle className="text-base font-semibold text-slate-900">Template Sections</CardTitle>
@@ -2067,7 +2073,7 @@ function TemplateBuilder({ template, onSave, onPreview }: { template: RFxTemplat
       </Card>
 
       {/* Main Editor */}
-      <Card className="lg:col-span-2 overflow-hidden flex flex-col border-transparent shadow-sm bg-white">
+      <Card className={cn(labsUi.card, "lg:col-span-2 flex flex-col overflow-hidden")}>
         {activeSection ? (
           <>
             <CardHeader className="border-b border-slate-100 p-5 bg-slate-50/50">
@@ -2135,7 +2141,7 @@ function TemplateBuilder({ template, onSave, onPreview }: { template: RFxTemplat
 
       {/* Add Section Dialog */}
       <Dialog open={isAddingSection} onOpenChange={setIsAddingSection}>
-        <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden border-transparent shadow-xl">
+        <DialogContent className="sm:max-w-[600px] overflow-hidden border-slate-200 p-0 shadow-lg">
           <DialogHeader className="p-6 pb-4 bg-slate-50/50 border-b border-slate-100">
             <DialogTitle className="text-xl font-semibold text-slate-900">Add New Section</DialogTitle>
             <DialogDescription className="text-slate-500">Choose the type of section you want to add to your template</DialogDescription>
@@ -2189,15 +2195,15 @@ function TemplatePreview({ template, onEdit, onUse }: { template: RFxTemplate; o
   return (
     <div className="space-y-6">
       {/* Header Actions */}
-      <Card className="p-6 border-transparent shadow-sm bg-white">
+      <Card className={cn(labsUi.card, "p-6")}>
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="flex items-center gap-5">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-md shadow-violet-500/20 flex-shrink-0">
-              <FileText className="w-7 h-7 text-white" />
+            <div className={cn(labsUi.iconWell, labsUi.iconWellViolet, 'h-12 w-12 shrink-0 rounded-xl')}>
+              <FileText className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="font-bold text-xl text-slate-900 mb-1">{template.name}</h3>
-              <p className="text-sm text-slate-500 leading-relaxed max-w-2xl">{template.description}</p>
+              <h3 className="mb-1 text-lg font-semibold text-slate-900 dark:text-slate-50">{template.name}</h3>
+              <p className="max-w-2xl text-xs leading-relaxed text-slate-500">{template.description}</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -2336,18 +2342,27 @@ function RFxStudioView() {
 
   useEffect(() => {
     Promise.all([
-      fetch('/api/agents/rfx-opportunities').then(res => res.ok ? res.json() : { opportunities: [] }).catch(() => ({ opportunities: [] })),
+      fetch('/api/agents/rfx-opportunities').then(res => res.ok ? res.json() : { data: { opportunities: [] } }).catch(() => ({ data: { opportunities: [] } })),
       fetch('/api/rfx').then(res => res.ok ? res.json() : { data: { events: [] } }).catch(() => ({ data: { events: [] } })),
       fetch('/api/analytics/suppliers?timeframe=12months').then(res => res.ok ? res.json() : null).catch(() => null),
     ])
       .then(([oppData, rfxData, supplierData]) => {
-        setOpportunities(oppData.opportunities || []);
-        const rfxItems = rfxData.data?.events || rfxData.events || [];
-        setRfxEvents(rfxItems);
+        // APIs wrap payloads as { success, data }; accept both shapes
+        const opps =
+          oppData?.data?.opportunities ??
+          oppData?.opportunities ??
+          [];
+        setOpportunities(Array.isArray(opps) ? opps : []);
+        const rfxItems = rfxData?.data?.events || rfxData?.events || [];
+        setRfxEvents(Array.isArray(rfxItems) ? rfxItems : []);
 
         // Map supplier API data to vendor format
-        if (supplierData?.suppliers && supplierData.suppliers.length > 0) {
-          const mappedVendors = supplierData.suppliers.map((s: any, idx: number) => ({
+        const suppliers =
+          supplierData?.data?.suppliers ??
+          supplierData?.suppliers ??
+          [];
+        if (Array.isArray(suppliers) && suppliers.length > 0) {
+          const mappedVendors = suppliers.map((s: any, idx: number) => ({
             id: s.id || `v-${idx + 1}`,
             name: s.name || s.supplierName || 'Unknown Supplier',
             rating: s.rating ?? s.performanceScore ?? 4.0,
@@ -2363,6 +2378,7 @@ function RFxStudioView() {
         setLoading(false);
       })
       .catch(() => {
+        setOpportunities([]);
         setRfxEvents([]);
         setVendors([]);
         setLoading(false);
@@ -2372,10 +2388,15 @@ function RFxStudioView() {
   const runDetection = async () => {
     toast.loading('Scout is scanning for opportunities...');
     try {
-      const res = await fetch('/api/agents/rfx-opportunities', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'detect' }) });
+      const res = await fetch('/api/agents/rfx-opportunities', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'detect' }),
+      });
       const data = await res.json();
-      setOpportunities(data.opportunities || []);
-      toast.success(`Found ${data.opportunities?.length || 0} opportunities`);
+      const opps = data?.data?.opportunities ?? data?.opportunities ?? [];
+      setOpportunities(Array.isArray(opps) ? opps : []);
+      toast.success(`Found ${Array.isArray(opps) ? opps.length : 0} opportunities`);
     } catch (error) {
       toast.error('Detection failed');
     }
@@ -2392,85 +2413,100 @@ function RFxStudioView() {
   const totalValue = rfxEvents.reduce((sum, e) => sum + (e.value || 0), 0);
 
   return (
-    <div className="space-y-8">
-      {/* Enhanced RFx Studio Header */}
-      <Card className="bg-gradient-to-br from-violet-600 via-purple-600 to-indigo-600 text-white border-0 shadow-lg shadow-violet-500/20 overflow-hidden relative">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3 pointer-events-none"></div>
-        <div className="absolute bottom-0 left-0 w-64 h-64 bg-indigo-500/20 rounded-full blur-2xl translate-y-1/3 -translate-x-1/4 pointer-events-none"></div>
-        <CardContent className="p-8 relative z-10">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div className="flex items-center gap-5">
-              <div className="w-16 h-16 rounded-2xl bg-white/20 flex items-center justify-center backdrop-blur-md shadow-inner border border-white/20">
-                <Gavel className="w-8 h-8 text-white" />
-              </div>
+    <div className="space-y-5">
+      {/* RFx Studio Header — labsUi shell */}
+      <Card className={labsUi.card}>
+        <div className={cn('h-1 bg-gradient-to-r', labsTone.violet.bar)} />
+        <CardContent className="p-4 sm:p-5">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div className="flex items-center gap-3">
+              <span className={cn(labsUi.iconWell, labsUi.iconWellViolet, 'h-10 w-10 rounded-xl')}>
+                <Gavel className="h-5 w-5" />
+              </span>
               <div>
-                <h2 className="text-3xl font-bold tracking-tight mb-1">RFx Studio</h2>
-                <p className="text-violet-100 text-lg font-medium">AI-powered sourcing & procurement platform</p>
+                <h2 className="text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-50">
+                  RFx Studio
+                </h2>
+                <p className={labsUi.cardDescription}>
+                  AI-powered sourcing and procurement
+                </p>
               </div>
             </div>
-            <div className="flex items-center gap-4">
-              <Button variant="secondary" onClick={runDetection} className="bg-white/10 hover:bg-white/20 text-white border-white/20 backdrop-blur-sm transition-all duration-200">
-                <Target className="w-4 h-4 mr-2" />
-                Scout Opportunities
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={runDetection}
+                className={cn('h-9', labsUi.btnOutline)}
+              >
+                <Target className="mr-1.5 h-3.5 w-3.5" />
+                Scout opportunities
               </Button>
-              <Button className="bg-white text-violet-600 hover:bg-slate-50 shadow-sm transition-all duration-200 hover:shadow-md hover:-translate-y-0.5" onClick={() => setShowCreateModal(true)}>
-                <Plus className="w-4 h-4 mr-2" />
+              <Button
+                size="sm"
+                className={cn('h-9', labsUi.btnPrimary)}
+                onClick={() => setShowCreateModal(true)}
+              >
+                <Plus className="mr-1.5 h-3.5 w-3.5" />
                 New RFx
               </Button>
             </div>
           </div>
 
-          {/* Enhanced Stats Row */}
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mt-8">
-            <StatBadgeWhite icon={Target} label="Opportunities" value={opportunities.length} />
-            <StatBadgeWhite icon={Gavel} label="Active RFx" value={rfxEvents.filter((e: any) => e.status === 'active').length} />
-            <StatBadgeWhite icon={CheckCircle} label="Completed" value={rfxEvents.filter((e: any) => e.status === 'completed').length} />
-            <StatBadgeWhite icon={Users} label="Vendors" value={vendors.length} />
-            <StatBadgeWhite icon={TrendingUp} label="Savings" value={`${totalSavings}%`} />
+          <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+            <StatBadge icon={Target} label="Opportunities" value={opportunities.length} tone="violet" />
+            <StatBadge icon={Gavel} label="Active RFx" value={rfxEvents.filter((e: any) => e.status === 'active').length} tone="blue" />
+            <StatBadge icon={CheckCircle} label="Completed" value={rfxEvents.filter((e: any) => e.status === 'completed').length} tone="emerald" />
+            <StatBadge icon={Users} label="Vendors" value={vendors.length} tone="slate" />
+            <StatBadge icon={TrendingUp} label="Savings" value={`${totalSavings}%`} tone="amber" />
           </div>
         </CardContent>
       </Card>
 
-      {/* Enhanced Sub-tabs */}
-      <div className="flex items-center justify-between border-b border-slate-200 pb-4">
-        <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0 hide-scrollbar">
+      {/* Sub-tabs */}
+      <div className="flex flex-col gap-3 border-b border-slate-200 pb-3 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 [scrollbar-width:thin]">
           <TabButton active={activeTab === 'opportunities'} onClick={() => setActiveTab('opportunities')} icon={Target} label="Scout" count={opportunities.length} />
           <TabButton active={activeTab === 'events'} onClick={() => setActiveTab('events')} icon={Gavel} label="My RFx" count={rfxEvents.length} />
           <TabButton active={activeTab === 'templates'} onClick={() => setActiveTab('templates')} icon={BookOpen} label="Templates" />
           <TabButton active={activeTab === 'vendors'} onClick={() => setActiveTab('vendors')} icon={Users} label="Vendors" count={vendors.length} />
           <TabButton active={activeTab === 'analytics'} onClick={() => setActiveTab('analytics')} icon={BarChart3} label="Analytics" />
         </div>
-        
-        {/* Quick Export */}
-        <Button variant="outline" size="sm" onClick={() => {
-          const rows = [
-            ['Type', 'Title', 'Status', 'Category', 'Deadline'].join(','),
-            ...opportunities.map((o: any) => [
-              'Opportunity',
-              `"${(o.title || '').replace(/"/g, '""')}"`,
-              o.urgency || 'normal',
-              o.category || '',
-              o.deadline || '',
-            ].join(',')),
-            ...rfxEvents.map((e: any) => [
-              e.type || 'RFx',
-              `"${(e.title || '').replace(/"/g, '""')}"`,
-              e.status || 'draft',
-              e.category || '',
-              e.dueDate || '',
-            ].join(',')),
-          ].join('\n');
-          const blob = new Blob([rows], { type: 'text/csv;charset=utf-8;' });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = `rfx-report-${new Date().toISOString().slice(0, 10)}.csv`;
-          a.click();
-          URL.revokeObjectURL(url);
-          toast.success('Report exported');
-        }} className="hidden md:flex bg-white hover:bg-slate-50 border-slate-200 text-slate-700 shadow-sm transition-all duration-200">
-          <ExternalLink className="w-4 h-4 mr-2" />
-          Export Report
+
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            const rows = [
+              ['Type', 'Title', 'Status', 'Category', 'Deadline'].join(','),
+              ...opportunities.map((o: any) => [
+                'Opportunity',
+                `"${(o.title || '').replace(/"/g, '""')}"`,
+                o.urgency || 'normal',
+                o.category || '',
+                o.deadline || '',
+              ].join(',')),
+              ...rfxEvents.map((e: any) => [
+                e.type || 'RFx',
+                `"${(e.title || '').replace(/"/g, '""')}"`,
+                e.status || 'draft',
+                e.category || '',
+                e.dueDate || '',
+              ].join(',')),
+            ].join('\n');
+            const blob = new Blob([rows], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `rfx-report-${new Date().toISOString().slice(0, 10)}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+            toast.success('Report exported');
+          }}
+          className={cn('hidden h-8 shrink-0 text-xs md:inline-flex', labsUi.btnOutline)}
+        >
+          <Download className="mr-1.5 h-3.5 w-3.5" />
+          Export report
         </Button>
       </div>
 
@@ -2478,7 +2514,7 @@ function RFxStudioView() {
       {activeTab === 'opportunities' && (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
           {/* Filter Bar */}
-          <Card className="p-4 border-transparent shadow-sm bg-white">
+          <Card className={cn(labsUi.card, "p-4")}>
             <div className="flex flex-col md:flex-row items-center gap-4">
               <div className="flex-1 w-full relative">
                 <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -2519,7 +2555,7 @@ function RFxStudioView() {
           {loading ? (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {[1, 2, 3, 4].map(i => (
-                <Card key={i} className="animate-pulse h-56 bg-slate-100/50 border-transparent rounded-2xl" />
+                <Card key={i} className={cn(labsUi.card, "h-56 animate-pulse bg-slate-100/50")} />
               ))}
             </div>
           ) : filteredOpportunities.length === 0 ? (
@@ -2547,7 +2583,7 @@ function RFxStudioView() {
       {activeTab === 'events' && (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
           {/* Timeline Summary */}
-          <Card className="p-6 bg-white border-transparent shadow-sm">
+          <Card className={cn(labsUi.card, "p-6")}>
             <div className="flex flex-col md:flex-row items-center justify-between gap-6">
               <div className="flex items-center justify-between w-full md:w-auto gap-8">
                 <div className="text-center group cursor-pointer">
@@ -2578,7 +2614,7 @@ function RFxStudioView() {
           </Card>
 
           {/* RFx Events Table */}
-          <Card className="border-transparent shadow-sm bg-white overflow-hidden">
+          <Card className={cn(labsUi.card, "overflow-hidden")}>
             <CardHeader className="border-b border-slate-100 bg-slate-50/50 p-6">
               <CardTitle className="text-xl font-semibold text-slate-900">All RFx Events</CardTitle>
             </CardHeader>
@@ -2607,7 +2643,7 @@ function RFxStudioView() {
       {/* Vendors Tab */}
       {activeTab === 'vendors' && (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <Card className="border-transparent shadow-sm bg-white overflow-hidden">
+          <Card className={cn(labsUi.card, "overflow-hidden")}>
             <CardHeader className="border-b border-slate-100 bg-slate-50/50 p-6">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
@@ -2679,7 +2715,7 @@ function RFxStudioView() {
 
         return (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <Card className="border-transparent shadow-sm bg-white">
+          <Card className={cn(labsUi.card)}>
             <CardHeader className="border-b border-slate-100 bg-slate-50/50 p-6">
               <CardTitle className="text-xl font-semibold text-slate-900">Savings by Category</CardTitle>
             </CardHeader>
@@ -2706,7 +2742,7 @@ function RFxStudioView() {
             </CardContent>
           </Card>
 
-          <Card className="border-transparent shadow-sm bg-white">
+          <Card className={cn(labsUi.card)}>
             <CardHeader className="border-b border-slate-100 bg-slate-50/50 p-6">
               <CardTitle className="text-xl font-semibold text-slate-900">RFx Performance</CardTitle>
             </CardHeader>
@@ -2732,7 +2768,7 @@ function RFxStudioView() {
             </CardContent>
           </Card>
 
-          <Card className="lg:col-span-2 border-transparent shadow-sm bg-white">
+          <Card className={cn(labsUi.card, "lg:col-span-2")}>
             <CardHeader className="border-b border-slate-100 bg-slate-50/50 p-6">
               <CardTitle className="text-xl font-semibold text-slate-900">Recent Awards</CardTitle>
             </CardHeader>
@@ -2788,15 +2824,28 @@ function RFxStudioView() {
 }
 
 // Enhanced Helper Components
-function StatBadgeWhite({ icon: Icon, label, value }: any) {
+function StatBadge({
+  icon: Icon,
+  label,
+  value,
+  tone = 'violet',
+}: {
+  icon: any;
+  label: string;
+  value: string | number;
+  tone?: LabsToneKey;
+}) {
+  const t = labsTone[tone] || labsTone.violet;
   return (
-    <div className="flex items-center gap-4 p-4 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 shadow-inner transition-all duration-300 hover:bg-white/20 hover:-translate-y-1 group">
-      <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform duration-300">
-        <Icon className="w-6 h-6 text-white" />
+    <div className="flex items-center gap-3 rounded-xl border border-slate-200/90 bg-slate-50/60 px-3 py-2.5 dark:border-slate-800 dark:bg-slate-900/50">
+      <div className={cn(labsUi.iconWell, t.well)}>
+        <Icon className="h-4 w-4" />
       </div>
-      <div>
-        <p className="text-3xl font-bold text-white tracking-tight">{value}</p>
-        <p className="text-sm font-medium text-violet-100 mt-0.5">{label}</p>
+      <div className="min-w-0">
+        <p className="text-lg font-semibold tabular-nums tracking-tight text-slate-900 dark:text-slate-50">
+          {value}
+        </p>
+        <p className={labsUi.muted}>{label}</p>
       </div>
     </div>
   );
@@ -2805,23 +2854,27 @@ function StatBadgeWhite({ icon: Icon, label, value }: any) {
 function TabButton({ active, onClick, icon: Icon, label, count }: any) {
   return (
     <Button
-      variant={active ? 'default' : 'ghost'}
+      variant="ghost"
       size="sm"
       onClick={onClick}
       className={cn(
-        "rounded-full px-5 py-2 h-auto font-medium transition-all duration-300 whitespace-nowrap",
-        active 
-          ? "bg-violet-600 text-white shadow-md shadow-violet-500/20 hover:bg-violet-700 hover:shadow-lg hover:-translate-y-0.5" 
-          : "text-slate-600 hover:text-violet-700 hover:bg-violet-50"
+        'h-9 shrink-0 rounded-lg px-3 text-sm font-medium transition-all whitespace-nowrap',
+        active
+          ? 'bg-white text-violet-700 shadow-sm dark:bg-slate-900 dark:text-violet-300'
+          : 'text-slate-600 hover:bg-white/80 hover:text-slate-900 dark:text-slate-400',
       )}
     >
-      <Icon className={cn("w-4 h-4 mr-2", active ? "text-white" : "text-slate-400")} />
+      <Icon className={cn('mr-1.5 h-3.5 w-3.5', active ? 'text-violet-600' : 'text-slate-400')} />
       {label}
       {count !== undefined && count > 0 && (
-        <Badge variant="secondary" className={cn(
-          "ml-2.5 px-2 py-0.5 rounded-full text-xs font-bold",
-          active ? "bg-white/20 text-white border-transparent" : "bg-slate-100 text-slate-600"
-        )}>{count}</Badge>
+        <span
+          className={cn(
+            'ml-1.5 rounded-md px-1.5 py-0.5 text-[10px] font-semibold',
+            active ? 'bg-violet-50 text-violet-700' : 'bg-slate-100 text-slate-600',
+          )}
+        >
+          {count}
+        </span>
       )}
     </Button>
   );
@@ -2829,20 +2882,18 @@ function TabButton({ active, onClick, icon: Icon, label, count }: any) {
 
 function EmptyState({ icon: Icon, title, description, action }: any) {
   return (
-    <Card className="border-dashed border-2 border-slate-200 bg-slate-50/50 shadow-none">
-      <CardContent className="p-16 flex flex-col items-center justify-center text-center">
-        <div className="w-24 h-24 rounded-3xl bg-white shadow-sm border border-slate-100 flex items-center justify-center mb-6">
-          <Icon className="w-12 h-12 text-slate-300" />
-        </div>
-        <h3 className="text-2xl font-bold text-slate-900 mb-2">{title}</h3>
-        <p className="text-slate-500 max-w-md leading-relaxed mb-8">{description}</p>
-        {action && (
-          <Button onClick={action.onClick} className="bg-violet-600 hover:bg-violet-700 text-white shadow-sm transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 px-8 py-6 h-auto text-base rounded-xl">
-            {action.label}
-          </Button>
-        )}
-      </CardContent>
-    </Card>
+    <div className={labsUi.empty}>
+      <div className={labsUi.emptyIcon}>
+        <Icon className="h-5 w-5 text-slate-400" />
+      </div>
+      <p className={labsUi.emptyTitle}>{title}</p>
+      <p className={cn(labsUi.emptyBody, 'mb-4')}>{description}</p>
+      {action && (
+        <Button onClick={action.onClick} size="sm" className={labsUi.btnPrimary}>
+          {action.label}
+        </Button>
+      )}
+    </div>
   );
 }
 
@@ -2863,71 +2914,101 @@ function OpportunityCardEnhanced({ opportunity, onCreateRFx }: any) {
   
   const AlgorithmIcon = algorithmIcons[opportunity.algorithm] || Target;
 
+  const urgencyChip =
+    opportunity.urgency === 'critical'
+      ? labsUi.chipRose
+      : opportunity.urgency === 'high'
+        ? 'border-orange-200 bg-orange-50 text-orange-800'
+        : opportunity.urgency === 'medium'
+          ? labsUi.chipAmber
+          : labsUi.chipBlue;
+
   return (
-    <Card className={cn("border-l-4 shadow-sm transition-all duration-300 hover:shadow-md hover:-translate-y-1 bg-white", urgencyColors[opportunity.urgency])}>
-      <CardContent className="p-6">
-        <div className="flex items-start justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-white shadow-sm border border-slate-100 flex items-center justify-center">
-              <AlgorithmIcon className="w-5 h-5 text-slate-600" />
+    <Card
+      className={cn(
+        labsUi.card,
+        'border-l-4 transition-all hover:shadow-md',
+        urgencyColors[opportunity.urgency],
+      )}
+    >
+      <CardContent className="p-4 sm:p-5">
+        <div className="mb-3 flex items-start justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <div className={cn(labsUi.iconWell, labsUi.iconWellSlate)}>
+              <AlgorithmIcon className="h-4 w-4" />
             </div>
-            <Badge variant="secondary" className="text-xs capitalize bg-slate-100 text-slate-700 hover:bg-slate-200 border-transparent">
+            <span className={cn(labsUi.chip, labsUi.chipNeutral, 'capitalize')}>
               {opportunity.algorithm}
-            </Badge>
+            </span>
           </div>
-          <Badge variant={opportunity.urgency === 'critical' ? 'destructive' : 'secondary'} className={cn(
-            "capitalize px-3 py-1 rounded-full font-semibold",
-            opportunity.urgency === 'critical' ? "bg-red-100 text-red-700 hover:bg-red-200 border-transparent" :
-            opportunity.urgency === 'high' ? "bg-orange-100 text-orange-700 hover:bg-orange-200 border-transparent" :
-            opportunity.urgency === 'medium' ? "bg-amber-100 text-amber-700 hover:bg-amber-200 border-transparent" :
-            "bg-blue-100 text-blue-700 hover:bg-blue-200 border-transparent"
-          )}>
+          <span className={cn(labsUi.chip, urgencyChip, 'capitalize')}>
             {opportunity.urgency}
-          </Badge>
+          </span>
         </div>
-        
-        <h3 className="font-bold text-xl text-slate-900 mb-2 line-clamp-1">{opportunity.title}</h3>
-        <p className="text-slate-500 mb-6 line-clamp-2 leading-relaxed">{opportunity.description}</p>
-        
-        {/* Metrics Grid */}
-        <div className="grid grid-cols-3 gap-3 mb-6">
-          <div className="text-center p-3 bg-slate-50 rounded-xl border border-slate-100">
-            <p className="text-xl font-bold text-violet-600 mb-0.5">{Math.round(opportunity.confidence * 100)}%</p>
-            <p className="text-xs font-medium text-slate-500">Confidence</p>
+
+        <h3 className="mb-1 line-clamp-1 text-sm font-semibold text-slate-900 dark:text-slate-50">
+          {opportunity.title}
+        </h3>
+        <p className="mb-4 line-clamp-2 text-xs leading-relaxed text-slate-500">
+          {opportunity.description}
+        </p>
+
+        <div className="mb-4 grid grid-cols-3 gap-2">
+          <div className="rounded-lg border border-slate-100 bg-slate-50/80 px-2 py-2 text-center dark:border-slate-800 dark:bg-slate-900/40">
+            <p className="text-base font-semibold tabular-nums text-violet-700">
+              {Math.round((opportunity.confidence || 0) * 100)}%
+            </p>
+            <p className={labsUi.muted}>Confidence</p>
           </div>
-          {opportunity.savingsPotential && (
-            <div className="text-center p-3 bg-slate-50 rounded-xl border border-slate-100">
-              <p className="text-xl font-bold text-emerald-600 mb-0.5">${(opportunity.savingsPotential / 1000).toFixed(0)}k</p>
-              <p className="text-xs font-medium text-slate-500">Savings</p>
+          {opportunity.savingsPotential != null && (
+            <div className="rounded-lg border border-slate-100 bg-slate-50/80 px-2 py-2 text-center dark:border-slate-800 dark:bg-slate-900/40">
+              <p className="text-base font-semibold tabular-nums text-emerald-700">
+                ${(opportunity.savingsPotential / 1000).toFixed(0)}k
+              </p>
+              <p className={labsUi.muted}>Savings</p>
             </div>
           )}
-          {opportunity.daysToExpiry && (
-            <div className="text-center p-3 bg-slate-50 rounded-xl border border-slate-100">
-              <p className="text-xl font-bold text-amber-600 mb-0.5">{opportunity.daysToExpiry}</p>
-              <p className="text-xs font-medium text-slate-500">Days Left</p>
+          {opportunity.daysToExpiry != null && (
+            <div className="rounded-lg border border-slate-100 bg-slate-50/80 px-2 py-2 text-center dark:border-slate-800 dark:bg-slate-900/40">
+              <p className="text-base font-semibold tabular-nums text-amber-700">
+                {opportunity.daysToExpiry}
+              </p>
+              <p className={labsUi.muted}>Days left</p>
             </div>
           )}
         </div>
 
-        {/* Reasoning */}
-        <div className="bg-slate-50/80 p-3 rounded-xl border border-slate-100 mb-4">
-          <p className="text-sm text-slate-600 leading-relaxed flex items-start gap-2">
-            <Info className="w-4 h-4 text-violet-500 mt-0.5 flex-shrink-0" />
-            {opportunity.reasoning}
-          </p>
-        </div>
+        {opportunity.reasoning && (
+          <div className="mb-4 rounded-lg border border-slate-100 bg-slate-50/70 p-3 dark:border-slate-800 dark:bg-slate-900/40">
+            <p className="flex items-start gap-2 text-xs leading-relaxed text-slate-600 dark:text-slate-300">
+              <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-violet-500" />
+              {opportunity.reasoning}
+            </p>
+          </div>
+        )}
 
-        {/* Actions */}
-        <div className="flex gap-3">
-          <Button size="sm" className="flex-1 bg-violet-600 hover:bg-violet-700 text-white shadow-sm transition-all duration-200 hover:shadow-md hover:-translate-y-0.5" onClick={onCreateRFx}>
-            <Rocket className="w-4 h-4 mr-2" />
+        <div className="flex gap-2">
+          <Button size="sm" className={cn('h-8 flex-1 text-xs', labsUi.btnPrimary)} onClick={onCreateRFx}>
+            <Rocket className="mr-1.5 h-3.5 w-3.5" />
             Start RFx
           </Button>
-          <Button size="sm" variant="outline" aria-label="Snooze opportunity" className="bg-white hover:bg-slate-50 border-slate-200 text-slate-700 transition-all duration-200" onClick={() => toast.success('Snoozed for 7 days')}>
-            <Clock className="w-4 h-4" />
+          <Button
+            size="sm"
+            variant="outline"
+            aria-label="Snooze opportunity"
+            className={cn('h-8', labsUi.btnOutline)}
+            onClick={() => toast.success('Snoozed for 7 days')}
+          >
+            <Clock className="h-3.5 w-3.5" />
           </Button>
-          <Button size="sm" variant="ghost" aria-label="Dismiss opportunity" className="text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all duration-200" onClick={() => toast.success('Dismissed')}>
-            <X className="w-4 h-4" />
+          <Button
+            size="sm"
+            variant="ghost"
+            aria-label="Dismiss opportunity"
+            className="h-8 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
+            onClick={() => toast.success('Dismissed')}
+          >
+            <X className="h-3.5 w-3.5" />
           </Button>
         </div>
       </CardContent>
@@ -2945,90 +3026,116 @@ function RFxEventRowEnhanced({ event, onClick }: any) {
   };
 
   return (
-    <div 
-      className="flex flex-col md:flex-row md:items-center justify-between p-5 border border-slate-100 rounded-xl hover:border-violet-200 hover:bg-violet-50/30 cursor-pointer transition-all duration-200 group gap-4 md:gap-0"
+    <div
+      className="group flex cursor-pointer flex-col gap-3 rounded-xl border border-slate-200/90 bg-white p-4 transition-all hover:border-violet-200 hover:bg-violet-50/30 dark:border-slate-800 dark:bg-slate-900 md:flex-row md:items-center md:justify-between"
       onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onClick?.();
+        }
+      }}
+      role="button"
+      tabIndex={0}
     >
-      <div className="flex items-center gap-5">
-        <div className="w-14 h-14 rounded-2xl bg-violet-100 flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform duration-300 flex-shrink-0">
-          <Gavel className="w-7 h-7 text-violet-600" />
+      <div className="flex items-center gap-3.5">
+        <div className={cn(labsUi.iconWell, labsUi.iconWellViolet, 'h-11 w-11 shrink-0 rounded-xl')}>
+          <Gavel className="h-5 w-5" />
         </div>
-        <div>
-          <div className="flex items-center gap-3 mb-1.5">
-            <p className="font-bold text-lg text-slate-900 group-hover:text-violet-700 transition-colors">{event.title}</p>
-            <Badge variant="secondary" className="text-xs bg-slate-100 text-slate-600 hover:bg-slate-200 border-transparent uppercase tracking-wider font-bold">{event.type}</Badge>
+        <div className="min-w-0">
+          <div className="mb-1 flex flex-wrap items-center gap-2">
+            <p className="truncate text-sm font-semibold text-slate-900 transition-colors group-hover:text-violet-700 dark:text-slate-50">
+              {event.title}
+            </p>
+            <span className={cn(labsUi.chip, labsUi.chipNeutral, 'uppercase')}>{event.type}</span>
           </div>
-          <div className="flex flex-wrap items-center gap-4 text-sm text-slate-500 font-medium">
-            <span className="flex items-center gap-1.5 bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
-              <Users className="w-3.5 h-3.5 text-slate-400" />
-              {event.vendors} vendors
+          <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+            <span className="inline-flex items-center gap-1 rounded-md border border-slate-100 bg-slate-50 px-2 py-0.5 dark:border-slate-700 dark:bg-slate-800">
+              <Users className="h-3 w-3 text-slate-400" />
+              {event.vendors ?? event.vendorCount ?? 0} vendors
             </span>
-            <span className="flex items-center gap-1.5 bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
-              <FileText className="w-3.5 h-3.5 text-slate-400" />
-              {event.bids} bids
+            <span className="inline-flex items-center gap-1 rounded-md border border-slate-100 bg-slate-50 px-2 py-0.5 dark:border-slate-700 dark:bg-slate-800">
+              <FileText className="h-3 w-3 text-slate-400" />
+              {event.bids ?? event.bidCount ?? 0} bids
             </span>
-            <span className="flex items-center gap-1.5 bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
-              <Clock className="w-3.5 h-3.5 text-slate-400" />
-              Due {event.deadline}
+            <span className="inline-flex items-center gap-1 rounded-md border border-slate-100 bg-slate-50 px-2 py-0.5 dark:border-slate-700 dark:bg-slate-800">
+              <Clock className="h-3 w-3 text-slate-400" />
+              Due {event.deadline || event.dueDate || '—'}
             </span>
           </div>
         </div>
       </div>
-      <div className="text-left md:text-right flex flex-row md:flex-col items-center md:items-end justify-between md:justify-center w-full md:w-auto">
-        <div>
-          <p className="font-bold text-xl text-slate-900">${(event.value / 1000).toFixed(0)}k</p>
-          {event.savings > 0 && (
-            <p className="text-sm font-semibold text-emerald-600 mt-0.5">{event.savings}% savings</p>
+      <div className="flex w-full flex-row items-center justify-between gap-3 md:w-auto md:flex-col md:items-end">
+        <div className="text-left md:text-right">
+          <p className="text-base font-semibold tabular-nums text-slate-900 dark:text-slate-50">
+            {typeof event.value === 'number' && Number.isFinite(event.value)
+              ? `$${(event.value / 1000).toFixed(0)}k`
+              : '—'}
+          </p>
+          {typeof event.savings === 'number' && event.savings > 0 && (
+            <p className="mt-0.5 text-xs font-medium text-emerald-600">{event.savings}% savings</p>
           )}
         </div>
-        <Badge variant="outline" className={cn("mt-2 capitalize font-semibold px-3 py-1", statusColors[event.status] || 'bg-slate-100 text-slate-700 border-slate-200')}>
-          {event.status}
-        </Badge>
+        <span
+          className={cn(
+            labsUi.chip,
+            'mt-0 capitalize md:mt-1',
+            statusColors[event.status] || labsUi.chipNeutral,
+          )}
+        >
+          {event.status || 'draft'}
+        </span>
       </div>
     </div>
   );
 }
 
 function VendorCard({ vendor }: any) {
+  const profileHref = vendor.id
+    ? `/suppliers?q=${encodeURIComponent(vendor.name || '')}`
+    : '/suppliers';
+
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center justify-between p-5 border border-slate-100 rounded-xl hover:border-violet-200 hover:bg-violet-50/30 transition-all duration-200 group gap-4 sm:gap-0 bg-white">
-      <div className="flex items-center gap-5">
-        <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-violet-100 to-purple-100 flex items-center justify-center shadow-sm border border-violet-200/50 group-hover:scale-110 transition-transform duration-300 flex-shrink-0">
-          <span className="text-xl font-bold text-violet-700">{vendor.name.charAt(0)}</span>
+    <div className="group flex flex-col gap-4 rounded-xl border border-slate-200/90 bg-white p-4 transition-all hover:border-slate-300 hover:shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex items-center gap-3.5">
+        <div className={cn(labsUi.iconWell, labsUi.iconWellViolet, 'h-11 w-11 shrink-0 rounded-xl text-sm font-semibold')}>
+          {(vendor.name || '?').charAt(0)}
         </div>
-        <div>
-          <div className="flex items-center gap-3 mb-1.5">
-            <p className="font-bold text-lg text-slate-900 group-hover:text-violet-700 transition-colors">{vendor.name}</p>
+        <div className="min-w-0">
+          <div className="mb-1 flex flex-wrap items-center gap-2">
+            <p className="truncate text-sm font-semibold text-slate-900 dark:text-slate-50">
+              {vendor.name}
+            </p>
             {vendor.status === 'preferred' && (
-              <Badge variant="secondary" className="bg-amber-50 text-amber-700 hover:bg-amber-100 border-amber-200/50 font-semibold px-2.5 py-0.5">
-                <Star className="w-3 h-3 mr-1 fill-amber-500 text-amber-500" />
+              <span className={cn(labsUi.chip, labsUi.chipAmber)}>
+                <Star className="h-3 w-3 fill-amber-500 text-amber-500" />
                 Preferred
-              </Badge>
+              </span>
             )}
           </div>
-          <div className="flex flex-wrap items-center gap-3 text-sm text-slate-500 font-medium">
-            <span className="flex items-center gap-1.5 bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
-              <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
-              <span className="text-slate-700 font-bold">{vendor.rating}</span>/5.0
+          <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+            <span className="inline-flex items-center gap-1 rounded-md border border-slate-100 bg-slate-50 px-2 py-0.5 dark:border-slate-700 dark:bg-slate-800">
+              <Star className="h-3 w-3 fill-amber-500 text-amber-500" />
+              <span className="font-medium text-slate-700 dark:text-slate-200">{vendor.rating}</span>/5
             </span>
-            <span className="flex items-center gap-1.5 bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
-              <CheckCircle className="w-3.5 h-3.5 text-slate-400" />
+            <span className="inline-flex items-center gap-1 rounded-md border border-slate-100 bg-slate-50 px-2 py-0.5 dark:border-slate-700 dark:bg-slate-800">
+              <CheckCircle className="h-3 w-3 text-slate-400" />
               {vendor.completedRFx} RFx
             </span>
-            <span className="flex items-center gap-1.5 bg-emerald-50 px-2 py-1 rounded-md border border-emerald-100 text-emerald-700">
-              <TrendingUp className="w-3.5 h-3.5 text-emerald-600" />
+            <span className={cn(labsUi.chip, labsUi.chipEmerald)}>
+              <TrendingUp className="h-3 w-3" />
               {vendor.avgSavings}% savings
             </span>
           </div>
         </div>
       </div>
-      <div className="text-left sm:text-right flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-center w-full sm:w-auto border-t sm:border-t-0 border-slate-100 pt-4 sm:pt-0 mt-2 sm:mt-0">
-        <div className="flex items-center gap-2 sm:mb-2">
-          <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
-          <p className="text-sm font-bold text-slate-700">{vendor.responseRate}% <span className="text-slate-500 font-medium">response</span></p>
-        </div>
-        <Button size="sm" variant="outline" className="bg-white hover:bg-slate-50 border-slate-200 text-slate-700 transition-all duration-200">
-          View Profile
+      <div className="flex w-full items-center justify-between gap-3 border-t border-slate-100 pt-3 sm:w-auto sm:flex-col sm:items-end sm:border-0 sm:pt-0 dark:border-slate-800">
+        <p className="text-xs font-medium text-slate-600 dark:text-slate-300">
+          <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-emerald-500 align-middle" />
+          {vendor.responseRate}% response
+        </p>
+        <Button size="sm" variant="outline" className={cn('h-8 text-xs', labsUi.btnOutline)} asChild>
+          <Link href={profileHref}>View profile</Link>
         </Button>
       </div>
     </div>
@@ -3156,22 +3263,41 @@ function CreateRFxModal({ onClose, vendors = [], onCreated }: { onClose: () => v
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200" role="dialog" aria-modal="true" aria-label="Create New RFx">
-      <Card className="w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col border-transparent shadow-2xl bg-white rounded-2xl">
-        <CardHeader className="border-b border-slate-100 bg-slate-50/50 p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-2xl font-bold text-slate-900">Create New RFx</CardTitle>
-              <CardDescription className="text-slate-500 mt-1 font-medium">Step {step} of 3: {step === 1 ? 'Basic Details' : step === 2 ? 'Your Requirements & Vendors' : 'AI-Enhanced Review'}</CardDescription>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm animate-in fade-in duration-200"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Create New RFx"
+    >
+      <Card className={cn(labsUi.card, 'flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden shadow-lg')}>
+        <div className={cn('h-1 bg-gradient-to-r', labsTone.violet.bar)} />
+        <CardHeader className={cn(labsUi.cardHeader, 'p-5')}>
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <CardTitle className="text-lg font-semibold text-slate-900 dark:text-slate-50">
+                Create new RFx
+              </CardTitle>
+              <CardDescription className={labsUi.cardDescription}>
+                Step {step} of 3 —{' '}
+                {step === 1
+                  ? 'Basic details'
+                  : step === 2
+                    ? 'Requirements & vendors'
+                    : 'AI-enhanced review'}
+              </CardDescription>
             </div>
-            <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8 rounded-full hover:bg-slate-200 text-slate-500 hover:text-slate-700 transition-colors">
-              <X className="w-4 h-4" />
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onClose}
+              className="h-8 w-8 shrink-0 rounded-lg text-slate-500 hover:bg-slate-100"
+            >
+              <X className="h-4 w-4" />
             </Button>
           </div>
-          {/* Progress Bar */}
-          <div className="w-full h-1.5 bg-slate-100 rounded-full mt-6 overflow-hidden">
-            <div 
-              className="h-full bg-violet-600 rounded-full transition-all duration-500 ease-out"
+          <div className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+            <div
+              className="h-full rounded-full bg-violet-600 transition-all duration-500 ease-out"
               style={{ width: `${(step / 3) * 100}%` }}
             />
           </div>
@@ -3509,111 +3635,178 @@ function CreateRFxModal({ onClose, vendors = [], onCreated }: { onClose: () => v
 
 function EventDetailModal({ event, onClose }: any) {
   const router = useRouter();
-  // Close on Escape key
+  const detailHref = `/contigo-labs/rfx/${event.id}`;
+
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };    document.addEventListener('keydown', handleKeyDown);
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [onClose]);
 
+  const openDetail = (section?: string) => {
+    const href = section ? `${detailHref}?tab=${section}` : detailHref;
+    router.push(href);
+    onClose();
+  };
+
+  const statusLabel = event.status
+    ? String(event.status).charAt(0).toUpperCase() + String(event.status).slice(1)
+    : 'Draft';
+  const estimatedValue =
+    typeof event.value === 'number' && Number.isFinite(event.value)
+      ? `$${(event.value / 1000).toFixed(0)}k`
+      : '—';
+  const vendorCount = event.vendors ?? event.vendorCount ?? 0;
+  const bidCount = typeof event.bids === 'number' ? event.bids : event.bidCount ?? 0;
+  const savings =
+    typeof event.savings === 'number' && Number.isFinite(event.savings)
+      ? `${event.savings}%`
+      : '—';
+
   return (
-    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200" role="dialog" aria-modal="true" aria-label={`RFx Event: ${event.title}`}>
-      <Card className="w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col border-transparent shadow-2xl bg-white rounded-2xl">
-        <CardHeader className="border-b border-slate-100 bg-slate-50/50 p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="flex items-center gap-3 mb-2">
-                <CardTitle className="text-2xl font-bold text-slate-900">{event.title}</CardTitle>
-                <Badge className="bg-violet-100 text-violet-700 border-transparent font-bold px-2.5 py-0.5 rounded-md">{event.type}</Badge>
-                <Badge className={cn(
-                  "border-transparent font-bold px-2.5 py-0.5 rounded-md",
-                  event.status === 'active' ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-slate-700"
-                )}>
-                  {event.status.charAt(0).toUpperCase() + event.status.slice(1)}
-                </Badge>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm animate-in fade-in duration-200"
+      role="dialog"
+      aria-modal="true"
+      aria-label={`RFx Event: ${event.title}`}
+    >
+      <Card className={cn(labsUi.card, 'flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden shadow-lg')}>
+        <div className={cn('h-1 bg-gradient-to-r', labsTone.violet.bar)} />
+        <CardHeader className={cn(labsUi.cardHeader, 'p-5')}>
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className="mb-1.5 flex flex-wrap items-center gap-2">
+                <CardTitle className="text-lg font-semibold text-slate-900 dark:text-slate-50">
+                  {event.title}
+                </CardTitle>
+                {event.type && (
+                  <span className={cn(labsUi.chip, labsUi.chipViolet)}>{event.type}</span>
+                )}
+                <span
+                  className={cn(
+                    labsUi.chip,
+                    event.status === 'active' ? labsUi.chipEmerald : labsUi.chipNeutral,
+                  )}
+                >
+                  {statusLabel}
+                </span>
               </div>
-              <CardDescription className="text-slate-500 font-medium">RFx Event Details & Analytics</CardDescription>
+              <CardDescription className={labsUi.cardDescription}>
+                RFx event summary — open the full workspace for bids and awards
+              </CardDescription>
             </div>
-            <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8 rounded-full hover:bg-slate-200 text-slate-500 hover:text-slate-700 transition-colors">
-              <X className="w-4 h-4" />
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onClose}
+              className="h-8 w-8 shrink-0 rounded-lg text-slate-500 hover:bg-slate-100"
+            >
+              <X className="h-4 w-4" />
             </Button>
           </div>
         </CardHeader>
-        <CardContent className="p-8 overflow-y-auto flex-1 space-y-8">
-          {/* Timeline */}
-          <div className="flex items-center justify-between p-6 bg-slate-50/50 border border-slate-100 rounded-2xl">
+        <CardContent className="flex-1 space-y-5 overflow-y-auto p-5">
+          <div className="flex items-center justify-between gap-1 rounded-xl border border-slate-100 bg-slate-50/60 p-3 dark:border-slate-800 dark:bg-slate-900/40">
             {['Draft', 'Published', 'Bids Due', 'Evaluation', 'Award'].map((stage, i) => (
-              <div key={stage} className="flex flex-col items-center relative flex-1">
-                <div className={cn(
-                  "w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold z-10 transition-colors",
-                  i <= 2 ? "bg-violet-600 text-white shadow-md shadow-violet-500/20" : "bg-white border-2 border-slate-200 text-slate-400"
-                )}>
-                  {i < 2 ? <Check className="w-5 h-5" /> : i + 1}
+              <div key={stage} className="relative flex flex-1 flex-col items-center">
+                <div
+                  className={cn(
+                    'z-10 flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold',
+                    i <= 2
+                      ? 'bg-violet-600 text-white'
+                      : 'border border-slate-200 bg-white text-slate-400 dark:border-slate-700 dark:bg-slate-900',
+                  )}
+                >
+                  {i < 2 ? <Check className="h-3.5 w-3.5" /> : i + 1}
                 </div>
-                <p className={cn(
-                  "text-xs font-bold mt-3 text-center",
-                  i <= 2 ? "text-violet-900" : "text-slate-500"
-                )}>{stage}</p>
+                <p
+                  className={cn(
+                    'mt-2 text-center text-[10px] font-medium',
+                    i <= 2 ? 'text-violet-800 dark:text-violet-300' : 'text-slate-500',
+                  )}
+                >
+                  {stage}
+                </p>
                 {i < 4 && (
-                  <div className="absolute top-5 left-[50%] w-full h-1 -z-0">
-                    <div className={cn(
-                      "h-full w-full",
-                      i < 2 ? "bg-violet-600" : "bg-slate-200"
-                    )} />
+                  <div className="absolute left-1/2 top-4 -z-0 h-0.5 w-full">
+                    <div className={cn('h-full w-full', i < 2 ? 'bg-violet-600' : 'bg-slate-200')} />
                   </div>
                 )}
               </div>
             ))}
           </div>
 
-          {/* Stats Grid */}
-          <div className="grid grid-cols-4 gap-4">
-            <div className="p-6 border border-slate-100 bg-white rounded-2xl text-center shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5">
-              <p className="text-3xl font-black text-slate-900 mb-1">${(event.value / 1000).toFixed(0)}k</p>
-              <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Estimated Value</p>
-            </div>
-            <div className="p-6 border border-slate-100 bg-white rounded-2xl text-center shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5">
-              <p className="text-3xl font-black text-slate-900 mb-1">{event.vendors}</p>
-              <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Invited Vendors</p>
-            </div>
-            <div className="p-6 border border-slate-100 bg-white rounded-2xl text-center shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5">
-              <p className="text-3xl font-black text-slate-900 mb-1">{event.bids}</p>
-              <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Bids Received</p>
-            </div>
-            <div className="p-6 border border-slate-100 bg-emerald-50/50 rounded-2xl text-center shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5">
-              <p className="text-3xl font-black text-emerald-600 mb-1">{event.savings}%</p>
-              <p className="text-sm font-semibold text-emerald-700 uppercase tracking-wider">Projected Savings</p>
-            </div>
+          <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+            {[
+              { label: 'Est. value', value: estimatedValue },
+              { label: 'Vendors', value: vendorCount },
+              { label: 'Bids', value: bidCount },
+              { label: 'Savings', value: savings, accent: true },
+            ].map((stat) => (
+              <div
+                key={stat.label}
+                className={cn(
+                  'rounded-xl border px-3 py-3 text-center',
+                  stat.accent
+                    ? 'border-emerald-100 bg-emerald-50/50 dark:border-emerald-900/40 dark:bg-emerald-950/20'
+                    : 'border-slate-100 bg-white dark:border-slate-800 dark:bg-slate-900',
+                )}
+              >
+                <p
+                  className={cn(
+                    'text-xl font-semibold tabular-nums tracking-tight',
+                    stat.accent ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-900 dark:text-slate-50',
+                  )}
+                >
+                  {stat.value}
+                </p>
+                <p className={cn(labsUi.sectionLabel, 'mt-1')}>{stat.label}</p>
+              </div>
+            ))}
           </div>
 
-          {/* Bids Table */}
-          {event.bids > 0 && (
-            <div className="space-y-4">
-              <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                <Trophy className="w-5 h-5 text-amber-500" />
-                Received Bids ({event.bids})
-              </h3>
-              <div className="text-center py-6 text-slate-400">
-                <Users className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                <p className="text-sm font-medium">Bid details available in the full RFx view</p>
-                <Button variant="outline" size="sm" className="mt-3 text-violet-600 border-violet-200 hover:bg-violet-50" onClick={() => router.push(`/requests/${event.id}`)}>
-                  View Full Details
-                </Button>
-              </div>
+          {bidCount > 0 && (
+            <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/50 px-4 py-6 text-center dark:border-slate-700 dark:bg-slate-900/40">
+              <Users className="mx-auto mb-2 h-7 w-7 text-slate-300" />
+              <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                {bidCount} bid{bidCount === 1 ? '' : 's'} recorded
+              </p>
+              <p className={cn(labsUi.emptyBody, 'mx-auto')}>
+                Compare and score bids in the full RFx workspace.
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                className={cn('mt-3', labsUi.btnOutline)}
+                onClick={() => openDetail('bids')}
+              >
+                Open bid comparison
+              </Button>
             </div>
           )}
         </CardContent>
-        <div className="p-6 border-t border-slate-100 bg-slate-50/50 flex gap-3 rounded-b-2xl">
-          <Button className="flex-1 h-12 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-bold shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all">
-            <FileText className="w-4 h-4 mr-2" />
-            View Documents
+        <div className="flex flex-col gap-2 border-t border-slate-100 bg-slate-50/70 p-4 dark:border-slate-800 dark:bg-slate-900/50 sm:flex-row">
+          <Button className={cn('h-10 flex-1', labsUi.btnPrimary)} onClick={() => openDetail()}>
+            <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
+            Open RFx workspace
           </Button>
-          <Button variant="outline" className="flex-1 h-12 rounded-xl border-slate-200 text-slate-700 hover:bg-slate-100 hover:text-slate-900 font-semibold transition-all">
-            <MessageSquare className="w-4 h-4 mr-2" />
-            Message Vendors
+          <Button
+            variant="outline"
+            className={cn('h-10 flex-1', labsUi.btnOutline)}
+            onClick={() => openDetail('vendors')}
+          >
+            <Users className="mr-1.5 h-3.5 w-3.5" />
+            Manage vendors
           </Button>
-          <Button variant="outline" className="flex-1 h-12 rounded-xl border-slate-200 text-slate-700 hover:bg-slate-100 hover:text-slate-900 font-semibold transition-all">
-            <BarChart3 className="w-4 h-4 mr-2" />
-            Compare Bids
+          <Button
+            variant="outline"
+            className={cn('h-10 flex-1', labsUi.btnOutline)}
+            onClick={() => openDetail('bids')}
+          >
+            <BarChart3 className="mr-1.5 h-3.5 w-3.5" />
+            Compare bids
           </Button>
         </div>
       </Card>
@@ -3627,7 +3820,7 @@ function EventDetailModal({ event, onClose }: any) {
  */
 function ChatView() {
   return (
-    <div className="h-[calc(100vh-220px)]">
+    <div className="h-[calc(100vh-16rem)] min-h-[420px]">
       <FloatingAIBubble mode="embedded" />
     </div>
   );
@@ -3709,29 +3902,23 @@ function AnalyticsView() {
 
   if (loading) {
     return (
-      <div className="space-y-8">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg shadow-violet-500/20">
-            <BarChart3 className="w-6 h-6 text-white" />
-          </div>
+      <div className="space-y-5">
+        <div className="flex items-center gap-3">
+          <span className={cn(labsUi.iconWell, labsUi.iconWellViolet, 'h-10 w-10 rounded-xl')}>
+            <BarChart3 className="h-5 w-5" />
+          </span>
           <div>
-            <h2 className="text-2xl font-black text-slate-900">Predictive Analytics</h2>
-            <p className="text-slate-500 font-medium">Loading analytics data...</p>
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">Predictive Analytics</h2>
+            <p className={labsUi.cardDescription}>Loading analytics data…</p>
           </div>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {[1, 2, 3, 4].map(i => (
-            <Card key={i} className="animate-pulse border-transparent shadow-sm rounded-2xl bg-white overflow-hidden">
-              <CardContent className="p-0">
-                <div className="h-2 bg-slate-200" />
-                <div className="p-6 space-y-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-11 h-11 bg-slate-200 rounded-xl" />
-                    <div className="h-5 bg-slate-200 rounded-lg w-40" />
-                  </div>
-                  <div className="h-4 bg-slate-100 rounded-lg w-full" />
-                  <div className="h-4 bg-slate-100 rounded-lg w-3/4" />
-                </div>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          {[1, 2, 3, 4].map((i) => (
+            <Card key={i} className={cn(labsUi.card, 'animate-pulse')}>
+              <CardContent className="space-y-3 p-4">
+                <div className="h-4 w-32 rounded bg-slate-100" />
+                <div className="h-8 w-16 rounded-lg bg-slate-100" />
+                <div className="h-3 w-full rounded bg-slate-50" />
               </CardContent>
             </Card>
           ))}
@@ -3741,55 +3928,69 @@ function AnalyticsView() {
   }
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg shadow-violet-500/20">
-            <BarChart3 className="w-6 h-6 text-white" />
-          </div>
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <span className={cn(labsUi.iconWell, labsUi.iconWellViolet, 'h-10 w-10 rounded-xl')}>
+            <BarChart3 className="h-5 w-5" />
+          </span>
           <div>
-            <h2 className="text-2xl font-black text-slate-900">Predictive Analytics</h2>
-            <p className="text-slate-500 font-medium">AI-powered insights and predictions for your contract portfolio</p>
+            <h2 className="text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-50">
+              Predictive Analytics
+            </h2>
+            <p className={labsUi.cardDescription}>
+              AI-powered insights for your contract portfolio
+            </p>
           </div>
         </div>
-        <Badge className="bg-violet-100 text-violet-700 border-transparent font-bold px-3 py-1.5 rounded-lg text-sm">Live</Badge>
+        <span className={cn(labsUi.chip, labsUi.chipViolet)}>
+          <span className="h-1.5 w-1.5 rounded-full bg-violet-500" />
+          Live
+        </span>
       </div>
 
-      {/* Analytics Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {analyticsCards.map((card, i) => (
-          <Card key={i} className="border-transparent shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1 overflow-hidden group rounded-2xl bg-white cursor-pointer" onClick={() => router.push(card.href)}>
-            <CardContent className="p-0">
-              <div className={cn("h-2 bg-gradient-to-r", card.gradient)} />
-              <div className="p-6">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className={cn("w-11 h-11 rounded-xl bg-gradient-to-br flex items-center justify-center shadow-sm", card.gradient)}>
-                      <card.icon className="w-5 h-5 text-white" />
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        {analyticsCards.map((card, i) => {
+          const tone = (labsTone[card.color as LabsToneKey] || labsTone.violet);
+          return (
+            <Card
+              key={i}
+              className={cn(labsUi.card, 'cursor-pointer transition-all hover:border-slate-300 hover:shadow-md')}
+              onClick={() => router.push(card.href)}
+            >
+              <div className={cn('h-1 bg-gradient-to-r', card.gradient)} />
+              <CardContent className="p-4 sm:p-5">
+                <div className="mb-3 flex items-start justify-between gap-3">
+                  <div className="flex min-w-0 items-center gap-2.5">
+                    <div className={cn(labsUi.iconWell, 'h-10 w-10 rounded-xl', tone.well)}>
+                      <card.icon className="h-5 w-5" />
                     </div>
-                    <h3 className="font-bold text-lg text-slate-900 group-hover:text-violet-700 transition-colors">{card.title}</h3>
+                    <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-50">
+                      {card.title}
+                    </h3>
                   </div>
-                  <div className="text-right">
-                    <p className="text-2xl font-black text-slate-900">{card.stat}</p>
-                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{card.statLabel}</p>
+                  <div className="shrink-0 text-right">
+                    <p className="text-xl font-semibold tabular-nums tracking-tight text-slate-900 dark:text-slate-50">
+                      {card.stat}
+                    </p>
+                    <p className={labsUi.sectionLabel}>{card.statLabel}</p>
                   </div>
                 </div>
-                <p className="text-sm font-medium text-slate-500 leading-relaxed">{card.description}</p>
-                <div className="mt-5 pt-4 border-t border-slate-100 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                    <span className="text-xs font-semibold text-emerald-600">Model Active</span>
-                  </div>
-                  <span className="text-xs font-bold text-violet-600 group-hover:text-violet-700 transition-colors flex items-center gap-1">
-                    View Details
-                    <ArrowRight className="w-3 h-3" />
+                <p className="text-xs leading-relaxed text-slate-500">{card.description}</p>
+                <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3 dark:border-slate-800">
+                  <span className={cn(labsUi.chip, labsUi.chipEmerald, 'py-0.5')}>
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                    Model active
+                  </span>
+                  <span className="flex items-center gap-1 text-xs font-medium text-violet-600">
+                    View details
+                    <ArrowRight className="h-3 w-3" />
                   </span>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
     </div>
   );
@@ -4094,56 +4295,61 @@ function ToolboxView() {
   ];
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-4">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-rose-500 via-pink-500 to-violet-600 flex items-center justify-center shadow-lg shadow-rose-500/20">
-            <Wrench className="w-6 h-6 text-white" />
-          </div>
-          <div>
-            <h2 className="text-2xl font-black text-slate-900">AI Toolbox</h2>
-            <p className="text-slate-500 font-medium">Run AI tools, access platform capabilities, and manage integrations</p>
-          </div>
-        </div>
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <Badge className="bg-emerald-50 text-emerald-700 border-transparent font-bold px-3 py-1.5 rounded-lg text-sm">
-            <Sparkles className="w-3.5 h-3.5 mr-1.5" />
-            {TOOLBOX_ITEMS.filter(t => t.status === 'active').length} Active
-          </Badge>
+          <span className={cn(labsUi.iconWell, labsUi.iconWellRose, 'h-10 w-10 rounded-xl')}>
+            <Wrench className="h-5 w-5" />
+          </span>
+          <div>
+            <h2 className="text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-50">
+              AI Toolbox
+            </h2>
+            <p className={labsUi.cardDescription}>
+              Run tools, open platform capabilities, and manage integrations
+            </p>
+          </div>
         </div>
+        <span className={cn(labsUi.chip, labsUi.chipEmerald)}>
+          <Sparkles className="h-3.5 w-3.5" />
+          {TOOLBOX_ITEMS.filter((t) => t.status === 'active').length} active
+        </span>
       </div>
 
-      {/* Search & Filter Bar */}
-      <Card className="border-transparent shadow-sm rounded-2xl bg-white overflow-hidden">
-        <CardContent className="p-4">
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
+      <Card className={labsUi.card}>
+        <CardContent className="p-3 sm:p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <div className="relative flex-1">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-slate-400" />
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <Input
-                placeholder="Search tools by name, description, or tag..."
+                placeholder="Search tools by name, description, or tag…"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-11 h-11 rounded-xl border-slate-200 bg-slate-50/50 focus:bg-white transition-colors text-sm font-medium"
+                className="h-10 rounded-lg border-slate-200 bg-slate-50/50 pl-9 text-sm focus:bg-white"
               />
             </div>
-            <div className="flex items-center gap-2 overflow-x-auto">
-              {categories.map(cat => (
+            <div className="flex items-center gap-1.5 overflow-x-auto [scrollbar-width:thin]">
+              {categories.map((cat) => (
                 <button
                   key={cat.id}
+                  type="button"
                   onClick={() => setActiveCategory(cat.id)}
                   className={cn(
-                    "flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap transition-all duration-200",
+                    'flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium whitespace-nowrap transition-all',
                     activeCategory === cat.id
-                      ? "bg-violet-100 text-violet-700 shadow-sm"
-                      : "text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+                      ? 'bg-violet-50 text-violet-700 shadow-sm dark:bg-violet-950/40 dark:text-violet-300'
+                      : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700',
                   )}
                 >
                   {cat.label}
-                  <span className={cn(
-                    "text-xs px-1.5 py-0.5 rounded-md font-bold",
-                    activeCategory === cat.id ? "bg-violet-200/60 text-violet-800" : "bg-slate-200/60 text-slate-600"
-                  )}>
+                  <span
+                    className={cn(
+                      'rounded-md px-1.5 py-0.5 text-[10px] font-semibold',
+                      activeCategory === cat.id
+                        ? 'bg-violet-100 text-violet-800'
+                        : 'bg-slate-100 text-slate-600',
+                    )}
+                  >
                     {cat.count}
                   </span>
                 </button>
@@ -4195,15 +4401,13 @@ function ToolboxView() {
       })}
 
       {filteredTools.length === 0 && (
-        <Card className="border-transparent shadow-sm rounded-2xl bg-white">
-          <CardContent className="flex flex-col items-center justify-center py-20">
-            <div className="w-20 h-20 bg-slate-50 rounded-2xl flex items-center justify-center mb-4">
-              <Search className="w-10 h-10 text-slate-300" />
-            </div>
-            <p className="font-bold text-slate-700">No tools found</p>
-            <p className="text-sm font-medium text-slate-500 mt-1">Try adjusting your search or filters</p>
-          </CardContent>
-        </Card>
+        <div className={labsUi.empty}>
+          <div className={labsUi.emptyIcon}>
+            <Search className="h-5 w-5 text-slate-400" />
+          </div>
+          <p className={labsUi.emptyTitle}>No tools found</p>
+          <p className={labsUi.emptyBody}>Try adjusting your search or filters</p>
+        </div>
       )}
 
       {/* Tool Runner Modal */}
@@ -4217,10 +4421,10 @@ function ToolboxView() {
                     <activeTool.icon className="w-6 h-6 text-white" />
                   </div>
                   <div>
-                    <DialogTitle className="text-xl font-black text-slate-900">
+                    <DialogTitle className="text-lg font-semibold text-slate-900 dark:text-slate-50">
                       {activeTool.name}
                       {activeTool.status === 'beta' && (
-                        <Badge className="ml-2 bg-amber-100 text-amber-700 border-transparent text-xs font-bold">Beta</Badge>
+                        <span className={cn(labsUi.chip, labsUi.chipAmber, 'ml-2')}>Beta</span>
                       )}
                     </DialogTitle>
                     <DialogDescription className="text-sm font-medium text-slate-500">
@@ -4347,58 +4551,60 @@ function ToolboxView() {
 function ToolCard({ tool, onOpen }: { tool: ToolConfig; onOpen: () => void }) {
   return (
     <Card
-      onClick={onOpen}
+      onClick={tool.status === 'coming-soon' ? undefined : onOpen}
       className={cn(
-        "group cursor-pointer border-transparent shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 overflow-hidden rounded-2xl bg-white",
-        tool.status === 'coming-soon' && "opacity-60 cursor-not-allowed"
+        labsUi.card,
+        'group cursor-pointer transition-all hover:border-slate-300 hover:shadow-md',
+        tool.status === 'coming-soon' && 'cursor-not-allowed opacity-60',
       )}
     >
-      <CardContent className="p-0">
-        <div className={cn("h-1.5 bg-gradient-to-r", tool.gradient)} />
-        <div className="p-5">
-          <div className="flex items-start justify-between gap-3 mb-3">
-            <div className={cn(
-              "w-11 h-11 rounded-xl bg-gradient-to-br flex items-center justify-center shadow-sm shrink-0 group-hover:scale-110 transition-transform",
-              tool.gradient
-            )}>
-              <tool.icon className="w-5 h-5 text-white" />
-            </div>
-            <div className="flex items-center gap-1.5 flex-shrink-0">
-              {tool.status === 'active' && (
-                <Badge className="bg-emerald-50 text-emerald-700 border-transparent text-[10px] font-bold px-2 py-0.5 rounded-md">
-                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1 animate-pulse" />
-                  Active
-                </Badge>
-              )}
-              {tool.status === 'beta' && (
-                <Badge className="bg-amber-50 text-amber-700 border-transparent text-[10px] font-bold px-2 py-0.5 rounded-md">Beta</Badge>
-              )}
-              {tool.status === 'coming-soon' && (
-                <Badge className="bg-slate-50 text-slate-500 border-transparent text-[10px] font-bold px-2 py-0.5 rounded-md">Soon</Badge>
-              )}
-            </div>
+      <div className={cn('h-1 bg-gradient-to-r', tool.gradient)} />
+      <CardContent className="p-4">
+        <div className="mb-3 flex items-start justify-between gap-3">
+          <div
+            className={cn(
+              'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br text-white shadow-sm',
+              tool.gradient,
+            )}
+          >
+            <tool.icon className="h-5 w-5" />
           </div>
-
-          <h3 className="font-bold text-sm text-slate-900 group-hover:text-violet-700 transition-colors mb-1.5">
-            {tool.name}
-          </h3>
-          <p className="text-xs font-medium text-slate-500 leading-relaxed mb-3">
-            {tool.description}
-          </p>
-
-          <div className="flex items-center justify-between pt-3 border-t border-slate-100">
-            <div className="flex items-center gap-1.5 flex-wrap">
-              {tool.tags.slice(0, 3).map(tag => (
-                <Badge key={tag} variant="secondary" className="text-[10px] bg-slate-50 text-slate-500 font-semibold rounded-md px-2 py-0.5">
-                  {tag}
-                </Badge>
-              ))}
-            </div>
-            <div className="flex items-center gap-1 text-xs font-bold text-violet-600 opacity-0 group-hover:opacity-100 transition-opacity">
-              {tool.apiEndpoint ? 'Run' : 'Open'}
-              <ArrowRight className="w-3 h-3" />
-            </div>
+          <div className="flex shrink-0 items-center gap-1.5">
+            {tool.status === 'active' && (
+              <span className={cn(labsUi.chip, labsUi.chipEmerald, 'py-0.5')}>
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                Active
+              </span>
+            )}
+            {tool.status === 'beta' && (
+              <span className={cn(labsUi.chip, labsUi.chipAmber, 'py-0.5')}>Beta</span>
+            )}
+            {tool.status === 'coming-soon' && (
+              <span className={cn(labsUi.chip, labsUi.chipNeutral, 'py-0.5')}>Soon</span>
+            )}
           </div>
+        </div>
+
+        <h3 className="mb-1 text-sm font-semibold text-slate-900 transition-colors group-hover:text-violet-700 dark:text-slate-50">
+          {tool.name}
+        </h3>
+        <p className="mb-3 text-xs leading-relaxed text-slate-500">{tool.description}</p>
+
+        <div className="flex items-center justify-between border-t border-slate-100 pt-3 dark:border-slate-800">
+          <div className="flex flex-wrap items-center gap-1">
+            {tool.tags.slice(0, 3).map((tag) => (
+              <span
+                key={tag}
+                className="rounded-md bg-slate-50 px-1.5 py-0.5 text-[10px] font-medium text-slate-500 dark:bg-slate-800"
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
+          <span className="flex items-center gap-1 text-xs font-medium text-violet-600 opacity-0 transition-opacity group-hover:opacity-100">
+            {tool.apiEndpoint ? 'Run' : 'Open'}
+            <ArrowRight className="h-3 w-3" />
+          </span>
         </div>
       </CardContent>
     </Card>
@@ -4429,55 +4635,60 @@ function KnowledgeView() {
   }, []);
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
-            <GitBranch className="w-6 h-6 text-white" />
-          </div>
-          <div>
-            <h2 className="text-2xl font-black text-slate-900">Knowledge Graph</h2>
-            <p className="text-slate-500 font-medium">Explore entity relationships across your contract portfolio</p>
-          </div>
+    <div className="space-y-5">
+      <div className="flex items-center gap-3">
+        <span className={cn(labsUi.iconWell, labsUi.iconWellBlue, 'h-10 w-10 rounded-xl')}>
+          <GitBranch className="h-5 w-5" />
+        </span>
+        <div>
+          <h2 className="text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-50">
+            Knowledge Graph
+          </h2>
+          <p className={labsUi.cardDescription}>
+            Explore entity relationships across your contract portfolio
+          </p>
         </div>
       </div>
 
-      {/* Main Card */}
-      <Card className="border-transparent shadow-sm rounded-2xl bg-white overflow-hidden">
-        <CardContent className="p-0">
-          <div className="h-1.5 bg-gradient-to-r from-indigo-500 via-violet-500 to-purple-500" />
-          <div className="text-center py-20 px-8">
-            <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-indigo-100 to-violet-100 flex items-center justify-center mx-auto mb-6">
-              <GitBranch className="w-12 h-12 text-indigo-500" />
-            </div>
-            <h3 className="text-2xl font-black text-slate-900 mb-2">Interactive Knowledge Graph</h3>
-            <p className="text-slate-500 font-medium max-w-lg mx-auto mb-2">
-              Visualize and explore connections between vendors, contracts, clauses, and obligations
-            </p>
-            <div className="flex items-center justify-center gap-6 my-8">
-              {[
-                { label: 'Entities', value: loading ? '...' : stats.entities.toLocaleString(), icon: Layers },
-                { label: 'Connections', value: loading ? '...' : stats.connections.toLocaleString(), icon: GitBranch },
-                { label: 'Clusters', value: loading ? '...' : stats.clusters.toLocaleString(), icon: Network },
-              ].map((stat) => (
-                <div key={stat.label} className="flex items-center gap-3 px-5 py-3 bg-slate-50 rounded-xl border border-slate-100">
-                  <stat.icon className="w-5 h-5 text-indigo-500" />
-                  <div className="text-left">
-                    <p className="text-xl font-black text-slate-900">{stat.value}</p>
-                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{stat.label}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <Button 
-              onClick={() => router.push('/intelligence/graph')}
-              className="h-12 px-8 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-md shadow-indigo-500/20 hover:shadow-lg hover:-translate-y-0.5 transition-all"
-            >
-              <ExternalLink className="w-4 h-4 mr-2" />
-              Open Knowledge Graph
-            </Button>
+      <Card className={labsUi.card}>
+        <div className={cn('h-1 bg-gradient-to-r', labsTone.blue.bar)} />
+        <CardContent className="px-6 py-12 text-center sm:px-8">
+          <div className={cn(labsUi.iconWell, labsUi.iconWellBlue, 'mx-auto mb-4 h-14 w-14 rounded-2xl')}>
+            <GitBranch className="h-6 w-6" />
           </div>
+          <h3 className="text-base font-semibold text-slate-900 dark:text-slate-50">
+            Interactive knowledge graph
+          </h3>
+          <p className={cn(labsUi.emptyBody, 'mx-auto mt-1 max-w-md')}>
+            Visualize connections between vendors, contracts, clauses, and obligations
+          </p>
+          <div className="my-6 flex flex-wrap items-center justify-center gap-2">
+            {[
+              { label: 'Entities', value: loading ? '…' : stats.entities.toLocaleString(), icon: Layers },
+              { label: 'Connections', value: loading ? '…' : stats.connections.toLocaleString(), icon: GitBranch },
+              { label: 'Clusters', value: loading ? '…' : stats.clusters.toLocaleString(), icon: Network },
+            ].map((stat) => (
+              <div
+                key={stat.label}
+                className="flex items-center gap-2.5 rounded-xl border border-slate-200/90 bg-slate-50/70 px-3.5 py-2.5 dark:border-slate-800 dark:bg-slate-900/50"
+              >
+                <stat.icon className="h-4 w-4 text-blue-600" />
+                <div className="text-left">
+                  <p className="text-sm font-semibold tabular-nums text-slate-900 dark:text-slate-50">
+                    {stat.value}
+                  </p>
+                  <p className={labsUi.sectionLabel}>{stat.label}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          <Button
+            onClick={() => router.push('/intelligence/graph')}
+            className={cn('h-10 px-5', labsUi.btnPrimary)}
+          >
+            <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
+            Open knowledge graph
+          </Button>
         </CardContent>
       </Card>
     </div>

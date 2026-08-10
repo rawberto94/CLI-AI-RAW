@@ -70,6 +70,10 @@ import {
   Key,
   ArrowLeftRight,
   Gauge,
+  Rocket,
+  Bot,
+  ListChecks,
+  LineChart,
 } from 'lucide-react';
 
 interface NavigationItem {
@@ -234,7 +238,19 @@ const navigationConfig: NavigationGroupConfig[] = [
         ],
       },
       { key: 'contractMigration', href: '/migration', icon: Upload, audiences: ['all'], isNew: true },
-      { key: 'observability', href: '/contigo-labs?tab=observability', icon: Gauge, audiences: ['all'], demo: 'hide' },
+      {
+        key: 'contigoLabs',
+        href: '/contigo-labs',
+        icon: Rocket,
+        audiences: ['all'],
+        demo: 'hide',
+        children: [
+          { key: 'labsAgents', href: '/contigo-labs?tab=agents', icon: Bot, audiences: ['all'], demo: 'hide' },
+          { key: 'labsApprovals', href: '/contigo-labs?tab=approvals', icon: ListChecks, audiences: ['all'], demo: 'hide' },
+          { key: 'labsRfx', href: '/contigo-labs?tab=rfx-studio', icon: Gavel, audiences: ['all'], demo: 'hide' },
+          { key: 'observability', href: '/contigo-labs?tab=observability', icon: Gauge, audiences: ['all'], demo: 'hide' },
+        ],
+      },
       { key: 'settings', href: '/settings', icon: Settings, audiences: ['all'] },
     ],
   },
@@ -248,7 +264,7 @@ const navigationConfig: NavigationGroupConfig[] = [
       {
         key: 'uxMetrics',
         href: '/admin/ux-metrics',
-        icon: BarChart3,
+        icon: LineChart,
         audiences: ['admin'],
         requiresAdmin: true,
       },
@@ -673,32 +689,64 @@ function EnhancedNavigation() {
 
   const searchParams = useSearchParams();
 
+  // All registered nav pathnames (no query). Used so `/admin` does not steal
+  // active state from more specific siblings like `/admin/ux-metrics`.
+  const navPathnames = useMemo(() => {
+    const paths = new Set<string>();
+    const walk = (items: NavigationItem[]) => {
+      for (const item of items) {
+        if (item.href) {
+          paths.add(item.href.split('?')[0]);
+        }
+        if (item.children?.length) walk(item.children);
+      }
+    };
+    for (const group of filteredNavigationGroups) {
+      walk(group.items);
+    }
+    return paths;
+  }, [filteredNavigationGroups]);
+
   const isActive = useCallback((href?: string) => {
     if (!href) return false;
     if (href === '/') return pathname === '/';
-    
+
     // Handle URLs with query strings (e.g., /contigo-labs?tab=rfx-studio)
     const [hrefPath, hrefQuery] = href.split('?');
-    
-    // Check if the base path matches
-    if (!pathname.startsWith(hrefPath)) return false;
-    
-    // If there's no query string in href, match only if current URL also has no tab param
-    if (!hrefQuery) {
-      // If this is a parent path and children use query params, only match when no tab is set
-      const currentTab = searchParams.get('tab');
-      if (currentTab && pathname === hrefPath) return false;
+
+    // Segment-safe prefix: `/admin` must not match via bare startsWith on `/admin-foo`
+    const pathMatches =
+      pathname === hrefPath || pathname.startsWith(`${hrefPath}/`);
+    if (!pathMatches) return false;
+
+    // Query-string targets: require exact path + matching params
+    if (hrefQuery) {
+      if (pathname !== hrefPath) return false;
+      const hrefParams = new URLSearchParams(hrefQuery);
+      for (const [key, value] of hrefParams.entries()) {
+        if (searchParams.get(key) !== value) return false;
+      }
       return true;
     }
-    
-    // For query string URLs, compare the query parameters
-    if (pathname !== hrefPath) return false;
-    const hrefParams = new URLSearchParams(hrefQuery);
-    for (const [key, value] of hrefParams.entries()) {
-      if (searchParams.get(key) !== value) return false;
+
+    // Path-only targets: if a *more specific* registered nav path also matches
+    // the current location, prefer that sibling (Organization vs UX Metrics).
+    let bestPath = hrefPath;
+    for (const candidate of navPathnames) {
+      if (candidate.length <= bestPath.length) continue;
+      if (pathname === candidate || pathname.startsWith(`${candidate}/`)) {
+        bestPath = candidate;
+      }
     }
+    if (bestPath !== hrefPath) return false;
+
+    // Contigo Labs parent (`/contigo-labs`) should not stay active when a tab
+    // query selects a child entry.
+    const currentTab = searchParams.get('tab');
+    if (currentTab && pathname === hrefPath) return false;
+
     return true;
-  }, [pathname, searchParams]);
+  }, [pathname, searchParams, navPathnames]);
 
   const isChildActive = useCallback((children?: NavigationItem[]): boolean => {
     return children?.some(child => child.href && isActive(child.href)) ?? false;

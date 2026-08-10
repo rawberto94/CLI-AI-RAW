@@ -48,7 +48,25 @@
     "admin": "Administración",
     "settings": "Configuración",
     "sso": "SSO / SAML",
-    "governance": "Gobernanza"
+    "governance": "Gobernanza",
+    "nav": {
+      "contigoLabs": {
+        "name": "Contigo Labs",
+        "desc": "Agentes de IA, RFx y aprobaciones"
+      },
+      "labsAgents": {
+        "name": "Agentes",
+        "desc": "Centro de mando de agentes"
+      },
+      "labsApprovals": {
+        "name": "Aprobaciones",
+        "desc": "Cola de aprobación humana"
+      },
+      "labsRfx": {
+        "name": "RFx Studio",
+        "desc": "Abastecimiento y compras"
+      }
+    }
   },
   "dashboard": {
     "title": "Panel de control",

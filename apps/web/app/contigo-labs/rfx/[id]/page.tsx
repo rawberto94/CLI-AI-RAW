@@ -17,7 +17,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { useConfirm } from '@/components/dialogs/ConfirmDialog';
 import {
   ArrowLeft,
@@ -105,9 +105,13 @@ interface VendorProfile {
 // MAIN COMPONENT
 // ============================================================================
 
+const RFX_TABS = ['requirements', 'vendors', 'bids', 'evaluation', 'negotiate'] as const;
+type RFxDetailTab = (typeof RFX_TABS)[number];
+
 export default function RFxDetailPage() {
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
   const id = params.id as string;
   const confirm = useConfirm();
 
@@ -116,7 +120,12 @@ export default function RFxDetailPage() {
   const [event, setEvent] = useState<any>(null);
   const [workflow, setWorkflow] = useState<WorkflowStage[]>([]);
   const [vendorProfiles, setVendorProfiles] = useState<VendorProfile[]>([]);
-  const [activeTab, setActiveTab] = useState<'requirements' | 'vendors' | 'bids' | 'evaluation' | 'negotiate'>('requirements');
+  const tabFromUrl = searchParams.get('tab');
+  const initialTab: RFxDetailTab =
+    tabFromUrl && (RFX_TABS as readonly string[]).includes(tabFromUrl)
+      ? (tabFromUrl as RFxDetailTab)
+      : 'requirements';
+  const [activeTab, setActiveTab] = useState<RFxDetailTab>(initialTab);
   const [editingReqs, setEditingReqs] = useState(false);
 
   // Bid entry form
@@ -314,10 +323,10 @@ export default function RFxDetailPage() {
   // ── Loading state ──────────────────────────────────────────────────────
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center bg-slate-50/80 dark:bg-slate-950">
         <div className="flex items-center gap-3 text-slate-500">
-          <Loader2 className="w-6 h-6 animate-spin" />
-          <span className="text-lg font-medium">Loading RFx event...</span>
+          <Loader2 className="h-5 w-5 animate-spin" />
+          <span className="text-sm font-medium">Loading RFx event…</span>
         </div>
       </div>
     );
@@ -325,11 +334,21 @@ export default function RFxDetailPage() {
 
   if (!event) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="text-center">
-          <AlertTriangle className="w-12 h-12 text-amber-500 mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-slate-900 mb-2">RFx Not Found</h2>
-          <Button onClick={() => router.push('/contigo-labs')}>Back to Labs</Button>
+      <div className="flex min-h-screen items-center justify-center bg-slate-50/80 dark:bg-slate-950">
+        <div className="mx-auto max-w-sm rounded-xl border border-slate-200/90 bg-white p-8 text-center shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <AlertTriangle className="mx-auto mb-3 h-10 w-10 text-amber-500" />
+          <h2 className="mb-1 text-base font-semibold text-slate-900 dark:text-slate-50">
+            RFx not found
+          </h2>
+          <p className="mb-4 text-xs text-slate-500">
+            This event may have been deleted or you no longer have access.
+          </p>
+          <Button
+            onClick={() => router.push('/contigo-labs?tab=rfx-studio')}
+            className="rounded-lg bg-violet-600 text-white hover:bg-violet-700"
+          >
+            Back to RFx Studio
+          </Button>
         </div>
       </div>
     );
@@ -343,22 +362,32 @@ export default function RFxDetailPage() {
 
   // ── Render ─────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-50/80 dark:bg-slate-950">
       {/* Header */}
-      <div className="bg-white border-b border-slate-200 sticky top-0 z-30">
-        <div className="max-w-[1600px] mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" onClick={() => router.push('/contigo-labs')} className="h-9 w-9">
-                <ArrowLeft className="w-5 h-5" />
+      <div className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/90 backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/90">
+        <div className="mx-auto max-w-[1600px] px-5 py-3.5 sm:px-8 lg:px-10">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => router.push('/contigo-labs?tab=rfx-studio')}
+                className="h-9 w-9 shrink-0 rounded-lg"
+                aria-label="Back to RFx Studio"
+              >
+                <ArrowLeft className="h-4 w-4" />
               </Button>
-              <div>
-                <div className="flex items-center gap-3">
-                  <h1 className="text-xl font-bold text-slate-900">{event.title}</h1>
-                  <Badge variant="secondary" className="font-bold">{event.type}</Badge>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h1 className="truncate text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-50">
+                    {event.title}
+                  </h1>
+                  <Badge variant="secondary" className="text-xs font-medium">
+                    {event.type}
+                  </Badge>
                   <Badge
                     className={cn(
-                      'font-bold capitalize',
+                      'text-xs font-medium capitalize',
                       event.status === 'draft' && 'bg-slate-100 text-slate-700',
                       event.status === 'published' && 'bg-blue-100 text-blue-700',
                       event.status === 'open' && 'bg-emerald-100 text-emerald-700',
@@ -370,27 +399,44 @@ export default function RFxDetailPage() {
                     {event.status}
                   </Badge>
                 </div>
-                <p className="text-sm text-slate-500 mt-0.5">
-                  {event.description?.slice(0, 100)}{event.description?.length > 100 ? '...' : ''}
+                <p className="mt-0.5 truncate text-xs font-medium text-slate-500">
+                  {event.description?.slice(0, 100)}
+                  {event.description?.length > 100 ? '…' : ''}
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2">
               {event.status === 'draft' && (
-                <Button onClick={handlePublish} disabled={saving} className="bg-blue-600 hover:bg-blue-700 text-white">
-                  <Send className="w-4 h-4 mr-2" />
+                <Button
+                  onClick={handlePublish}
+                  disabled={saving}
+                  size="sm"
+                  className="h-9 rounded-lg bg-blue-600 text-white hover:bg-blue-700"
+                >
+                  <Send className="mr-1.5 h-3.5 w-3.5" />
                   Publish
                 </Button>
               )}
               {(event.status === 'open' || event.status === 'published') && responses.length >= 2 && (
-                <Button onClick={handleEvaluate} disabled={saving} className="bg-violet-600 hover:bg-violet-700 text-white">
-                  <BarChart3 className="w-4 h-4 mr-2" />
-                  Evaluate Bids
+                <Button
+                  onClick={handleEvaluate}
+                  disabled={saving}
+                  size="sm"
+                  className="h-9 rounded-lg bg-violet-600 text-white hover:bg-violet-700"
+                >
+                  <BarChart3 className="mr-1.5 h-3.5 w-3.5" />
+                  Evaluate bids
                 </Button>
               )}
               {event.status !== 'cancelled' && event.status !== 'awarded' && (
-                <Button variant="outline" onClick={handleCancel} disabled={saving} className="text-red-600 border-red-200 hover:bg-red-50">
-                  <X className="w-4 h-4 mr-2" />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCancel}
+                  disabled={saving}
+                  className="h-9 rounded-lg border-rose-200 text-rose-600 hover:bg-rose-50"
+                >
+                  <X className="mr-1.5 h-3.5 w-3.5" />
                   Cancel
                 </Button>
               )}
@@ -418,8 +464,8 @@ export default function RFxDetailPage() {
       </div>
 
       {/* Stats bar */}
-      <div className="max-w-[1600px] mx-auto px-6 py-4">
-        <div className="grid grid-cols-5 gap-4">
+      <div className="mx-auto max-w-[1600px] px-5 py-4 sm:px-8 lg:px-10">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
           <StatCard label="Requirements" value={requirements.length} sub={`${userReqs.length} user + ${aiReqs.length} AI`} />
           <StatCard label="Vendors" value={event.invitedVendors?.length || 0} sub="invited" />
           <StatCard label="Bids" value={responses.length} sub="received" />
@@ -429,31 +475,39 @@ export default function RFxDetailPage() {
       </div>
 
       {/* Tab navigation */}
-      <div className="max-w-[1600px] mx-auto px-6">
-        <div className="flex gap-1 border-b border-slate-200 mb-6">
+      <div className="mx-auto max-w-[1600px] px-5 sm:px-8 lg:px-10">
+        <div className="mb-5 flex gap-1 overflow-x-auto border-b border-slate-200 [scrollbar-width:thin] dark:border-slate-800">
           {[
-            { key: 'requirements', label: 'Requirements', icon: FileText, count: requirements.length },
-            { key: 'vendors', label: 'Vendors & Bids', icon: Users, count: responses.length },
-            { key: 'evaluation', label: 'Evaluation', icon: BarChart3 },
-            { key: 'negotiate', label: 'Negotiate', icon: MessageSquare },
-          ].map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key as any)}
-              className={cn(
-                'flex items-center gap-2 px-4 py-3 text-sm font-semibold border-b-2 transition-colors',
-                activeTab === tab.key
-                  ? 'border-violet-600 text-violet-700'
-                  : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300',
-              )}
-            >
-              <tab.icon className="w-4 h-4" />
-              {tab.label}
-              {tab.count !== undefined && (
-                <span className="ml-1 text-xs bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded-full">{tab.count}</span>
-              )}
-            </button>
-          ))}
+            { key: 'requirements' as const, label: 'Requirements', icon: FileText, count: requirements.length },
+            { key: 'vendors' as const, label: 'Vendors & Bids', icon: Users, count: responses.length },
+            { key: 'evaluation' as const, label: 'Evaluation', icon: BarChart3 },
+            { key: 'negotiate' as const, label: 'Negotiate', icon: MessageSquare },
+          ].map((tab) => {
+            const isActive =
+              activeTab === tab.key ||
+              (tab.key === 'vendors' && activeTab === 'bids');
+            return (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => setActiveTab(tab.key)}
+                className={cn(
+                  'flex shrink-0 items-center gap-1.5 border-b-2 px-3.5 py-2.5 text-sm font-medium transition-colors',
+                  isActive
+                    ? 'border-violet-600 text-violet-700 dark:text-violet-300'
+                    : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700',
+                )}
+              >
+                <tab.icon className="h-3.5 w-3.5" />
+                {tab.label}
+                {tab.count !== undefined && (
+                  <span className="ml-0.5 rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                    {tab.count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
 
         {/* ── Requirements Tab ─────────────────────────────────────────── */}
@@ -550,8 +604,8 @@ export default function RFxDetailPage() {
           </div>
         )}
 
-        {/* ── Vendors & Bids Tab ───────────────────────────────────────── */}
-        {activeTab === 'vendors' && (
+        {/* ── Vendors & Bids Tab (also accepts ?tab=bids deep-link) ───── */}
+        {(activeTab === 'vendors' || activeTab === 'bids') && (
           <div className="space-y-6 pb-12">
             {/* Invited Vendors */}
             <div>
@@ -929,10 +983,12 @@ export default function RFxDetailPage() {
 
 function StatCard({ label, value, sub }: { label: string; value: string | number; sub: string }) {
   return (
-    <div className="bg-white border border-slate-200 rounded-lg p-4">
-      <p className="text-xs text-slate-500 font-medium">{label}</p>
-      <p className="text-xl font-bold text-slate-900 mt-1">{value}</p>
-      <p className="text-xs text-slate-400 mt-0.5">{sub}</p>
+    <div className="rounded-xl border border-slate-200/90 bg-white px-3.5 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">{label}</p>
+      <p className="mt-1 text-lg font-semibold tabular-nums tracking-tight text-slate-900 dark:text-slate-50">
+        {value}
+      </p>
+      <p className="mt-0.5 text-xs text-slate-400">{sub}</p>
     </div>
   );
 }

@@ -25,6 +25,7 @@ import {
   Search,
   Keyboard,
   BarChart3,
+  LineChart,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -95,6 +96,11 @@ const adminNavItems = [
     title: 'Upload Metrics',
     href: '/admin/upload-metrics',
     icon: BarChart3,
+  },
+  {
+    title: 'UX Metrics',
+    href: '/admin/ux-metrics',
+    icon: LineChart,
   },
   {
     title: 'Queue',

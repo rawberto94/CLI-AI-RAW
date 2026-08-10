@@ -27,6 +27,7 @@ export const labsUi = {
   chipAmber: 'border-amber-200 bg-amber-50 text-amber-800',
   chipEmerald: 'border-emerald-200 bg-emerald-50 text-emerald-700',
   chipRose: 'border-rose-200 bg-rose-50 text-rose-700',
+  chipBlue: 'border-blue-200 bg-blue-50 text-blue-700',
 
   tabActive:
     'rounded-lg px-3.5 py-2 text-sm font-medium text-slate-600 data-[state=active]:bg-white data-[state=active]:text-violet-700 data-[state=active]:shadow-sm dark:data-[state=active]:bg-slate-900 dark:data-[state=active]:text-violet-300 transition-all',

@@ -168,8 +168,8 @@
         "desc": "Agent activity, reasoning chains, and performance"
       },
       "uxMetrics": {
-        "name": "UX metrics",
-        "desc": "Agentic approval and notification success metrics"
+        "name": "UX Metrics",
+        "desc": "Agent approval rates, notification clicks, and HITL funnel"
       },
       "settings": {
         "name": "Settings",
@@ -177,7 +177,7 @@
       },
       "organization": {
         "name": "Organization",
-        "desc": "Tenant and organization setup"
+        "desc": "Team members, roles, and tenant settings"
       },
       "system": {
         "name": "System",
@@ -198,6 +198,26 @@
       "integrations": {
         "name": "Integrations",
         "desc": "Data connections"
+      },
+      "contigoLabs": {
+        "name": "Contigo Labs",
+        "desc": "AI agents, RFx studio, and approvals"
+      },
+      "labsAgents": {
+        "name": "Agents",
+        "desc": "Agent command center"
+      },
+      "labsApprovals": {
+        "name": "Approvals",
+        "desc": "Human-in-the-loop approval queue"
+      },
+      "labsRfx": {
+        "name": "RFx Studio",
+        "desc": "Sourcing and procurement"
+      },
+      "policy-packs": {
+        "name": "Policy Packs",
+        "desc": "Compliance policy packs"
       }
     }
   },

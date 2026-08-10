@@ -6,8 +6,9 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2, RefreshCw, BarChart3 } from 'lucide-react';
+import { Loader2, RefreshCw, LineChart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { PageBreadcrumb } from '@/components/navigation';
 
 interface UxMetrics {
   approval_requested: number;
@@ -74,14 +75,19 @@ export default function UxMetricsAdminPage() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8 space-y-6">
+      <PageBreadcrumb />
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500 mb-1">
+            Admin · Analytics
+          </p>
           <h1 className="text-2xl font-semibold text-slate-900 flex items-center gap-2">
-            <BarChart3 className="h-6 w-6 text-violet-600" />
-            Agentic UX metrics
+            <LineChart className="h-6 w-6 text-violet-600" />
+            UX Metrics
           </h1>
           <p className="text-sm text-slate-500 mt-1">
-            Success metrics from the agentic UX plan · last {days} days · {totalEvents} events
+            Agent approval rates, notification funnel, and HITL outcomes · last {days} days ·{' '}
+            {totalEvents} events
           </p>
         </div>
         <div className="flex items-center gap-2">
