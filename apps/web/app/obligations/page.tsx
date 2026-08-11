@@ -667,7 +667,7 @@ export default function ObligationsDashboardPage() {
                       <div>
                         <p className="text-sm text-slate-600 dark:text-slate-400">{t('kpi.complianceRate')}</p>
                         <p className="text-3xl font-bold text-slate-900 dark:text-slate-100 mt-1">
-                          {((metrics?.complianceRate || 0) * 100).toFixed(1)}%
+                          {(metrics?.complianceRate || 0).toFixed(1)}%
                         </p>
                       </div>
                       <div className="p-3 bg-gradient-to-br from-violet-400 to-violet-600 rounded-xl shadow-lg shadow-green-500/30 group-hover:scale-110 transition-transform duration-300">
@@ -675,7 +675,7 @@ export default function ObligationsDashboardPage() {
                       </div>
                     </div>
                     <div className="mt-4">
-                      <Progress value={(metrics?.complianceRate || 0) * 100} className="h-2" />
+                      <Progress value={metrics?.complianceRate || 0} className="h-2" />
                     </div>
                   </CardContent>
                 </Card>

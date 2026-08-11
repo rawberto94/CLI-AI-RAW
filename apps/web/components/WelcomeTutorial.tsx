@@ -144,7 +144,6 @@ export function WelcomeTutorial() {
   const [isOpen, setIsOpen] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [direction, setDirection] = useState<'next' | 'prev'>('next');
-  const [dontShowAgain, _setDontShowAgain] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
@@ -179,8 +178,8 @@ export function WelcomeTutorial() {
 
   const handleClose = useCallback(() => {
     setIsOpen(false);
-    if (dontShowAgain) localStorage.setItem("contigo-tutorial-completed", "true");
-  }, [dontShowAgain]);
+    localStorage.setItem("contigo-tutorial-completed", "true");
+  }, []);
 
   const handleComplete = useCallback(() => {
     setIsOpen(false);
@@ -236,9 +235,9 @@ export function WelcomeTutorial() {
   }, [currentStep, handleComplete, router]);
 
   const handleSkip = useCallback(() => {
-    if (dontShowAgain) localStorage.setItem("contigo-tutorial-completed", "true");
+    localStorage.setItem("contigo-tutorial-completed", "true");
     setIsOpen(false);
-  }, [dontShowAgain]);
+  }, []);
 
   const step = useMemo(() => tutorialSteps[currentStep], [currentStep]);
   

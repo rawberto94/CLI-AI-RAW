@@ -45,7 +45,6 @@ import {
   LogOut,
   Sparkles,
   CheckCircle2,
-  Clock,
   Zap,
   Building2,
   Shield,
@@ -178,7 +177,6 @@ const navigationConfig: NavigationGroupConfig[] = [
         children: [
           { key: 'obligations', href: '/obligations', icon: Target, audiences: ['all'] },
           { key: 'renewals', href: '/renewals', icon: RefreshCcw, audiences: ['all'] },
-          { key: 'deadlines', href: '/deadlines', icon: Clock, audiences: ['all'] },
         ],
       },
       {
