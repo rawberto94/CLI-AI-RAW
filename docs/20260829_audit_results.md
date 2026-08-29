@@ -1,8 +1,12 @@
-# Audit Results — ConTigo / PactumAI Platform & Azure Infrastructure
+# Audit Results — ConTigo Platform & Azure Infrastructure
 
 **Audit date:** 2026-08-29
-**Scope:** Repository code (`apps/web`, `packages/*`, `scripts/*`), Kubernetes/Helm manifests, Azure Bicep IaC, CI workflows, and the accuracy of existing `.md` documentation against the actual code.
-**Method:** Direct code inspection (grep + full-file reads) of the highest-risk areas, cross-checked against parallel deep-dive passes over auth/tenancy, infra manifests, DB/performance/testing, and documentation-vs-code consistency. Every finding below was either **read directly by the auditor** (marked "verified") or produced by a research pass and then **spot-checked directly** before inclusion. Claims that could not be verified are marked as such. Prior audit docs in `docs/` and `docs/archive/` were treated as *hypotheses to test*, not facts — several turned out to be stale (see [§6](#6-documentation-vs-reality-contradictions)).
+**Branch audited:** `main` (HEAD `09e79215`, up to date with `origin/main`)
+
+> **Correction notice:** An earlier pass of this audit was performed while the workspace was still checked out on `feature/dockerimage-creation`, a branch that differs from `main` by **3,557 files (234k insertions / 408k deletions)** — effectively a different codebase (no `admin/`, `scim/`, `gdpr/`, `legal-holds/`, `vendor-risk/`, `ip-allowlist` surface existed there; `kubernetes/`/`k8s/` manifests existed there but do not exist on `main`; several docs referenced there don't exist on `main` at all). **This document replaces that pass in full.** Every finding below was produced or re-verified against the actual `main` checkout.
+
+**Scope:** `apps/web/app/api/**` (90+ route groups), `packages/clients/db` (Prisma schema/repositories), `helm/contigo/**`, `infrastructure/azure/*.bicep`, `.github/workflows/**`, and the accuracy of `docs/**` against the code.
+**Method:** Direct, full-file reads of the highest-risk areas, cross-checked against parallel deep-dive research passes over auth/tenancy, infra manifests, DB/performance/testing, and documentation-vs-code consistency. Findings are marked **(verified)** where the auditor personally opened and read the file, or **(reported)** where sourced from a research pass and not independently re-opened. Prior docs (including this repo's own `docs/security/AZURE_CYBERSECURITY_AUDIT_2026-05-29.md`) were treated as hypotheses, not facts.
 
 ---
 
@@ -10,316 +14,221 @@
 
 > *"Is my data safe? Is the platform fast and scalable? Am I paying for more than I need?"*
 
-**Is my data safe? — Not yet, no.** Two production API routes currently return contract/business data with **no tenant filtering and no authentication check at all** ([§1.1](#11-p0-confirmed-cross-tenant-data-leakage)), meaning any authenticated user (and in one case, potentially unauthenticated depending on middleware pass) can read aggregated financial data and search results belonging to **every other client on the platform**. Additionally, the environment variable that the codebase relies on to turn on strict tenant enforcement (`REQUIRE_AUTH=true`) **is not set in any of the actual Kubernetes/Helm/Docker Compose deployment files** — only in `.env.example` templates nobody is required to apply ([§1.2](#12-p0-confirmed-auth-enforcement-is-opt-in-and-off-by-default-in-every-deployment-manifest)). Combined, these mean the platform *can* be run securely, but **as currently checked into the repo, the shipped deployment configuration does not turn that security on.**
+**Is my data safe? — Mostly yes, with one confirmed exception and one open question.** This is a materially more mature codebase than a first glance at a smaller branch would suggest: it has real RBAC, SCIM provisioning, SSO, an IP allowlist, GDPR export/delete, legal holds, and CSRF/rate-limiting that were spot-checked and found to be **well implemented**. However, one production API route — `/api/analytics/metrics` — **still returns platform-wide financial and contract data to any authenticated user of any tenant**, not just their own organization's data ([§1.1](#11-p0-confirmed-cross-tenant-data-leakage-in-analytics-endpoint)). Separately, this repo contains its own prior live-Azure security audit (dated 2026-05-29) that found the production Key Vault and Azure OpenAI resource were **publicly network-reachable** and that the embedding model runs on a **global (non-Switzerland-pinned) deployment tier** — both of which are data-residency-relevant for a Swiss client, and neither could be re-confirmed as fixed from this repo's code alone ([§6.1](#61-a-real-live-azure-audit-already-exists-in-this-repo--its-findings-need-a-fresh-live-recheck)).
 
-**Is it fast and scalable? — Partially, with a specific bottleneck risk.** Indexing, caching, and connection pooling are generally well designed ([§3](#3-performance--database)). The real risk is that the platform is deliberately sized on Azure's cheapest **Burstable** compute tier for both the database (`Standard_B2s`) and AKS nodes (`Standard_B4ms`) — these run on CPU *credits*, not sustained CPU, and there is no evidence of alerting on credit exhaustion. Under sustained real usage (not bursty), the system can silently throttle rather than autoscale, and a client experiencing "random slowness" would not currently be caught by the alerting stack ([§5](#5-cost--scalability)).
+**Is it fast and scalable? — The engineering is solid; the compute budget is small.** Indexing, connection pooling, and the pgvector search index (upgraded to HNSW, `m=16, ef_construction=200` — a good, deliberate choice) are all well designed. The ceiling is Azure's cheapest Burstable tiers for both the database and compute layer, same as before, with no confirmed alerting on CPU-credit exhaustion.
 
-**Am I overpaying / underpaying for reliability? — There's a mismatch between promises and infrastructure.** The internal `DISASTER_RECOVERY_PLAN.md` promises a 4-hour recovery time and 1-hour data-loss window; the actual Azure config has **no high availability, no geo-redundant backups, and only 7 days of backup retention** ([§6.4](#64-disaster-recoverysla-promises-vs-actual-infrastructure)). This is a legitimate, defensible cost trade-off for an early-stage platform — but it is currently **undocumented as a trade-off** and contradicts a document that reads as a firm commitment. A client reading `DISASTER_RECOVERY_PLAN.md` today would be misled about what happens if the Swiss North region has an outage.
+**Am I paying for reliability I'm not getting? — Yes, and it's now backed by a legal document, not just an internal plan.** This repo contains `docs/legal/SERVICE_LEVEL_AGREEMENT.md`, which commits to **99.9%–99.95% uptime** depending on plan tier. The actual database has **high availability disabled, geo-redundant backup disabled, and only 7 days of backup retention**, and there is no secondary Azure region configured anywhere in the IaC. An SLA promising 99.9%+ uptime is not achievable on a single-AZ, non-HA database with no failover target — this is the single most consequential mismatch in the whole audit, because it's a *client-facing legal commitment*, not an internal engineering doc ([§6.3](#63-the-slaservice_level_agreementmd-promises-what-the-infrastructure-cannot-deliver)).
 
-**Bottom line:** the engineering fundamentals (schema design, indexing, rate limiting, network segmentation, secrets templating) are solid. The gaps are concentrated in a small number of **specific, fixable** places — not a systemic rewrite. See [§7](#7-prioritized-remediation-roadmap) for the fix order.
+**Bottom line:** this is a well-built, feature-rich platform with good security fundamentals in most places. The problems are concentrated and specific — one leaking analytics endpoint, an SLA that outruns the infrastructure backing it, and a handful of live-Azure hardening items from the repo's own prior audit that need to be re-verified against the actual subscription (something this document, being a code-only review, could not do). None of this requires a rewrite; see [§7](#7-prioritized-remediation-roadmap) for the fix order.
 
 ---
 
 ## 0. How to read this document
 
-Findings are tagged:
-
 | Tag | Meaning |
 |---|---|
-| **P0 – Critical** | Cross-tenant data exposure, auth bypass, or infra config that silently disables security. Fix before next deploy. |
-| **P1 – High** | Real risk under specific conditions, or a documented guarantee the infra can't currently meet. Fix this sprint. |
-| **P2 – Medium** | Best-practice gap / latent tech debt / missing test coverage. Fix this quarter. |
-| **P3 – Low** | Cosmetic, documentation hygiene, minor optimization. |
-
-Each finding includes the file path, evidence, and a plain-language client-impact statement.
+| **P0 – Critical** | Cross-tenant data exposure, auth bypass, or a live-infra gap with direct data-safety impact. Fix before next deploy / client demo. |
+| **P1 – High** | Real risk under specific conditions, or a client-facing guarantee (SLA, data-residency promise) the infra can't currently meet. Fix this sprint. |
+| **P2 – Medium** | Best-practice gap, latent tech debt, missing test coverage, or infra hygiene issue. Fix this quarter. |
+| **P3 – Low** | Cosmetic, documentation hygiene, or a pattern that's already appropriately scoped/gated. |
 
 ---
 
 ## 1. Security — Tenant Isolation & Authentication
 
-### 1.1 P0 (confirmed): Cross-tenant data leakage
+### 1.1 P0 (confirmed): Cross-tenant data leakage in analytics endpoint
 
-Two routes were opened and read in full. Neither imports any session/auth helper, and neither filters by `tenantId`:
-
-**[apps/web/app/api/search/route.ts](../apps/web/app/api/search/route.ts)** — `POST` handler:
+**[apps/web/app/api/analytics/metrics/route.ts](../apps/web/app/api/analytics/metrics/route.ts)** — read in full (verified):
 ```ts
-import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
-// no auth/session import at all
+export const GET = withAuthApiHandler(async (request: NextRequest, ctx: AuthenticatedApiContext) => {
+  const tenantId = ctx.tenantId;
+  const cacheKey = `analytics:metrics:${tenantId}`;      // tenant-aware cache key...
+  const cached = await getCached(cacheKey);
+  if (cached) return createSuccessResponse(ctx, cached);
 
-export async function POST(request: NextRequest) {
-  const { query, filters } = await request.json()
-  ...
-  const where: Record<string, unknown> = {
-    OR: [ { contractTitle: { contains: query, ... } }, ... ] // no tenantId anywhere
-  }
-  const contracts = await prisma.contract.findMany({ where, ... })
+  const [totalContracts, valueAggregate, suppliers, artifacts, upcomingContracts] = await Promise.all([
+    prisma.contract.count({ where: { isDeleted: false } }),                 // ...but NO tenantId filter
+    prisma.contract.aggregate({ where: { isDeleted: false }, _sum: {...} }), // ...but NO tenantId filter
+    prisma.contract.groupBy({ by: ['supplierName'], where: { ... } }),        // ...but NO tenantId filter
+    prisma.artifact.count(),                                                  // no where clause at all
+    prisma.contract.count({ where: { isDeleted: false, endDate: {...} } })    // ...but NO tenantId filter
+  ]);
+  await setCached(cacheKey, data, { ttl: 60 });
 ```
-**Impact for the client:** Any request to `/api/search` (regardless of who is logged in, or arguably even without a session, depending on whether the global middleware actually blocks it — see [§1.4](#14-note-middleware-provides-a-safety-net-but-this-route-still-shouldnt-rely-on-it)) returns contract titles, descriptions, supplier names, and financial values across **every tenant in the database**, not just the caller's own organization.
+The route correctly uses the shared `withAuthApiHandler` wrapper (so it's not reachable by an unauthenticated caller) and even builds a *per-tenant* cache key from `ctx.tenantId` — but never passes `tenantId` into any of the five underlying Prisma queries. **The route is authenticated, but not tenant-isolated.**
 
-**[apps/web/app/api/analytics/metrics/route.ts](../apps/web/app/api/analytics/metrics/route.ts)** — `GET` handler:
-```ts
-const [totalContracts, valueAggregate, suppliers, artifacts, upcomingContracts] = await Promise.all([
-  prisma.contract.count({ where: { isDeleted: false } }),               // no tenantId
-  prisma.contract.aggregate({ where: { isDeleted: false }, _sum: {...} }), // no tenantId
-  prisma.contract.groupBy({ by: ['supplierName'], where: { ... } }),       // no tenantId
-  prisma.artifact.count(),                                                 // no filter at all
-  ...
-])
-```
-**Impact for the client:** Total contract count, total portfolio value, supplier list, and artifact counts returned are **platform-wide aggregates**, not the caller's tenant. A competitor sharing the platform could infer another client's total contract value and supplier relationships.
+**Client impact:** Any logged-in user, from any tenant, hitting the analytics dashboard receives the platform's total contract count, total portfolio value, full supplier list, and total artifact count — not their own organization's numbers. Because the result is cached for 60 seconds under a tenant-specific key, every tenant's dashboard will independently populate with the same platform-wide figures the first time it's requested after each cache expiry.
 
-**Fix:** Both routes need (a) a session check that returns `401` if unauthenticated, and (b) `tenantId: session.user.tenantId` added to every `where` clause, consistent with the pattern already used correctly in `apps/web/app/api/ai/costs/route.ts` and the repository layer (see [§1.5](#15-repository-layer-is-well-scoped-the-problem-is-route-level-bypasses)).
+**By contrast, this exact bug does NOT exist** in the sibling endpoints that were checked: `analytics/artifacts`, `analytics/categorization-accuracy`, `analytics/cost-savings`, `analytics/dashboard`, `dashboard/stats`, `vendor-risk`, and `legal-holds` all correctly filter by `tenantId` — confirming this is a one-off omission in a single file, not a systemic pattern, and the fix is small (add `tenantId` to each `where` clause and to the bare `prisma.artifact.count()` call).
 
-### 1.2 P0 (confirmed): Auth enforcement is opt-in and off by default in every deployment manifest
+*(Note: `/api/search`, which leaked cross-tenant data in an earlier audit pass against a different branch, is correctly tenant-scoped on `main` — verified directly: it uses `withAuthApiHandler`, Zod-validates input, and includes `tenantId: ctx.tenantId` in its `where` clause with an explicit code comment: `// tenant-scoped — prevents cross-tenant search IDOR`.)*
 
-`apps/web/lib/tenant-server.ts` deliberately fails closed in code:
-```ts
-function getDefaultTenantId(): string {
-  if (process.env.NODE_ENV === "production") {
-    throw new Error("Tenant ID required. Please authenticate or provide x-tenant-id header.");
-  }
-  return "demo";
-}
-```
-That's good. But two other enforcement points are gated behind a *second*, separate flag, `REQUIRE_AUTH`:
-```ts
-// requireTenantContext()
-if (!context.isAuthenticated && process.env.NODE_ENV === "production" && process.env.REQUIRE_AUTH === "true") {
-  throw new Error("Authentication required");
-}
-// validateTenantAccess()
-if (process.env.NODE_ENV !== "production" || process.env.REQUIRE_AUTH !== "true") {
-  return true; // allow any tenant access
-}
-```
-and `apps/web/middleware.ts` line ~265: `const requireAuth = process.env.REQUIRE_AUTH === "true";` gates whether a missing tenant ID returns 401.
+### 1.2 Tenant-ID resolution chain — sound, with one low-severity nuance
 
-**Verified by direct grep across every real deployment artifact in the repo** — `REQUIRE_AUTH` is set **only** in:
-- `.env.example` (line 156)
-- `apps/web/.env.production.example` (line 32)
+`apps/web/lib/tenant-server.ts` (verified) resolves tenant ID in this order: authenticated session → `x-tenant-id` header → `tenantId` query param → **throw in production** / fall back to `'demo'` in development only. This is correctly fail-closed.
 
-It is **absent** from:
-- `kubernetes/configmap.yaml` (has `NODE_ENV`, feature flags, rate-limit config — no `REQUIRE_AUTH`)
-- `kubernetes/deployment.yaml` env section
-- `helm/contigo/values.yaml` and `helm/contigo/values-azure.yaml` `env:` blocks (both only set `NODE_ENV` and `NEXT_TELEMETRY_DISABLED`)
-- `docker-compose.prod.yml`
+`apps/web/lib/api-middleware.ts`'s `getApiContext()` returns `tenantId: 'unknown'` in production if the `x-tenant-id` header is missing, rather than throwing. On inspection, this function carries a doc-comment explaining it is **only used to construct error responses for already-rejected/unauthenticated requests** (`createErrorResponse(getApiContext(req), …)`), not to service real data queries — so in its documented/intended usage this is fine. **Recommendation (P3):** add a lint rule or code comment enforcement so `getApiContext()` (error-path only) can't accidentally be reused inside a route's data-fetching logic instead of the authenticated `ctx` object a handler already receives from `withAuthApiHandler`.
 
-**Impact for the client:** If the platform is deployed using the Kubernetes manifests, Helm chart, or `docker-compose.prod.yml` exactly as checked into this repository — i.e. the actual, real deployment path, not the example env files — `validateTenantAccess()` unconditionally returns `true` for any tenant, and `requireTenantContext()` never throws. The "production-safe" checks that exist in the code are real, but **nothing in the shipped infra config turns them on.** This is a textbook "secure by config, insecure by default" failure: a copy-paste deploy from this repo today ships with tenant-access validation effectively disabled.
+### 1.3 CSRF, rate limiting, and default-deny authentication — confirmed good
 
-**Fix:** Add `REQUIRE_AUTH: "true"` to `kubernetes/configmap.yaml` and to the `env:` block in both `helm/contigo/values.yaml` and `values-azure.yaml`. Better: invert the default so the code fails closed unless `REQUIRE_AUTH=false` is explicitly set for local dev, so a missing env var can never silently mean "open access."
+- **CSRF:** `apps/web/middleware.ts` implements HMAC-SHA256-signed, base64-encoded double-submit tokens with an 8-hour expiry and constant-time comparison, with a short, explicit exemption list (NextAuth internals, pre-auth flows, webhooks, health checks, the CSRF-issuance endpoint itself, and multipart upload). This matches the "CSRF protection complete" claim in the production-readiness doc and was independently verified in code.
+- **Rate limiting:** tiered by role (anonymous/user/admin) and by route category (auth/ai/upload/contracts/read), backed by Redis with an in-memory fallback for single-instance/local deployments. **Operational note:** if this is ever run as multiple stateless instances without Redis configured, the in-memory fallback means rate limits are enforced *per instance*, not globally — confirm `REDIS_URL`/Upstash is always configured in every real deployment target.
+- **Default-deny auth:** the middleware wraps NextAuth and requires a valid session for every `/api/**` route except an explicit allowlist (`/api/auth/**`, health checks, the CSRF endpoint, webhooks, `/api/cron/**` gated by a separate `CRON_SECRET`, and `/api/v1/**`/`/api/portal/**` gated by their own bearer-token/portal-token schemes). This is the correct pattern (allowlist exceptions to a default-deny rule, not the reverse).
 
-### 1.3 P1 (confirmed): Inconsistent tenant-fallback handling across API routes
+### 1.4 Admin/role-based authorization — confirmed good on spot-check
 
-Several routes catch a thrown "tenant required" error and substitute a hardcoded tenant instead of returning `401`:
+Five admin routes were opened and each independently enforces a role check before touching data — via a direct role comparison (`admin/security-settings`, `admin/tenant`), a shared helper (`canManageTeam()` in `admin/team/members`), or a permission-based check (`requireAdminScope()` in `admin/api-tokens`, `hasPermission()` in `admin/security/ip-allowlist`). No route was found that performs tenant-scoped data access without also checking role where an admin-only action was intended.
 
-**[apps/web/app/api/contracts/[id]/family-health/route.ts](../apps/web/app/api/contracts/[id]/family-health/route.ts):**
-```ts
-try {
-  tenantId = await getTenantIdFromRequest(request)
-} catch {
-  tenantId = 'demo'
-}
-const contract = await prisma.contract.findFirst({ where: { id: contractId, tenantId, isDeleted: false } })
-```
-This is different from — and less severe than — a full cross-tenant leak, because it queries the **`demo`** tenant, not an arbitrary other tenant. But it means an authentication *failure* is silently converted into a **successful response containing the demo tenant's data**, rather than a `401`. That's a broken-fail-open pattern that should be fixed regardless of how sensitive the `demo` tenant's data is.
+### 1.5 New enterprise-security surface (SCIM, GDPR, legal holds) — confirmed good on spot-check
 
-`apps/web/app/api/contracts/orphans/route.ts` has the identical pattern (confirmed by research pass, not independently re-read line-by-line by the auditor — flagged as **needs final verification** but highly likely given the identical helper function is used).
+`scim/v2/Users`, `gdpr/export`, `gdpr/delete`, `legal-holds`, and `admin/security/ip-allowlist` were each opened and confirmed to enforce both authentication and `tenantId` scoping (SCIM scopes by `tenant_id` in a raw SQL query; the others use the standard `ctx.tenantId` pattern). This is a genuinely good sign for a client evaluating whether GDPR/data-subject-request tooling is real or decorative — it appears to be real and properly isolated per tenant.
 
-**Fix:** Replace every `catch { tenantId = 'demo' }` with `catch { return NextResponse.json({ error: 'Authentication required' }, { status: 401 }) }`.
+### 1.6 P2 (confirmed): Two inconsistent credential-encryption implementations remain
 
-### 1.4 Note: middleware provides a safety net, but this route still shouldn't rely on it
+Both `apps/web/lib/integrations/connectors/encryption.ts` and `apps/web/lib/integrations/sync-service.ts` independently implement AES-256-GCM encryption for stored integration credentials, and **both correctly throw if `CREDENTIAL_ENCRYPTION_KEY` is missing in production** (this specific historical P0 remains fixed). However, they use two different dev-time key-derivation fallbacks (a hardcoded string vs. a hash of `DATABASE_URL`), which is a latent bug risk if credentials encrypted by one path are ever decrypted by the other. Consolidate into one shared utility.
 
-`apps/web/middleware.ts` does enforce authentication globally: it checks for a valid JWT/session `token` on all non-public paths and returns `401` if missing, and its route matcher (`"/((?!_next/static|_next/image|favicon.ico|public).*)"`) does cover `/api/search` and `/api/analytics/metrics`. **This likely prevents fully anonymous access today** — but it does *not* prevent the confirmed cross-tenant leak in [§1.1](#11-p0-confirmed-cross-tenant-data-leakage), because middleware only confirms *a* valid session exists, not that the query is scoped to *that session's tenant*. The two vulnerable routes remain exploitable by **any authenticated user of any tenant**, which is the actual security boundary that matters to a client.
-
-### 1.5 Repository layer is well-scoped — the problem is route-level bypasses
-
-The Prisma repository layer (`packages/clients/db/src/repositories/*.repository.ts`) consistently includes `tenantId` in `where` clauses for `contract`, `artifact`, `user`, and `rate-card` repositories. **The isolation problem is not architectural — it's that a handful of routes query `prisma` directly instead of going through the tenant-scoped repository layer.** This is good news: the fix is localized (patch ~5 route files), not a schema or architecture redesign.
-
-### 1.6 P1 (confirmed): Two different, inconsistent credential-encryption implementations
-
-There are **two independent AES-256-GCM implementations** for encrypting integration credentials, with different key-derivation fallbacks:
-
-**`apps/web/lib/integrations/connectors/encryption.ts`** (verified):
-```ts
-function getMasterKey(): Buffer {
-  const key = process.env.CREDENTIAL_ENCRYPTION_KEY;
-  if (!key) {
-    if (process.env.NODE_ENV === 'development') {
-      return Buffer.from('dev-only-encryption-key-32bytes!'); // fixed dev key
-    }
-    throw new Error('CREDENTIAL_ENCRYPTION_KEY environment variable is required'); // fails closed in prod ✅
-  }
-  ...
-}
-```
-
-**`apps/web/lib/integrations/sync-service.ts`** (verified, `getEncryptionKey()`):
-```ts
-if (!keyBase64) {
-  if (process.env.NODE_ENV === 'production') {
-    throw new Error('CREDENTIAL_ENCRYPTION_KEY is required in production'); // fails closed in prod ✅
-  }
-  const fallbackKey = process.env.DATABASE_URL || 'default-fallback-key-for-dev';
-  return crypto.createHash('sha256').update(fallbackKey).digest(); // different derivation than encryption.ts
-}
-```
-**Good news:** the specific P0 from `docs/GAP_ANALYSIS_REPORT.md` ("falls back to `DATABASE_URL` in all environments") **is already fixed** — both paths now correctly throw in production. **Remaining issue:** having two separate encryption utilities with two different key-derivation schemes for the same category of secret (integration credentials) is a maintainability and correctness risk — if a credential is encrypted via one path and decrypted via the other, decryption silently fails or produces garbage. Consolidate into a single shared `lib/crypto/credential-encryption.ts`.
-
-### 1.7 P2: Tenant ID trusted from request body in an otherwise-authenticated route
-
-`apps/web/app/api/ai/costs/route.ts` `POST` handler (verified, full read): the handler correctly checks `getServerSession()` and returns `401` if missing, and derives `tenantId` from the session for `set-budget`. But the `record-usage` action re-destructures a **client-supplied** `tenantId` from the request body, shadowing the session-derived value:
-```ts
-case 'record-usage': {
-  const { tenantId = 'default', model, taskType, inputTokens, outputTokens } = body; // ignores session.user.tenantId
-  aiCostOptimizerService.recordUsage({ model, taskType, inputTokens, outputTokens, tenantId });
-```
-**Impact:** A logged-in user of Tenant A can attribute AI cost/usage records to an arbitrary `tenantId` (or `'default'`) instead of their own. This doesn't leak *contract* data, but it can pollute another tenant's cost/budget dashboard or corrupt cost-based rate-limiting/billing signals. **Fix:** always use the session-derived `tenantId`, never one supplied in the request body, for this class of route.
-
-### 1.8 P1: Mock-data trigger not gated by environment on at least one route
-
-`apps/web/app/api/search/route.ts`:
-```ts
-const dataMode = request.headers.get('x-data-mode') || 'real'
-if (dataMode !== 'real') {
-  return NextResponse.json({ results: [ /* fabricated contract data */ ] })
-}
-```
-Unlike `apps/web/app/api/contracts/route.ts` and `apps/web/app/api/rate-cards/[id]/route.ts` — both of which correctly gate mock mode behind `ENABLE_MOCK_MODE === 'true' && NODE_ENV !== 'production'` or an explicit production rejection — `search/route.ts` and `apps/web/app/api/analytics/metrics/route.ts` will return **fabricated data to any client that sends an `x-data-mode` header**, in any environment, including production. This is lower severity than the missing tenant filter in the same file, but worth fixing in the same patch.
+### 1.7 P2 (reported, not independently re-opened): Some large aggregate/reporting tables may lack a standalone tenant index — see [§3.1](#31-schema-indexing--strong-two-small-gaps).
 
 ---
 
-## 2. Kubernetes & Azure Infrastructure
+## 2. Infrastructure — Azure & Deployment Pipelines
 
-### 2.1 P0 (confirmed): Two parallel, conflicting Kubernetes manifest sets
+### 2.1 P1 (confirmed): Three different deployment definitions exist for the same app, two of which are stale-looking
 
-The repository contains **both** `kubernetes/` and `k8s/` directories defining the same application, with materially different configuration:
+This repo defines the *application infrastructure* in three separate places:
 
-| | `kubernetes/deployment.yaml` | `k8s/deployment.yaml` |
-|---|---|---|
-| Namespace | `contract-intel` (verified via grep, matches `kubernetes/security-policies.yaml`) | `contract-intelligence` (verified via grep) |
-| Web CPU request/limit | 250m / 1000m | 2000m / 4000m |
-| Web memory request/limit | 1Gi / 4Gi | 8Gi / 16Gi |
-| Image | `contract-intel-app:latest` | `ghcr.io/your-org/contract-intelligence-web:latest` |
-| HPA present in this file | No (HPA lives only in Helm) | Yes, static HPA block |
+1. **`infrastructure/azure/main.bicep`** — a full AKS cluster (`Standard_B4ms` nodes, autoscale 2–5), Postgres Flexible Server, Redis, Storage, Key Vault, ACR. Nothing in `.github/workflows/` currently deploys to this AKS cluster.
+2. **`infrastructure/azure/pilot-minimal.bicep`** — a *much* smaller Azure **Container Apps**-based footprint (Postgres `Standard_B1ms`, Redis Basic C0 250MB, 1–2 Container App replicas), explicitly commented as a ~$73–83/month pilot configuration.
+3. **`helm/contigo/**`** — a Helm chart clearly designed to deploy onto Kubernetes (Deployments, HPA, Ingress, ConfigMap, Secrets/Key-Vault-CSI templates) — but there is no `kubernetes/`/`k8s/` raw-manifest directory and no workflow that runs `helm install`/`helm upgrade` against the AKS cluster from #1.
 
-**Correction to an earlier research pass:** an initial automated finding claimed `kubernetes/deployment.yaml` used a *different* namespace than `kubernetes/security-policies.yaml`, implying the restricted Pod Security Standard wasn't applied. **This was independently re-verified and found to be incorrect** — both files consistently use `contract-intel`. The real problem is the second, unused-looking `k8s/` directory using a *different* namespace (`contract-intelligence`) and roughly **8x the resource requests**. If anyone applies `k8s/deployment.yaml` instead of `kubernetes/deployment.yaml` (e.g. an operator unsure which is current, or a CI step referencing the wrong path), they'd deploy into a namespace with none of the NetworkPolicy/PodSecurityStandard protections defined in `kubernetes/security-policies.yaml`, and provision ~8x the intended compute for the same workload — a direct, avoidable cost and security-drift risk.
+Meanwhile, **`.github/workflows/deploy-container-apps.yml`** (wrapped by `azure-deploy.yml`) is the workflow that actually appears wired up and active: it builds an image, tags it with the git SHA, pushes to ACR, and deploys straight to Azure Container Apps — bypassing Helm and AKS entirely. There is also a fourth, **legacy AWS ECS** workflow (`deploy.yml`) targeting `contract-intelligence-staging`/`-prod` ECS clusters, which looks stale relative to the Azure-first direction of the rest of the repo but is still present and runnable.
 
-**Fix:** Delete one of the two directories (recommend keeping the Helm chart as the single source of truth per `SYSTEM_ARCHITECTURE.md`'s own stated direction, and archiving `k8s/` and possibly `kubernetes/` raw manifests to `docs/archive/` equivalents) so there is exactly one deployable definition.
+**Client impact:** there is no single, unambiguous answer to "where does this actually run today," which matters directly for auditing the very infrastructure this report is trying to assess — the Bicep AKS config (HA disabled, 7-day backups, etc.) may not even describe the database backing the live Container Apps deployment described in the repo's own `AZURE_CYBERSECURITY_AUDIT_2026-05-29.md` (which found the live resource group `contigoContainerApps`, confirming Container Apps is indeed the real target). **Recommendation:** pick one deployment target, delete or clearly mark the other IaC/workflows as archived, and make sure the Bicep/Helm files that remain describe what's *actually* running.
 
-### 2.2 P1 (confirmed): Container images are not version-pinned
+### 2.2 P1 (confirmed): `REQUIRE_AUTH` is correctly set in Helm — but missing from `docker-compose.prod.yml`
 
-Across every manifest checked — `helm/contigo/values.yaml`, `helm/contigo/values-azure.yaml`, `kubernetes/deployment.yaml`, `k8s/deployment.yaml`, `docker-compose.prod.yml` (`${VERSION:-latest}` default) — the application images use the `:latest` tag. Base infra images (`node:22-alpine`, `pgvector/pgvector:pg16`, `redis:7-alpine`) are appropriately pinned to major/minor versions; the **application's own images are not**.
+Good news first: `helm/contigo/values.yaml`, `values-azure.yaml`, and the rendered `templates/configmap.yaml` **do** set `REQUIRE_AUTH: "true"` (this was a P0 in an earlier, wrong-branch pass of this audit — it is fixed on `main` for the Helm path). However, `docker-compose.prod.yml` — which is one of the plausible ways this app gets run in a VM/on-prem/self-hosted scenario — has **no `REQUIRE_AUTH` variable set at all**. Given `apps/web/lib/tenant-server.ts`'s `validateTenantAccess()`/`requireTenantContext()` gate strict enforcement behind this flag, any deployment using `docker-compose.prod.yml` as-is inherits the same "opt-in security" gap previously found elsewhere. **Fix:** add `REQUIRE_AUTH=true` to `docker-compose.prod.yml`'s environment block, and ideally flip the code's default so a *missing* flag fails closed instead of open.
 
-**Client impact:** `:latest` means there is no guarantee of what code is actually running at any point in time, no reliable rollback target if a deploy introduces a regression, and `pullPolicy: Always` (set in `values-azure.yaml`) means every pod restart can silently pull newer code — a classic cause of "it worked yesterday" incidents. **Fix:** tag images with the Git SHA or semantic version in CI (`azure-deploy.yml`) and reference that immutable tag in Helm values, promoting through environments explicitly.
+### 2.3 P1 (confirmed): No container vulnerability scanning in the active deployment path
 
-### 2.3 P2 (confirmed): `publicNetworkAccess` not explicitly set on PostgreSQL
+`deploy-container-apps.yml` (the workflow that's actually wired to production) and `docker-build-only.yml` have **no Trivy/Grype/Defender image scan step**. The *only* place a Trivy scan exists in this repo is inside the legacy, likely-inactive `deploy.yml` (AWS ECS) workflow. **Fix:** add an image scan step to `deploy-container-apps.yml` before the image is pushed to ACR / deployed, gated to fail on Critical/High findings — this is directly related to the repo's own cybersecurity audit finding "production dependency audit still reports high vulnerabilities" ([§6.1](#61-a-real-live-azure-audit-already-exists-in-this-repo--its-findings-need-a-fresh-live-recheck)).
 
-`infrastructure/azure/main.bicep`'s `postgres` resource relies on subnet delegation (`network.delegatedSubnetResourceId`) for private connectivity, but never explicitly sets `properties.network.publicNetworkAccess: 'Disabled'`. Azure's default behavior with a delegated subnet is private-only, so this is **likely not currently exploitable**, but it is an implicit rather than explicit control — a future template change (e.g. adding a firewall rule block) could silently re-enable public access without anyone noticing in review. **Fix:** set the property explicitly so the intent is visible in code and any drift is a visible diff.
+### 2.4 P2 (confirmed): Workers pod health probe always passes
 
-### 2.4 P2 (confirmed): Secrets handling in Kubernetes is correctly templated, not exposed
+`helm/contigo/templates/workers-deployment.yaml`'s liveness probe (reported, high-confidence quote) is:
+```yaml
+livenessProbe:
+  exec:
+    command: ["node", "-e", "process.exit(0)"]
+```
+This process always exits `0` regardless of whether the Node process is actually healthy or processing jobs — Kubernetes will never restart a hung/deadlocked worker pod based on this probe. **Fix:** implement a real `/health` check in the worker process (e.g. confirm DB/Redis connectivity and that the job loop has ticked recently) and point the probe at it, matching the pattern already used correctly for the web (`/api/health`) and websocket (`/health`) deployments.
 
-`kubernetes/secrets.yaml` contains only placeholder values (`PASSWORD`, `sk-your-key`, `generate-with-openssl-rand-base64-32`) with an explicit comment warning not to commit real secrets, and both `kubernetes/secrets.yaml` and `helm/contigo/templates/secrets.yaml` support an Azure Key Vault `SecretProviderClass` path. **This is a well-designed pattern** — no finding here beyond confirming it's sound.
+### 2.5 P2 (confirmed): Container images unpinned (`:latest`) in Helm, while the active CI path uses SHA tags
 
-### 2.5 P1 (confirmed): No image / dependency vulnerability scanning in CI
+`helm/contigo/values.yaml` and `values-azure.yaml` both pin `tag: latest`. This is inconsistent with `deploy-container-apps.yml`, which deliberately tags images with `sha-${GITHUB_SHA::8}` — suggesting whoever built the active deployment pipeline already understood the reproducibility/rollback problem with `:latest`, but the Helm chart (if ever used) wasn't updated to match. **Fix:** parameterize the Helm image tag and pass the same SHA-based tag used by the Container Apps pipeline, so the two paths can't silently drift even if both remain in the repo during a transition period.
 
-Reviewed workflow files under `.github/workflows/`: `ci.yml`, `ci-cd.yml`, `strict-core.yml`, `strict-full.yml`, `lighthouse.yml`, `deploy.yml`, `azure-deploy.yml`. All run typecheck/lint, most run unit tests, `ci.yml` runs `pnpm audit` but **explicitly non-blocking** (`pnpm audit --audit-level=moderate || true`). **None of the workflows run a container image scan** (Trivy/Grype) before pushing to ACR in `azure-deploy.yml`, and **none run the E2E test suite** that exists in `apps/web/tests/` as a required gate. **Fix:** add a blocking Trivy scan step to `azure-deploy.yml` before `docker push`, and make `pnpm audit --audit-level=high` a blocking check (moderate-level non-blocking is reasonable, but High/Critical should fail the build).
+### 2.6 P2 (confirmed): No NetworkPolicy or pod-level security context in the Helm chart
 
-### 2.6 P3: Pod Security Standard, NetworkPolicy quality is good where applied
+Unlike an earlier (different-branch) version of this app which had a dedicated Kubernetes NetworkPolicy/PodSecurityStandard manifest, `helm/contigo/templates/**` on `main` has **no NetworkPolicy template and no `securityContext`/`runAsNonRoot` setting** in any Deployment template. AKS-level Calico network policy is enabled in `main.bicep`, but that's cluster-level plumbing, not a namespace-level default-deny policy — so if this Helm chart is ever deployed to that AKS cluster, pods would have no network segmentation from each other by default. Given [§2.1](#21-p1-confirmed-three-different-deployment-definitions-exist-for-the-same-app-two-of-which-are-stale-looking) means this chart may not currently be the live deployment path, this is lower urgency than it would otherwise be — but it should be fixed before Helm/AKS is treated as a supported target again.
 
-`kubernetes/security-policies.yaml` defines a `restricted` Pod Security Standard, a least-privilege `ServiceAccount`/`Role` (only `get` on named `ConfigMap`/`Secret`), `automountServiceAccountToken: false`, and a default-deny `NetworkPolicy` with explicit allow rules for ingress-nginx, inter-pod traffic, DNS, HTTPS egress, and Postgres access restricted to named app pods. **This is genuinely good design** — the only gap is ensuring the `k8s/` duplicate ([§2.1](#21-p0-confirmed-two-parallel-conflicting-kubernetes-manifest-sets)) can't be deployed instead and bypass it.
+### 2.7 P2 (confirmed): `docker-compose.prod.yml` still provisions MinIO
+
+Matches the pattern found previously: `docker-compose.prod.yml` includes a MinIO service on ports 9000/9001, which is normally a dev/local S3-compatible stand-in. If this compose file is ever used to run a real production instance (as opposed to Container Apps against Azure Blob Storage), object storage would be running on a single, non-Azure-backed, non-redundant MinIO container rather than the geo-aware Storage Account defined in Bicep. Worth an explicit "which file is actually prod" decision, same as [§2.1](#21-p1-confirmed-three-different-deployment-definitions-exist-for-the-same-app-two-of-which-are-stale-looking).
 
 ---
 
 ## 3. Performance & Database
 
-### 3.1 Indexing — good (verified via `packages/clients/db/schema.prisma` and migration files)
+### 3.1 Schema indexing — strong, two small gaps
 
-`Contract`, `Artifact`, `User`, `Embedding`, `ContractMetadata`, `TaxonomyCategory`, `ChatConversation`, and other high-traffic models all carry `@@index([tenantId])`, and `Contract` additionally has multiple composite indexes (`[tenantId, status]`, `[tenantId, createdAt desc]`, `[tenantId, expirationDate]`) matching realistic dashboard query patterns. No obvious missing-index gap was found on the models reviewed.
+`packages/clients/db/schema.prisma` (large schema, reviewed via targeted reads/greps) has comprehensive tenant-scoped composite indexing on the highest-traffic models: `Contract` (~50 indexes, many `tenantId`-led), `Artifact`, `ContractEmbedding`, `AuditLog`, `Obligation`, `ChatConversation`, `ProcessingJob`, `PolicyEvaluation`, `PolicyFinding`, `VendorRiskProfile`, and `LegalHold` all carry a standalone `@@index([tenantId])` or an equivalent tenant-led composite index. Two exceptions (reported): `WebhookDelivery` has `@@index([tenantId, status])` but no standalone `@@index([tenantId])`, and `Notification` has `@@index([tenantId, userId])` but no standalone `@@index([tenantId])` — both would force a less-efficient index scan for any query that filters by tenant alone without also filtering by status/user. Low urgency, easy fix.
 
-### 3.2 pgvector — correctly configured, one thing to monitor
+### 3.2 pgvector — upgraded to HNSW since the last review, a genuinely good change
 
-`ContractEmbedding.embedding` and the `contracts.embedding` column both have `ivfflat` indexes with `vector_cosine_ops` (`packages/clients/db/migrations/006_contract_repository_optimization.sql`, `007_performance_indexes.sql`), which is the right index type for cosine-similarity RAG search. The `lists = 100` parameter is a reasonable starting point but **should be revisited as embedding row-count grows** — `ivfflat` recall/latency tradeoffs shift with table size, and there's no evidence of a scheduled `REINDEX`/list-count review job. Low-priority now; will matter as contract volume scales into the hundreds of thousands of chunks.
+A migration (`20260215000000_hnsw_index_upgrade`) replaced the previous `ivfflat` index with `USING hnsw ("embedding" vector_cosine_ops) WITH (m = 16, ef_construction = 200)`, and a companion migration reduced embedding dimensionality from 1536 to 1024 to match a move to `text-embedding-3-small`. HNSW at these parameters is a solid, deliberate choice for RAG recall/latency at scale — no further action needed here.
 
-### 3.3 P2: One real N+1-adjacent pattern
+### 3.3 P2 (confirmed pattern, file path reported): Generic `bulkCreate()` helper is a real N+1
 
-`contract.repository.ts`'s `batchCreate()` wraps a `for` loop of individual `tx.contract.create()` (and conditionally `tx.processingJob.create()`) calls inside a single `$transaction`. This is safe (ACID-consistent) but not actually batched — it issues N round trips instead of one `createMany()` call. For bulk contract imports this will scale linearly rather than as a single query. **Fix:** use `createMany()` for the contracts, then a second `createMany()` for processing jobs, only falling back to per-row creation if per-row IDs must be threaded between the two inserts (in which case, consider having the DB generate the job rows via a single INSERT ... SELECT instead).
+A generic repository helper (reported at `packages/clients/db/src/repositories/index.ts`) loops `for (const item of data) { await repo.create(item) }` instead of using `createMany()`. By contrast, purpose-built repositories for clauses and contract-artifacts already correctly use `createMany()`. **Impact:** any caller that reaches for the generic helper for a bulk import (e.g. rate-card ingestion, described as up to ~100k rows per job) pays for N round-trips instead of one. **Fix:** either delete the generic helper in favor of model-specific `createMany()` calls, or make it detect and batch via `createMany()` internally.
 
-### 3.4 PgBouncer sizing — plausible, but worth load-testing under real Burstable-tier constraints
+### 3.4 PgBouncer sizing — appropriate for the current Postgres SKU
 
-`docker-compose.pgbouncer.yml`: `POOL_MODE=transaction`, `MAX_DB_CONNECTIONS=100`, `DEFAULT_POOL_SIZE=50`, `MAX_CLIENT_CONN=1000`. This is a sane configuration on paper for a `Standard_B2s` (2 vCPU/4GB) Postgres instance. **However**, `Standard_B2s` is a *Burstable* SKU — its sustained performance is governed by CPU credit accumulation/consumption, not a fixed vCPU guarantee. A connection-pool size that's fine during idle/burst periods can still starve once credits are exhausted under sustained load, independent of the pool size being "correct" on paper. This is a monitoring gap, not a config gap — see [§5.1](#51-p1-confirmed-burstable-compute-tier-with-no-cpu-credit-monitoring-or-alerting).
+`docker-compose.pgbouncer.yml`: `POOL_MODE=transaction`, `MAX_DB_CONNECTIONS=100`, `DEFAULT_POOL_SIZE=50`. This lines up sensibly with `Standard_B2s`'s practical connection ceiling. As before, the caveat is that `Standard_B2s` is a *Burstable* SKU — pool sizing being correct on paper doesn't protect against CPU-credit exhaustion under sustained (non-bursty) load; see [§5.1](#51-p1-confirmed-still-no-cpu-credit-monitoringalerting-for-burstable-compute).
 
-### 3.5 Test coverage thresholds are real but low
+### 3.5 Test coverage — real, low, with a documented (but unused) plan to raise it for security-critical code
 
-`apps/web/vitest.config.ts` (verified): `statements: 40, branches: 30, functions: 35, lines: 40`. These are enforced (not aspirational), which is good, but they are well below what you'd want for a platform handling legally-binding contract data — industry norms for this kind of app run 70-80% on statements/lines. **This is an appropriate stepping-stone threshold for a fast-moving codebase, but should have a documented glide-path** (e.g. "+5% per quarter") rather than staying static indefinitely.
+`apps/web/vitest.config.ts` (verified pattern, matches prior findings): global thresholds are `statements: 40, branches: 30, functions: 35, lines: 40`. There is a **commented-out** stricter block targeting `lib/auth/**` at 80% that was never enabled. **Fix:** turn that block on — it's already written, just inactive — so the highest-risk code (auth) has a real, enforced floor instead of blending into the 40% global average.
 
-### 3.6 P2: No CI gate for E2E tests or load tests
+### 3.6 CI/CD — good required-gate coverage, one real gap (E2E)
 
-E2E tests exist (`apps/web/tests/`) and k6 load tests exist and are well-designed (`tests/load/k6-load.js`, `tests/load/k6-stress.js`, `scripts/load-test.js` — realistic ramp profiles, p95/p99 latency thresholds, error-rate thresholds), but **none of the reviewed GitHub Actions workflows execute either suite**. They exist as manual/local tooling only. This means a regression in checkout/contract flows or a performance regression can reach `main` without being caught automatically.
+`.github/workflows/ci.yml` blocks merges on lint, typecheck, and unit tests — including two security-relevant test suites run explicitly in CI (`tenant-guard.test.ts` under `packages/clients/db`, and a "critical-fields" CI gate). `ci-cd.yml` runs `pnpm security:audit:critical`, which (per the repo's own cybersecurity audit doc) is a real, working control that now blocks *critical* production dependency vulnerabilities specifically. **Gap:** the E2E suite is invoked with `continue-on-error: true` in `ci.yml`, meaning a broken checkout/contract flow can merge to `main` without blocking. **Fix:** promote E2E to a blocking gate, at least for the critical user journeys (login, upload, tenant-scoped list views).
+
+### 3.7 P2: No dedicated tests for the newest enterprise features
+
+No test files were found specifically covering SCIM, SSO, GDPR export/delete, legal holds, vendor risk, or DLP policies (reported). Given these were confirmed correctly tenant-scoped by manual spot-check ([§1.5](#15-new-enterprise-security-surface-scim-gdpr-legal-holds--confirmed-good-on-spot-check)), the risk today is regression, not a current vulnerability — but these are exactly the features a compliance-conscious client will ask about, so they deserve permanent automated coverage rather than one-time manual verification.
 
 ---
 
-## 4. Testing — Security-Specific Coverage
+## 4. What Was Confirmed Good (don't break these)
 
-Verified test files exist for the areas that matter most:
-- `apps/web/__tests__/tenant-isolation.test.ts` — cross-tenant category access tests
-- `apps/web/__tests__/lib/security/tenant.test.ts` — unit tests for `tenantWhere()`, `assertTenantMatch()`, `getApiTenantId()`, `hasAccessToTenant()`
-- `packages/data-orchestration/test/integration/authentication-authorization.test.ts` — auth/authz integration tests
-- `apps/web/lib/integrations/__tests__/connectors.test.ts` — credential encrypt/decrypt round-trip test
-
-**Gap:** these tests validate that the *helper functions* behave correctly in isolation. **None of them appear to be route-level integration tests that would have caught the actual vulnerable routes in [§1.1](#11-p0-confirmed-cross-tenant-data-leakage)** (`/api/search`, `/api/analytics/metrics`), because those routes bypass the helpers entirely rather than misusing them. **Recommendation:** add a test that iterates every file under `apps/web/app/api/**/route.ts` and asserts each either imports a tenant-scoping helper or is on an explicit allowlist of intentionally tenant-agnostic routes (health checks, public marketing endpoints). This turns "did we forget a route" into a CI-enforced invariant instead of a periodic manual audit.
+- `analytics/artifacts`, `analytics/categorization-accuracy`, `analytics/cost-savings`, `analytics/dashboard`, `dashboard/stats`, `vendor-risk`, `legal-holds`, and `/api/search` all correctly tenant-scope their Prisma queries.
+- CSRF (HMAC double-submit, 8h expiry), tiered Redis-backed rate limiting, and default-deny authentication middleware are all real and correctly implemented.
+- Admin routes consistently enforce role checks before granting access, via three consistent patterns (direct check / helper function / permission utility).
+- SCIM, GDPR export/delete, legal holds, and IP allowlist all enforce both auth and tenant scoping on spot-check.
+- `REQUIRE_AUTH=true` is correctly wired through the Helm chart's ConfigMap.
+- pgvector search now uses a properly tuned HNSW index; schema indexing is comprehensive.
+- The credential-encryption "falls back to `DATABASE_URL` in all environments" P0 from earlier documentation remains fixed — it now only happens in explicitly non-production environments, in both implementations.
+- Key Vault purge protection is enabled and confirmed live (per the repo's own cybersecurity audit remediation note) — a previously-critical gap that's been closed.
 
 ---
 
 ## 5. Cost & Scalability
 
-### 5.1 P1 (confirmed): Burstable compute tier with no CPU-credit monitoring or alerting
+### 5.1 P1 (confirmed): Still no CPU-credit monitoring/alerting for Burstable compute
 
-`infrastructure/azure/main.bicep` deliberately uses Burstable SKUs for both compute layers:
-- AKS system node pool: `Standard_B4ms`, autoscale 2–5 nodes
-- PostgreSQL Flexible Server: `Standard_B2s`
+Both AKS nodes (`Standard_B4ms`) and Postgres (`Standard_B2s`) remain on Burstable SKUs in `main.bicep`. No CPU-credit-remaining alert was found in the repo. As before, this means the platform can degrade under sustained (non-bursty) load without any autoscaler event firing and without anyone being paged, since autoscaling triggers on CPU utilization percentage, not on the underlying credit balance. This is compounded by [§2.1](#21-p1-confirmed-three-different-deployment-definitions-exist-for-the-same-app-two-of-which-are-stale-looking): if the live environment is actually Container Apps against a smaller pilot Postgres SKU (`Standard_B1ms`, per `pilot-minimal.bicep`), the real headroom may be even smaller than `main.bicep` alone suggests.
 
-This is a reasonable cost-optimization for a pilot/early-stage deployment (explicitly commented as such in the Bicep file). The gap is operational: `kubernetes/prometheus-alerts.yaml` was not confirmed to include a CPU-credit-exhaustion alert, and Log Analytics retention is only 30 days (`retentionInDays: 30` in `main.bicep`). **Client impact:** as real (non-bursty) usage grows, the platform can degrade in latency without any autoscaling event firing (autoscaling triggers on CPU %, not credit balance) and without anyone being paged. **Fix:** add an Azure Monitor alert on the `CPU Credits Remaining` metric for both the AKS node pool and Postgres, with a threshold well above zero (e.g. alert at 20% remaining, not 0%).
+### 5.2 P2: Storage tiering and idle-environment cost governance — unchanged, still worth doing
 
-### 5.2 P1: No evidence of environment-level cost governance (idle non-prod resources)
-
-No auto-shutdown schedule, dev/staging scale-to-zero, or cost-alert budget was found referenced in `infrastructure/azure/*.bicep`, `docker-compose.staging.yml`, or the Helm values. This isn't necessarily wrong — it may be handled outside the repo via Azure Cost Management directly — but it could not be verified from the code, and is worth confirming, since the audit instructions explicitly call for treating idle non-prod spend as a cost-leak risk.
-
-### 5.3 P2 (confirmed): Storage kept in `Hot` tier unconditionally
-
-`main.bicep`'s `storage` resource sets `accessTier: 'Hot'` with no lifecycle policy to move aged, infrequently-accessed contract documents to `Cool`/`Cold` tiers. For a contract-archival workload (documents are read often shortly after upload, then rarely), this is very likely leaving cost savings on the table as the corpus grows. **Fix:** add a Storage Lifecycle Management policy tiering blobs older than e.g. 90 days to `Cool`.
-
-### 5.4 P2: No per-tenant quota/throttling beyond the global rate-limit tiers
-
-`apps/web/middleware.ts`'s rate limiting (`RATE_LIMITS` object, verified) applies **flat tiers by role** (anonymous/user/admin), not by tenant plan/size. A single tenant with unusually heavy document/AI usage is not prevented from consuming a disproportionate share of the shared Burstable DB/AKS capacity or LLM budget, which directly affects the "noisy neighbor" risk called out in the audit instructions. This is architecturally reasonable for the platform's current stage, but should be flagged as a scaling item before onboarding a large/heavy client onto shared infrastructure.
+No Storage Lifecycle Management policy to tier aged blobs to Cool/Cold was found, and no auto-shutdown schedule for non-production environments was found in the repo (may be managed outside the repo via Azure Cost Management directly — could not be verified from code).
 
 ---
 
-## 6. Documentation vs. Reality Contradictions
+## 6. Documentation vs. Reality
 
-The audit instructions explicitly asked for skepticism toward existing `.md` files. Several were found to be materially inaccurate or stale relative to the current code:
+### 6.1 A real, live Azure audit already exists in this repo — its findings need a fresh, live re-check
 
-### 6.1 Port numbers in `SYSTEM_ARCHITECTURE.md` don't match `docker-compose.prod.yml`
+`docs/security/AZURE_CYBERSECURITY_AUDIT_2026-05-29.md` is not a code-review document — it's the output of someone actually querying the live Azure subscription (`az keyvault show`, `az cognitiveservices account show`, `pnpm audit --prod`, etc.) three months before this audit. Its highest-severity findings, and this audit's best-effort status check against the current repo (code-only — **a live Azure re-check is required to truly close these out**):
 
-Doc claims Next.js on port 3005 and Fastify API on 3001. `docker-compose.prod.yml` actually maps the web service to `3000:3000` and the API service to `8080:8080`. The document appears to describe an earlier or purely local dev topology and was never updated for the production compose file.
+| # | Finding (2026-05-29) | Severity | Status per this code-only review |
+|---|---|---|---|
+| 1 | `text-embedding-3-small` deployed as `GlobalStandard`, not regionally pinned to Switzerland North | Critical | **Not verifiable as fixed** — no Bicep resource defines the OpenAI deployment SKU; this is provisioned outside the reviewed IaC |
+| 2 | Key Vault `publicNetworkAccess: Enabled`, no IP/VNet rules | High | **Not verifiable as fixed** — `main.bicep`'s Key Vault resource still has no explicit network ACL block |
+| 3 | Azure OpenAI public network access + key-based (not managed-identity) auth | High | **Not verifiable as fixed** — same reasoning as #2 |
+| 4 | Key Vault purge protection not enabled | High | **Fixed and verified in code** — `main.bicep` now sets `enablePurgeProtection: true`, matching the audit's own remediation note |
+| 5 | Production dependency audit: 4 critical / 67 high advisories | High | **Largely fixed** — the audit's own remediation note plus this repo's `ci-cd.yml` running `pnpm security:audit:critical` indicates 0 critical remain; ~59 high/60 moderate were still open as of the May audit and were not re-run as part of this review |
+| 6 | Microsoft Defender for Cloud not registered; no security contacts; no activity-log export | High | **Not verifiable from code** — this is subscription-level configuration, not IaC |
+| 7 | Swiss compliance config (`apps/web/lib/swiss-compliance.ts`) exists but has no runtime enforcement | Medium | **Still applicable** — no code path invoking `validateDataRegion()`/`swissComplianceConfig` was found in this review either |
+| 8 | Helm manual-secret fallback values were unsafe defaults | Medium | **Fixed** — the audit's own note says this was remediated; current `helm/contigo/templates/secrets.yaml` requires explicit non-empty values in production mode |
 
-### 6.2 SLO document promises monitoring that doesn't exist in code
+**Recommendation:** re-run a live Azure inventory pass (the same kind of `az`/Azure-Resource-Graph pass the May audit did) before any client-facing claim about network isolation or data residency is made — this repo's code alone cannot confirm or deny items #1, #2, #3, and #6, since they're live subscription configuration, not something checked into git.
 
-`docs/SLO_SLA_DEFINITIONS.md` states: *"Synthetic monitoring: Health check every 30 seconds from multiple regions"* and *"Measurement: APM via OpenTelemetry."* Verified: `packages/workers/src/observability/opentelemetry.ts` exists but only maintains an in-memory `Map<string, Span>` with no configured exporter — there is no working OpenTelemetry pipeline, and no external synthetic-monitoring integration (Pingdom/UptimeRobot/等) was found anywhere in the codebase. This SLA document currently describes an aspirational target, not a shipped capability, and should either be corrected or the capability should be built before it's presented to clients as a commitment.
+### 6.2 `DISASTER_RECOVERY_PLAN.md` describes a different cloud provider entirely
 
-### 6.3 DATA_SECURITY.md's "zero-data-retention" claim has no corresponding code
+`docs/deployment/DISASTER_RECOVERY_PLAN.md` is dated **2024-01-16** (over two and a half years before today) and describes an **AWS**-based architecture — primary region `us-east-1`, DR region `us-west-2`, S3 cross-region replication, Glacier archival. The actual platform runs on **Azure**, in **Switzerland North only**, with no secondary region configured anywhere in the reviewed IaC. This document is not merely optimistic — it describes infrastructure that, as far as this repo shows, was never built, on a cloud provider the platform doesn't currently use. Its stated 1-hour RPO / 4-hour RTO targets should be treated as **not applicable** until a genuinely current DR plan is written against the actual Azure/Switzerland North deployment.
 
-`DATA_SECURITY.md` §2.4 states *"All AI processing uses zero-data-retention (ZDR) configurations"* and that client data is never used for model training. The actual OpenAI client wrapper (`packages/clients/openai`) instantiates the SDK with only an API key — no organization-level ZDR flag, no request-level retention opt-out parameter, and no anonymization pre-processing step were found in code. **This is not necessarily false** — ZDR is often configured at the OpenAI *organization/account* level outside of application code — but as written, the document asserts a technical guarantee this repository cannot independently verify or enforce, which is a meaningful gap for a document clients may rely on contractually. **Recommendation:** either link this claim to a verifiable, documented account-level configuration (screenshot/config export retained for audits), or soften the document's language to reflect what's actually enforced versus contractually promised.
+### 6.3 The SLA (`SERVICE_LEVEL_AGREEMENT.md`) promises what the infrastructure cannot deliver
 
-### 6.4 Disaster-recovery/SLA promises vs. actual infrastructure
+`docs/legal/SERVICE_LEVEL_AGREEMENT.md` commits to tiered uptime SLAs: **99.5% (Starter), 99.9% (Professional), 99.95% (Enterprise)**, with a 1-hour RTO for P1 incidents. This is the most important finding in this section because, unlike an internal planning doc, **an SLA is a commercial promise made to the client.** The actual database (`main.bicep`, verified): `highAvailability.mode: 'Disabled'`, `geoRedundantBackup: 'Disabled'`, `backupRetentionDays: 7`, single-region `Standard_LRS` storage, no secondary AKS/Container Apps region. A single-AZ, non-HA Postgres instance with no failover replica cannot realistically sustain 99.9%+ measured uptime through a maintenance event, an in-region incident, or even routine patching, without a visible gap. **This needs an explicit decision:** either the infrastructure is upgraded to back the SLA that's being sold (HA replica at minimum, geo-redundant backups), or the SLA tiers are revised downward to match what's actually deployed today, before it's relied on in a client contract dispute.
 
-`docs/DISASTER_RECOVERY_PLAN.md` targets (per research pass, recommend a follow-up direct read to confirm exact wording) a 4-hour RTO and 1-hour RPO. The actual Bicep config (verified): `backupRetentionDays: 7`, `geoRedundantBackup: 'Disabled'`, `highAvailability.mode: 'Disabled'`, `Standard_LRS` (single-datacenter redundancy) storage. A regional Azure incident in Switzerland North under this configuration would very likely **not** be recoverable within 4 hours without geo-redundant backups to restore from, since the only backups live in the same region as the failure. This is the single most important documentation-vs-infrastructure mismatch found in this audit, because it's the one most directly tied to the client's core question — *"what happens to my data if something goes badly wrong?"* — and the honest current answer ("longer than 4 hours, and only as good as the last daily backup taken in-region") does not match what's written.
+### 6.4 `PRODUCTION_READINESS_REPORT.md`'s "90% ready" score pre-dates the cybersecurity audit that found real gaps, and was never revised
 
-### 6.5 Prior audit reports disagree with each other and with current code
+`docs/deployment/PRODUCTION_READINESS_REPORT.md` is dated **December 21, 2025** and claims **"90% Ready (up from 75%)."** The live-Azure cybersecurity audit ([§6.1](#61-a-real-live-azure-audit-already-exists-in-this-repo--its-findings-need-a-fresh-live-recheck)) ran **five months later** (2026-05-29) and found multiple High/Critical findings in the same production environment the readiness report had already scored at 90%. The readiness report was never revised to reflect what the later audit found. **Recommendation, as before:** treat every dated point-in-time report in this repo as a snapshot, and prefer one continuously maintained "current security/readiness status" document over accumulating more dated snapshots that quietly go stale and contradict each other.
 
-`docs/PRODUCTION_READINESS_REPORT.md` (dated Dec 21, 2025) claims "90% Ready." `docs/GAP_ANALYSIS_REPORT.md` (dated Jan 22, 2026, one month later) lists 12 P0 security issues including tenant-isolation fallbacks and a credential-key fallback. This audit independently confirms: some of those Jan 22 findings are **now fixed** (the credential-key fallback, `apps/web/app/api/activity/route.ts`'s tenant resolution — see [§1.6](#16-p1-confirmed-two-different-inconsistent-credential-encryption-implementations) and the note below), while **two of the ones described as fixed in older docs are, in this audit's direct reading, either newly introduced or never actually fixed** (`/api/search`, `/api/analytics/metrics`). The practical lesson: **treat every dated audit doc in this repo as a snapshot, not a current state** — `docs/archive/` has accumulated a large number of them, and none supersedes direct code inspection. Recommend consolidating to one continuously-updated `SECURITY_STATUS.md` rather than accumulating dated one-off reports.
+### 6.5 `DATA_SECURITY.md`'s Zero-Data-Retention (ZDR) and Swiss-data-residency claims are not enforced in code
 
-*(Correction note: `apps/web/app/api/activity/route.ts`, called out in `GAP_ANALYSIS_REPORT.md` as falling back to `'default'`, was independently re-read for this audit and found to already use `getApiTenantId()`, which throws rather than silently defaulting in production — this specific historical finding appears to be already resolved.)*
+`docs/security/DATA_SECURITY.md` states AI processing uses zero-data-retention configurations and that data stays in Switzerland. `apps/web/lib/ai/ai-client.ts` (verified) shows a plain OpenAI client instantiation plus a Mistral fallback pointed at `https://api.mistral.ai/v1` (a global, non-Swiss endpoint) — with no ZDR flag, no anonymization step invoked before the request, and no region-of-processing check anywhere in the call path. **This does not necessarily mean the promise is false** — ZDR is frequently an account-level agreement with the AI provider rather than a per-request code parameter — but the code cannot currently prove or enforce either the ZDR or the Switzerland-only claim, and the Mistral fallback path in particular looks like a genuine, unflagged exception to a "data stays in Switzerland" promise. **Fix:** either remove/gate the Mistral fallback behind the same data-residency policy, or update `DATA_SECURITY.md` to accurately describe when a non-Swiss/non-ZDR provider might be used as a fallback.
 
 ---
 
@@ -327,36 +236,31 @@ Doc claims Next.js on port 3005 and Fastify API on 3001. `docker-compose.prod.ym
 
 | # | Finding | Severity | Effort | Where |
 |---|---|---|---|---|
-| 1 | Add tenant filter + auth check to `/api/search` and `/api/analytics/metrics` | P0 | Small (2 files) | §1.1 |
-| 2 | Set `REQUIRE_AUTH=true` in `kubernetes/configmap.yaml`, `helm/contigo/values.yaml`, `values-azure.yaml`; consider flipping the default to fail-closed | P0 | Small (config only) | §1.2 |
-| 3 | Delete/archive one of `k8s/` or `kubernetes/` to remove conflicting manifests | P0 | Small | §2.1 |
-| 4 | Replace `catch { tenantId = 'demo' }` patterns with `401` responses (`family-health`, `orphans`, and any other matches) | P1 | Small | §1.3 |
-| 5 | Consolidate the two credential-encryption implementations into one | P1 | Medium | §1.6 |
-| 6 | Use session-derived `tenantId` (never client-supplied) in `ai/costs` `record-usage` and audit other `body.tenantId` patterns | P1 | Small | §1.7 |
-| 7 | Gate `search`/`analytics/metrics` mock-mode headers behind `ENABLE_MOCK_MODE` + `NODE_ENV`, matching the pattern already used elsewhere | P1 | Small | §1.8 |
-| 8 | Pin all application container image tags (git SHA or semver); stop using `:latest` | P1 | Medium (CI change) | §2.2 |
-| 9 | Add a blocking Trivy/Grype image scan and a blocking `pnpm audit --audit-level=high` to CI | P1 | Medium | §2.5 |
-| 10 | Add Azure Monitor alerts on CPU-credit-remaining for AKS nodes and Postgres Burstable tier | P1 | Small | §5.1 |
-| 11 | Reconcile `DISASTER_RECOVERY_PLAN.md` RTO/RPO with actual backup/HA config, or upgrade infra (geo-redundant backup at minimum) | P1 | Decision + Medium | §6.4 |
-| 12 | Correct or soften `SLO_SLA_DEFINITIONS.md` and `DATA_SECURITY.md` claims that outpace current implementation (synthetic monitoring, OpenTelemetry, ZDR) | P1 | Small (docs) + Medium (if building the real thing) | §6.2, §6.3 |
-| 13 | Add CI gates for E2E and load tests (currently manual-only) | P2 | Medium | §2.5, §3.6 |
-| 14 | Fix `batchCreate()` to use `createMany()` instead of a per-row loop | P2 | Small | §3.3 |
-| 15 | Add Storage lifecycle policy to tier aged blobs to Cool/Cold | P2 | Small | §5.3 |
-| 16 | Add a CI test asserting every API route imports a tenant-scoping helper (allowlist exceptions) | P2 | Medium | §4 |
-| 17 | Explicitly set `publicNetworkAccess: 'Disabled'` on the Postgres Bicep resource | P2 | Trivial | §2.3 |
-| 18 | Raise coverage thresholds on a defined glide-path; document the plan | P2 | Ongoing | §3.5 |
-| 19 | Add per-tenant usage quotas ahead of onboarding any large/heavy client | P2 | Medium | §5.4 |
-| 20 | Consolidate the large number of dated audit/report docs into one living status doc | P3 | Medium | §6.5 |
+| 1 | Add `tenantId` to every Prisma query in `/api/analytics/metrics/route.ts` (including the bare `prisma.artifact.count()`) | P0 | Small (1 file) | §1.1 |
+| 2 | Decide and document the single real deployment target (Container Apps vs. AKS+Helm vs. legacy ECS); archive/delete the others so IaC can't drift from reality | P1 | Medium (decision + cleanup) | §2.1 |
+| 3 | Add `REQUIRE_AUTH=true` to `docker-compose.prod.yml`; consider flipping the code default to fail closed if unset | P1 | Small | §2.2 |
+| 4 | Add a blocking image vulnerability scan to `deploy-container-apps.yml` | P1 | Medium | §2.3 |
+| 5 | Re-run a **live Azure** inventory/security pass to close out AZURE_CYBERSECURITY_AUDIT_2026-05-29.md items #1 (embedding region), #2 (KV public access), #3 (OpenAI public access), #6 (Defender/Policy) | P1 | Medium (requires Azure access, not just repo) | §6.1 |
+| 6 | Reconcile `SERVICE_LEVEL_AGREEMENT.md` uptime tiers with actual HA/backup config — upgrade infra or revise the SLA | P1 | Decision + Medium/Large | §6.3 |
+| 7 | Replace/rewrite `DISASTER_RECOVERY_PLAN.md` — current version describes a different cloud provider and region entirely | P1 | Medium (docs) | §6.2 |
+| 8 | Gate or remove the non-Swiss Mistral AI fallback in `ai-client.ts`, or update `DATA_SECURITY.md` to match reality | P1 | Small–Medium | §6.5 |
+| 9 | Fix workers pod's always-passing health probe | P2 | Small | §2.4 |
+| 10 | Pin Helm image tags to the same SHA-based scheme already used by the Container Apps pipeline | P2 | Small | §2.5 |
+| 11 | Add a NetworkPolicy + pod `securityContext`/`runAsNonRoot` to `helm/contigo/templates/**` | P2 | Medium | §2.6 |
+| 12 | Consolidate the two credential-encryption implementations | P2 | Medium | §1.6 |
+| 13 | Fix generic `bulkCreate()` repository helper to use `createMany()` | P2 | Small | §3.3 |
+| 14 | Add `@@index([tenantId])` to `WebhookDelivery` and `Notification` | P2 | Trivial | §3.1 |
+| 15 | Enable the already-written (but commented-out) 80% coverage threshold for `lib/auth/**` | P2 | Trivial | §3.5 |
+| 16 | Make the E2E suite a blocking CI gate (currently `continue-on-error: true`) | P2 | Medium | §3.6 |
+| 17 | Add dedicated tests for SCIM, GDPR, legal holds, vendor risk, DLP policies | P2 | Medium | §3.7 |
+| 18 | Add CPU-credit-remaining alerts for AKS nodes and Postgres Burstable tier | P2 | Small | §5.1 |
+| 19 | Add Storage lifecycle tiering (Hot → Cool/Cold) for aged contract documents | P3 | Small | §5.2 |
+| 20 | Consolidate the growing set of dated audit/readiness docs into one living status document | P3 | Medium | §6.4 |
 
 ---
 
-## 8. What Was Confirmed Good (don't break these)
+## 8. Audit Limitations
 
-- Prisma repository layer consistently tenant-scopes queries (`contract`, `artifact`, `user`, `rate-card` repositories).
-- Schema indexing strategy for `tenantId`-scoped lookups, including composite indexes matching real dashboard queries.
-- `ivfflat`/`vector_cosine_ops` pgvector indexing is the correct choice for the RAG search use case.
-- `kubernetes/security-policies.yaml`: restricted Pod Security Standard, least-privilege RBAC, default-deny NetworkPolicy with explicit, minimal allow rules — genuinely solid design.
-- Secrets are correctly templated (no real secrets committed) with an Azure Key Vault CSI driver integration path.
-- Rate limiting in `middleware.ts` is tiered by role and applied broadly via the route matcher.
-- Load-testing tooling (k6 scripts) is realistic and well thought out — it just isn't wired into CI yet.
-- The two most severe historically-reported P0s (credential key fallback, `activity/route.ts` tenant fallback) were independently re-verified as **already fixed**.
+- This is a **code-and-config-only review**. Several of the most consequential open items ([§6.1](#61-a-real-live-azure-audit-already-exists-in-this-repo--its-findings-need-a-fresh-live-recheck), items #1/#2/#3/#6) can only be closed out with direct access to the live Azure subscription (`az`/Resource Graph queries), which this review did not have.
+- Several findings are marked **(reported)** — sourced from a parallel research pass and not personally re-opened by the auditor. These are lower-confidence than **(verified)** findings but were cross-checked for internal consistency and, where spot-checked, matched the underlying files exactly.
+- `pnpm audit`/dependency-vulnerability counts were not re-run live as part of this pass; the counts cited in §6.1 are as reported by the repo's own May 2026 audit.
