@@ -10,10 +10,11 @@
  * - Performance timing
  */
 
-export const runtime = 'nodejs'; // Force nodejs runtime for middleware
+// Note: Middleware runs in Edge Runtime - cannot use Node.js APIs or Prisma directly
+// Authentication is handled via JWT token verification only
 
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { getToken } from "next-auth/jwt";
 
 /**
  * Generate a unique request ID for tracing
@@ -121,20 +122,26 @@ function hasAdminAccess(role: string | undefined): boolean {
   return role === "owner" || role === "admin";
 }
 
-export default auth((req) => {
+export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const startTime = Date.now();
   
   // Generate or use existing request ID for tracing
   const requestId = req.headers.get('x-request-id') || generateRequestId();
 
+  // Get the JWT token (works in Edge Runtime)
+  const token = await getToken({ 
+    req, 
+    secret: process.env.NEXTAUTH_SECRET,
+  });
+
   // Rate limiting for API routes with tiered limits
   if (pathname.startsWith("/api/")) {
     const forwarded = req.headers.get('x-forwarded-for');
     const ip = forwarded?.split(',')[0] ?? 'unknown';
-    const userId = req.auth?.user?.id;
-    const tenantId = req.auth?.user?.tenantId;
-    const userRole = (req.auth?.user as any)?.role;
+    const userId = token?.sub;
+    const tenantId = token?.tenantId as string | undefined;
+    const userRole = token?.role as string | undefined;
     
     // Use tenant+user for rate limit grouping (per-tenant limits)
     const identifier = tenantId 
@@ -184,7 +191,7 @@ export default auth((req) => {
   }
 
   // Check if user is authenticated - redirect to sign-in if not
-  if (!req.auth) {
+  if (!token) {
     // For API routes, return 401 Unauthorized
     if (pathname.startsWith("/api/")) {
       const response = NextResponse.json(
@@ -198,6 +205,11 @@ export default auth((req) => {
     signInUrl.searchParams.set("callbackUrl", pathname);
     return NextResponse.redirect(signInUrl);
   }
+
+  // Extract user info from token
+  const userId = token.sub;
+  const tenantId = token.tenantId as string | undefined;
+  const userRole = token.role as string | undefined;
 
   // Check admin route access
   if (adminRoutes.some((route) => pathname.startsWith(route))) {
@@ -222,11 +234,11 @@ export default auth((req) => {
         // Token valid, allow access
         const requestHeaders = new Headers(req.headers);
         requestHeaders.set("x-request-id", requestId);
-        if (req.auth.user?.tenantId) {
-          requestHeaders.set("x-tenant-id", req.auth.user.tenantId);
+        if (tenantId) {
+          requestHeaders.set("x-tenant-id", tenantId);
         }
-        if (req.auth.user?.id) {
-          requestHeaders.set("x-user-id", req.auth.user.id);
+        if (userId) {
+          requestHeaders.set("x-user-id", userId);
         }
         const response = NextResponse.next({
           request: { headers: requestHeaders },
@@ -236,7 +248,6 @@ export default auth((req) => {
     }
 
     // For /admin pages, check user role
-    const userRole = (req.auth.user as any)?.role;
     if (!hasAdminAccess(userRole)) {
       // Return 403 for API routes, redirect for pages
       if (pathname.startsWith("/api/")) {
@@ -252,7 +263,7 @@ export default auth((req) => {
 
   // Production mode: Require tenant ID
   const requireAuth = process.env.REQUIRE_AUTH === "true";
-  if (requireAuth && !req.auth.user?.tenantId) {
+  if (requireAuth && !tenantId) {
     if (pathname.startsWith("/api/")) {
       const response = NextResponse.json(
         { error: "Unauthorized", message: "Tenant ID required", requestId },
@@ -267,11 +278,11 @@ export default auth((req) => {
   if (pathname.startsWith("/api/")) {
     const requestHeaders = new Headers(req.headers);
     requestHeaders.set("x-request-id", requestId);
-    if (req.auth.user?.tenantId) {
-      requestHeaders.set("x-tenant-id", req.auth.user.tenantId);
+    if (tenantId) {
+      requestHeaders.set("x-tenant-id", tenantId);
     }
-    if (req.auth.user?.id) {
-      requestHeaders.set("x-user-id", req.auth.user.id);
+    if (userId) {
+      requestHeaders.set("x-user-id", userId);
     }
 
     const response = NextResponse.next({
@@ -291,7 +302,7 @@ export default auth((req) => {
   response.headers.set('Referrer-Policy', 'origin-when-cross-origin');
 
   return response;
-});
+}
 
 // Configure which routes require authentication
 export const config = {

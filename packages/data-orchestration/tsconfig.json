@@ -2,12 +2,13 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "target": "ES2022",
+    "module": "ESNext",
     "outDir": "./dist",
     "rootDir": "./src",
     "declaration": true,
     "declarationMap": true,
     "composite": true,
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "esModuleInterop": true,
     "skipLibCheck": true,
     "downlevelIteration": true,
@@ -34,6 +35,15 @@
     "src/services/rag-integration.service.ts",
     "src/services/enhanced-artifact.service.ts",
     "src/services/hybrid-artifact-storage.service.ts",
-    "src/services/processing-job.service.ts"
+    "src/services/processing-job.service.ts",
+    "src/services/data-consistency-audit.service.ts",
+    "src/services/data-integrity.service.ts",
+    "src/services/health-check.service.ts",
+    "src/services/optimistic-locking.service.ts",
+    "src/services/performance-optimization.service.ts",
+    "src/services/query-optimizer.service.ts",
+    "src/services/transaction-manager.service.ts",
+    "src/utils/taxonomy-migration.utils.ts",
+    "src/utils/contract-hierarchy.utils.ts"
   ]
 }

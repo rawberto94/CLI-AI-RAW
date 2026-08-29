@@ -1,53 +1,53 @@
 {
   "name": "@repo/utils",
   "version": "1.0.0",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.js"
+      "types": "./src/index.ts",
+      "import": "./src/index.ts",
+      "default": "./src/index.ts"
     },
     "./queue": {
-      "types": "./dist/queue/index.d.ts",
-      "import": "./dist/queue/index.js",
-      "require": "./dist/queue/index.js"
+      "types": "./src/queue/index.ts",
+      "import": "./src/queue/index.ts",
+      "default": "./src/queue/index.ts"
     },
     "./queue/queue-service": {
-      "types": "./dist/queue/queue-service.d.ts",
-      "import": "./dist/queue/queue-service.js",
-      "require": "./dist/queue/queue-service.js"
+      "types": "./src/queue/queue-service.ts",
+      "import": "./src/queue/queue-service.ts",
+      "default": "./src/queue/queue-service.ts"
     },
     "./queue/contract-queue": {
-      "types": "./dist/queue/contract-queue.d.ts",
-      "import": "./dist/queue/contract-queue.js",
-      "require": "./dist/queue/contract-queue.js"
+      "types": "./src/queue/contract-queue.ts",
+      "import": "./src/queue/contract-queue.ts",
+      "default": "./src/queue/contract-queue.ts"
     },
     "./queue/dlq-consumer": {
-      "types": "./dist/queue/dlq-consumer.d.ts",
-      "import": "./dist/queue/dlq-consumer.js",
-      "require": "./dist/queue/dlq-consumer.js"
+      "types": "./src/queue/dlq-consumer.ts",
+      "import": "./src/queue/dlq-consumer.ts",
+      "default": "./src/queue/dlq-consumer.ts"
     },
     "./cache/distributed-cache": {
-      "types": "./dist/cache/distributed-cache.d.ts",
-      "import": "./dist/cache/distributed-cache.js",
-      "require": "./dist/cache/distributed-cache.js"
+      "types": "./src/cache/distributed-cache.ts",
+      "import": "./src/cache/distributed-cache.ts",
+      "default": "./src/cache/distributed-cache.ts"
     },
     "./events/redis-event-bus": {
-      "types": "./dist/events/redis-event-bus.d.ts",
-      "import": "./dist/events/redis-event-bus.js",
-      "require": "./dist/events/redis-event-bus.js"
+      "types": "./src/events/redis-event-bus.ts",
+      "import": "./src/events/redis-event-bus.ts",
+      "default": "./src/events/redis-event-bus.ts"
     },
     "./patterns/circuit-breaker": {
-      "types": "./dist/patterns/circuit-breaker.d.ts",
-      "import": "./dist/patterns/circuit-breaker.js",
-      "require": "./dist/patterns/circuit-breaker.js"
+      "types": "./src/patterns/circuit-breaker.ts",
+      "import": "./src/patterns/circuit-breaker.ts",
+      "default": "./src/patterns/circuit-breaker.ts"
     },
     "./patterns/retry": {
-      "types": "./dist/patterns/retry.d.ts",
-      "import": "./dist/patterns/retry.js",
-      "require": "./dist/patterns/retry.js"
+      "types": "./src/patterns/retry.ts",
+      "import": "./src/patterns/retry.ts",
+      "default": "./src/patterns/retry.ts"
     }
   },
   "scripts": {

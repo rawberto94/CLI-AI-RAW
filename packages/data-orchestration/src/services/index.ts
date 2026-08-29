@@ -205,18 +205,18 @@ export { analyticalSyncService } from './analytical-sync.service';
 
 // Metadata and locking
 export { metadataEditorService } from './metadata-editor.service';
-export { optimisticLockingService, OptimisticLockError } from './optimistic-locking.service';
+// export { optimisticLockingService, OptimisticLockError } from './optimistic-locking.service'; // Excluded - imports from clients-db
 
 // Data integrity
-export { dataIntegrityService } from './data-integrity.service';
-export { transactionManager, transactionManager as transactionManagerService } from './transaction-manager.service';
-export { dataConsistencyAuditService } from './data-consistency-audit.service';
+// export { dataIntegrityService } from './data-integrity.service'; // Excluded - imports from clients-db
+// export { transactionManager, transactionManager as transactionManagerService } from './transaction-manager.service'; // Excluded - imports from clients-db
+// export { dataConsistencyAuditService } from './data-consistency-audit.service'; // Excluded - imports from clients-db
 
 // Monitoring services
 export { monitoringService } from './monitoring.service';
 export { alertingService } from './alerting.service';
 export { alertChecker } from './alert-checker';
-export { healthCheckService } from './health-check.service';
+// export { healthCheckService } from './health-check.service'; // Excluded - imports from clients-db
 
 // Import services
 export { csvImportService } from './csv-import.service';
@@ -226,8 +226,8 @@ export { SupplierBenchmarkService, SupplierBenchmarkService as supplierBenchmark
 export { supplierAlertService } from './supplier-alert.service';
 
 // Performance services
-export { PerformanceOptimizationService, PerformanceOptimizationService as performanceOptimizationService } from './performance-optimization.service';
-export { QueryOptimizerService, QueryOptimizerService as queryOptimizerService } from './query-optimizer.service';
+// export { PerformanceOptimizationService, PerformanceOptimizationService as performanceOptimizationService } from './performance-optimization.service'; // Excluded - imports from clients-db
+// export { QueryOptimizerService, QueryOptimizerService as queryOptimizerService } from './query-optimizer.service'; // Excluded - imports from clients-db
 
 // Analytics
 export { PredictiveAnalyticsService, PredictiveAnalyticsService as predictiveAnalyticsService } from './predictive-analytics.service';

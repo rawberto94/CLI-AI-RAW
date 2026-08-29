@@ -671,6 +671,9 @@ importers:
       schemas:
         specifier: workspace:*
         version: link:../schemas
+      server-only:
+        specifier: ^0.0.1
+        version: 0.0.1
       uuid:
         specifier: ^13.0.0
         version: 13.0.0

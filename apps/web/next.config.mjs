@@ -46,6 +46,7 @@ const nextConfig = {
     'sharp',
     '@prisma/client',
     '@repo/db',
+    'clients-db',
     'pino',
     'pino-pretty',
     'bullmq',

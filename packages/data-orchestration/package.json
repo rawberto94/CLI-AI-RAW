@@ -2,8 +2,8 @@
   "name": "@repo/data-orchestration",
   "version": "1.0.0",
   "description": "Unified data orchestration layer for Contract Intelligence Platform",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
   "scripts": {
     "build": "tsc || true",
     "dev": "tsc --watch",
@@ -28,6 +28,7 @@
     "langchain": "^0.2.17",
     "langsmith": "^0.3.78",
     "openai": "^4.10.0",
+    "server-only": "^0.0.1",
     "pgvector": "^0.1.8",
     "pino": "^8.21.0",
     "pino-pretty": "^13.1.2",
@@ -45,24 +46,24 @@
   },
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
     },
     "./types": {
-      "types": "./dist/types/index.d.ts",
-      "default": "./dist/types/index.js"
+      "types": "./src/types/index.ts",
+      "default": "./src/types/index.ts"
     },
     "./services": {
-      "types": "./dist/services/index.d.ts",
-      "default": "./dist/services/index.js"
+      "types": "./src/services/index.ts",
+      "default": "./src/services/index.ts"
     },
     "./services/knowledge-graph.service": {
-      "types": "./dist/services/knowledge-graph.service.d.ts",
-      "default": "./dist/services/knowledge-graph.service.js"
+      "types": "./src/services/knowledge-graph.service.ts",
+      "default": "./src/services/knowledge-graph.service.ts"
     },
     "./events": {
-      "types": "./dist/events/index.d.ts",
-      "default": "./dist/events/index.js"
+      "types": "./src/events/index.ts",
+      "default": "./src/events/index.ts"
     }
   }
 }

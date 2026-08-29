@@ -3,6 +3,9 @@
 // from types, lineage, and services. Consumers should import from specific
 // modules if they need type-safe imports.
 
+// Ensure this package is only imported server-side
+import 'server-only';
+
 // Main exports
 export * from "./types";
 export * from "./dal";
