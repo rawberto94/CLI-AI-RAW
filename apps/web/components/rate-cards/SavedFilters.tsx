@@ -22,6 +22,7 @@ import {
   type SavedFilter 
 } from '@/hooks/use-saved-items-queries';
 import { DataFreshnessIndicator } from '@/components/shared/DataFreshnessIndicator';
+import { formatRateMoney } from '@/lib/rate-cards/format';
 
 interface SavedFiltersProps {
   onApplyFilter: (filters: RateCardFilterCriteria) => void;
@@ -83,7 +84,7 @@ export function SavedFilters({ onApplyFilter }: SavedFiltersProps) {
     if (filters.country) parts.push(`Country: ${filters.country}`);
     if (filters.region) parts.push(`Region: ${filters.region}`);
     if (filters.rateMin || filters.rateMax) {
-      parts.push(`Rate: $${filters.rateMin || 0}-${filters.rateMax || '∞'}`);
+      parts.push(`Rate: ${formatRateMoney(filters.rateMin || 0)}-${filters.rateMax != null ? formatRateMoney(filters.rateMax) : '∞'}`);
     }
 
     return parts.join(' • ') || 'No filters';

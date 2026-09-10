@@ -228,7 +228,7 @@ export function ComplianceChecklist({ contractId, className }: ComplianceCheckli
   };
 
   const formatDate = (date: Date | string) => {
-    return new Date(date).toLocaleDateString('en-US', {
+    return new Date(date).toLocaleDateString('de-CH', {
       month: 'short',
       day: 'numeric',
       year: 'numeric',
@@ -268,10 +268,7 @@ export function ComplianceChecklist({ contractId, className }: ComplianceCheckli
               <RefreshCw className={cn("h-4 w-4 mr-1", loading && "animate-spin")} />
               Refresh
             </Button>
-            <Button size="sm">
-              <Plus className="h-4 w-4 mr-1" />
-              Add Checklist
-            </Button>
+
           </div>
         </div>
 
@@ -301,10 +298,7 @@ export function ComplianceChecklist({ contractId, className }: ComplianceCheckli
             <p className="text-sm text-muted-foreground mb-4">
               Add checklists to track compliance requirements
             </p>
-            <Button variant="outline" size="sm">
-              <Plus className="h-4 w-4 mr-1" />
-              Create Checklist
-            </Button>
+
           </div>
         ) : (
           <div className="space-y-4">

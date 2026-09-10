@@ -9,6 +9,7 @@
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
+import { formatAmountWithCurrency } from "@/lib/utils/formatters";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -92,6 +93,7 @@ interface ContractPreviewCard {
   supplier?: string;
   status?: string;
   value?: number;
+  currency?: string | null;
   expirationDate?: string;
   daysUntilExpiry?: number;
   riskLevel?: 'low' | 'medium' | 'high';
@@ -2959,7 +2961,7 @@ export function FloatingAIBubble({ mode = 'floating' }: FloatingAIBubbleProps) {
                                               <div className="text-right flex-shrink-0">
                                                 {contract.value && (
                                                   <div className="text-sm font-bold text-gray-900">
-                                                    ${contract.value.toLocaleString()}
+                                                    {formatAmountWithCurrency(contract.value, contract.currency)}
                                                   </div>
                                                 )}
                                                 {contract.daysUntilExpiry !== undefined && (

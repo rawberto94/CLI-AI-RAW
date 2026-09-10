@@ -51,17 +51,21 @@ const RISK_STYLES: Record<InboxRisk, string> = {
   low: 'bg-slate-100 text-slate-700 border-slate-200',
 };
 
-function formatMoney(value: number): string {
+function formatMoney(value: number, currency?: unknown): string {
   if (!value) return '';
-  try {
-    return new Intl.NumberFormat(undefined, {
-      style: 'currency',
-      currency: 'USD',
-      maximumFractionDigits: 0,
-    }).format(value);
-  } catch {
-    return String(value);
+  const code = typeof currency === 'string' ? currency.trim() : '';
+  if (code.length === 3 && code !== 'XXX') {
+    try {
+      return new Intl.NumberFormat('de-CH', {
+        style: 'currency',
+        currency: code,
+        maximumFractionDigits: 0,
+      }).format(value);
+    } catch {
+      return `${code} ${value.toLocaleString('de-CH')}`;
+    }
   }
+  return value.toLocaleString('de-CH');
 }
 
 export function NeedsYouInbox() {
@@ -328,7 +332,7 @@ function InboxItemRow({
               {item.risk}
             </span>
             {item.value > 0 && (
-              <span className="text-xs text-slate-500">{formatMoney(item.value)}</span>
+              <span className="text-xs text-slate-500">{formatMoney(item.value, item.context?.currency)}</span>
             )}
             {item.deadline && (
               <span className="text-xs text-slate-500 flex items-center gap-1">

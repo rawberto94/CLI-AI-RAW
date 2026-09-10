@@ -22,6 +22,8 @@ import {
   Users,
   Target,
 } from 'lucide-react';
+import { formatAmountWithCurrency } from '@/lib/utils/formatters';
+import { formatRateMoney } from '@/lib/rate-cards/format';
 import {
   LineChart,
   Line,
@@ -258,7 +260,7 @@ export function SupplierPerformanceDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              ${(totalSpend / 1000000).toFixed(2)}M
+              {formatAmountWithCurrency(totalSpend, null)}
             </div>
             <p className="text-xs text-muted-foreground mt-1">Annual spend</p>
           </CardContent>
@@ -364,7 +366,7 @@ export function SupplierPerformanceDashboard() {
                     <div>
                       <h4 className="font-semibold">{supplier.name}</h4>
                       <p className="text-sm text-muted-foreground">
-                        {supplier.activeContracts} contracts • ${(supplier.totalSpend / 1000).toFixed(0)}K
+                        {supplier.activeContracts} contracts • {formatAmountWithCurrency(supplier.totalSpend, null)}
                       </p>
                     </div>
                     <Badge className={getRiskBadge(supplier.riskLevel)}>
@@ -481,26 +483,21 @@ export function SupplierPerformanceDashboard() {
                   <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t">
                     <div>
                       <p className="text-xs text-muted-foreground">Avg Daily Rate</p>
-                      <p className="text-lg font-bold">${selectedSupplierData.avgRate}</p>
+                      <p className="text-lg font-bold">{formatRateMoney(selectedSupplierData.avgRate)}</p>
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground">Annual Spend</p>
                       <p className="text-lg font-bold">
-                        ${(selectedSupplierData.totalSpend / 1000).toFixed(0)}K
+                        {formatAmountWithCurrency(selectedSupplierData.totalSpend, null)}
                       </p>
                     </div>
                   </div>
 
                   {/* Actions */}
                   <div className="flex gap-2 mt-4">
-                    <Link href={`/suppliers/${selectedSupplierData.id}`} className="flex-1">
+                    <Link href="/suppliers" className="flex-1">
                       <Button variant="outline" className="w-full">
-                        View Details
-                      </Button>
-                    </Link>
-                    <Link href={`/rate-cards?supplier=${selectedSupplierData.id}`} className="flex-1">
-                      <Button variant="outline" className="w-full">
-                        View Rate Cards
+                        View suppliers
                       </Button>
                     </Link>
                   </div>

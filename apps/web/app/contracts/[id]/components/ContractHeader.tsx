@@ -41,7 +41,6 @@ import {
   ClipboardList,
   Loader2,
   CalendarPlus,
-  FileDown,
   AlertTriangle,
   Clock,
   PenLine,
@@ -71,8 +70,6 @@ interface ContractHeaderProps {
   onAIExtract: () => void
   onExtractObligations?: () => void
   onDownload: () => void
-  onDownloadReport: () => void
-  isDownloadingReport?: boolean
   onShare: () => void
   onCompare: () => void
   onCreateRenewal?: () => void
@@ -103,8 +100,6 @@ export const ContractHeader = memo(function ContractHeader({
   onAIExtract,
   onExtractObligations,
   onDownload,
-  onDownloadReport,
-  isDownloadingReport = false,
   onShare,
   onCompare,
   onCreateRenewal,
@@ -351,15 +346,6 @@ export const ContractHeader = memo(function ContractHeader({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56 shadow-xl border-slate-200 dark:border-slate-700 dark:bg-slate-800">
-                <DropdownMenuItem onClick={onDownloadReport} disabled={isDownloadingReport} className="cursor-pointer font-medium">
-                  {isDownloadingReport ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <FileDown className="h-4 w-4 mr-2" />
-                  )}
-                  {isDownloadingReport ? 'Generating...' : 'Download Report'}
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={onTogglePdf} className="cursor-pointer">
                   <FileType className="h-4 w-4 mr-2" />
                   {showPdfViewer ? 'Hide PDF' : 'View PDF'}

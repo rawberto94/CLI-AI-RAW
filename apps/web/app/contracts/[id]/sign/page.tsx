@@ -47,6 +47,7 @@ import {
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { formatAmountWithCurrency } from '@/lib/utils/formatters';
 
 // ============================================================================
 // Types
@@ -549,7 +550,7 @@ export default function SignaturePage({ params }: { params: Promise<{ id: string
                   <div>
                     <p className="text-xs text-slate-500 mb-1">Value</p>
                     <p className="font-medium text-slate-900">
-                      ${contract.value.toLocaleString()}
+                      {formatAmountWithCurrency(contract.value, contract.currency)}
                     </p>
                   </div>
                 )}

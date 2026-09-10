@@ -42,6 +42,7 @@ import {
   Timer,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { formatAmountWithCurrency } from '@/lib/utils/formatters';
 
 // ============================================================================
 // Types
@@ -68,6 +69,7 @@ interface Obligation {
   dueDate?: Date;
   completedDate?: Date;
   amount?: number;
+  currency?: string | null;
   frequency?: 'one_time' | 'recurring' | 'ongoing';
   assignedTo?: string;
   confidence: number;
@@ -345,7 +347,7 @@ function ObligationCard({
               {obligation.amount && (
                 <span className="flex items-center gap-1">
                   <DollarSign className="w-3 h-3" />
-                  ${obligation.amount.toLocaleString()}
+                  {formatAmountWithCurrency(obligation.amount, obligation.currency)}
                 </span>
               )}
             </div>
@@ -559,16 +561,7 @@ export function ObligationTrackerDashboard({ tenantId, contractId, className }: 
           </h1>
           <p className="text-muted-foreground text-sm">AI-powered obligation extraction and compliance monitoring</p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm">
-            <Download className="w-4 h-4 mr-2" />
-            Export
-          </Button>
-          <Button variant="outline" size="sm">
-            <RefreshCw className="w-4 h-4 mr-2" />
-            Re-scan Contracts
-          </Button>
-        </div>
+        <div />
       </div>
 
       {/* Stats Row */}

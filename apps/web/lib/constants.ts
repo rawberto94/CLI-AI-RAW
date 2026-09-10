@@ -347,12 +347,12 @@ export const STORAGE_KEYS = {
 // ============================================================================
 
 export const DATE_FORMATS = {
-  SHORT: 'MMM d, yyyy',
-  LONG: 'MMMM d, yyyy',
-  WITH_TIME: 'MMM d, yyyy h:mm a',
+  SHORT: 'd. MMM yyyy',
+  LONG: 'd. MMMM yyyy',
+  WITH_TIME: 'd. MMM yyyy HH:mm',
   ISO: "yyyy-MM-dd'T'HH:mm:ss.SSSxxx",
   API: 'yyyy-MM-dd',
-  DISPLAY: 'MM/dd/yyyy',
+  DISPLAY: 'dd.MM.yyyy',
 } as const;
 
 // ============================================================================
@@ -360,8 +360,8 @@ export const DATE_FORMATS = {
 // ============================================================================
 
 export const CURRENCY = {
-  DEFAULT: 'USD',
-  SUPPORTED: ['USD', 'EUR', 'GBP', 'CAD', 'AUD', 'JPY', 'CHF', 'INR'] as const,
+  DEFAULT: 'CHF',
+  SUPPORTED: ['CHF', 'EUR', 'USD', 'GBP', 'CAD', 'AUD', 'JPY', 'INR'] as const,
   SYMBOLS: {
     USD: '$',
     EUR: '€',

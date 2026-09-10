@@ -169,14 +169,22 @@ export function formatFileSize(bytes: number): string {
  */
 export function formatCurrency(
   amount: number,
-  currency: string = "CHF"
+  currency?: string
 ): string {
-  return new Intl.NumberFormat("de-CH", {
-    style: "currency",
-    currency,
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(amount);
+  const code = typeof currency === "string" ? currency.trim() : "";
+  if (code.length === 3 && code !== "XXX") {
+    try {
+      return new Intl.NumberFormat("de-CH", {
+        style: "currency",
+        currency: code,
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+      }).format(amount);
+    } catch {
+      return `${code} ${amount.toLocaleString("de-CH")}`;
+    }
+  }
+  return amount.toLocaleString("de-CH");
 }
 
 /**
@@ -192,7 +200,7 @@ export function formatDate(dateString: string): string {
     return "Invalid Date";
   }
 
-  return new Intl.DateTimeFormat("en-US", {
+  return new Intl.DateTimeFormat("de-CH", {
     year: "numeric",
     month: "short",
     day: "numeric",
@@ -212,7 +220,7 @@ export function formatDateTime(dateString: string): string {
     return "Invalid Date";
   }
 
-  return new Intl.DateTimeFormat("en-US", {
+  return new Intl.DateTimeFormat("de-CH", {
     year: "numeric",
     month: "short",
     day: "numeric",
@@ -255,7 +263,7 @@ export function getContractSummary(contract: Contract) {
   return {
     parties: unwrapValue(extractedData.metadata?.parties) || contract.parties || [],
     totalValue: unwrapValue(extractedData.financial?.totalValue) || contract.totalValue,
-    currency: unwrapValue(extractedData.financial?.currency) || contract.currency || "USD",
+    currency: unwrapValue(extractedData.financial?.currency) || contract.currency || "",
     effectiveDate:
       unwrapValue(extractedData.metadata?.effectiveDate) || contract.effectiveDate,
     expirationDate:

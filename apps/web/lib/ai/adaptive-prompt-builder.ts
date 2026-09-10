@@ -9,6 +9,7 @@
  */
 
 import type { MetadataFieldDefinition, MetadataFieldType } from "@/lib/services/metadata-schema.service";
+import { analysisLanguageInstructions, resolveAnalysisLanguage } from '@repo/utils';
 import { detectContractType, getExtractionHintsForType } from "./contract-templates";
 import { getCalibrationService } from "./confidence-calibration";
 import { getLearnedHints } from "./self-improving-prompt-loop";
@@ -168,6 +169,8 @@ export class AdaptivePromptBuilder {
 
     const systemPrompt = `You are a contract metadata extraction specialist. You're being asked to re-examine specific fields where initial extraction was uncertain.
 
+${analysisLanguageInstructions({ contractText })}
+
 Key principles:
 1. Look more carefully at the context around likely locations
 2. Consider alternative interpretations
@@ -297,6 +300,11 @@ Key principles:
 - Flag values that seem corrupted`;
     }
 
+    prompt += `\n\n${analysisLanguageInstructions({
+      contractText: '',
+      diDetectedLanguages: docChars.language ? [docChars.language] : [],
+    })}`;
+
     return prompt;
   }
 
@@ -400,10 +408,7 @@ Return a JSON object where each key is the field key, containing:
     const hasTables = text.includes("|") || /\t.*\t/m.test(text);
     const hasSignatures = /signature|sign:|signed|executed/i.test(text);
     
-    // Language detection (very basic)
-    const language = /[áéíóúñ]/i.test(text) ? "es" : 
-                    /[àâêîôûç]/i.test(text) ? "fr" :
-                    /[äöüß]/i.test(text) ? "de" : "en";
+    const language = resolveAnalysisLanguage({ contractText: text });
 
     // Complexity based on length and structure
     const complexity = length > 50000 ? "complex" :

@@ -8,6 +8,7 @@ import { NextRequest } from 'next/server';
 import { getWorkflowManagementService } from 'data-orchestration/services';
 import { prisma } from '@/lib/prisma';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
+import { formatMoneyText } from '@repo/utils';
 
 export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
   const tenantId = ctx.tenantId;
@@ -52,9 +53,9 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
   let rationale = '';
   if (suggestion) {
     if (contractValue > 100000) {
-      rationale = `High-value contract ($${contractValue.toLocaleString()}) requires executive approval workflow.`;
+      rationale = `High-value contract (${formatMoneyText(contractValue, contract.currency)}) requires executive approval workflow.`;
     } else if (contractValue > 50000) {
-      rationale = `Medium-value contract ($${contractValue.toLocaleString()}) requires manager approval workflow.`;
+      rationale = `Medium-value contract (${formatMoneyText(contractValue, contract.currency)}) requires manager approval workflow.`;
     } else if (contractType.toLowerCase().includes('nda')) {
       rationale = 'NDA contracts follow a simplified legal review workflow.';
     } else {

@@ -249,7 +249,7 @@ export class SievoIntegrationService {
       subcategory: item.subcategory || '',
       supplier: item.supplier || 'Unknown',
       amount: parseFloat(item.amount) || 0,
-      currency: item.currency || 'USD',
+      currency: item.currency || '',
       period: {
         startDate: new Date(item.startDate),
         endDate: new Date(item.endDate)
@@ -275,7 +275,7 @@ export class SievoIntegrationService {
         subcategory: 'IT Consulting',
         supplier: 'TechConsult Inc',
         amount: 750000,
-        currency: 'USD',
+        currency: 'CHF',
         period: dateRange,
         transactionCount: 12,
         averageTransactionSize: 62500,
@@ -287,7 +287,7 @@ export class SievoIntegrationService {
         subcategory: 'Enterprise Software',
         supplier: 'SoftwareCorp',
         amount: 450000,
-        currency: 'USD',
+        currency: 'CHF',
         period: dateRange,
         transactionCount: 4,
         averageTransactionSize: 112500,
@@ -299,7 +299,7 @@ export class SievoIntegrationService {
         subcategory: 'Cloud Services',
         supplier: 'CloudProvider Ltd',
         amount: 320000,
-        currency: 'USD',
+        currency: 'CHF',
         period: dateRange,
         transactionCount: 24,
         averageTransactionSize: 13333,
@@ -311,7 +311,7 @@ export class SievoIntegrationService {
         subcategory: 'Management Consulting',
         supplier: 'StrategyFirm LLC',
         amount: 280000,
-        currency: 'USD',
+        currency: 'CHF',
         period: dateRange,
         transactionCount: 6,
         averageTransactionSize: 46667,
@@ -323,7 +323,7 @@ export class SievoIntegrationService {
         subcategory: 'Office Services',
         supplier: 'FacilitiesCorp',
         amount: 180000,
-        currency: 'USD',
+        currency: 'CHF',
         period: dateRange,
         transactionCount: 12,
         averageTransactionSize: 15000,
@@ -543,11 +543,19 @@ export function calculateSpendConcentration(spendData: SievoSpendData[]): {
   };
 }
 
-export function formatCurrency(amount: number, currency: string = 'USD'): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency,
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0
-  }).format(amount);
+export function formatCurrency(amount: number, currency?: string): string {
+  const code = typeof currency === 'string' ? currency.trim() : ''
+  if (code.length === 3 && code !== 'XXX') {
+    try {
+      return new Intl.NumberFormat('de-CH', {
+        style: 'currency',
+        currency: code,
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+      }).format(amount)
+    } catch {
+      return `${code} ${amount.toLocaleString('de-CH')}`
+    }
+  }
+  return amount.toLocaleString('de-CH')
 }

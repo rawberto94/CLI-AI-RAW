@@ -599,16 +599,7 @@ export function KnowledgeGraphVisualization({ tenantId, contractId, className }:
           </h1>
           <p className="text-muted-foreground text-sm">Visualize entities and relationships across contracts</p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm">
-            <Download className="w-4 h-4 mr-2" />
-            Export
-          </Button>
-          <Button variant="outline" size="sm">
-            <RefreshCw className="w-4 h-4 mr-2" />
-            Rebuild
-          </Button>
-        </div>
+        <div />
       </div>
 
       {/* Stats */}

@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 import { getAIClient } from '@/lib/ai/ai-client';
 import { logger } from '@/lib/logger';
+import { analysisLanguageInstructions } from '@repo/utils';
 
 const aiAssistSchema = z.object({
   context: z.string().max(50000, 'Context too long (max 50,000 chars)').optional().default(''),
@@ -46,6 +47,7 @@ export const POST = withAuthApiHandler(async (req: NextRequest, ctx) => {
 
     const textToAnalyze = selection || context;
     const aiClient = await getAIClient();
+    const langBlock = analysisLanguageInstructions({ contractText: textToAnalyze });
 
     // Build prompt based on action
     let systemPrompt: string;
@@ -54,6 +56,7 @@ export const POST = withAuthApiHandler(async (req: NextRequest, ctx) => {
     switch (action) {
       case 'suggest':
         systemPrompt = `You are a legal contract expert. Suggest relevant contract clauses based on the context provided.
+${langBlock}
           Always respond in JSON format with this structure:
           {
             "suggestions": [
@@ -65,6 +68,8 @@ export const POST = withAuthApiHandler(async (req: NextRequest, ctx) => {
 
       case 'improve':
         systemPrompt = `You are a legal contract expert. Improve the clarity and legal soundness of contract language.
+${langBlock}
+Keep improved text in the same language as the original.
           Always respond in JSON format with this structure:
           {
             "suggestions": [
@@ -76,6 +81,8 @@ export const POST = withAuthApiHandler(async (req: NextRequest, ctx) => {
 
       case 'simplify':
         systemPrompt = `You are a legal contract expert. Simplify complex legal language while preserving meaning.
+${langBlock}
+Keep simplified text in the same language as the original.
           Always respond in JSON format with this structure:
           {
             "suggestions": [
@@ -87,6 +94,7 @@ export const POST = withAuthApiHandler(async (req: NextRequest, ctx) => {
 
       case 'risk-check':
         systemPrompt = `You are a legal contract risk analyst. Identify potential risks in contract language.
+${langBlock}
           Always respond in JSON format with this structure:
           {
             "riskFlags": [
@@ -100,6 +108,8 @@ export const POST = withAuthApiHandler(async (req: NextRequest, ctx) => {
 
       case 'complete':
         systemPrompt = `You are a legal contract expert. Complete partial contract clauses appropriately.
+${langBlock}
+Complete in the same language as the original.
           Always respond in JSON format with this structure:
           {
             "suggestions": [

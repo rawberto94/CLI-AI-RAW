@@ -8,9 +8,11 @@
 
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { withAuthApiHandler, createSuccessResponse, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
-import { analyticsService } from 'data-orchestration/services';
+import { withAuthApiHandler, createSuccessResponse, type AuthenticatedApiContext } from '@/lib/api-middleware';
 import { getCached, setCached } from '@/lib/cache';
+import { expirationOrEndDateFilter, portfolioWhere } from '@/lib/contracts/server/portfolio';
+import { UNKNOWN_CURRENCY } from '@/lib/fx';
+import { convertAmountToDisplayLive, resolveDisplayCurrency } from '@/lib/display-currency.server';
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -19,7 +21,8 @@ export const GET = withAuthApiHandler(async (_request: NextRequest, ctx: Authent
   const startTime = Date.now();
   const tenantId = ctx.tenantId;
   
-  const cacheKey = `dashboard:stats:${tenantId}`;
+  const displayCurrency = await resolveDisplayCurrency(ctx.tenantId);
+  const cacheKey = `dashboard:stats:${tenantId}:${displayCurrency}:v2`;
   const cached = await getCached(cacheKey);
   if (cached) return createSuccessResponse(ctx, cached);
 
@@ -27,6 +30,7 @@ export const GET = withAuthApiHandler(async (_request: NextRequest, ctx: Authent
   const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
   const ninetyDaysFromNow = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const portfolio = portfolioWhere(tenantId);
   
   // Core contract stats + health scores + expirations in parallel
   const [
@@ -37,41 +41,32 @@ export const GET = withAuthApiHandler(async (_request: NextRequest, ctx: Authent
     recentlyAdded,
     statusBreakdown,
     typeBreakdown,
-    totalValue,
+    valueByCurrency,
     healthScoreStats,
     expirationStats,
     pendingAlerts,
   ] = await Promise.all([
-    prisma.contract.count({ where: { tenantId, isDeleted: false } }),
-    prisma.contract.count({ 
-      where: { 
-        tenantId,
-        status: { in: ['COMPLETED', 'ACTIVE', 'PROCESSING'] }
-      } 
+    prisma.contract.count({ where: portfolio }),
+    prisma.contract.count({
+      where: { ...portfolio, status: 'ACTIVE' },
     }),
     prisma.contract.count({
       where: {
-        tenantId,
-        OR: [
-          { endDate: { gte: now, lte: thirtyDaysFromNow } },
-          { expirationDate: { gte: now, lte: thirtyDaysFromNow } },
-        ]
-      }
+        ...portfolio,
+        ...expirationOrEndDateFilter({ gte: now, lte: thirtyDaysFromNow }),
+      },
     }),
     prisma.contract.count({
       where: {
-        tenantId,
-        OR: [
-          { endDate: { gte: now, lte: ninetyDaysFromNow } },
-          { expirationDate: { gte: now, lte: ninetyDaysFromNow } },
-        ]
-      }
+        ...portfolio,
+        ...expirationOrEndDateFilter({ gte: now, lte: ninetyDaysFromNow }),
+      },
     }),
     prisma.contract.count({
       where: {
-        tenantId,
-        createdAt: { gte: thirtyDaysAgo }
-      }
+        ...portfolio,
+        createdAt: { gte: thirtyDaysAgo },
+      },
     }),
     prisma.contract.groupBy({
       by: ['status'],
@@ -80,12 +75,14 @@ export const GET = withAuthApiHandler(async (_request: NextRequest, ctx: Authent
     }),
     prisma.contract.groupBy({
       by: ['contractType'],
-      where: { tenantId, isDeleted: false },
+      where: portfolio,
       _count: true
     }),
-    prisma.contract.aggregate({
-      where: { tenantId, isDeleted: false },
-      _sum: { totalValue: true }
+    prisma.contract.groupBy({
+      by: ['currency'],
+      where: { ...portfolio, totalValue: { not: null } },
+      _sum: { totalValue: true },
+      _count: { _all: true },
     }),
     // Health score stats from dedicated table
     prisma.$queryRaw<Array<{
@@ -159,8 +156,35 @@ export const GET = withAuthApiHandler(async (_request: NextRequest, ctx: Authent
     `.catch(() => [{ count: 0n }]),
   ]);
   
-  // Calculate portfolio value from actual values or estimate
-  const portfolioValue = totalValue._sum.totalValue ? Number(totalValue._sum.totalValue) : 0;
+  let portfolioValue = 0;
+  let unconvertedValueCount = 0;
+  let convertedBucketCount = 0;
+  let fxAsOf: string | null = null;
+  for (const row of valueByCurrency as Array<{
+    currency: string | null;
+    _sum: { totalValue: unknown };
+    _count?: { _all?: number } | number;
+  }>) {
+    const amount = Number(row._sum.totalValue || 0);
+    const rowCount = typeof row._count === 'number' ? row._count : Number(row._count?._all || 0);
+    if (!amount) continue;
+    // Skip unknown/null currency — never treat it as the display currency.
+    const fromCurrency = (typeof row.currency === 'string' && row.currency.trim())
+      ? row.currency.trim().toUpperCase()
+      : '';
+    if (!fromCurrency || fromCurrency === UNKNOWN_CURRENCY) {
+      unconvertedValueCount += rowCount || 1;
+      continue;
+    }
+    const live = await convertAmountToDisplayLive(amount, fromCurrency, displayCurrency);
+    if (live.value == null) {
+      unconvertedValueCount += rowCount || 1;
+      continue;
+    }
+    if (fromCurrency !== displayCurrency) convertedBucketCount += 1;
+    if (live.asOf) fxAsOf = live.asOf;
+    portfolioValue += live.value;
+  }
   
   // Extract health and expiration stats
   const defaultHealthStats = {
@@ -199,6 +223,10 @@ export const GET = withAuthApiHandler(async (_request: NextRequest, ctx: Authent
       activeContracts,
       portfolioValue,
       recentlyAdded,
+      displayCurrency,
+      unconvertedValueCount,
+      converted: convertedBucketCount > 0,
+      fxAsOf,
     },
     renewals: {
       expiringIn30Days,

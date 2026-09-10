@@ -89,9 +89,9 @@ export function RateCardEntryForm({
       contractId,
       supplierTier: 'TIER_2',
       seniority: 'MID',
-      currency: 'USD',
-      country: 'United States',
-      region: 'Americas',
+      currency: 'CHF',
+      country: '',
+      region: '',
       isNegotiated: false,
       effectiveDate: new Date().toISOString().split('T')[0],
       ...initialData,
@@ -489,10 +489,10 @@ export function RateCardEntryForm({
               {...register('currency')}
               className="w-full px-3 py-2 border rounded-md"
             >
-              <option value="USD">USD</option>
-              <option value="EUR">EUR</option>
-              <option value="GBP">GBP</option>
               <option value="CHF">CHF</option>
+              <option value="EUR">EUR</option>
+              <option value="USD">USD</option>
+              <option value="GBP">GBP</option>
               <option value="CAD">CAD</option>
               <option value="AUD">AUD</option>
               <option value="INR">INR</option>
@@ -512,25 +512,25 @@ export function RateCardEntryForm({
                 {watchedFields.currency !== 'USD' && (
                   <div className="flex justify-between">
                     <span className="text-violet-700">USD:</span>
-                    <span className="font-medium">{format(convertedRates.usd, 'USD', 'en-US')}</span>
+                    <span className="font-medium">{format(convertedRates.usd, 'USD', 'de-CH')}</span>
                   </div>
                 )}
                 {watchedFields.currency !== 'EUR' && (
                   <div className="flex justify-between">
                     <span className="text-violet-700">EUR:</span>
-                    <span className="font-medium">{format(convertedRates.eur, 'EUR', 'en-US')}</span>
+                    <span className="font-medium">{format(convertedRates.eur, 'EUR', 'de-CH')}</span>
                   </div>
                 )}
                 {watchedFields.currency !== 'GBP' && (
                   <div className="flex justify-between">
                     <span className="text-violet-700">GBP:</span>
-                    <span className="font-medium">{format(convertedRates.gbp, 'GBP', 'en-US')}</span>
+                    <span className="font-medium">{format(convertedRates.gbp, 'GBP', 'de-CH')}</span>
                   </div>
                 )}
                 {watchedFields.currency !== 'CHF' && (
                   <div className="flex justify-between">
                     <span className="text-violet-700">CHF:</span>
-                    <span className="font-medium">{format(convertedRates.chf, 'CHF', 'en-US')}</span>
+                    <span className="font-medium">{format(convertedRates.chf, 'CHF', 'de-CH')}</span>
                   </div>
                 )}
               </div>

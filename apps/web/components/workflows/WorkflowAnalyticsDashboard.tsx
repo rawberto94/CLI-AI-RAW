@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
+import Link from 'next/link';
 import { motion } from 'framer-motion';
 import {
   TrendingUp,
@@ -15,7 +16,6 @@ import {
   Target,
   ArrowRight,
   RefreshCw,
-  Download,
   Layers,
   AlertCircle,
 } from 'lucide-react';
@@ -478,9 +478,6 @@ export const WorkflowAnalyticsDashboard: React.FC = () => {
           >
             <RefreshCw className={`w-5 h-5 text-slate-600 ${isRefreshing ? 'animate-spin' : ''}`} />
           </button>
-          <button className="p-2 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors">
-            <Download className="w-5 h-5 text-slate-600" />
-          </button>
         </div>
       </div>
 
@@ -560,9 +557,9 @@ export const WorkflowAnalyticsDashboard: React.FC = () => {
                 <p className="text-sm text-slate-600 mt-1">
                   Legal Review step is averaging 36h - consider adding parallel reviewers or implementing tiered review based on contract value.
                 </p>
-                <button className="mt-2 text-sm text-violet-600 font-medium hover:text-violet-700 flex items-center gap-1">
+                <Link href="/workflows" className="mt-2 text-sm text-violet-600 font-medium hover:text-violet-700 flex items-center gap-1">
                   View suggestions <ArrowRight className="w-4 h-4" />
-                </button>
+                </Link>
               </div>
             </div>
           </div>
@@ -576,9 +573,9 @@ export const WorkflowAnalyticsDashboard: React.FC = () => {
                 <p className="text-sm text-slate-600 mt-1">
                   NDA Fast Track and Express workflows show 98%+ SLA compliance. Consider routing more low-value contracts through these paths.
                 </p>
-                <button className="mt-2 text-sm text-violet-600 font-medium hover:text-violet-700 flex items-center gap-1">
+                <Link href="/workflows" className="mt-2 text-sm text-violet-600 font-medium hover:text-violet-700 flex items-center gap-1">
                   Optimize routing <ArrowRight className="w-4 h-4" />
-                </button>
+                </Link>
               </div>
             </div>
           </div>

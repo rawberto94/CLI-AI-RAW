@@ -7,6 +7,7 @@
 
 import OpenAI from 'openai';
 import { createOpenAIClient, hasAIClientConfig } from '@/lib/openai-client';
+import { expandQueryWithLegalSynonyms, retrievalLanguageInstructions } from '@repo/utils';
 
 // Types
 export interface QueryExpansion {
@@ -99,6 +100,7 @@ async function generateQueryVariations(
 1. Different terminology (legal vs business terms)
 2. Different phrasings (question vs statement)
 3. More specific or more general versions
+${retrievalLanguageInstructions(query)}
 
 Return ONLY a JSON array of strings.`,
       },
@@ -116,9 +118,9 @@ Return ONLY a JSON array of strings.`,
   try {
     const jsonMatch = content.match(/\[[\s\S]*\]/);
     const variations = jsonMatch ? JSON.parse(jsonMatch[0]) : [];
-    return [query, ...variations.slice(0, numVariations)];
+    return [...new Set([query, ...variations.slice(0, numVariations), ...expandQueryWithLegalSynonyms(query)])];
   } catch {
-    return [query];
+    return [...new Set([query, ...expandQueryWithLegalSynonyms(query)])];
   }
 }
 
@@ -132,7 +134,8 @@ async function generateHypotheticalAnswer(query: string): Promise<string> {
     messages: [
       {
         role: 'system',
-        content: `You are generating hypothetical contract text that would answer the user's question. Write a short, realistic contract clause (2-3 sentences) that directly addresses the query. This will be used to find similar real clauses.`,
+        content: `You are generating hypothetical contract text that would answer the user's question. Write a short, realistic contract clause (2-3 sentences) that directly addresses the query. This will be used to find similar real clauses.
+${retrievalLanguageInstructions(query)}`,
       },
       {
         role: 'user',
@@ -267,6 +270,7 @@ export async function decomposeQuery(query: string): Promise<string[]> {
       {
         role: 'system',
         content: `You are a legal research assistant. Break down complex legal queries into simpler sub-queries that can be searched independently. Return a JSON array of 2-4 focused sub-queries.
+${retrievalLanguageInstructions(query)}
 
 Example:
 Input: "What are the termination rights and notice periods for supplier contracts signed in 2023?"
@@ -309,6 +313,7 @@ export async function stepBackQuery(query: string): Promise<string | null> {
         {
           role: 'system',
           content: `You are a legal contract retrieval assistant. Given a specific legal query, generate ONE broader, more abstract version of the query that captures the underlying legal concept. The broader query should help retrieve background context and related clauses that the specific query might miss.
+${retrievalLanguageInstructions(query)}
 
 Rules:
 - Remove specific section numbers, dates, party names, and dollar amounts

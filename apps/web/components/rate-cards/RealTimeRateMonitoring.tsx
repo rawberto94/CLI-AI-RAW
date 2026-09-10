@@ -57,64 +57,15 @@ export function RealTimeRateMonitoring() {
       setData(result.data || result);
     } catch {
       toast.error('Failed to load monitoring data');
-
-      // Fallback data for development
       setData({
-        recentChanges: [
-          {
-            id: '1',
-            supplierName: 'Acme Consulting',
-            roleName: 'Senior Developer',
-            oldRate: 850,
-            newRate: 900,
-            currency: 'USD',
-            changePercent: 5.88,
-            timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-            seniority: 'SENIOR',
-          },
-          {
-            id: '2',
-            supplierName: 'Tech Solutions Inc',
-            roleName: 'Principal Architect',
-            oldRate: 1200,
-            newRate: 1150,
-            currency: 'USD',
-            changePercent: -4.17,
-            timestamp: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
-            seniority: 'PRINCIPAL',
-          },
-          {
-            id: '3',
-            supplierName: 'Global IT Partners',
-            roleName: 'Mid-Level Developer',
-            oldRate: 600,
-            newRate: 650,
-            currency: 'USD',
-            changePercent: 8.33,
-            timestamp: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString(),
-            seniority: 'MID',
-          },
-        ],
+        recentChanges: [],
         summary: {
-          totalRates: 1250,
-          increasedToday: 45,
-          decreasedToday: 12,
-          avgChangePercent: 3.2,
+          totalRates: 0,
+          increasedToday: 0,
+          decreasedToday: 0,
+          avgChangePercent: 0,
         },
-        alerts: [
-          {
-            id: '1',
-            message: 'Senior Developer rates increased by 8% across 5 suppliers',
-            severity: 'high',
-            timestamp: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
-          },
-          {
-            id: '2',
-            message: 'Offshore rates showing unusual volatility',
-            severity: 'medium',
-            timestamp: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
-          },
-        ],
+        alerts: [],
       });
     } finally {
       setIsLoading(false);

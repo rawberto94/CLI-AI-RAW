@@ -38,6 +38,8 @@ import {
   Lightbulb,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useDisplayCurrency } from '@/hooks/useDisplayCurrency';
+import { formatAmountWithCurrency, formatDisplayTotal } from '@/lib/utils/formatters';
 
 // ============================================================================
 // Types
@@ -183,6 +185,7 @@ function StatCard({
   trend?: { value: number; positive: boolean };
   format?: 'number' | 'percent' | 'currency';
 }) {
+  const displayCurrency = useDisplayCurrency();
   const colorClasses = {
     blue: 'text-violet-600 bg-violet-50',
     green: 'text-green-600 bg-green-50',
@@ -196,7 +199,7 @@ function StatCard({
       case 'percent':
         return `${(value * 100).toFixed(1)}%`;
       case 'currency':
-        return `$${(value / 1000000).toFixed(2)}M`;
+        return formatDisplayTotal(value, displayCurrency);
       default:
         return value.toLocaleString();
     }
@@ -310,7 +313,7 @@ function ContractPredictionRow({
           <Badge variant="outline" className="text-xs">{prediction.supplier}</Badge>
         </div>
         <p className="text-xs text-muted-foreground mt-0.5">
-          ${prediction.value.toLocaleString()} annual value
+          {formatAmountWithCurrency(prediction.value, null)} annual value
         </p>
       </div>
 
@@ -567,14 +570,7 @@ export function PredictiveAnalyticsDashboard({ tenantId, className }: Predictive
               ))}
             </SelectContent>
           </Select>
-          <Button variant="outline" size="sm">
-            <Download className="w-4 h-4 mr-2" />
-            Export
-          </Button>
-          <Button variant="outline" size="sm">
-            <RefreshCw className="w-4 h-4 mr-2" />
-            Refresh
-          </Button>
+
         </div>
       </div>
 

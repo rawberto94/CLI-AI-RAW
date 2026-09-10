@@ -88,6 +88,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
         {
           role: 'system',
           content: `You are an expert contract attorney. Generate a complete, professional contract draft.
+Match the user's language. If they write German, French, or Italian, draft in that language. Keep party names verbatim.
 
 Output Requirements:
 - Return the contract as clean HTML suitable for insertion into Microsoft Word

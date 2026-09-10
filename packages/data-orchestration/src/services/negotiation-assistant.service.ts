@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import { formatMoneyText } from '@repo/utils';
 
 export interface NegotiationBrief {
   currentSituation: {
@@ -239,9 +240,9 @@ export class NegotiationAssistantService {
     const { percentileRank, marketMedian } = marketPosition;
     
     if (percentileRank >= 75) {
-      return `Current rate is in the top quartile (${percentileRank}th percentile). Market data strongly supports a reduction to at least the median rate of $${marketMedian}.`;
+      return `Current rate is in the top quartile (${percentileRank}th percentile). Market data strongly supports a reduction to at least the median rate of ${formatMoneyText(Number(marketMedian))}.`;
     } else if (percentileRank >= 50) {
-      return `Current rate is above market median. Competitive pressure and market benchmarks justify a reduction toward the median of $${marketMedian}.`;
+      return `Current rate is above market median. Competitive pressure and market benchmarks justify a reduction toward the median of ${formatMoneyText(Number(marketMedian))}.`;
     } else {
       return `Current rate is already competitive. Focus on maintaining current rates or modest reductions based on volume commitments.`;
     }
@@ -344,8 +345,8 @@ export class NegotiationAssistantService {
     // Market position point
     points.push({
       point: `Market Analysis Shows Opportunity for Rate Optimization`,
-      supportingData: `Current rate of $${rateCard.dailyRateUSD} is at the ${marketPosition.percentileRank}th percentile. Market median is $${marketPosition.marketMedian}.`,
-      impact: `Aligning to market median would save $${rateCard.dailyRateUSD - marketPosition.marketMedian} per day.`,
+      supportingData: `Current rate of ${formatMoneyText(Number(rateCard.dailyRateUSD), rateCard.currency)} is at the ${marketPosition.percentileRank}th percentile. Market median is ${formatMoneyText(Number(marketPosition.marketMedian), rateCard.currency)}.`,
+      impact: `Aligning to market median would save ${formatMoneyText(Number(rateCard.dailyRateUSD) - Number(marketPosition.marketMedian), rateCard.currency)} per day.`,
       priority: 1,
     });
 
@@ -355,7 +356,7 @@ export class NegotiationAssistantService {
       points.push({
         point: `Volume Commitment Justifies Preferential Pricing`,
         supportingData: `Committed volume of ${rateCard.volumeCommitted} days annually represents significant business.`,
-        impact: `Rate reduction to $${targetRates.realistic} would still provide ${rateCard.volumeCommitted} days of guaranteed work, worth $${targetRates.realistic * rateCard.volumeCommitted} annually.`,
+        impact: `Rate reduction to ${formatMoneyText(Number(targetRates.realistic), rateCard.currency)} would still provide ${rateCard.volumeCommitted} days of guaranteed work, worth ${formatMoneyText(Number(targetRates.realistic) * rateCard.volumeCommitted, rateCard.currency)} annually.`,
         priority: 2,
       });
     }
@@ -365,8 +366,8 @@ export class NegotiationAssistantService {
       const bestAlt = alternatives[0];
       points.push({
         point: `Competitive Alternatives Available in Market`,
-        supportingData: `${alternatives.length} qualified suppliers offer similar services at lower rates. Best alternative: ${bestAlt.supplierName} at $${bestAlt.dailyRate}.`,
-        impact: `Switching suppliers could save $${bestAlt.savingsAmount} per day (${bestAlt.savingsPercent.toFixed(1)}%).`,
+        supportingData: `${alternatives.length} qualified suppliers offer similar services at lower rates. Best alternative: ${bestAlt.supplierName} at ${formatMoneyText(Number(bestAlt.dailyRate), rateCard.currency)}.`,
+        impact: `Switching suppliers could save ${formatMoneyText(Number(bestAlt.savingsAmount), rateCard.currency)} per day (${bestAlt.savingsPercent.toFixed(1)}%).`,
         priority: 3,
       });
     }
@@ -446,7 +447,7 @@ export class NegotiationAssistantService {
     const hasAlternatives = alternatives.length > 0;
 
     if (marketPosition.percentileRank >= 75) {
-      let strategy = `Lead with market data showing current rate in top quartile (${marketPosition.percentileRank}th percentile). Present realistic target of $${targetRates.realistic} as fair and data-driven based on market median of $${marketPosition.marketMedian}.`;
+      let strategy = `Lead with market data showing current rate in top quartile (${marketPosition.percentileRank}th percentile). Present realistic target of ${formatMoneyText(Number(targetRates.realistic))} as fair and data-driven based on market median of ${formatMoneyText(Number(marketPosition.marketMedian))}.`;
       
       if (hasAlternatives) {
         strategy += ` Leverage ${alternatives.length} alternative supplier${alternatives.length > 1 ? 's' : ''} offering rates ${alternatives[0].savingsPercent.toFixed(1)}% lower as competitive pressure.`;
@@ -459,13 +460,13 @@ export class NegotiationAssistantService {
       strategy += ` Be prepared to walk away if supplier is unwilling to negotiate toward market rates.`;
       return strategy;
     } else if (marketPosition.percentileRank >= 50) {
-      let strategy = `Open with market analysis showing rate above median (${marketPosition.percentileRank}th percentile). Propose gradual reduction toward median of $${marketPosition.marketMedian} over contract term.`;
+      let strategy = `Open with market analysis showing rate above median (${marketPosition.percentileRank}th percentile). Propose gradual reduction toward median of ${formatMoneyText(Number(marketPosition.marketMedian))} over contract term.`;
       
       if (hasStrongLeverage) {
         strategy += ` Emphasize volume commitment and long-term partnership value.`;
       }
       
-      strategy += ` Position as mutual benefit rather than aggressive cost-cutting. Target realistic rate of $${targetRates.realistic} represents fair market alignment.`;
+      strategy += ` Position as mutual benefit rather than aggressive cost-cutting. Target realistic rate of ${formatMoneyText(Number(targetRates.realistic))} represents fair market alignment.`;
       return strategy;
     } else {
       let strategy = `Current rate is competitive (${marketPosition.percentileRank}th percentile). Focus on rate stability and volume commitments rather than reductions.`;
@@ -474,7 +475,7 @@ export class NegotiationAssistantService {
         strategy += ` Emphasize value of partnership and potential for increased volume.`;
       }
       
-      strategy += ` Use market data to justify maintaining current rates against inflation pressures. Target of $${targetRates.fallback} ensures continued competitiveness.`;
+      strategy += ` Use market data to justify maintaining current rates against inflation pressures. Target of ${formatMoneyText(Number(targetRates.fallback))} ensures continued competitiveness.`;
       return strategy;
     }
   }

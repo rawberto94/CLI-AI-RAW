@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   FileText, CheckCircle2, XCircle, MessageSquare, AlertTriangle, Shield,
   ChevronDown, ChevronRight, Clock, Check, X, Edit3, RefreshCw,
-  Download, Share2, Search, Zap, Brain,
+  Search, Zap, Brain,
   Loader2, BookOpen, Target, Scale, AlertCircle, ThumbsUp, ThumbsDown,
 } from 'lucide-react';
 
@@ -336,12 +336,7 @@ export function RedlineViewer({
                   <RefreshCw className="h-5 w-5" />
                 </button>
               )}
-              <button className="p-2 text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-100 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors">
-                <Download className="h-5 w-5" />
-              </button>
-              <button className="p-2 text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-100 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors">
-                <Share2 className="h-5 w-5" />
-              </button>
+
             </div>
           </div>
 

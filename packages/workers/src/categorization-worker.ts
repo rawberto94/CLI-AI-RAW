@@ -21,6 +21,7 @@ import { ensureProcessingJob, updateStep, assertRetryableReady } from './workflo
 import { RetryableError } from './utils/errors';
 import { sha256 } from './utils/hash';
 import { getWorkerConcurrency, getWorkerLimiter } from './config/worker-runtime';
+import { analysisLanguageInstructions } from '@repo/utils';
 
 // ============================================================================
 // TYPES
@@ -528,7 +529,9 @@ export async function processCategorizationJob(
           messages: [
             {
               role: 'system',
-              content: `You are a contract categorization expert. Given a contract excerpt and a list of business function categories, select the BEST matching L1 category. Respond with JSON only: {"categoryName": "exact category name", "confidence": 0-100, "reasoning": "brief explanation"}`
+              content: `You are a contract categorization expert. Given a contract excerpt and a list of business function categories, select the BEST matching L1 category. Respond with JSON only: {"categoryName": "exact category name", "confidence": 0-100, "reasoning": "brief explanation"}
+${analysisLanguageInstructions({ contractText: contractSummary })}
+Category names stay English.`
             },
             {
               role: 'user',

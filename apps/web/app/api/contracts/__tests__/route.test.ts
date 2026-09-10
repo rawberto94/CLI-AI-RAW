@@ -1,13 +1,28 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 
-const { mockFindMany, mockContractCount, mockTaxonomyFindMany, mockWithCache, mockContractsList, mockGetTenantIdFromRequest } = vi.hoisted(() => ({
+const {
+  mockFindMany,
+  mockContractCount,
+  mockTaxonomyFindMany,
+  mockWithCache,
+  mockContractsList,
+  mockGetTenantIdFromRequest,
+  mockContractCreate,
+  mockMetadataCreate,
+  mockTransaction,
+  mockAuditLog,
+} = vi.hoisted(() => ({
   mockFindMany: vi.fn(),
   mockContractCount: vi.fn(),
   mockTaxonomyFindMany: vi.fn(),
   mockWithCache: vi.fn(),
   mockContractsList: vi.fn(),
   mockGetTenantIdFromRequest: vi.fn(),
+  mockContractCreate: vi.fn(),
+  mockMetadataCreate: vi.fn(),
+  mockTransaction: vi.fn(),
+  mockAuditLog: vi.fn(),
 }));
 
 vi.mock('@/lib/prisma', () => ({
@@ -15,11 +30,21 @@ vi.mock('@/lib/prisma', () => ({
     contract: {
       findMany: mockFindMany,
       count: mockContractCount,
+      create: mockContractCreate,
+    },
+    contractMetadata: {
+      create: mockMetadataCreate,
     },
     taxonomyCategory: {
       findMany: mockTaxonomyFindMany,
     },
+    $transaction: mockTransaction,
   },
+}));
+
+vi.mock('@/lib/security/audit', () => ({
+  auditLog: mockAuditLog,
+  AuditAction: { CONTRACT_CREATED: 'CONTRACT_CREATED' },
 }));
 
 vi.mock('data-orchestration/services', () => ({
@@ -37,12 +62,12 @@ vi.mock('@/lib/tenant-server', () => ({
   getTenantIdFromRequest: mockGetTenantIdFromRequest,
 }));
 
-import { GET } from '../route';
+import { GET, POST } from '../route';
 
 function createAuthenticatedRequest(
   method: string,
   url: string,
-  options?: { searchParams?: Record<string, string> }
+  options?: { searchParams?: Record<string, string>; body?: unknown; role?: string }
 ): NextRequest {
   const fullUrl = new URL(url);
   if (options?.searchParams) {
@@ -54,7 +79,9 @@ function createAuthenticatedRequest(
       'x-user-id': 'test-user-id',
       'x-tenant-id': 'test-tenant',
       'Content-Type': 'application/json',
+      ...(options?.role ? { 'x-user-role': options.role } : {}),
     },
+    body: options?.body !== undefined ? JSON.stringify(options.body) : undefined,
   });
 }
 
@@ -281,3 +308,88 @@ describe('GET /api/contracts', () => {
     expect(mockWithCache).not.toHaveBeenCalled();
   });
 });
+
+describe('POST /api/contracts', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockAuditLog.mockResolvedValue({});
+    mockContractCreate.mockResolvedValue({
+      id: 'contract-new',
+      contractTitle: 'Master Service Agreement',
+      status: 'DRAFT',
+    });
+    mockMetadataCreate.mockResolvedValue({});
+    mockTransaction.mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) => fn({
+      contract: { create: mockContractCreate },
+      contractMetadata: { create: mockMetadataCreate },
+    }));
+  });
+
+  it('returns 401 without auth headers', async () => {
+    const request = createUnauthenticatedRequest('http://localhost:3000/api/contracts');
+    const response = await POST(new NextRequest(request.url, { method: 'POST' }));
+    const data = await response.json();
+
+    expect(response.status).toBe(401);
+    expect(data.success).toBe(false);
+    expect(mockContractCreate).not.toHaveBeenCalled();
+  });
+
+  it('returns 403 for viewers', async () => {
+    const response = await POST(createAuthenticatedRequest('POST', 'http://localhost:3000/api/contracts', {
+      role: 'viewer',
+      body: { title: 'Blocked' },
+    }));
+    const data = await response.json();
+
+    expect(response.status).toBe(403);
+    expect(data.success).toBe(false);
+    expect(mockContractCreate).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 when title is missing', async () => {
+    const response = await POST(createAuthenticatedRequest('POST', 'http://localhost:3000/api/contracts', {
+      role: 'member',
+      body: { tags: ['msa'] },
+    }));
+    const data = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(data.error.code).toBe('VALIDATION_ERROR');
+    expect(mockTransaction).not.toHaveBeenCalled();
+  });
+
+  it('creates contract and metadata with normalized tags (not empty)', async () => {
+    const response = await POST(createAuthenticatedRequest('POST', 'http://localhost:3000/api/contracts', {
+      role: 'member',
+      body: {
+        title: 'Master Service Agreement',
+        type: 'MSA',
+        tags: ['Urgent Review', 'msa'],
+        parties: [{ name: 'Acme', role: 'CLIENT' }],
+      },
+    }));
+    const data = await response.json();
+
+    expect(response.status).toBe(201);
+    expect(data.success).toBe(true);
+    expect(data.data.id).toBe('contract-new');
+    expect(mockContractCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        tenantId: 'test-tenant',
+        contractTitle: 'Master Service Agreement',
+        tags: ['urgent-review', 'msa'],
+        status: 'DRAFT',
+      }),
+    });
+    expect(mockMetadataCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        contractId: 'contract-new',
+        tenantId: 'test-tenant',
+        tags: ['urgent-review', 'msa'],
+        updatedBy: 'test-user-id',
+      }),
+    });
+  });
+});
+

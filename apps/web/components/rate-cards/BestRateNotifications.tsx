@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Bell, TrendingDown, TrendingUp, AlertCircle, CheckCircle } from 'lucide-react';
+import { formatRateMoney } from '@/lib/rate-cards/format';
 
 interface BestRateChange {
   roleStandardized: string;
@@ -200,12 +201,12 @@ export function BestRateNotifications() {
                     <div className="grid grid-cols-2 gap-4 text-sm">
                       <div>
                         <span className="text-muted-foreground">Previous Best:</span>
-                        <span className="ml-2 font-medium">${Math.round(change.previousBestRate)}/day</span>
+                        <span className="ml-2 font-medium">{formatRateMoney(Math.round(change.previousBestRate))}/day</span>
                       </div>
                       <div>
                         <span className="text-muted-foreground">New Best:</span>
                         <span className={`ml-2 font-medium ${colorClass}`}>
-                          ${Math.round(change.newBestRate)}/day
+                          {formatRateMoney(Math.round(change.newBestRate))}/day
                         </span>
                       </div>
                     </div>

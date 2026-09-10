@@ -29,6 +29,8 @@ import {
   Award,
   Target
 } from 'lucide-react'
+import { FindingSourceLink } from '@/components/contracts/FindingSourceLink'
+import { normalizeExtractedClauses } from '@/lib/contracts/extracted-clauses'
 
 interface ModernArtifactViewerProps {
   artifacts: {
@@ -131,7 +133,7 @@ export function ModernArtifactViewer({ artifacts, contractId, initialTab = 'over
       {/* Clauses Tab */}
       {artifacts.clauses && (
         <TabsContent value="clauses" className="space-y-6">
-          <ClausesArtifact data={artifacts.clauses} onCopy={handleCopy} copiedSection={copiedSection} expandedSections={expandedSections} toggleSection={toggleSection} />
+          <ClausesArtifact contractId={contractId} data={artifacts.clauses} onCopy={handleCopy} copiedSection={copiedSection} expandedSections={expandedSections} toggleSection={toggleSection} />
         </TabsContent>
       )}
 
@@ -260,8 +262,8 @@ function OverviewArtifact({ data, onCopy, copiedSection }: any) {
 }
 
 // Clauses Artifact Component
-function ClausesArtifact({ data, onCopy, copiedSection, expandedSections, toggleSection }: any) {
-  const clauses = Array.isArray(data) ? data : data.clauses || []
+function ClausesArtifact({ data, contractId, onCopy, copiedSection, expandedSections, toggleSection }: any) {
+  const clauses = normalizeExtractedClauses(data)
   
   return (
     <div className="space-y-6">
@@ -301,7 +303,7 @@ function ClausesArtifact({ data, onCopy, copiedSection, expandedSections, toggle
                         <Scale className="h-5 w-5 text-violet-600" />
                       </div>
                       <div className="text-left">
-                        <p className="font-semibold text-gray-900">{clause.title || clause.type || `Clause ${idx + 1}`}</p>
+                        <p className="font-semibold text-gray-900">{clause.title}</p>
                         {clause.section && (
                           <p className="text-sm text-gray-600">Section: {clause.section}</p>
                         )}
@@ -318,8 +320,15 @@ function ClausesArtifact({ data, onCopy, copiedSection, expandedSections, toggle
                     <div className="p-5 pt-0 border-t bg-gray-50">
                       <div className="bg-white p-4 rounded-lg">
                         <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
-                          {clause.content || clause.text || clause.description || 'No content available'}
+                          {clause.fullText || clause.summary || 'No content available'}
                         </p>
+                        <FindingSourceLink
+                          className="mt-3"
+                          contractId={contractId}
+                          snippet={clause.snippet}
+                          heading={clause.section || clause.title}
+                          page={clause.page}
+                        />
                       </div>
                       
                       {clause.obligations && clause.obligations.length > 0 && (

@@ -163,13 +163,24 @@ export interface EnhancedContractCardProps {
 // Helper Functions
 // ============================================================================
 
-function formatCurrency(value: number, currency: string = "CHF"): string {
-  return new Intl.NumberFormat("de-CH", {
-    style: "currency",
-    currency,
+function formatCurrency(value: number, currency?: string): string {
+  const code = typeof currency === "string" ? currency.trim() : "";
+  if (code.length === 3 && code !== "XXX") {
+    try {
+      return new Intl.NumberFormat("de-CH", {
+        style: "currency",
+        currency: code,
+        notation: value >= 1000000 ? "compact" : "standard",
+        maximumFractionDigits: value >= 1000000 ? 1 : 0,
+      }).format(value);
+    } catch {
+      return `${code} ${value.toLocaleString("de-CH")}`;
+    }
+  }
+  return value.toLocaleString("de-CH", {
     notation: value >= 1000000 ? "compact" : "standard",
     maximumFractionDigits: value >= 1000000 ? 1 : 0,
-  }).format(value);
+  });
 }
 
 function getDaysUntilExpiry(endDate?: string): number | null {

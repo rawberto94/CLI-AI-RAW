@@ -92,6 +92,7 @@ describe('UploadMetadataReviewDialog', () => {
 
     const titleInput = await screen.findByLabelText('Contract title');
     fireEvent.change(titleInput, { target: { value: 'Master Services Agreement' } });
+    fireEvent.change(screen.getByLabelText('Document number'), { target: { value: 'MSA-2026-0142' } });
     fireEvent.change(screen.getByLabelText('Contract type'), { target: { value: 'MSA' } });
     fireEvent.click(screen.getByRole('button', { name: /save and continue/i }));
 
@@ -112,6 +113,7 @@ describe('UploadMetadataReviewDialog', () => {
     const secondCall = fetchMock.mock.calls[1];
     expect(JSON.parse(secondCall[1].body as string)).toEqual({
       metadata: expect.objectContaining({
+        document_number: 'MSA-2026-0142',
         document_title: 'Master Services Agreement',
         document_classification: 'contract',
         contractType: 'MSA',
@@ -139,6 +141,7 @@ describe('UploadMetadataReviewDialog', () => {
           metadata: {
             document_title: 'Master Services Agreement',
             document_classification: 'contract',
+            document_number: 'MSA-2026-0142',
             start_date: '2026-05-01',
             end_date: '2027-05-01',
             tcv_amount: 500000,
@@ -147,6 +150,7 @@ describe('UploadMetadataReviewDialog', () => {
             _field_confidence: {
               document_title: { value: 0.95 },
               document_classification: { value: 0.95 },
+              document_number: { value: 0.95 },
               start_date: { value: 0.95 },
               end_date: { value: 0.95 },
               tcv_amount: { value: 0.95 },

@@ -17,6 +17,7 @@
 import OpenAI from 'openai';
 import { createOpenAIClient } from '@/lib/openai-client';
 import { optionalImport } from '@/lib/server/optional-module';
+import { analysisLanguageInstructions, ocrLanguageInstructions, resolveAnalysisLanguage } from '@repo/utils';
 
 // ============================================================================
 // Types
@@ -161,7 +162,7 @@ export class VisionDocumentAnalyzer {
       sections: [],
       hasTableOfContents: false,
       hasExhibits: false,
-      language: 'en',
+      language: '',
     };
 
     // Pass 1: Text extraction (always run)
@@ -170,6 +171,7 @@ export class VisionDocumentAnalyzer {
       const textResult = await this.extractText(images, model, options);
       fullText = textResult.text;
       pages.push(...textResult.pages);
+      documentStructure.language = resolveAnalysisLanguage({ contractText: fullText });
     }
 
     // Pass 2: Table extraction
@@ -362,6 +364,7 @@ export class VisionDocumentAnalyzer {
         {
           type: 'text',
           text: `Extract ALL text from these ${batch.length} document page(s). 
+${ocrLanguageInstructions()}
 Preserve the exact formatting, structure, and layout.
 Include:
 - All headings and subheadings with their hierarchy
@@ -486,6 +489,8 @@ Format response as JSON:
                 {
                   type: 'text',
                   text: `Analyze this document page and extract ALL tables.
+${ocrLanguageInstructions()}
+Keep cell text verbatim. Do not translate. Fr. and SFr. mean CHF.
 For each table found:
 1. Extract headers (column names)
 2. Extract all data rows
@@ -572,6 +577,8 @@ If no tables found, return { "tables": [] }`,
                 {
                   type: 'text',
                   text: `Analyze this document page for signatures and handwriting.
+${ocrLanguageInstructions()}
+Keep printed names and handwritten text verbatim. Dates may be DD.MM.YYYY.
 
 Detect:
 1. Signature blocks (signed or unsigned)
@@ -664,7 +671,8 @@ Return JSON:
         messages: [
           {
             role: 'system',
-            content: 'You are a contract analysis expert. Analyze document structure.',
+            content: `You are a contract analysis expert. Analyze document structure.
+${analysisLanguageInstructions({ contractText: textSample })}`,
           },
           {
             role: 'user',
@@ -700,7 +708,7 @@ Return JSON:
         sections: result.sections || [],
         hasTableOfContents: result.hasTableOfContents || false,
         hasExhibits: result.hasExhibits || false,
-        language: result.language || 'en',
+        language: result.language || resolveAnalysisLanguage({ contractText: textSample }),
       };
     } catch (error) {
       console.error('Structure analysis failed:', error);
@@ -710,7 +718,7 @@ Return JSON:
         sections: [],
         hasTableOfContents: false,
         hasExhibits: false,
-        language: 'en',
+        language: resolveAnalysisLanguage({ contractText: fullText }),
       };
     }
   }

@@ -82,6 +82,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
+import { formatAmountWithCurrency } from '@/lib/utils/formatters'
 
 // ============ TYPES ============
 
@@ -264,16 +265,13 @@ function EditableFieldComponent({
 
       case 'currency':
         return (
-          <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">$</span>
-            <Input
-              ref={inputRef as React.RefObject<HTMLInputElement>}
-              type="number"
-              value={localValue || ''}
-              onChange={(e) => setLocalValue(e.target.value)}
-              className="pl-7"
-            />
-          </div>
+          <Input
+            ref={inputRef as React.RefObject<HTMLInputElement>}
+            type="number"
+            value={localValue || ''}
+            onChange={(e) => setLocalValue(e.target.value)}
+            inputMode="decimal"
+          />
         )
 
       case 'percentage':
@@ -394,7 +392,7 @@ function EditableFieldComponent({
 
     switch (field.type) {
       case 'currency':
-        return `$${Number(field.value).toLocaleString()}`
+        return formatAmountWithCurrency(field.value, null)
       case 'percentage':
         return `${field.value}%`
       case 'tags':

@@ -13,6 +13,7 @@
  */
 
 import OpenAI from 'openai';
+import { analysisLanguageInstructions } from '@repo/utils';
 
 // Types
 export type ComparisonType = 'full' | 'fields' | 'clauses' | 'risks' | 'financial' | 'terms';
@@ -294,7 +295,9 @@ Return JSON with "analyses" array matching field order.`;
     contract2: ContractData,
     openai: OpenAI
   ): Promise<{ comparisons: ClauseComparison[]; tokens: { prompt: number; completion: number; total: number } }> {
-    const systemPrompt = `You are an expert contract analyst. Compare clauses between two contracts.`;
+    const systemPrompt = `You are an expert contract analyst. Compare clauses between two contracts.
+${analysisLanguageInstructions({ contractText: `${contract1.text}\n${contract2.text}` })}
+If the two contracts are in different languages, write the comparison in English and keep quotes verbatim.`;
 
     const userPrompt = `Compare the key clauses between these two contracts:
 
@@ -359,7 +362,9 @@ Return as JSON with "comparisons" array.`;
     perspective?: string
   ): Promise<{ risks: RiskDifferential[]; tokens: { prompt: number; completion: number; total: number } }> {
     const systemPrompt = `You are a contract risk analyst. Compare risk exposures between contracts.
-${perspective ? `Analyze from the perspective of the ${perspective}.` : ''}`;
+${perspective ? `Analyze from the perspective of the ${perspective}.` : ''}
+${analysisLanguageInstructions({ contractText: `${contract1.text}\n${contract2.text}` })}
+If the two contracts are in different languages, write the comparison in English and keep quotes verbatim.`;
 
     const userPrompt = `Compare risk profiles of these two contracts:
 
@@ -419,7 +424,9 @@ Return as JSON with "risks" array.`;
     contract2: ContractData,
     openai: OpenAI
   ): Promise<{ comparisons: FinancialComparison[]; tokens: { prompt: number; completion: number; total: number } }> {
-    const systemPrompt = `You are a financial analyst specializing in contracts.`;
+    const systemPrompt = `You are a financial analyst specializing in contracts.
+${analysisLanguageInstructions({ contractText: `${contract1.text}\n${contract2.text}` })}
+Do not invent USD or TCV 0. Fr. and SFr. mean CHF.`;
 
     const userPrompt = `Compare financial terms between these contracts:
 
@@ -481,7 +488,9 @@ Return as JSON with "comparisons" array.`;
     perspective?: string
   ): Promise<{ comparisons: TermsComparison[]; tokens: { prompt: number; completion: number; total: number } }> {
     const systemPrompt = `You are a contract terms analyst.
-${perspective ? `Analyze from the perspective of the ${perspective}.` : ''}`;
+${perspective ? `Analyze from the perspective of the ${perspective}.` : ''}
+${analysisLanguageInstructions({ contractText: `${contract1.text}\n${contract2.text}` })}
+If the two contracts are in different languages, write the comparison in English and keep quotes verbatim.`;
 
     const userPrompt = `Compare key terms between these contracts:
 
@@ -551,7 +560,9 @@ Return as JSON with "comparisons" array.`;
     };
 
     const systemPrompt = `You are a senior contract analyst providing an executive summary.
-${config.perspective ? `Analyze from the perspective of the ${config.perspective}.` : ''}`;
+${config.perspective ? `Analyze from the perspective of the ${config.perspective}.` : ''}
+${analysisLanguageInstructions({ contractText: `${contract1.text}\n${contract2.text}` })}
+If the two contracts are in different languages, write the comparison in English and keep quotes verbatim.`;
 
     const userPrompt = `Based on this contract comparison analysis, provide an executive summary:
 

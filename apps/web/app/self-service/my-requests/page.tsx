@@ -118,7 +118,7 @@ export default function MyRequestsPage() {
 
   const formatDate = (d: string) => {
     const date = new Date(d);
-    return isNaN(date.getTime()) ? "—" : date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    return isNaN(date.getTime()) ? "—" : date.toLocaleDateString("de-CH", { month: "short", day: "numeric", year: "numeric" });
   };
 
   const timeAgo = (d: string) => {
@@ -292,7 +292,7 @@ export default function MyRequestsPage() {
                               {req.counterparty_name && <span>• {req.counterparty_name}</span>}
                               {req.department && <span>• {req.department}</span>}
                               {req.estimated_value && (
-                                <span>• {(req.currency || "USD")} {Number(req.estimated_value).toLocaleString()}</span>
+                                <span>• {req.currency ? `${req.currency} ` : ''}{Number(req.estimated_value).toLocaleString()}</span>
                               )}
                             </div>
                           </div>

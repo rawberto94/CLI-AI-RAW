@@ -35,6 +35,7 @@ import {
   Minus,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { formatAmountWithCurrency } from '@/lib/utils/formatters';
 import { PageBreadcrumb } from '@/components/navigation';
 import { motion } from 'framer-motion';
 
@@ -230,7 +231,7 @@ export default function RateCompliancePage() {
           <Card>
             <CardContent className="pt-6">
               <p className="text-sm text-muted-foreground">Potential Savings</p>
-              <p className="text-3xl font-bold text-green-600">${summary.totalPotentialSavings.toLocaleString()}</p>
+              <p className="text-3xl font-bold text-green-600">{formatAmountWithCurrency(summary.totalPotentialSavings)}</p>
               <p className="text-xs text-muted-foreground mt-1">From rate card overcharges</p>
             </CardContent>
           </Card>
@@ -250,8 +251,8 @@ export default function RateCompliancePage() {
               <p className="text-sm text-muted-foreground">Avg Overcharge</p>
               <p className="text-3xl font-bold">
                 {results.length > 0 
-                  ? `$${Math.round(results.reduce((a, r) => a + r.potentialSavings, 0) / Math.max(1, results.filter(r => r.overchargedItems > 0).length)).toLocaleString()}`
-                  : '$0'}
+                  ? formatAmountWithCurrency(Math.round(results.reduce((a, r) => a + r.potentialSavings, 0) / Math.max(1, results.filter(r => r.overchargedItems > 0).length)))
+                  : '—'}
               </p>
               <p className="text-xs text-muted-foreground mt-1">Per non-compliant contract</p>
             </CardContent>
@@ -309,7 +310,7 @@ export default function RateCompliancePage() {
                       </TableCell>
                       <TableCell className="text-right font-medium">
                         {r.potentialSavings > 0 ? (
-                          <span className="text-green-600">${r.potentialSavings.toLocaleString()}</span>
+                          <span className="text-green-600">{formatAmountWithCurrency(r.potentialSavings)}</span>
                         ) : (
                           <span className="text-muted-foreground">—</span>
                         )}

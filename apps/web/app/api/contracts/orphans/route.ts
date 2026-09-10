@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { contractService } from 'data-orchestration/services'
 import { getTenantIdFromRequest } from '@/lib/tenant-server'
 import { withContractApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
+import { resolveDisplayCurrency, sumToDisplayCurrency } from '@/lib/display-currency.server';
 
 export const dynamic = 'force-dynamic'
 
@@ -69,6 +70,7 @@ export const GET = withContractApiHandler(async (request, ctx) => {
       clientName: true,
       supplierName: true,
       totalValue: true,
+      currency: true,
       effectiveDate: true,
       expirationDate: true,
       isExpired: true,
@@ -170,6 +172,7 @@ export const GET = withContractApiHandler(async (request, ctx) => {
         clientName: orphan.clientName,
         supplierName: orphan.supplierName,
         totalValue: orphan.totalValue ? Number(orphan.totalValue) : null,
+        currency: orphan.currency || null,
         effectiveDate: orphan.effectiveDate?.toISOString() || null,
         expirationDate: orphan.expirationDate?.toISOString() || null,
         isExpired: orphan.isExpired,
@@ -180,6 +183,8 @@ export const GET = withContractApiHandler(async (request, ctx) => {
       }
     })
   )
+
+  const displayCurrency = await resolveDisplayCurrency(ctx.tenantId)
 
   // Statistics
   const stats = {
@@ -192,12 +197,17 @@ export const GET = withContractApiHandler(async (request, ctx) => {
       acc[cat] = (acc[cat] || 0) + 1
       return acc
     }, {} as Record<string, number>),
-    totalValue: orphansWithSuggestions.reduce((sum, o) => sum + (o.totalValue || 0), 0)
+    totalValue: sumToDisplayCurrency(
+      orphansWithSuggestions.map((o) => ({ amount: o.totalValue, currency: o.currency })),
+      displayCurrency,
+    ),
+    displayCurrency,
   }
 
   return createSuccessResponse(ctx, {
     orphans: orphansWithSuggestions,
     stats,
+    displayCurrency,
     source: 'database'
   })
 });

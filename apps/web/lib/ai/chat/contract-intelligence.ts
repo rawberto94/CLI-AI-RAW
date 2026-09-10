@@ -1,4 +1,7 @@
 import { prisma } from '@/lib/prisma';
+import { formatAmountWithCurrency } from '@/lib/utils/formatters';
+import { sumToDisplayCurrency } from '@/lib/display-currency.server';
+import { DEFAULT_DISPLAY_CURRENCY } from '@/lib/display-currency';
 
 // ============================================
 // COMPREHENSIVE CONTRACT INTELLIGENCE
@@ -64,7 +67,7 @@ export async function getContractIntelligence(contractId: string, tenantId: stri
         signatureStatus: (contract as any).signatureStatus || 'unknown',
         signatureDate: (contract as any).signatureDate || null,
         signatureRequiredFlag: (contract as any).signatureRequiredFlag || false,
-        documentClassification: (contract as any).documentClassification || 'contract',
+        documentClassification: (contract as any).documentClassification || 'unknown',
         documentClassificationWarning: (contract as any).documentClassificationWarning || null },
       insights: {
         summary: (overview as any)?.summary || (overview as any)?.keyTerms?.join(', ') || 'No summary available',
@@ -224,8 +227,11 @@ export async function getProactiveInsights(tenantId: string): Promise<{
     }
     
     if (highValueExpiring.length > 0) {
-      const totalValue = highValueExpiring.reduce((sum, c) => sum + Number(c.totalValue || 0), 0);
-      insights.push(`💰 **$${totalValue.toLocaleString()}** in high-value contracts expiring soon. Consider renewal negotiations.`);
+      const totalValue = sumToDisplayCurrency(
+        highValueExpiring.map((c) => ({ amount: Number(c.totalValue || 0), currency: c.currency })),
+        DEFAULT_DISPLAY_CURRENCY,
+      );
+      insights.push(`💰 **${formatAmountWithCurrency(totalValue, DEFAULT_DISPLAY_CURRENCY)}** in high-value contracts expiring soon. Consider renewal negotiations.`);
     }
     
     const activeCount = await prisma.contract.count({
@@ -323,7 +329,7 @@ export async function compareContracts(
     }[] = [];
 
     const formatValue = (v: unknown) => v ? String(v) : 'N/A';
-    const formatMoney = (v: unknown) => v ? `$${Number(v).toLocaleString()}` : 'N/A';
+    const formatMoney = (v: unknown, currency?: string | null) => v ? formatAmountWithCurrency(v, currency) : 'N/A';
     const formatDate = (d: Date | null) => d ? new Date(d).toLocaleDateString() : 'N/A';
 
     comparison.push({
@@ -346,8 +352,8 @@ export async function compareContracts(
 
     comparison.push({
       field: 'Total Value',
-      valueA: formatMoney(contractA.totalValue),
-      valueB: formatMoney(contractB.totalValue),
+      valueA: formatMoney(contractA.totalValue, contractA.currency),
+      valueB: formatMoney(contractB.totalValue, contractB.currency),
       difference: !contractA.totalValue || !contractB.totalValue ? 'na' :
         contractA.totalValue === contractB.totalValue ? 'same' :
         Number(contractA.totalValue) > Number(contractB.totalValue) ? 'better_a' : 'better_b' });

@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma';
+import { formatMoneyText } from '@repo/utils';
 
 // Fetch contract details directly from database when contractId is provided
 // ENHANCED: Now includes ALL artifact types for comprehensive AI context
@@ -79,8 +80,8 @@ export async function getContractContext(contractId: string, tenantId: string): 
     // Use official schema TCV field with fallback
     const tcvAmount = aiMeta.tcv_amount || contract.totalValue;
     if (tcvAmount) {
-      const currency = aiMeta.currency || contract.currency || 'USD';
-      context += `• Total Contract Value: ${currency} ${Number(tcvAmount).toLocaleString()}\n`;
+      const currency = aiMeta.currency || contract.currency || '';
+      context += `• Total Contract Value: ${formatMoneyText(Number(tcvAmount), currency)}\n`;
     }
     
     // Add jurisdiction and language if available (official schema)
@@ -107,7 +108,7 @@ export async function getContractContext(contractId: string, tenantId: string): 
           context += `  - Party: ${parentContract.clientName || parentContract.supplierName}\n`;
         }
         if (parentContract.totalValue) {
-          context += `  - Value: ${Number(parentContract.totalValue).toLocaleString()}\n`;
+          context += `  - Value: ${formatMoneyText(Number(parentContract.totalValue))}\n`;
         }
         if (parentContract.status) {
           context += `  - Status: ${parentContract.status}\n`;
@@ -118,13 +119,13 @@ export async function getContractContext(contractId: string, tenantId: string): 
         context += `• Child Contracts (${childContracts.length}):\n`;
         const totalChildValue = childContracts.reduce((sum: number, c: { totalValue?: number; contractTitle?: string; name?: string; status?: string; id?: string }) => sum + (Number(c.totalValue) || 0), 0);
         if (totalChildValue > 0) {
-          context += `  - Combined Value: ${totalChildValue.toLocaleString()}\n`;
+          context += `  - Combined Value: ${formatMoneyText(totalChildValue)}\n`;
         }
         childContracts.slice(0, 10).forEach((child: { contractTitle?: string; fileName?: string; contractType?: string; relationshipType?: string; status?: string; totalValue?: number }) => {
           const childName = child.contractTitle || child.fileName || 'Untitled';
           const childType = child.contractType || child.relationshipType || 'Contract';
           context += `  - ${childName} (${childType.replace(/_/g, ' ')}) - ${child.status}`;
-          if (child.totalValue) context += ` - $${Number(child.totalValue).toLocaleString()}`;
+          if (child.totalValue) context += ` - ${formatMoneyText(Number(child.totalValue))}`;
           context += `\n`;
         });
         if (childContracts.length > 10) {
@@ -187,12 +188,12 @@ export async function getContractContext(contractId: string, tenantId: string): 
               
             case 'FINANCIAL':
               context += `\n### Financial Terms\n`;
-              if (data.totalValue) context += `**Total Value:** ${data.currency || 'USD'} ${Number(data.totalValue).toLocaleString()}\n`;
+              if (data.totalValue) context += `**Total Value:** ${formatMoneyText(Number(data.totalValue), data.currency)}\n`;
               if (data.paymentTerms) context += `**Payment Terms:** ${data.paymentTerms}\n`;
               if (data.rateCards?.length) {
                 context += `**Rate Cards (${data.rateCards.length}):**\n`;
                 data.rateCards.slice(0, 10).forEach((rate: { role?: string; rate?: number; currency?: string; unit?: string }) => {
-                  context += `  • ${rate.role}: ${rate.currency || 'USD'} ${rate.rate}/${rate.unit || 'hour'}\n`;
+                  context += `  • ${rate.role}: ${formatMoneyText(Number(rate.rate), rate.currency)}/${rate.unit || 'hour'}\n`;
                 });
               }
               if (data.penalties?.length) {

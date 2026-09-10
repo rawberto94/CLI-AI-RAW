@@ -565,7 +565,7 @@ function KanbanCard<T extends KanbanItem>({
             }`}
           >
             <Calendar className="w-3 h-3" />
-            {new Date(item.dueDate).toLocaleDateString('en-US', {
+            {new Date(item.dueDate).toLocaleDateString('de-CH', {
               month: 'short',
               day: 'numeric',
             })}

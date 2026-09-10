@@ -8,6 +8,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { formatAmountWithCurrency } from "@/lib/utils/formatters";
 
 export interface FinancialTabProps {
   contract: any;
@@ -35,27 +36,24 @@ export function FinancialTabContent({
             <div className="p-4 bg-green-50 rounded-lg">
               <div className="text-sm text-gray-600">Total Value</div>
               <div className="text-2xl font-bold text-green-700 mt-1">
-                $
-                {financial.totalValue?.toLocaleString() ||
-                  contract.totalValue?.toLocaleString() ||
-                  "0"}
-              </div>
-              <div className="text-xs text-gray-500 mt-1">
-                {financial.currency || contract.currency || "USD"}
+                {formatAmountWithCurrency(
+                  financial.totalValue ?? contract.totalValue,
+                  financial.currency || contract.currency,
+                )}
               </div>
             </div>
 
             <div className="p-4 bg-violet-50 rounded-lg">
               <div className="text-sm text-gray-600">Payment Terms</div>
               <div className="text-xl font-bold text-violet-700 mt-1">
-                {financial.paymentTerms || "Net 30"}
+                {financial.paymentTerms || "Not specified"}
               </div>
             </div>
 
             <div className="p-4 bg-violet-50 rounded-lg">
               <div className="text-sm text-gray-600">Payment Schedule</div>
               <div className="text-xl font-bold text-violet-700 mt-1">
-                {financial.paymentSchedule?.frequency || "Monthly"}
+                {financial.paymentSchedule?.frequency || "Not specified"}
               </div>
             </div>
 
@@ -104,10 +102,12 @@ export function FinancialTabContent({
                         <td className="py-3 px-4">{rate.role || rate.roleTitle}</td>
                         <td className="py-3 px-4">{rate.level || rate.seniority}</td>
                         <td className="py-3 px-4 text-right font-medium">
-                          ${rate.hourlyRate || rate.dailyRate || rate.rate}/hr
+                          {formatAmountWithCurrency(rate.hourlyRate || rate.dailyRate || rate.rate, rate.currency)}/hr
                         </td>
                         <td className="py-3 px-4 text-right text-gray-600">
-                          ${rate.marketBenchmark || rate.benchmarkRate || 'N/A'}
+                          {rate.marketBenchmark || rate.benchmarkRate
+                            ? formatAmountWithCurrency(rate.marketBenchmark || rate.benchmarkRate, rate.currency)
+                            : 'N/A'}
                         </td>
                         <td className="py-3 px-4 text-right">
                           <VarianceBadge variance={rate.variance || 0} />
@@ -160,7 +160,7 @@ export function FinancialTabContent({
                       {key.replace(/([A-Z])/g, " $1").trim()}
                     </span>
                     <span className="text-sm font-bold text-gray-900">
-                      ${value.toLocaleString()}
+                      {formatAmountWithCurrency(value, financial.currency || contract.currency)}
                     </span>
                   </div>
                 )

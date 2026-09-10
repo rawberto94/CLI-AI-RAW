@@ -8,6 +8,8 @@
  * Then uncomment the pptxgenjs implementation below.
  */
 
+import { formatRateMoney } from '@/lib/rate-cards/format'
+
 export interface PowerPointOptions {
   includeTitle: boolean
   includeExecutiveSummary: boolean
@@ -93,9 +95,9 @@ export class PowerPointExportService {
 
     if (options.includeExecutiveSummary) {
       content += `EXECUTIVE SUMMARY\n\n`
-      content += `Current Rate: CHF ${data.currentRate.toLocaleString()}\n`
-      content += `Target Rate: CHF ${data.targetRate.toLocaleString()}\n`
-      content += `Potential Savings: CHF ${data.potentialSavings.toLocaleString()}\n`
+      content += `Current Rate: ${formatRateMoney(data.currentRate)}\n`
+      content += `Target Rate: ${formatRateMoney(data.targetRate)}\n`
+      content += `Potential Savings: ${formatRateMoney(data.potentialSavings)}\n`
       content += `Market Position: ${data.percentile}th percentile\n`
       content += `Recommended Strategy: ${data.strategy}\n`
       content += `Confidence: ${data.confidence}%\n\n`
@@ -104,7 +106,7 @@ export class PowerPointExportService {
 
     if (options.includeMarketAnalysis) {
       content += `MARKET ANALYSIS\n\n`
-      content += `Market Median: CHF ${data.marketMedian.toLocaleString()}\n`
+      content += `Market Median: ${formatRateMoney(data.marketMedian)}\n`
       content += `Your Position: ${data.percentile}th percentile\n`
       content += `Supplier: ${data.supplier}\n`
       content += `Location: ${data.location}\n\n`
@@ -115,8 +117,8 @@ export class PowerPointExportService {
       content += `RECOMMENDATIONS\n\n`
       content += `Strategy: ${data.strategy}\n`
       content += `Confidence Level: ${data.confidence}%\n`
-      content += `Target Rate: CHF ${data.targetRate.toLocaleString()}\n`
-      content += `Expected Savings: CHF ${data.potentialSavings.toLocaleString()}\n\n`
+      content += `Target Rate: ${formatRateMoney(data.targetRate)}\n`
+      content += `Expected Savings: ${formatRateMoney(data.potentialSavings)}\n\n`
       content += `${'='.repeat(60)}\n\n`
     }
 
@@ -132,8 +134,8 @@ export class PowerPointExportService {
       content += `SCENARIO ANALYSIS\n\n`
       data.scenarios.forEach(scenario => {
         content += `${scenario.name}:\n`
-        content += `  Rate: CHF ${scenario.rate.toLocaleString()}\n`
-        content += `  Savings: CHF ${scenario.savings.toLocaleString()}\n\n`
+        content += `  Rate: ${formatRateMoney(scenario.rate)}\n`
+        content += `  Savings: ${formatRateMoney(scenario.savings)}\n\n`
       })
       content += `${'='.repeat(60)}\n\n`
     }
@@ -212,9 +214,9 @@ export class PowerPointExportService {
  *       
  *       const summaryData = [
  *         ['Metric', 'Value'],
- *         ['Current Rate', `CHF ${data.currentRate.toLocaleString()}`],
- *         ['Target Rate', `CHF ${data.targetRate.toLocaleString()}`],
- *         ['Potential Savings', `CHF ${data.potentialSavings.toLocaleString()}`],
+ *         ['Current Rate', formatRateMoney(data.currentRate)],
+ *         ['Target Rate', formatRateMoney(data.targetRate)],
+ *         ['Potential Savings', formatRateMoney(data.potentialSavings)],
  *         ['Market Position', `${data.percentile}th percentile`],
  *         ['Strategy', data.strategy],
  *         ['Confidence', `${data.confidence}%`]

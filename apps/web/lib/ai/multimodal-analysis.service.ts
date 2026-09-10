@@ -14,6 +14,7 @@
 import OpenAI from 'openai';
 import { createOpenAIClient, getOpenAIApiKey } from '@/lib/openai-client';
 import { prisma } from '@/lib/prisma';
+import { ocrLanguageInstructions } from '@repo/utils';
 
 // =============================================================================
 // TYPES
@@ -136,7 +137,8 @@ export async function analyzeDocumentImage(
       messages: [
         {
           role: 'system',
-          content: `You are an expert document analyst specializing in contract and legal document analysis. Analyze images with precision and extract structured information. Always respond with valid JSON.`,
+          content: `You are an expert document analyst specializing in contract and legal document analysis. Analyze images with precision and extract structured information. Always respond with valid JSON.
+${ocrLanguageInstructions()}`,
         },
         {
           role: 'user',
@@ -236,7 +238,8 @@ export async function ocrDocument(image: DocumentImage): Promise<{
     detectSignatures: false,
     analyzeLayout: false,
     extractEntities: false,
-    customPrompt: `Extract ALL text from this scanned document verbatim. Preserve paragraph structure and formatting. Include headers, footers, and any visible text. Also identify the primary language.`,
+    customPrompt: `Extract ALL text from this scanned document verbatim. Preserve paragraph structure and formatting. Include headers, footers, and any visible text. Also identify the primary language.
+${ocrLanguageInstructions()}`,
   });
 
   return {

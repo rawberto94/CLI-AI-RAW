@@ -13,6 +13,7 @@ import { BaseAgent } from './base-agent';
 import type { AgentInput, AgentOutput, AgentRecommendation } from './types';
 import { logger } from '../utils/logger';
 import clientsDb from 'clients-db';
+import { formatMoneyText } from '@repo/utils';
 
 const getClient = typeof clientsDb === 'function' ? clientsDb : (clientsDb as any).default;
 const prisma = getClient();
@@ -271,7 +272,7 @@ export class DataSynthesizerAgent extends BaseAgent {
           anomalies.push({
             id: `anomaly-${++anomalyIdx}`,
             type: 'outlier-value',
-            description: `"${c.contractTitle || 'Untitled'}" has value $${v.toLocaleString()} — ${(v / med).toFixed(1)}x the median portfolio value.`,
+            description: `"${c.contractTitle || 'Untitled'}" has value ${formatMoneyText(v)} — ${(v / med).toFixed(1)}x the median portfolio value.`,
             severity: 'medium',
             contractId: c.id,
           });
@@ -285,7 +286,7 @@ export class DataSynthesizerAgent extends BaseAgent {
         anomalies.push({
           id: `anomaly-${++anomalyIdx}`,
           type: 'vendor-concentration',
-          description: `${vc.vendor} accounts for ${vc.percentage.toFixed(1)}% of portfolio value ($${vc.totalValue.toLocaleString()}) across ${vc.contractCount} contracts.`,
+          description: `${vc.vendor} accounts for ${vc.percentage.toFixed(1)}% of portfolio value (${formatMoneyText(vc.totalValue)}) across ${vc.contractCount} contracts.`,
           severity: 'high',
         });
       }
@@ -408,7 +409,7 @@ export class DataSynthesizerAgent extends BaseAgent {
       confidence,
       reasoning: this.formatReasoning([
         `Portfolio: ${contracts.length} contracts, ${activeContracts.length} active`,
-        `Total value: $${totalPortfolioValue.toLocaleString()}`,
+        `Total value: ${formatMoneyText(totalPortfolioValue)}`,
         `${vendorConcentration.length} unique vendor(s)`,
         `${anomalies.length} anomaly/ies detected`,
         `${trends.length} trend(s) identified`,

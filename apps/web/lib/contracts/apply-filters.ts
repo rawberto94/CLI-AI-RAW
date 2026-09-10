@@ -220,7 +220,7 @@ function matchesDocumentType(
   filters: string[] | undefined,
 ): boolean {
   if (!filters?.length) return true;
-  return filters.includes(c.documentClassification || 'contract');
+  return filters.includes(c.documentClassification || 'unknown');
 }
 
 function matchesRelationshipType(

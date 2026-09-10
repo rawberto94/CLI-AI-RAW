@@ -13,6 +13,7 @@ import { withAuthApiHandler, type AuthenticatedApiContext, createSuccessResponse
 import OpenAI from 'openai';
 import { createOpenAIClient, hasAIClientConfig } from '@/lib/openai-client';
 import { logger } from '@/lib/logger';
+import { analysisLanguageInstructions, formatMoneyText } from '@repo/utils';
 
 const openai = createOpenAIClient();
 
@@ -103,7 +104,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
     // If no recorded changes, generate a summary redline for the contract
     if (clauseChanges.length === 0) {
       const riskLevel = c.expirationRisk === 'CRITICAL' ? 'critical' : c.expirationRisk === 'HIGH' ? 'high' : 'medium';
-      const summaryText = `Contract with ${c.supplierName || 'counterparty'} is in review. Value: $${c.totalValue || 0}`;
+      const summaryText = `Contract with ${c.supplierName || 'counterparty'} is in review. Value: ${formatMoneyText(Number(c.totalValue || 0))}`;
       redlines.push({
         id: c.id,
         type: 'modification',
@@ -150,7 +151,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
       select: { contractTitle: true, supplierName: true, contractType: true, totalValue: true, metadata: true },
     });
     if (contract) {
-      contractContext = `\n\nContract: "${contract.contractTitle}"\nCounterparty: ${contract.supplierName}\nType: ${contract.contractType}\nValue: $${contract.totalValue}`;
+      contractContext = `\n\nContract: "${contract.contractTitle}"\nCounterparty: ${contract.supplierName}\nType: ${contract.contractType}\nValue: ${contract.totalValue != null ? formatMoneyText(Number(contract.totalValue)) : 'N/A'}`;
     }
   }
 
@@ -163,7 +164,10 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
           role: 'system',
           content: `You are a senior contract negotiation advisor. Provide strategic, actionable advice.
 Be concise but thorough. Reference specific clause types when relevant.
-If the user asks about a clause, analyze risk, suggest counter-positions, and note leverage points.${contractContext}`,
+If the user asks about a clause, analyze risk, suggest counter-positions, and note leverage points.
+Match the user's language. Keep quoted contract text verbatim. Fr. and SFr. mean CHF. Do not invent USD.
+${analysisLanguageInstructions({ contractText: contractContext })}
+${contractContext}`,
         },
         { role: 'user', content: message },
       ],

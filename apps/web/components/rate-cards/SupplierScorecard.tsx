@@ -30,6 +30,7 @@ import {
   AlertTriangle,
   ArrowRight,
 } from 'lucide-react';
+import { formatRateMoney } from '@/lib/rate-cards/format';
 import {
   LineChart,
   Line,
@@ -371,7 +372,7 @@ export function SupplierScorecard({
 
   // Prepare historical trend data
   const historicalTrendData = intelligence?.trends?.recentRateChanges?.map((change) => ({
-    date: new Date(change.date).toLocaleDateString('en-US', { month: 'short', year: '2-digit' }),
+    date: new Date(change.date).toLocaleDateString('de-CH', { month: 'short', year: '2-digit' }),
     rate: change.avgRate,
     change: change.changePercent,
   })) || [];
@@ -456,10 +457,10 @@ export function SupplierScorecard({
               <p className="text-sm text-gray-600 dark:text-slate-400">Average Rate</p>
             </div>
             <p className="text-2xl font-bold">
-              ${scorecard.averageRate.toFixed(0)}
+              {formatRateMoney(scorecard.averageRate)}
             </p>
             <p className="text-xs text-gray-500 dark:text-slate-400">
-              Market: ${scorecard.marketAverage.toFixed(0)}
+              Market: {formatRateMoney(scorecard.marketAverage)}
             </p>
           </CardContent>
         </Card>
@@ -520,7 +521,7 @@ export function SupplierScorecard({
               <div className="flex justify-between mb-2">
                 <span className="text-sm">Average Rate</span>
                 <span className="text-sm font-medium">
-                  ${scorecard.averageRate.toFixed(0)}
+                  {formatRateMoney(scorecard.averageRate)}
                 </span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
@@ -540,7 +541,7 @@ export function SupplierScorecard({
               <div className="flex justify-between mb-2">
                 <span className="text-sm">Market Average</span>
                 <span className="text-sm font-medium">
-                  ${scorecard.marketAverage.toFixed(0)}
+                  {formatRateMoney(scorecard.marketAverage)}
                 </span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
@@ -593,7 +594,7 @@ export function SupplierScorecard({
                 <XAxis dataKey="month" />
                 <YAxis />
                 <Tooltip
-                  formatter={(value: any) => [`$${value.toFixed(0)}`, 'Rate']}
+                  formatter={(value: any) => [formatRateMoney(Number(value)), 'Rate']}
                 />
                 <Line
                   type="monotone"
@@ -699,13 +700,13 @@ export function SupplierScorecard({
             <div>
               <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">Total Annual Value</p>
               <p className="text-2xl font-bold">
-                ${scorecard.totalAnnualValue.toLocaleString()}
+                {formatRateMoney(scorecard.totalAnnualValue)}
               </p>
             </div>
             <div>
               <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">Potential Savings</p>
               <p className="text-2xl font-bold text-green-600">
-                ${scorecard.potentialSavings.toLocaleString()}
+                {formatRateMoney(scorecard.potentialSavings)}
               </p>
             </div>
             <div>
@@ -923,7 +924,7 @@ export function SupplierScorecard({
                         dataKey="rate"
                         stroke="#3b82f6"
                         strokeWidth={2}
-                        name="Avg Rate ($)"
+                        name="Avg Rate"
                         dot={{ r: 4 }}
                       />
                       <Line
@@ -1037,7 +1038,7 @@ export function SupplierScorecard({
                     <div>
                       <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">Potential Savings</p>
                       <p className="text-lg font-bold text-green-600">
-                        ${intelligence.alternatives.recommendations[0]?.estimatedSavings.toLocaleString() || 0}
+                        {formatRateMoney(intelligence.alternatives.recommendations[0]?.estimatedSavings || 0)}
                       </p>
                     </div>
                     <div>
@@ -1087,7 +1088,7 @@ export function SupplierScorecard({
                           <div>
                             <p className="text-xs text-gray-600 dark:text-slate-400">Est. Savings</p>
                             <p className="text-sm font-bold text-green-600">
-                              ${alt.estimatedSavings.toLocaleString()}
+                              {formatRateMoney(alt.estimatedSavings)}
                             </p>
                           </div>
                           <div>

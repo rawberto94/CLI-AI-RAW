@@ -23,7 +23,6 @@ import {
   ExternalLink,
   Eye,
   Edit,
-  GitCompare,
   Share2,
   ChevronRight,
   GripVertical,
@@ -47,6 +46,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
+import { formatAmountWithCurrency } from '@/lib/utils/formatters'
 
 // ============ TYPES ============
 
@@ -56,6 +56,7 @@ export interface FavoriteContract {
   supplier?: string
   status: 'active' | 'pending' | 'expiring' | 'expired' | 'draft'
   value?: number
+  currency?: string
   expirationDate?: Date
   lastViewed?: Date
   addedAt: Date
@@ -93,17 +94,8 @@ const getStatusConfig = (status: FavoriteContract['status']) => {
   }
 }
 
-const formatCurrency = (value: number): string => {
-  return new Intl.NumberFormat('de-CH', {
-    style: 'currency',
-    currency: 'CHF',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(value)
-}
-
 const formatDate = (date: Date): string => {
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  return date.toLocaleDateString('de-CH', { month: 'short', day: 'numeric' })
 }
 
 const getDaysUntilExpiration = (date?: Date): number | null => {
@@ -127,7 +119,7 @@ function FavoriteItem({ contract, onRemove, showQuickActions, isDragging, varian
   const StatusIcon = statusConfig.icon
   const daysUntil = getDaysUntilExpiration(contract.expirationDate)
   const isExpiringSoon = daysUntil !== null && daysUntil > 0 && daysUntil <= 30
-  
+
   const isCompact = variant === 'compact'
   
   return (
@@ -190,7 +182,7 @@ function FavoriteItem({ contract, onRemove, showQuickActions, isDragging, varian
             {contract.value && (
               <>
                 <span className="text-slate-300">•</span>
-                <span>{formatCurrency(contract.value)}</span>
+                <span>{formatAmountWithCurrency(contract.value, contract.currency)}</span>
               </>
             )}
           </div>
@@ -219,13 +211,17 @@ function FavoriteItem({ contract, onRemove, showQuickActions, isDragging, varian
                   Edit
                 </Link>
               </DropdownMenuItem>
-              <DropdownMenuItem>
-                <GitCompare className="h-4 w-4 mr-2" />
-                Compare
-              </DropdownMenuItem>
-              <DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(`${window.location.origin}/contracts/${contract.id}`)
+                  } catch {
+                    /* clipboard may be blocked */
+                  }
+                }}
+              >
                 <Share2 className="h-4 w-4 mr-2" />
-                Share
+                Copy link
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem 

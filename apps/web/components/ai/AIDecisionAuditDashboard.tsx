@@ -427,16 +427,7 @@ export function AIDecisionAuditDashboard({ tenantId, className }: AIDecisionAudi
           </h1>
           <p className="text-muted-foreground text-sm">Track, audit, and ensure compliance of all AI decisions</p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm">
-            <Download className="w-4 h-4 mr-2" />
-            Export Report
-          </Button>
-          <Button variant="outline" size="sm">
-            <RefreshCw className="w-4 h-4 mr-2" />
-            Refresh
-          </Button>
-        </div>
+        <div />
       </div>
 
       {/* Stats Row */}

@@ -19,7 +19,6 @@ import {
   DollarSign,
   ChevronRight,
   Bell,
-  Mail,
   MoreHorizontal,
   ArrowUpRight,
   Building,
@@ -45,6 +44,8 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
+import { useDisplayCurrency } from '@/hooks/useDisplayCurrency'
+import { formatAmountWithCurrency, formatDisplayTotal, sumConvertedCurrency } from '@/lib/utils/formatters'
 
 // ============ TYPES ============
 
@@ -127,21 +128,8 @@ const STATUS_CONFIG = {
   declined: { color: 'text-red-600', bg: 'bg-red-100', label: 'Declined' },
 }
 
-const formatCurrency = (value: number, currency = 'CHF'): string => {
-  // Use the browser's language so non-Swiss users don't see forced de-CH number
-  // grouping (e.g. `1'234.00`). Falls back to en-US during SSR where
-  // `navigator` isn't defined.
-  const locale = typeof navigator !== 'undefined' && navigator.language ? navigator.language : 'en-US';
-  return new Intl.NumberFormat(locale, {
-    style: 'currency',
-    currency,
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(value)
-}
-
 const formatDate = (date: Date): string => {
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  return date.toLocaleDateString('de-CH', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
 // ============ SUB-COMPONENTS ============
@@ -167,6 +155,7 @@ function RenewalItem({
   
   const isCompact = variant === 'compact'
   const isPastDue = renewal.daysRemaining <= 0
+  const displayCurrency = useDisplayCurrency()
   
   return (
     <motion.div
@@ -234,7 +223,7 @@ function RenewalItem({
                 {/* Value */}
                 <div className="flex items-center gap-1 text-xs text-slate-600">
                   <DollarSign className="h-3 w-3" />
-                  {formatCurrency(renewal.value, renewal.currency)}
+                  {formatAmountWithCurrency(renewal.value, renewal.currency)}
                 </div>
                 
                 {/* Status */}
@@ -280,14 +269,12 @@ function RenewalItem({
                   View Contract
                 </Link>
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onSetReminder?.(renewal.id)}>
-                <Bell className="h-4 w-4 mr-2" />
-                Set Reminder
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Mail className="h-4 w-4 mr-2" />
-                Contact Supplier
-              </DropdownMenuItem>
+              {onSetReminder && (
+                <DropdownMenuItem onClick={() => onSetReminder(renewal.id)}>
+                  <Bell className="h-4 w-4 mr-2" />
+                  Set Reminder
+                </DropdownMenuItem>
+              )}
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
                 <Link href={`/contracts/${renewal.id}/renew`} className="flex items-center">
@@ -324,10 +311,14 @@ interface RenewalSummaryProps {
 }
 
 function RenewalSummary({ renewals }: RenewalSummaryProps) {
+  const displayCurrency = useDisplayCurrency()
   const stats = {
     critical: renewals.filter(r => getUrgency(r.daysRemaining, r.noticePeriodDays) === 'critical').length,
     high: renewals.filter(r => getUrgency(r.daysRemaining, r.noticePeriodDays) === 'high').length,
-    totalValue: renewals.reduce((sum, r) => sum + r.value, 0),
+    totalValue: sumConvertedCurrency(
+      renewals.map((r) => ({ amount: r.value, currency: r.currency })),
+      displayCurrency,
+    ),
     autoRenewal: renewals.filter(r => r.autoRenewal).length,
   }
   
@@ -342,7 +333,7 @@ function RenewalSummary({ renewals }: RenewalSummaryProps) {
         <div className="text-[10px] text-orange-600">High</div>
       </div>
       <div className="text-center p-2 bg-violet-50 rounded-lg">
-        <div className="text-lg font-bold text-violet-600">{formatCurrency(stats.totalValue)}</div>
+        <div className="text-lg font-bold text-violet-600">{formatDisplayTotal(stats.totalValue, displayCurrency)}</div>
         <div className="text-[10px] text-violet-600">At Risk</div>
       </div>
       <div className="text-center p-2 bg-green-50 rounded-lg">

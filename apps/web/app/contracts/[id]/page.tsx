@@ -27,6 +27,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { unwrapApiResponseData } from '@/lib/api-fetch'
+import { resolveCitationSpan } from '@/lib/ai/citations'
 import { cn } from '@/lib/utils'
 import { getTenantId } from '@/lib/tenant'
 import { toast } from 'sonner'
@@ -80,7 +81,6 @@ import {
   useAIExtraction,
   useExtractObligations,
   useExtendContract,
-  useUploadSignedCopy,
   useCategoryMutations,
 } from './hooks/useContractQueries'
 import type { ContractData, AIExtensionRecommendation, TabValue } from './types'
@@ -147,15 +147,11 @@ function deriveCitationEvidence(
     }
   }
 
-  if (sourceText && typeof startOffset === 'number' && typeof endOffset === 'number' && endOffset > startOffset) {
-    return buildWindow(startOffset, endOffset, 'offset')
-  }
-
-  if (sourceText && snippet) {
-    const snippetIndex = sourceText.indexOf(snippet)
-    if (snippetIndex >= 0) {
-      return buildWindow(snippetIndex, snippetIndex + snippet.length, 'snippet')
-    }
+  const span = sourceText
+    ? resolveCitationSpan(sourceText, { startOffset, endOffset, snippet })
+    : null
+  if (span) {
+    return buildWindow(span.start, span.end, span.strategy)
   }
 
   const fallbackText = snippet || sourceText.slice(0, Math.min(sourceText.length, CITATION_CONTEXT_WINDOW * 2))
@@ -191,7 +187,7 @@ export default function ContractDetailPage() {
   const {
     activeTab, showPdfViewer, isEditing, isFavorite,
     showShareDialog, showComparison, showCategorySelector,
-    showReminderDialog, showUploadSignedDialog, showExtendDialog,
+    showReminderDialog, showExtendDialog,
     setActiveTab, setShowPdfViewer, togglePdfViewer,
     openDialog, closeDialog, setIsEditing, setIsFavorite,
   } = useContractUIStore()
@@ -227,7 +223,6 @@ export default function ContractDetailPage() {
   const aiExtraction = useAIExtraction(contractId)
   const extractObligations = useExtractObligations(contractId)
   const extendContract = useExtendContract(contractId)
-  const uploadSignedCopy = useUploadSignedCopy(contractId)
   const { setCategory, aiCategorize } = useCategoryMutations(contractId)
   const { addNote, editNote, deleteNote, pinNote } = useNoteMutations(contractId)
 
@@ -241,10 +236,8 @@ export default function ContractDetailPage() {
   const [aiExtensionLoading, setAiExtensionLoading] = React.useState(false)
   const [retryingArtifactTypes, setRetryingArtifactTypes] = React.useState<string[]>([])
   const [isRetryingAllArtifacts, setIsRetryingAllArtifacts] = React.useState(false)
-  const signedFileRef = React.useRef<HTMLInputElement>(null)
   const lastAIActionRef = React.useRef<number>(0)
   const AI_COOLDOWN_MS = 5000
-  const [isDownloadingReport, setIsDownloadingReport] = React.useState(false)
   const lastCitationAutoOpenKeyRef = React.useRef<string | null>(null)
 
   const citationRequest = React.useMemo(() => {
@@ -265,6 +258,7 @@ export default function ContractDetailPage() {
       snippet,
       startOffset,
       endOffset,
+      page: parseOptionalInt(searchParams.get('citePage')),
     }
   }, [searchParams])
 
@@ -435,6 +429,12 @@ export default function ContractDetailPage() {
     setPdfViewerOpen(true)
   }, [citationRequest, setPdfViewerOpen, showPdfViewer])
 
+  useEffect(() => {
+    if (!citationRequest) return
+    const node = document.getElementById('citation-focus')
+    node?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+  }, [citationRequest, citationEvidence])
+
   // ── Auto-refresh while processing ─────────────────────────────────────────
   useEffect(() => {
     if (!isProcessing || !contract) return
@@ -496,31 +496,50 @@ export default function ContractDetailPage() {
   const aiInsights = React.useMemo(() => {
     const insights: Array<{
       id: string
-      type: 'summary' | 'risk' | 'opportunity' | 'obligation' | 'recommendation' | 'key_term' | 'anomaly'
+      type: string
       title: string
       content: string
       confidence: number
       importance: 'high' | 'medium' | 'low'
-      actionable?: boolean
+      snippet?: string | null
+      heading?: string | null
+      startOffset?: number | null
+      endOffset?: number | null
     }> = []
 
-    // Build from compliance data
-    if (complianceInfo.violations?.length > 0) {
-      complianceInfo.violations.slice(0, 2).forEach((v: string, i: number) => {
-        insights.push({
-          id: `compliance-${i}`,
-          type: 'obligation',
-          title: 'Compliance Issue',
-          content: v,
-          confidence: 0.9,
-          importance: 'high',
-          actionable: true,
-        })
+    const failingChecks = (complianceInfo.checks || []).filter((check) => check.passed !== true)
+    failingChecks.slice(0, 4).forEach((check, i) => {
+      insights.push({
+        id: `compliance-${i}`,
+        type: 'compliance',
+        title: check.name || 'Compliance issue',
+        content: check.message || check.name,
+        confidence: 0.9,
+        importance: 'high',
+        snippet: check.quote || null,
+        heading: check.name,
+        startOffset: check.startOffset,
+        endOffset: check.endOffset,
       })
-    }
+    })
+
+    const risks = Array.isArray(riskInfo.risks) ? riskInfo.risks : []
+    risks.slice(0, 4).forEach((risk: { title?: string; description?: string; sourceClause?: string; source?: string; clauseReference?: string }, i: number) => {
+      const snippet = risk.sourceClause || risk.source || null
+      insights.push({
+        id: `risk-${i}`,
+        type: 'risk',
+        title: risk.title || 'Risk finding',
+        content: risk.description || risk.title || 'Risk identified in this contract',
+        confidence: 0.85,
+        importance: 'high',
+        snippet,
+        heading: risk.clauseReference || risk.title,
+      })
+    })
 
     return insights
-  }, [complianceInfo])
+  }, [complianceInfo, riskInfo])
 
   // ── Action handlers ───────────────────────────────────────────────────────
   const handleRefresh = useCallback(() => {
@@ -631,39 +650,6 @@ export default function ContractDetailPage() {
     }
   }, [contractId, contract?.filename])
 
-  const handleDownloadReport = useCallback(async () => {
-    setIsDownloadingReport(true)
-    try {
-      const csrfRes = await fetch('/api/csrf-token')
-      const { token: csrfToken } = await csrfRes.json()
-      const res = await fetch(`/api/contracts/${contractId}/export?format=pdf`, {
-        headers: { 'x-csrf-token': csrfToken },
-      })
-      if (!res.ok) throw new Error('Failed to generate report')
-      const blob = await res.blob()
-      if (blob.size === 0) throw new Error('Report was empty')
-      const disposition = res.headers.get('Content-Disposition') || ''
-      const filenameMatch = disposition.match(/filename="?([^";\n]+)"?/)
-      const downloadName = filenameMatch?.[1] || `${contract?.filename || 'contract'}-report.pdf`
-      const url = window.URL.createObjectURL(blob)
-      try {
-        const a = document.createElement('a')
-        a.href = url
-        a.download = downloadName
-        document.body.appendChild(a)
-        a.click()
-        a.remove()
-      } finally {
-        window.URL.revokeObjectURL(url)
-      }
-      toast.success('Report downloaded')
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to download report')
-    } finally {
-      setIsDownloadingReport(false)
-    }
-  }, [contractId, contract?.filename])
-
   const handleRequestSignature = useCallback(() => {
     router.push(`/contracts/${contractId}/esign`)
   }, [contractId, router])
@@ -694,25 +680,6 @@ export default function ContractDetailPage() {
       toast.error('Failed to rename contract')
     }
   }, [contractId, queryClient])
-
-  const handleUploadSignedCopy = useCallback(async (file: File, signers?: string, notes?: string) => {
-    const MAX_SIZE = 50 * 1024 * 1024
-    if (file.size > MAX_SIZE) {
-      toast.error('File too large. Maximum size is 50 MB.')
-      return
-    }
-    const ALLOWED_TYPES = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/msword', 'image/png', 'image/jpeg']
-    if (file.type && !ALLOWED_TYPES.includes(file.type)) {
-      toast.error('Invalid file type. Allowed: PDF, DOCX, DOC, PNG, JPEG')
-      return
-    }
-    try {
-      await uploadSignedCopy.mutateAsync({ file, signers, notes })
-      closeDialog('uploadSigned')
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Failed to upload signed copy')
-    }
-  }, [uploadSignedCopy, closeDialog])
 
   const handleDownloadSignedCopy = useCallback(async () => {
     try {
@@ -880,7 +847,6 @@ export default function ContractDetailPage() {
         switch (e.key) {
           case 'd': e.preventDefault(); handleDownload(); break
           case 'r': e.preventDefault(); handleRefresh(); break
-          case 's': if (isEditing) e.preventDefault(); break
         }
       }
     }
@@ -1016,8 +982,6 @@ export default function ContractDetailPage() {
         onAIExtract={handleAIExtraction}
         onExtractObligations={handleExtractObligations}
         onDownload={handleDownload}
-        onDownloadReport={handleDownloadReport}
-        isDownloadingReport={isDownloadingReport}
         onShare={() => openDialog('share')}
         onCompare={() => openDialog('comparison')}
         onCreateRenewal={() => router.push(`/contracts/${contractId}/renew`)}
@@ -1050,6 +1014,7 @@ export default function ContractDetailPage() {
                 height="100%"
                 onToggle={() => setPdfViewerOpen(false)}
                 isExpanded={showPdfViewer}
+                initialPage={citationRequest?.page}
               />
             </div>
 
@@ -1141,7 +1106,6 @@ export default function ContractDetailPage() {
               onInitiateRenewal={() => router.push(`/contracts/${contractId}/renew`)}
               onSetReminder={() => openDialog('reminder')}
               onStartReview={isDemo ? undefined : () => router.push(`/contracts/${contractId}/legal-review`)}
-              onStartRedline={isDemo ? undefined : () => router.push(`/contracts/${contractId}/redline`)}
               onRequestSignature={isDemo ? undefined : handleRequestSignature}
               onRetryArtifactType={(artifactType) => { void retryArtifactType(artifactType) }}
               onRetryAllArtifacts={() => { void retryAllArtifactTypes() }}
@@ -1171,6 +1135,7 @@ export default function ContractDetailPage() {
 
             <SectionErrorBoundary sectionName="Scores">
               <ContractScoresCard
+                contractId={contractId}
                 riskInfo={riskInfo}
                 complianceInfo={complianceInfo}
                 healthInfo={healthData ? {
@@ -1178,8 +1143,16 @@ export default function ContractDetailPage() {
                   completeness: healthData.completeness,
                   issues: healthData.issues,
                 } : null}
+                analysisPack={(contract as { aiMetadata?: { analysisPack?: { originalChars?: number; packedChars?: number; omitted?: string[]; kept?: string[]; analysisLanguage?: string | null } } } | undefined)?.aiMetadata?.analysisPack}
+                ocrNeedsReview={Boolean((contract as { aiMetadata?: { ocrStructuredMeta?: { needsReview?: boolean } } } | undefined)?.aiMetadata?.ocrStructuredMeta?.needsReview)}
+                scanType={(contract as { aiMetadata?: { scanType?: string } } | undefined)?.aiMetadata?.scanType || null}
+                analysisLanguage={
+                  (contract as { aiMetadata?: { analysisPack?: { analysisLanguage?: string | null }; documentLanguage?: string | null } } | undefined)?.aiMetadata?.analysisPack?.analysisLanguage
+                  || (contract as { aiMetadata?: { documentLanguage?: string | null } } | undefined)?.aiMetadata?.documentLanguage
+                  || metadata.contract_language
+                  || null
+                }
                 isProcessing={isProcessing}
-                onRefresh={handleRefresh}
               />
             </SectionErrorBoundary>
 
@@ -1252,6 +1225,7 @@ export default function ContractDetailPage() {
                   <SectionErrorBoundary sectionName="Review Findings">
                     <AIInsightsSummaryCard
                       insights={aiInsights}
+                      contractId={contractId}
                       onRefresh={handleRefresh}
                       onViewAll={() => setTab('ai')}
                     />
@@ -1498,7 +1472,7 @@ export default function ContractDetailPage() {
                 <div className="mt-3 whitespace-pre-wrap break-words text-sm leading-7 text-slate-700">
                   {citationEvidence?.clippedStart && <span className="text-slate-400">...</span>}
                   <span>{citationEvidence?.leadingText}</span>
-                  <mark className="rounded bg-amber-200 px-1 py-0.5 text-slate-900">
+                  <mark id="citation-focus" className="rounded bg-amber-200 px-1 py-0.5 text-slate-900">
                     {citationEvidence?.focusText || citationRequest.snippet || t('detail.noExcerptAvailable')}
                   </mark>
                   <span>{citationEvidence?.trailingText}</span>
@@ -1591,46 +1565,6 @@ export default function ContractDetailPage() {
             queryClient.invalidateQueries({ queryKey: contractKeys.detail(contractId) })
           }}
         />
-      )}
-
-      {showUploadSignedDialog && (
-        <Dialog open={showUploadSignedDialog} onOpenChange={() => closeDialog('uploadSigned')}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>{t('detail.uploadSignedCopyTitle')}</DialogTitle>
-            </DialogHeader>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault()
-                const formData = new FormData(e.currentTarget)
-                const file = formData.get('file') as File
-                if (!file?.size) { toast.error('Please select a file'); return }
-                handleUploadSignedCopy(file, formData.get('signers') as string, formData.get('notes') as string)
-              }}
-              className="space-y-4"
-            >
-              <div>
-                <label htmlFor="signed-file" className="block text-sm font-medium text-slate-700 mb-1">Signed Document</label>
-                <input ref={signedFileRef} id="signed-file" name="file" type="file" accept=".pdf,.docx" required className="w-full text-sm" />
-              </div>
-              <div>
-                <label htmlFor="signers" className="block text-sm font-medium text-slate-700 mb-1">Signers (optional)</label>
-                <input id="signers" name="signers" placeholder="Names of signers" className="w-full px-3 py-2 border rounded-md text-sm" />
-              </div>
-              <div>
-                <label htmlFor="sign-notes" className="block text-sm font-medium text-slate-700 mb-1">Notes (optional)</label>
-                <input id="sign-notes" name="notes" placeholder="Any notes about the signing" className="w-full px-3 py-2 border rounded-md text-sm" />
-              </div>
-              <div className="flex justify-end gap-2">
-                <Button type="button" variant="outline" onClick={() => closeDialog('uploadSigned')}>{tCommon('cancel')}</Button>
-                <Button type="submit" disabled={uploadSignedCopy.isPending}>
-                  {uploadSignedCopy.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                  {tCommon('upload')}
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
       )}
 
       {showExtendDialog && (

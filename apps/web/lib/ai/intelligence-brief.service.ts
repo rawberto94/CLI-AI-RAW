@@ -18,6 +18,7 @@
 
 import { getAIModel } from '@/lib/ai/ai-sdk-provider';
 import { generateObject } from 'ai';
+import { analysisLanguageInstructions } from '@repo/utils';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import pino from 'pino';
@@ -175,7 +176,9 @@ Generate the Intelligence Brief with all required fields. Be specific to THIS co
   const { object: brief } = await generateObject({
     model: getAIModel(),
     schema: IntelligenceBriefSchema,
-    system: BRIEF_SYSTEM_PROMPT,
+    system: `${BRIEF_SYSTEM_PROMPT}
+
+${analysisLanguageInstructions({ contractText: truncatedText })}`,
     prompt: userPrompt,
     temperature: 0.1,
     maxRetries: 2,

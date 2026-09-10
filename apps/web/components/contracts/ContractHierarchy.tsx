@@ -50,7 +50,8 @@ import {
   Clock,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { formatCurrency, formatDate } from '@/lib/design-tokens'
+import { formatDate } from '@/lib/design-tokens'
+import { formatAmountWithCurrency } from '@/lib/utils/formatters'
 import { toast } from 'sonner'
 
 // ============ TYPES ============
@@ -77,6 +78,7 @@ interface ChildContract {
   effectiveDate: string | null
   expirationDate: string | null
   totalValue: number | null
+  currency?: string | null
   createdAt: string | null
 }
 
@@ -221,7 +223,7 @@ function ContractLinkCard({ contract, direction, relationshipType }: ContractLin
             {isChild && childContract.totalValue && (
               <span className="flex items-center gap-1">
                 <DollarSign className="h-3 w-3" />
-                {formatCurrency(childContract.totalValue)}
+                {formatAmountWithCurrency(childContract.totalValue, childContract.currency)}
               </span>
             )}
           </div>

@@ -281,6 +281,8 @@ export interface CachedDIStructuredData {
   barcodes?: Array<{ kind: string; value: string; confidence: number }>;
   formulas?: Array<{ kind: string; value: string; confidence: number }>;
   pageInfo?: Array<{ pageNumber: number; width: number; height: number; unit: string }>;
+  /** Per-page OCR text for [PAGE n] packing after a cache hit. */
+  pages?: Array<{ pageNumber: number; text: string }>;
   queryAnswers?: Record<string, string>;
   fieldEvidence?: ContractFieldEvidence[];
   fieldMetadata?: NormalizedContractFieldEvidence['metadata'];

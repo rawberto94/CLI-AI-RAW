@@ -11,21 +11,24 @@ import {
   Lightbulb,
   AlertTriangle,
   TrendingUp,
-  FileText,
   Shield,
   ChevronRight,
   Target,
-  Zap,
   Brain,
   Copy,
   RefreshCw,
+  Info,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { detailUi } from './detail-ui'
+import { FindingSourceLink, canOpenFindingSource } from '@/components/contracts/FindingSourceLink'
+
+const CANONICAL_INSIGHT_TYPES = ['risk', 'opportunity', 'compliance', 'obligation', 'info', 'action'] as const
+type CanonicalInsightType = (typeof CANONICAL_INSIGHT_TYPES)[number]
 
 interface AIInsight {
   id: string
-  type: 'summary' | 'risk' | 'opportunity' | 'obligation' | 'recommendation' | 'key_term' | 'anomaly'
+  type: CanonicalInsightType | string
   title: string
   content: string
   confidence: number
@@ -35,10 +38,37 @@ interface AIInsight {
     label: string
     onClick: () => void
   }
+  snippet?: string | null
+  heading?: string | null
+  startOffset?: number | null
+  endOffset?: number | null
+}
+
+const INSIGHT_TYPE_CONFIG: Record<CanonicalInsightType, { label: string; className: string; iconWrap: string; Icon: typeof AlertTriangle }> = {
+  risk: { label: 'Risk', className: 'bg-red-100 text-red-700', iconWrap: 'bg-red-100 text-red-600', Icon: AlertTriangle },
+  opportunity: { label: 'Opportunity', className: 'bg-emerald-100 text-emerald-700', iconWrap: 'bg-emerald-100 text-emerald-600', Icon: TrendingUp },
+  compliance: { label: 'Compliance', className: 'bg-violet-100 text-violet-700', iconWrap: 'bg-violet-100 text-violet-600', Icon: Shield },
+  obligation: { label: 'Obligation', className: 'bg-amber-100 text-amber-700', iconWrap: 'bg-amber-100 text-amber-600', Icon: Target },
+  info: { label: 'Info', className: 'bg-slate-100 text-slate-700', iconWrap: 'bg-slate-100 text-slate-600', Icon: Info },
+  action: { label: 'Action', className: 'bg-violet-100 text-violet-700', iconWrap: 'bg-violet-100 text-violet-600', Icon: Lightbulb },
+}
+
+const UNKNOWN_INSIGHT_CONFIG = {
+  label: 'Finding',
+  className: 'bg-amber-100 text-amber-800',
+  iconWrap: 'bg-amber-100 text-amber-700',
+  Icon: AlertTriangle,
+}
+
+function getInsightTypeConfig(type: string) {
+  return CANONICAL_INSIGHT_TYPES.includes(type as CanonicalInsightType)
+    ? INSIGHT_TYPE_CONFIG[type as CanonicalInsightType]
+    : UNKNOWN_INSIGHT_CONFIG
 }
 
 interface AIInsightsSummaryCardProps {
   insights: AIInsight[]
+  contractId?: string
   contractSummary?: string
   keyTerms?: Array<{ term: string; value: string }>
   extractionDate?: Date
@@ -48,31 +78,13 @@ interface AIInsightsSummaryCardProps {
   className?: string
 }
 
-const InsightIcon = ({ type }: { type: AIInsight['type'] }) => {
-  const iconClass = "h-4 w-4"
-  switch (type) {
-    case 'summary': return <FileText className={iconClass} />
-    case 'risk': return <AlertTriangle className={iconClass} />
-    case 'opportunity': return <TrendingUp className={iconClass} />
-    case 'obligation': return <Target className={iconClass} />
-    case 'recommendation': return <Lightbulb className={iconClass} />
-    case 'key_term': return <Zap className={iconClass} />
-    case 'anomaly': return <Shield className={iconClass} />
-    default: return <Brain className={iconClass} />
-  }
+const InsightIcon = ({ type }: { type: string }) => {
+  const { Icon } = getInsightTypeConfig(type)
+  return <Icon className="h-4 w-4" />
 }
 
-const InsightBadge = ({ type }: { type: AIInsight['type'] }) => {
-  const config = {
-    summary: { label: 'Summary', className: 'bg-violet-100 text-violet-700' },
-    risk: { label: 'Risk', className: 'bg-red-100 text-red-700' },
-    opportunity: { label: 'Opportunity', className: 'bg-emerald-100 text-emerald-700' },
-    obligation: { label: 'Obligation', className: 'bg-amber-100 text-amber-700' },
-    recommendation: { label: 'Tip', className: 'bg-violet-100 text-violet-700' },
-    key_term: { label: 'Key Term', className: 'bg-indigo-100 text-indigo-700' },
-    anomaly: { label: 'Anomaly', className: 'bg-orange-100 text-orange-700' },
-  }[type]
-  
+const InsightBadge = ({ type }: { type: string }) => {
+  const config = getInsightTypeConfig(type)
   return (
     <Badge className={cn(detailUi.fieldBadge, "border-0", config.className)}>
       {config.label}
@@ -82,6 +94,7 @@ const InsightBadge = ({ type }: { type: AIInsight['type'] }) => {
 
 export const AIInsightsSummaryCard = memo(function AIInsightsSummaryCard({
   insights,
+  contractId,
   contractSummary,
   keyTerms,
   extractionDate,
@@ -105,6 +118,8 @@ export const AIInsightsSummaryCard = memo(function AIInsightsSummaryCard({
       risks: insights.filter(i => i.type === 'risk').length,
       opportunities: insights.filter(i => i.type === 'opportunity').length,
       obligations: insights.filter(i => i.type === 'obligation').length,
+      compliance: insights.filter(i => i.type === 'compliance').length,
+      unknown: insights.filter(i => !CANONICAL_INSIGHT_TYPES.includes(i.type as CanonicalInsightType)).length,
       total: insights.length,
     }
     return stats
@@ -176,6 +191,18 @@ export const AIInsightsSummaryCard = memo(function AIInsightsSummaryCard({
                 <span>{insightStats.obligations} obligation{insightStats.obligations > 1 ? 's' : ''}</span>
               </div>
             )}
+            {insightStats.compliance > 0 && (
+              <div className={cn(detailUi.chip, 'border-violet-100 bg-violet-50 text-violet-600')}>
+                <Shield className="h-3.5 w-3.5" />
+                <span>{insightStats.compliance} compliance</span>
+              </div>
+            )}
+            {insightStats.unknown > 0 && (
+              <div className={cn(detailUi.chip, 'border-amber-100 bg-amber-50 text-amber-700')}>
+                <AlertTriangle className="h-3.5 w-3.5" />
+                <span>{insightStats.unknown} finding{insightStats.unknown > 1 ? 's' : ''}</span>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -243,13 +270,7 @@ export const AIInsightsSummaryCard = memo(function AIInsightsSummaryCard({
                   )}
                 >
                   <div className="flex items-start gap-3">
-                    <div className={cn(
-                      "p-1.5 rounded-lg",
-                      insight.type === 'risk' ? "bg-red-100 text-red-600" :
-                      insight.type === 'opportunity' ? "bg-emerald-100 text-emerald-600" :
-                      insight.type === 'obligation' ? "bg-amber-100 text-amber-600" :
-                      "bg-violet-100 text-violet-600"
-                    )}>
+                    <div className={cn("p-1.5 rounded-lg", getInsightTypeConfig(insight.type).iconWrap)}>
                       <InsightIcon type={insight.type} />
                     </div>
                     <div className="flex-1 min-w-0">
@@ -267,15 +288,31 @@ export const AIInsightsSummaryCard = memo(function AIInsightsSummaryCard({
                       <p className="line-clamp-2 text-xs leading-4 text-slate-600">
                         {insight.content}
                       </p>
-                      {insight.actionable && insight.action && (
-                        <button
-                          onClick={insight.action.onClick}
-                          className="mt-2 inline-flex items-center gap-1 text-xs font-medium leading-4 text-violet-600 hover:text-violet-700"
-                        >
-                          {insight.action.label}
-                          <ChevronRight className="h-3 w-3" />
-                        </button>
+                      {insight.snippet && (
+                        <p className="mt-1 line-clamp-2 text-[11px] italic leading-4 text-slate-500">
+                          “{insight.snippet}”
+                        </p>
                       )}
+                      <div className="mt-2 flex flex-wrap items-center gap-3">
+                        {canOpenFindingSource(insight) && (
+                          <FindingSourceLink
+                            contractId={contractId}
+                            snippet={insight.snippet}
+                            heading={insight.heading || insight.title}
+                            startOffset={insight.startOffset}
+                            endOffset={insight.endOffset}
+                          />
+                        )}
+                        {insight.actionable && insight.action && (
+                          <button
+                            onClick={insight.action.onClick}
+                            className="inline-flex items-center gap-1 text-xs font-medium leading-4 text-violet-600 hover:text-violet-700"
+                          >
+                            {insight.action.label}
+                            <ChevronRight className="h-3 w-3" />
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </motion.div>

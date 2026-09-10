@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import { formatAmountWithCurrency } from '@/lib/utils/formatters';
 
 interface SearchResult {
   id: string;
@@ -106,7 +107,7 @@ export function UnifiedSearch({
             id: c.id,
             title: c.contractTitle || 'Untitled Contract',
             type: 'contract' as const,
-            snippet: `${c.supplierName || 'Unknown'} | ${c.status || ''} | ${c.totalValue ? `$${Number(c.totalValue).toLocaleString()}` : ''}`,
+            snippet: `${c.supplierName || 'Unknown'} | ${c.status || ''} | ${c.totalValue ? formatAmountWithCurrency(c.totalValue, c.currency) : ''}`,
             metadata: {
               supplierName: c.supplierName,
               status: c.status,
@@ -126,7 +127,7 @@ export function UnifiedSearch({
             id: rc.id,
             title: rc.roleName || rc.name || 'Rate Card',
             type: 'rate-card' as const,
-            snippet: `${rc.supplierName || ''} | ${rc.rateValue ? `$${rc.rateValue}` : ''} | ${rc.location || ''}`,
+            snippet: `${rc.supplierName || ''} | ${rc.rateValue ? formatAmountWithCurrency(rc.rateValue, rc.currency) : ''} | ${rc.location || ''}`,
             metadata: {
               supplierName: rc.supplierName,
               rateValue: rc.rateValue,

@@ -107,7 +107,8 @@ describe('/api/contracts/stats', () => {
       .mockResolvedValueOnce([{ contractType: 'NDA', _count: { id: 3 } }])
       .mockResolvedValueOnce([{ category: 'Legal', _count: { id: 2 } }])
       .mockResolvedValueOnce([{ clientName: 'Acme', _count: { id: 2 }, _sum: { totalValue: 500 } }])
-      .mockResolvedValueOnce([{ supplierName: 'Vendor', _count: { id: 1 }, _sum: { totalValue: 250 } }]);
+      .mockResolvedValueOnce([{ supplierName: 'Vendor', _count: { id: 1 }, _sum: { totalValue: 250 } }])
+      .mockResolvedValueOnce([{ currency: 'CHF', _count: { id: 4 }, _sum: { totalValue: 1000 } }]);
     mockContractFindMany
       .mockResolvedValueOnce([{ clientName: 'Acme' }, { clientName: 'Contoso' }])
       .mockResolvedValueOnce([{ supplierName: 'Vendor' }]);

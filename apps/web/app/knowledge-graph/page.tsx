@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
+import { formatAmountWithCurrency } from '@/lib/utils/formatters';
 
 interface KnowledgeGraphNode {
   id: string;
@@ -236,7 +237,7 @@ export default function KnowledgeGraphPage() {
                                 Supplier: {contract.supplierName || 'N/A'}
                               </div>
                               <div className="text-sm">
-                                Value: ${contract.contractValue?.toLocaleString() || 'N/A'}
+                                Value: {contract.contractValue != null ? formatAmountWithCurrency(contract.contractValue) : 'N/A'}
                               </div>
                             </div>
                             <Badge>{contract.status}</Badge>

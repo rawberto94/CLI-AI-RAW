@@ -12,6 +12,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { BaselineEntryForm } from './BaselineEntryForm';
+import { formatRateMoney } from '@/lib/rate-cards/format';
 
 interface Baseline {
   id: string;
@@ -235,7 +236,7 @@ export function BaselinesList() {
                   <TableCell>{baseline.seniority || '-'}</TableCell>
                   <TableCell>{baseline.country || 'Global'}</TableCell>
                   <TableCell>
-                    ${Number(baseline.targetRateUSD).toLocaleString()} {baseline.currency}
+                    {formatRateMoney(Number(baseline.targetRateUSD), baseline.currency)}
                   </TableCell>
                   <TableCell>{getStatusBadge(baseline.approvalStatus)}</TableCell>
                   <TableCell>

@@ -4,6 +4,7 @@
  */
 
 import { ReportData, ChartData } from './analytics.service';
+import { formatMoneyText } from '@repo/utils';
 
 // ============================================
 // REPORT EXPORT SERVICE
@@ -164,7 +165,7 @@ class ReportExportService {
     </div>
     <div class="metric-card">
       <div class="label">Total Value</div>
-      <div class="value">$${(metrics.totalValue / 1000000).toFixed(1)}M</div>
+      <div class="value">${formatMoneyText(metrics.totalValue)}</div>
     </div>
     <div class="metric-card">
       <div class="label">Compliance Score</div>

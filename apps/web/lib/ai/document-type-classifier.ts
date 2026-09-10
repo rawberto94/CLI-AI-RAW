@@ -13,6 +13,7 @@
 
 import pino from 'pino';
 import { hasAIClientConfig, createOpenAIClient, getOpenAIApiKey } from '@/lib/openai-client';
+import { analysisLanguageInstructions } from '@repo/utils';
 
 const logger = pino({ name: 'document-type-classifier' });
 
@@ -168,7 +169,8 @@ async function classifyByAI(
           {
             role: 'system',
             content:
-              'You are a contract classifier. Return strict JSON only. Use one of the allowed types. Do not invent new types.',
+              `You are a contract classifier. Return strict JSON only. Use one of the allowed types. Do not invent new types.
+${analysisLanguageInstructions({ contractText: text })} Keep reasoning short. JSON keys stay English.`,
           },
           {
             role: 'user',

@@ -12,6 +12,7 @@
  * - Mandatory "NOT_FOUND" markers for unfound data
  */
 
+import { analysisLanguageInstructions, fewShotLanguageDisclaimer } from '@repo/utils';
 import { ArtifactType } from '../types/contract.types';
 
 // =============================================================================
@@ -134,10 +135,12 @@ export class ArtifactPromptTemplatesService {
     systemPrompt: string;
     userPrompt: string;
   } {
+    const langBlock = analysisLanguageInstructions({ contractText });
+    const formatNote = fewShotLanguageDisclaimer({ contractText });
     const examplesText = template.examples
       .map((ex, idx) => {
         return `
-Example ${idx + 1}:
+Example ${idx + 1} (${formatNote}):
 Input: ${ex.input}
 Output: ${JSON.stringify(ex.output, null, 2)}
 ${ex.explanation ? `Explanation: ${ex.explanation}` : ''}
@@ -158,7 +161,9 @@ ${template.requiredFields ? `Required (must find or mark NOT_FOUND): ${template.
 ${template.nullableFields ? `Optional (return null if not found): ${template.nullableFields.join(', ')}` : ''}`
       : '';
 
-    const userPrompt = `${template.userPrompt}
+    const userPrompt = `${langBlock}
+
+${template.userPrompt}
 
 ${examplesText}
 ${antiHallucinationSection}

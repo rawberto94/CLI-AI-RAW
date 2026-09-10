@@ -2,6 +2,9 @@
  * Data transformation service for rate card normalization
  */
 
+import { DEFAULT_DISPLAY_CURRENCY } from '@/lib/display-currency'
+import { resolvePersistCurrency, UNKNOWN_CURRENCY } from '@/lib/fx'
+
 /** Raw row value types from parsed files */
 export type RawCellValue = string | number | boolean | Date | null | undefined;
 
@@ -64,7 +67,7 @@ export class DataTransformer {
     mappings: Record<string, string>,
     options: TransformationOptions = {}
   ): TransformedRate[] {
-    const baseCurrency = options.baseCurrency || 'CHF';
+    const baseCurrency = options.baseCurrency || DEFAULT_DISPLAY_CURRENCY;
     const exchangeRates = { ...this.DEFAULT_EXCHANGE_RATES, ...options.exchangeRates };
 
     return rows.map(row => this.transformRow(row, mappings, baseCurrency, exchangeRates, options));
@@ -100,7 +103,7 @@ export class DataTransformer {
     // Rate normalization
     const originalRate = Number(getValue('rate'));
     const originalPeriod = this.normalizePeriod(String(getValue('period') || 'daily'));
-    const originalCurrency = String(getValue('currency') || 'CHF').toUpperCase();
+    const originalCurrency = resolvePersistCurrency(String(getValue('currency') || ''));
 
     const normalizedRates = this.normalizeRates(
       originalRate,
@@ -110,7 +113,7 @@ export class DataTransformer {
       exchangeRates
     );
 
-    if (originalCurrency !== baseCurrency) {
+    if (originalCurrency !== UNKNOWN_CURRENCY && originalCurrency !== baseCurrency) {
       transformations.push('currency_converted');
       confidence *= 0.98;
     }
@@ -293,9 +296,9 @@ export class DataTransformer {
     monthlyRate: number;
     annualRate: number;
   } {
-    // Convert to base currency
-    const exchangeRate = exchangeRates[currency] || 1;
-    const rateInBaseCurrency = rate * exchangeRate;
+    const hasFx = currency !== UNKNOWN_CURRENCY && exchangeRates[currency] != null
+    const exchangeRate = hasFx ? exchangeRates[currency] as number : 1
+    const rateInBaseCurrency = rate * exchangeRate
 
     // Convert to daily rate first
     let dailyRate: number;

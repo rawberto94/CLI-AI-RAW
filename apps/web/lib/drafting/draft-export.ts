@@ -214,7 +214,7 @@ export function generateDraftPDF(input: DraftExportInput): Uint8Array {
 
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
-  const dateStr = new Date().toLocaleDateString('en-US', {
+  const dateStr = new Date().toLocaleDateString('de-CH', {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
@@ -336,7 +336,7 @@ export function generateDraftPDF(input: DraftExportInput): Uint8Array {
 export async function generateDraftDOCX(input: DraftExportInput): Promise<Uint8Array> {
   const { title, content, contractType, author } = input;
   const blocks = parseHtmlToBlocks(content);
-  const dateStr = new Date().toLocaleDateString('en-US', {
+  const dateStr = new Date().toLocaleDateString('de-CH', {
     year: 'numeric',
     month: 'long',
     day: 'numeric',

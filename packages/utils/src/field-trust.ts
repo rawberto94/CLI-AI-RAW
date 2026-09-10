@@ -55,3 +55,23 @@ export function needsHumanReview(confidence: number | null | undefined): boolean
   if (typeof confidence !== 'number' || Number.isNaN(confidence)) return true;
   return confidence < FIELD_TRUST_THRESHOLDS.high && confidence >= FIELD_TRUST_THRESHOLDS.low;
 }
+
+/** High-risk fields auto-apply only when grounded and ≥ high threshold. */
+export function isAutoApplyHighRisk(
+  confidence: number | null | undefined,
+  grounded: boolean,
+): boolean {
+  return grounded && isAutoApplyConfidence(confidence);
+}
+
+/** High-risk / ungrounded / ambiguous extractions always need a human. */
+export function needsHumanReviewHighRisk(input: {
+  confidence?: number | null;
+  grounded?: boolean;
+  status?: string | null;
+}): boolean {
+  if (input.grounded === false) return true;
+  if (input.status === 'ambiguous' || input.status === 'conflicting') return true;
+  if (typeof input.confidence !== 'number' || Number.isNaN(input.confidence)) return true;
+  return input.confidence < FIELD_TRUST_THRESHOLDS.high;
+}

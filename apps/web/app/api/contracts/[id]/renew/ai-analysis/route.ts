@@ -23,6 +23,7 @@ import {
 } from '@/lib/api-middleware';
 import { checkRateLimit, rateLimitResponse, AI_RATE_LIMITS } from '@/lib/ai/rate-limit';
 import { logger } from '@/lib/logger';
+import { analysisLanguageInstructions } from '@repo/utils';
 import {
   formatPlaybookPromptContext,
   resolveRequestedPlaybook,
@@ -146,8 +147,8 @@ export const POST = withContractApiHandler(async (request: NextRequest, ctx) => 
 Renewal Terms:
 - New effective date: ${input.renewalTerms.effectiveDate || 'Same as original'}
 - New expiration date: ${input.renewalTerms.expirationDate || 'Same as original'}
-- Original value: ${contract.currency || 'USD'} ${input.renewalTerms.originalValue ?? contract.totalValue ?? 'N/A'}
-- Proposed value: ${contract.currency || 'USD'} ${input.renewalTerms.totalValue ?? 'Same'}
+- Original value: ${contract.currency ? `${contract.currency} ` : ''}${input.renewalTerms.originalValue ?? contract.totalValue ?? 'N/A'}
+- Proposed value: ${contract.currency ? `${contract.currency} ` : ''}${input.renewalTerms.totalValue ?? 'Same'}
 - Inflation adjustment: ${input.renewalTerms.adjustForInflation ? `Yes (${input.renewalTerms.inflationRate}%)` : 'No'}
 `
       : '';
@@ -157,7 +158,7 @@ Original Contract: "${contract.contractTitle || 'Untitled'}"
 Type: ${contract.contractType || 'Unknown'}
 Supplier: ${contract.supplierName || 'Unknown'}
 Client: ${contract.clientName || 'Unknown'}
-Original Value: ${contract.currency || 'USD'} ${contract.totalValue ?? 'N/A'}
+Original Value: ${contract.currency ? `${contract.currency} ` : ''}${contract.totalValue ?? 'N/A'}
 Effective: ${contract.effectiveDate ? new Date(contract.effectiveDate).toISOString().split('T')[0] : 'N/A'}
 Expiration: ${contract.expirationDate ? new Date(contract.expirationDate).toISOString().split('T')[0] : 'N/A'}
 Auto-renewal: ${contract.autoRenewalEnabled ? 'Yes' : 'No'}
@@ -169,6 +170,8 @@ Notice period: ${contract.noticePeriodDays ?? 'N/A'} days
       model: getAIModel(),
       schema: RenewalAnalysisSchema,
       prompt: `You are an expert contract analyst specializing in enterprise procurement and contract renewals.
+${analysisLanguageInstructions({ contractText: clausesSummary || originalContext })}
+Keep quoted clause text verbatim. JSON keys stay English.
 
 Analyze the following contract renewal draft and provide a thorough assessment.
 

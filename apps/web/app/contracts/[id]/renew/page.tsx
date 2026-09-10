@@ -15,6 +15,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format, differenceInDays } from 'date-fns';
+import { formatAmountWithCurrency } from '@/lib/utils/formatters';
 import {
   ArrowLeft,
   ArrowRight,
@@ -492,7 +493,7 @@ export default function ContractRenewalPage() {
           effectiveDate: data.effectiveDate || data.start_date,
           expirationDate: data.expirationDate || data.end_date,
           totalValue: typeof data.totalValue === 'string' ? parseFloat(data.totalValue) : data.totalValue,
-          currency: data.currency || 'CHF',
+          currency: data.currency || '',
           clientName: data.clientName,
           supplierName: data.supplierName,
           description: data.description || data.contract_short_description,
@@ -549,7 +550,7 @@ export default function ContractRenewalPage() {
           effectiveDate: newEffective,
           expirationDate: newExpiration,
           totalValue: data.totalValue || 0,
-          currency: data.currency || 'CHF',
+          currency: data.currency || '',
           parties,
           clauses,
           notes: '',
@@ -689,7 +690,7 @@ export default function ContractRenewalPage() {
       },
       {
         label: 'Renewal value',
-        value: `${draft.currency} ${renewalValue.toLocaleString(undefined, { maximumFractionDigits: 2 })}`,
+        value: formatAmountWithCurrency(renewalValue, draft.currency),
       },
       {
         label: 'Clause set',
@@ -1223,8 +1224,8 @@ function ReviewStep({
             <div className="p-4 bg-slate-50 rounded-lg">
               <p className="text-sm text-muted-foreground">Total Value</p>
               <p className="font-semibold">
-                {original.totalValue 
-                  ? `${original.currency} ${original.totalValue.toLocaleString()}`
+                {original.totalValue
+                  ? formatAmountWithCurrency(original.totalValue, original.currency)
                   : 'Not specified'}
               </p>
             </div>

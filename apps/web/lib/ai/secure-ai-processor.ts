@@ -57,6 +57,7 @@ import {
 } from './contract-categorizer';
 import OpenAI from 'openai';
 import { createOpenAIClient, hasAIClientConfig } from '@/lib/openai-client';
+import { analysisLanguageInstructions } from '@repo/utils';
 import crypto from 'crypto';
 
 // Initialize OpenAI client
@@ -379,6 +380,8 @@ export async function analyzeContractSecurely(
 IMPORTANT: The contract text contains placeholders like [COMPANY_1], [AMOUNT_1], [DATE_1], etc.
 Use these exact placeholders in your response - they will be replaced with real values later.
 
+${analysisLanguageInstructions({ contractText })}
+
 Respond in JSON format only.`;
 
   const userPrompt = `Analyze this contract and extract:
@@ -680,7 +683,7 @@ export async function analyzeContractIntelligently(
   const { anonymizedText, mappings, stats } = anonymizer.anonymize(contractText);
 
   // Step 3: Build enhanced prompt with type-specific hints
-  const systemPrompt = buildEnhancedSystemPrompt(detectedType?.name || null, extractionHints);
+  const systemPrompt = buildEnhancedSystemPrompt(detectedType?.name || null, extractionHints, contractText);
   const userPrompt = buildEnhancedUserPrompt(anonymizedText, detectedType?.name || null);
 
   // Step 4: Call AI
@@ -869,12 +872,15 @@ export async function analyzeContractIntelligently(
  */
 function buildEnhancedSystemPrompt(
   contractType: string | null,
-  hints: string[]
+  hints: string[],
+  contractText?: string,
 ): string {
   let prompt = `You are an expert contract analysis assistant. Analyze contracts and extract key information with high accuracy.
 
 IMPORTANT: The contract text contains placeholders like [COMPANY_1], [AMOUNT_1], [DATE_1], etc.
 Use these exact placeholders in your response - they will be replaced with real values later.
+
+${analysisLanguageInstructions({ contractText })}
 
 Respond in JSON format only.`;
 
@@ -1152,7 +1158,7 @@ export async function processDocumentAdvanced(
   const extractionHints = Object.values(extractionHintsMap);
 
   // Step 3: Build prompts
-  const systemPrompt = buildEnhancedSystemPrompt(detectedType?.name || null, extractionHints);
+  const systemPrompt = buildEnhancedSystemPrompt(detectedType?.name || null, extractionHints, ocrResult.text);
   const userPrompt = buildEnhancedUserPrompt(anonymizedText, detectedType?.name || null);
 
   // Step 4: AI Analysis (with retry logic)
@@ -1423,7 +1429,8 @@ export async function quickAnalyze(
       messages: [
         {
           role: 'system',
-          content: 'You are a contract analysis assistant. Provide quick analysis in JSON format.',
+          content: `You are a contract analysis assistant. Provide quick analysis in JSON format.
+${analysisLanguageInstructions({ contractText: truncatedText })}`,
         },
         {
           role: 'user',

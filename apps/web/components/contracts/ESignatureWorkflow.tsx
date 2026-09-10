@@ -647,17 +647,7 @@ export default function ESignatureWorkflow({ contractId, contractTitle, classNam
 
                   {/* Actions */}
                   <Separator />
-                  <div className="flex gap-2">
-                    <Button size="sm" variant="outline" className="gap-1">
-                      <Download className="h-3 w-3" /> Download Certificate
-                    </Button>
-                    <Button size="sm" variant="outline" className="gap-1">
-                      <FileText className="h-3 w-3" /> Audit Trail
-                    </Button>
-                    <Button size="sm" variant="outline" className="gap-1">
-                      <ExternalLink className="h-3 w-3" /> View in {envelope.provider === 'docusign' ? 'DocuSign' : envelope.provider === 'adobe_sign' ? 'Adobe Sign' : 'Portal'}
-                    </Button>
-                  </div>
+
                 </div>
               )}
             </CardContent>

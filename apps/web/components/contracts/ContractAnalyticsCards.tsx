@@ -26,6 +26,7 @@ import {
   AlertCircle,
   CheckCircle2,
   Info,
+  Target,
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -38,6 +39,8 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import { useDisplayCurrency } from '@/hooks/useDisplayCurrency';
+import { formatDisplayTotal, sumConvertedCurrency } from '@/lib/utils/formatters';
 import {
   useContractAnalytics,
   type AnalyticsContract as Contract,
@@ -127,31 +130,52 @@ interface InsightCardProps {
   onAction?: () => void;
 }
 
-function InsightCard({ insight, onAction }: InsightCardProps) {
-  const iconMap = {
-    critical: <AlertCircle className="h-5 w-5" />,
-    warning: <AlertTriangle className="h-5 w-5" />,
-    info: <Info className="h-5 w-5" />,
-    success: <CheckCircle2 className="h-5 w-5" />,
-  };
+const CANONICAL_INSIGHT_TYPES = ['risk', 'opportunity', 'compliance', 'obligation', 'info', 'action'] as const;
 
-  const colorMap = {
-    critical: 'bg-red-100 text-red-700 border-red-200',
-    warning: 'bg-amber-100 text-amber-700 border-amber-200',
-    info: 'bg-violet-100 text-violet-700 border-violet-200',
-    success: 'bg-green-100 text-green-700 border-green-200',
-  };
+const INSIGHT_VISUALS: Record<string, { icon: React.ReactNode; colors: string; label: string }> = {
+  risk: { icon: <AlertTriangle className="h-5 w-5" />, colors: 'bg-red-100 text-red-700 border-red-200', label: 'Risk' },
+  opportunity: { icon: <TrendingUp className="h-5 w-5" />, colors: 'bg-emerald-100 text-emerald-700 border-emerald-200', label: 'Opportunity' },
+  compliance: { icon: <Shield className="h-5 w-5" />, colors: 'bg-violet-100 text-violet-700 border-violet-200', label: 'Compliance' },
+  obligation: { icon: <Clock className="h-5 w-5" />, colors: 'bg-amber-100 text-amber-700 border-amber-200', label: 'Obligation' },
+  info: { icon: <Info className="h-5 w-5" />, colors: 'bg-slate-100 text-slate-700 border-slate-200', label: 'Info' },
+  action: { icon: <Target className="h-5 w-5" />, colors: 'bg-violet-100 text-violet-700 border-violet-200', label: 'Action' },
+  // Legacy analytics-hook severities still emitted by use-contract-analytics
+  critical: { icon: <AlertCircle className="h-5 w-5" />, colors: 'bg-red-100 text-red-700 border-red-200', label: 'Risk' },
+  warning: { icon: <AlertTriangle className="h-5 w-5" />, colors: 'bg-amber-100 text-amber-700 border-amber-200', label: 'Risk' },
+  success: { icon: <CheckCircle2 className="h-5 w-5" />, colors: 'bg-green-100 text-green-700 border-green-200', label: 'Opportunity' },
+};
+
+const UNKNOWN_INSIGHT_VISUAL = {
+  icon: <AlertTriangle className="h-5 w-5" />,
+  colors: 'bg-amber-100 text-amber-800 border-amber-200',
+  label: 'Finding',
+};
+
+function getInsightVisual(type: string) {
+  return INSIGHT_VISUALS[type] ?? UNKNOWN_INSIGHT_VISUAL;
+}
+
+function InsightCard({ insight, onAction }: InsightCardProps) {
+  const visual = getInsightVisual(insight.type);
+  const isUnknown = !INSIGHT_VISUALS[insight.type];
 
   return (
     <div className={cn(
       'flex items-start gap-3 p-4 rounded-lg border',
-      colorMap[insight.type]
+      visual.colors
     )}>
       <div className="flex-shrink-0 mt-0.5">
-        {iconMap[insight.type]}
+        {visual.icon}
       </div>
       <div className="flex-1 min-w-0">
-        <p className="font-medium">{insight.title}</p>
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="font-medium">{insight.title}</p>
+          {(isUnknown || CANONICAL_INSIGHT_TYPES.includes(insight.type as (typeof CANONICAL_INSIGHT_TYPES)[number])) && (
+            <span className="text-[10px] font-medium uppercase tracking-wide opacity-70">
+              {visual.label}
+            </span>
+          )}
+        </div>
         <p className="text-sm opacity-80 mt-0.5">{insight.description}</p>
         {insight.action && onAction && (
           <Button
@@ -274,16 +298,50 @@ export function ContractAnalyticsCards({
     criticalInsights,
   } = useContractAnalytics(contracts);
 
-  // Format currency
-  const formatCurrency = (value: number) => {
-    if (value >= 1000000) {
-      return `$${(value / 1000000).toFixed(1)}M`;
-    }
-    if (value >= 1000) {
-      return `$${(value / 1000).toFixed(0)}K`;
-    }
-    return `$${value.toFixed(0)}`;
-  };
+  const displayCurrency = useDisplayCurrency();
+  const convertedTotalValue = useMemo(
+    () =>
+      sumConvertedCurrency(
+        contracts.map((contract) => ({
+          amount: contract.value,
+          currency: 'currency' in contract ? (contract as { currency?: string }).currency : undefined,
+        })),
+        displayCurrency,
+      ),
+    [contracts, displayCurrency],
+  );
+  const convertedAverageValue = contracts.length > 0 ? convertedTotalValue / contracts.length : 0;
+  const convertedForecast = useMemo(
+    () =>
+      expirationForecast.map((month) => ({
+        ...month,
+        value: sumConvertedCurrency(
+          month.contracts.map((contract) => ({
+            amount: contract.value,
+            currency: 'currency' in contract ? (contract as { currency?: string }).currency : undefined,
+          })),
+          displayCurrency,
+        ),
+      })),
+    [expirationForecast, displayCurrency],
+  );
+  const convertedVendors = useMemo(
+    () =>
+      topVendors.map((vendor) => ({
+        ...vendor,
+        totalValue: sumConvertedCurrency(
+          contracts
+            .filter((contract) => contract.vendor === vendor.vendor)
+            .map((contract) => ({
+              amount: contract.value,
+              currency: 'currency' in contract ? (contract as { currency?: string }).currency : undefined,
+            })),
+          displayCurrency,
+        ),
+      })),
+    [topVendors, contracts, displayCurrency],
+  );
+  const formatMoney = (value: number) => formatDisplayTotal(value, displayCurrency);
 
   // Calculate trend from monthly data
   const calculateTrend = () => {
@@ -306,7 +364,7 @@ export function ContractAnalyticsCards({
         </div>
         <div className="flex items-center gap-2">
           <DollarSign className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm font-medium">{formatCurrency(stats.totalValue)}</span>
+          <span className="text-sm font-medium">{formatMoney(convertedTotalValue)}</span>
         </div>
         {stats.expiringThisMonth > 0 && (
           <Badge variant="outline" className="text-amber-600 border-amber-300">
@@ -339,8 +397,8 @@ export function ContractAnalyticsCards({
           />
           <StatCard
             title="Total Value"
-            value={formatCurrency(stats.totalValue)}
-            subtitle={`Avg ${formatCurrency(stats.averageValue)}`}
+            value={formatMoney(convertedTotalValue)}
+            subtitle={`Avg ${formatMoney(convertedAverageValue)}`}
             icon={<DollarSign className="h-5 w-5" />}
             color="bg-green-100 text-green-700"
           />
@@ -401,8 +459,8 @@ export function ContractAnalyticsCards({
         />
         <StatCard
           title="Total Value"
-          value={formatCurrency(stats.totalValue)}
-          subtitle={`Avg ${formatCurrency(stats.averageValue)}`}
+          value={formatMoney(convertedTotalValue)}
+          subtitle={`Avg ${formatMoney(convertedAverageValue)}`}
           icon={<DollarSign className="h-5 w-5" />}
           color="bg-green-100 text-green-700"
         />
@@ -475,7 +533,7 @@ export function ContractAnalyticsCards({
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-6 gap-4">
-            {expirationForecast.map((month) => (
+            {convertedForecast.map((month) => (
               <div
                 key={month.month}
                 className={cn(
@@ -485,10 +543,10 @@ export function ContractAnalyticsCards({
                 onClick={() => onNavigateToFilter?.({ expiringMonth: month.month })}
               >
                 <p className="text-xs text-muted-foreground">
-                  {new Date(month.month + '-01').toLocaleDateString('en-US', { month: 'short' })}
+                  {new Date(month.month + '-01').toLocaleDateString('de-CH', { month: 'short' })}
                 </p>
                 <p className="text-lg font-bold mt-1">{month.count}</p>
-                <p className="text-xs text-muted-foreground">{formatCurrency(month.value)}</p>
+                <p className="text-xs text-muted-foreground">{formatMoney(month.value)}</p>
               </div>
             ))}
           </div>
@@ -533,7 +591,7 @@ export function ContractAnalyticsCards({
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {topVendors.slice(0, 5).map((vendor, index) => (
+              {convertedVendors.slice(0, 5).map((vendor, index) => (
                 <div
                   key={vendor.vendor}
                   className="flex items-center gap-4 cursor-pointer hover:bg-muted/50 -mx-2 px-2 py-2 rounded-lg transition-colors"
@@ -549,7 +607,7 @@ export function ContractAnalyticsCards({
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="font-medium">{formatCurrency(vendor.totalValue)}</p>
+                    <p className="font-medium">{formatMoney(vendor.totalValue)}</p>
                     {vendor.expiringCount > 0 && (
                       <Badge variant="outline" className="text-xs">
                         {vendor.expiringCount} expiring

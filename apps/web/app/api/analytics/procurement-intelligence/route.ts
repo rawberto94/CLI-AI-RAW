@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 import { analyticsService } from 'data-orchestration/services';
 import { getCached, setCached } from '@/lib/cache';
+import { expirationOrEndDateFilter, portfolioWhere } from '@/lib/contracts/server/portfolio';
 
 type ProviderType = 
   | 'rate-benchmarking'
@@ -40,7 +41,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
     return createErrorResponse(ctx, 'INVALID_MODULE', `Invalid moduleName: ${moduleName}`, 400);
   }
 
-  const cacheKey = `analytics:procurement-intelligence:${tenantId}:${searchParams.toString()}`;
+  const cacheKey = `analytics:procurement-intelligence:${tenantId}:v2:${searchParams.toString()}`;
   const cached = await getCached(cacheKey);
   if (cached) return createSuccessResponse(ctx, cached);
 
@@ -139,27 +140,21 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
 // =============================================================================
 
 async function getSupplierAnalyticsReal(tenantId: string | undefined, params: Record<string, string>) {
-  const where: Record<string, unknown> = {};
-  if (tenantId) where.tenantId = tenantId;
+  if (!tenantId) {
+    return { suppliers: [], totalSuppliers: 0 };
+  }
 
-  // Get suppliers with their contract counts and total values
   const suppliers = await prisma.party.findMany({
     where: {
-      ...where,
+      tenantId,
       type: 'VENDOR',
-    },
-    include: {
-      _count: {
-        select: { supplierContracts: true },
-      },
     },
     take: parseInt(params.limit || '50'),
   });
 
-  // Get spend data from contracts
   const spendBySupplier = await prisma.contract.groupBy({
     by: ['supplierId'],
-    where: tenantId ? { tenantId } : {},
+    where: portfolioWhere(tenantId),
     _sum: { totalValue: true },
     _count: { id: true },
   });
@@ -170,7 +165,7 @@ async function getSupplierAnalyticsReal(tenantId: string | undefined, params: Re
     suppliers: suppliers.map(s => ({
       id: s.id,
       name: s.name,
-      contractCount: s._count.supplierContracts,
+      contractCount: spendMap.get(s.id)?._count.id || 0,
       totalSpend: spendMap.get(s.id)?._sum.totalValue || 0,
       type: s.type,
     })),
@@ -270,14 +265,14 @@ async function getRenewalRadarReal(tenantId: string | undefined, params: Record<
   const futureDate = new Date();
   futureDate.setDate(futureDate.getDate() + daysAhead);
 
+  if (!tenantId) {
+    return { upcomingRenewals: [], totalUpcoming: 0, withinPeriodDays: daysAhead };
+  }
+
   const renewals = await prisma.contract.findMany({
     where: {
-      ...(tenantId ? { tenantId } : {}),
-      endDate: {
-        gte: new Date(),
-        lte: futureDate,
-      },
-      status: { in: ['ACTIVE', 'COMPLETED'] },
+      ...portfolioWhere(tenantId),
+      ...expirationOrEndDateFilter({ gte: new Date(), lte: futureDate }),
     },
     orderBy: { endDate: 'asc' },
     include: {
@@ -287,15 +282,18 @@ async function getRenewalRadarReal(tenantId: string | undefined, params: Record<
   });
 
   return {
-    upcomingRenewals: renewals.map(r => ({
-      contractId: r.id,
-      title: r.contractTitle,
-      supplier: r.supplier?.name || 'Unknown',
-      endDate: r.endDate,
-      daysUntilRenewal: r.endDate ? Math.ceil((r.endDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : null,
-      totalValue: r.totalValue,
-      status: r.status,
-    })),
+    upcomingRenewals: renewals.map(r => {
+      const expiry = r.expirationDate || r.endDate;
+      return {
+        contractId: r.id,
+        title: r.contractTitle,
+        supplier: r.supplier?.name || 'Unknown',
+        endDate: expiry,
+        daysUntilRenewal: expiry ? Math.ceil((expiry.getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : null,
+        totalValue: r.totalValue,
+        status: r.status,
+      };
+    }),
     totalUpcoming: renewals.length,
     withinPeriodDays: daysAhead,
   };

@@ -11,6 +11,7 @@ import { prisma } from '@/lib/prisma';
 import { analyticalIntelligenceService } from 'data-orchestration/services';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 import { checkRateLimit, rateLimitResponse, AI_RATE_LIMITS } from '@/lib/ai/rate-limit';
+import { analysisLanguageInstructions } from '@repo/utils';
 
 let _openai: OpenAI | null = null;
 function getOpenAI(): OpenAI {
@@ -112,7 +113,8 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
       messages: [
         {
           role: 'system',
-          content: `You are an expert legal contract analyst. Analyze contracts thoroughly and provide structured insights. Always respond in valid JSON format.` },
+          content: `You are an expert legal contract analyst. Analyze contracts thoroughly and provide structured insights. Always respond in valid JSON format.
+${analysisLanguageInstructions({ contractText })}` },
         {
           role: 'user',
           content: analysisPrompt },

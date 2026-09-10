@@ -206,7 +206,7 @@ async function buildContractProfile(contractId: string, tenantId: string): Promi
       if (cp.clientName) context += `| Client | ${cp.clientName} |\n`;
       if (cp.contractType) context += `| Type | ${cp.contractType} |\n`;
       if (cp.status) context += `| Status | ${cp.status} |\n`;
-      if (cp.totalValue) context += `| Value | ${cp.currency || 'USD'} ${Number(cp.totalValue).toLocaleString()} |\n`;
+      if (cp.totalValue) context += `| Value | ${cp.currency ? `${cp.currency} ` : ''}${Number(cp.totalValue).toLocaleString()} |\n`;
       if (cp.effectiveDate) context += `| Effective | ${new Date(cp.effectiveDate).toLocaleDateString()} |\n`;
       if (cp.expirationDate) context += `| Expires | ${new Date(cp.expirationDate).toLocaleDateString()} |\n`;
       if (cp.daysUntilExpiry != null) context += `| Days Until Expiry | ${cp.daysUntilExpiry} |\n`;

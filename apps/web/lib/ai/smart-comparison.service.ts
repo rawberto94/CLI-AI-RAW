@@ -14,6 +14,7 @@
 
 import { getAIModel } from '@/lib/ai/ai-sdk-provider';
 import { generateObject } from 'ai';
+import { analysisLanguageInstructions } from '@repo/utils';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import pino from 'pino';
@@ -211,7 +212,10 @@ export async function generateSmartComparison(params: {
   const { object: report } = await generateObject({
     model: getAIModel(),
     schema: ComparisonReportSchema,
-    system: COMPARISON_SYSTEM_PROMPT,
+    system: `${COMPARISON_SYSTEM_PROMPT}
+
+${analysisLanguageInstructions({ contractText: `${text1}\n${text2}` })}
+If the two contracts are in different languages, write the comparison in English and keep quotes verbatim.`,
     prompt: `Compare these two contracts:
 
 CONTRACT 1: "${contract1.contractTitle || 'Contract A'}" (${contract1.contractType || 'Unknown type'}, Value: ${contract1.totalValue || 'N/A'})

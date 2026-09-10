@@ -51,6 +51,7 @@ import {
   MoreVertical,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { DEFAULT_DISPLAY_CURRENCY } from '@/lib/display-currency';
 import { useConfirm, confirmPresets } from '@/components/dialogs/ConfirmDialog';
 
 // ============================================================================
@@ -862,7 +863,7 @@ function FieldPreview({ field }: { field: MetadataFieldDefinition }) {
         <div className="flex gap-2">
           <input
             type="text"
-            value={field.currency || 'CHF'}
+            value={field.currency || DEFAULT_DISPLAY_CURRENCY}
             className="w-20 px-3 py-2 border rounded-lg text-sm bg-gray-50"
             disabled
           />

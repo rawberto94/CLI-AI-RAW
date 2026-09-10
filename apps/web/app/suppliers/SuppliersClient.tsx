@@ -23,6 +23,7 @@ import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useTranslations } from 'next-intl';
+import { formatAmountWithCurrency } from '@/lib/utils/formatters';
 
 
 interface VendorProfile {
@@ -198,7 +199,7 @@ export default function SuppliersClient() {
                           <Badge variant="outline" className="text-[10px]">{vendor.category || 'General'}</Badge>
                         </div>
                         <p className="text-xs text-muted-foreground mt-0.5">
-                          {vendor.contractCount} contracts · ${(vendor.totalValue / 1000).toFixed(0)}k total value
+                          {vendor.contractCount} contracts · {formatAmountWithCurrency(vendor.totalValue)} total value
                         </p>
                       </div>
                       <div className="flex items-center gap-3 shrink-0">
@@ -308,7 +309,7 @@ export default function SuppliersClient() {
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">Total Value</p>
-                    <p className="text-lg font-semibold">${(selectedVendor.totalValue / 1000).toFixed(0)}k</p>
+                    <p className="text-lg font-semibold">{formatAmountWithCurrency(selectedVendor.totalValue)}</p>
                   </div>
                 </div>
                 <div className="space-y-2 text-sm">

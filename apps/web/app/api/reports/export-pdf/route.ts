@@ -67,17 +67,15 @@ function generateReportHTML(
   userName: string
 ): string {
   const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
+    return value.toLocaleString('de-CH', {
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
-    }).format(value);
+    });
   };
 
   const formatDate = (dateStr: string | null) => {
     if (!dateStr) return 'N/A';
-    return new Date(dateStr).toLocaleDateString('en-US', {
+    return new Date(dateStr).toLocaleDateString('de-CH', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',

@@ -46,6 +46,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
+import { useDisplayCurrency } from '@/hooks/useDisplayCurrency';
+import { formatDisplayTotal, summarizeConvertedCurrency } from '@/lib/utils/formatters';
 import { CategoryBadge } from './CategoryComponents';
 
 // ============================================================================
@@ -59,6 +61,7 @@ export interface Contract {
   counterparty?: string;
   status: string;
   value?: number;
+  currency?: string;
   startDate?: string | Date;
   endDate?: string | Date;
   category?: {
@@ -92,14 +95,22 @@ export interface ContractsListProps {
 // Utilities
 // ============================================================================
 
-const formatCurrency = (value?: number): string => {
+const formatCurrency = (value?: number, currency?: string): string => {
   if (!value) return '-';
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(value);
+  const code = typeof currency === 'string' ? currency.trim() : '';
+  if (code.length === 3 && code !== 'XXX') {
+    try {
+      return new Intl.NumberFormat('de-CH', {
+        style: 'currency',
+        currency: code,
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+      }).format(value);
+    } catch {
+      return `${code} ${value.toLocaleString('de-CH')}`;
+    }
+  }
+  return value.toLocaleString('de-CH');
 };
 
 const formatDate = (date?: string | Date): string => {
@@ -340,7 +351,7 @@ const CompactRow = memo(function CompactRow({
       {contract.value !== undefined && (
         <div className="hidden md:flex items-center gap-1 text-sm font-medium min-w-[80px] justify-end">
           <DollarSign className="h-3.5 w-3.5 text-muted-foreground" />
-          {formatCurrency(contract.value).replace('$', '')}
+          {formatCurrency(contract.value, contract.currency)}
         </div>
       )}
 
@@ -461,7 +472,7 @@ const ContractCard = memo(function ContractCard({
               </div>
               {contract.value !== undefined && (
                 <div className="font-semibold text-sm">
-                  {formatCurrency(contract.value)}
+                  {formatCurrency(contract.value, contract.currency)}
                 </div>
               )}
             </div>
@@ -551,7 +562,7 @@ const TimelineItem = memo(function TimelineItem({
             </Badge>
             {contract.value !== undefined && (
               <span className="text-sm font-medium">
-                {formatCurrency(contract.value)}
+                {formatCurrency(contract.value, contract.currency)}
               </span>
             )}
           </div>
@@ -682,7 +693,12 @@ const KanbanColumn = memo(function KanbanColumn({
   onContractClick,
   color = "bg-gray-100",
 }: KanbanColumnProps) {
-  const totalValue = contracts.reduce((sum, c) => sum + (c.value || 0), 0);
+  const displayCurrency = useDisplayCurrency();
+  const convertedSum = summarizeConvertedCurrency(
+    contracts.map((c) => ({ amount: c.value, currency: c.currency })),
+    displayCurrency,
+  );
+  const totalValue = convertedSum.total;
 
   return (
     <div className="flex-1 min-w-[280px] max-w-[350px]">
@@ -695,7 +711,8 @@ const KanbanColumn = memo(function KanbanColumn({
           <Badge variant="secondary">{contracts.length}</Badge>
         </div>
         <p className="text-xs text-muted-foreground mt-1">
-          Total: {formatCurrency(totalValue)}
+          Total: {formatDisplayTotal(totalValue, displayCurrency, { converted: convertedSum.convertedCount > 0 })}
+          {convertedSum.skippedCount > 0 ? ` · ${convertedSum.skippedCount} excluded` : ''}
         </p>
       </div>
       
@@ -738,7 +755,7 @@ const KanbanColumn = memo(function KanbanColumn({
                         {formatDate(contract.endDate)}
                       </span>
                       <span className="text-sm font-medium">
-                        {formatCurrency(contract.value)}
+                        {formatCurrency(contract.value, contract.currency)}
                       </span>
                     </div>
                     {contract.category && (

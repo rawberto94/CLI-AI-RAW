@@ -20,6 +20,7 @@ import {
 } from './advanced-ai-intelligence.service';
 import { createLogger } from '../utils/logger';
 import { estimateTokens } from '../utils/token-estimation';
+import { analysisLanguageInstructions } from '@repo/utils';
 
 const logger = createLogger('intelligent-prompt-router');
 
@@ -207,12 +208,12 @@ Focus on extracting all monetary values, payment terms, and financial obligation
     ],
     antiHallucinationRules: [
       'All monetary values must be exact numbers from the contract',
-      'Currency must be explicitly stated or default to USD with low confidence',
+      'Currency must be explicitly stated. Fr. and SFr. mean CHF. Do not invent USD. If missing, use null.',
       'Payment schedules must match actual contract milestones',
       'Do not calculate or estimate values not explicitly stated',
     ],
     outputGuidelines: [
-      'Use consistent currency codes (USD, EUR, GBP)',
+      'Use consistent currency codes (CHF, EUR, USD, GBP) — only if stated',
       'Flag estimated vs. stated values',
       'Include formula for any calculated values',
     ],
@@ -432,7 +433,8 @@ export class IntelligentPromptRouter {
     const combinedSystemPrompt = this.buildSystemPrompt(
       enhancedSystemPrompt,
       contractTypePrompt,
-      classification
+      classification,
+      contractText,
     );
 
     const userPrompt = this.buildUserPrompt(
@@ -477,6 +479,8 @@ export class IntelligentPromptRouter {
     const artifactPrompt = ARTIFACT_PROMPTS[artifactType] || ARTIFACT_PROMPTS.OVERVIEW;
 
     const systemPrompt = `${artifactPrompt.systemPrompt}
+
+${analysisLanguageInstructions({ contractText: chunk.content })}
 
 This is chunk ${chunkIndex + 1} of ${totalChunks} from the document.
 Section: ${chunk.section}
@@ -543,7 +547,8 @@ ${chunk.content}
   private static buildSystemPrompt(
     basePrompt: string,
     contractTypePrompt: Partial<PromptTemplate>,
-    classification: ContractClassification
+    classification: ContractClassification,
+    contractText?: string,
   ): string {
     const contractTypeGuidance = `
 CONTRACT TYPE DETECTED: ${classification.category} (${classification.subType})
@@ -560,6 +565,8 @@ ${(contractTypePrompt.antiHallucinationRules || []).map(r => `⚠️ ${r}`).join
     return `${basePrompt}
 
 ${contractTypeGuidance}
+
+${analysisLanguageInstructions({ contractText })}
 
 UNIVERSAL EXTRACTION RULES:
 1. Extract ONLY information explicitly stated in the contract

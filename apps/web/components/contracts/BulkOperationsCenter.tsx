@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import Link from 'next/link';
 
 interface BulkJob {
   id: string;
@@ -230,7 +231,19 @@ export default function BulkOperationsCenter() {
                         </div>
                         {c.totalValue && (
                           <span className="text-sm font-medium shrink-0">
-                            {new Intl.NumberFormat('en-US', { style: 'currency', currency: c.currency || 'USD', notation: 'compact' }).format(c.totalValue)}
+                            {(() => {
+                              const amount = Number(c.totalValue)
+                              if (!Number.isFinite(amount)) return null
+                              const code = typeof c.currency === 'string' ? c.currency.trim() : ''
+                              if (code.length === 3) {
+                                try {
+                                  return new Intl.NumberFormat('de-CH', { style: 'currency', currency: code, notation: 'compact' }).format(amount)
+                                } catch {
+                                  return `${code} ${amount.toLocaleString('de-CH')}`
+                                }
+                              }
+                              return amount.toLocaleString('de-CH', { notation: 'compact' })
+                            })()}
                           </span>
                         )}
                       </div>
@@ -382,8 +395,8 @@ export default function BulkOperationsCenter() {
             <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-3" />
             <p className="text-sm font-medium">Drag &amp; drop your file here</p>
             <p className="text-xs text-muted-foreground mt-1">Supports CSV, JSON, and Excel (.xlsx)</p>
-            <Button variant="outline" size="sm" className="mt-4">
-              Browse Files
+            <Button variant="outline" size="sm" className="mt-4" asChild>
+              <Link href="/contracts/upload">Browse Files</Link>
             </Button>
           </div>
           <div className="text-xs text-muted-foreground">

@@ -34,7 +34,6 @@ import {
   Settings,
   RefreshCw,
   MoreHorizontal,
-  Archive,
   Star,
   StarOff,
 } from "lucide-react";
@@ -568,9 +567,6 @@ export default function NotificationsPage() {
                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => toggleStar(notification.id)}>
                                 <Star className="h-4 w-4 mr-2.5" /> {notification.starred ? "Unstar" : "Star"}
-                              </DropdownMenuItem>
-                              <DropdownMenuItem>
-                                <Archive className="h-4 w-4 mr-2.5" /> Archive
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem

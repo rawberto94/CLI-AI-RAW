@@ -14,6 +14,7 @@
 
 import OpenAI from 'openai';
 import { prisma as prismaSingleton, PrismaClient } from '../lib/prisma';
+import { analysisLanguageInstructions, formatMoneyText } from '@repo/utils';
 
 // ============================================================================
 // TYPES
@@ -333,7 +334,10 @@ export class AICopilotService {
   ): Promise<NegotiationInsight[]> {
     if (!context.isNegotiating) return [];
 
-    const prompt = `Analyze this contract clause and provide negotiation insights:
+    const prompt = `${analysisLanguageInstructions({ contractText: text })}
+Keep quoted clause text verbatim.
+
+Analyze this contract clause and provide negotiation insights:
 
 Contract Type: ${context.contractType || 'Unknown'}
 Counterparty: ${context.counterpartyName || 'Unknown'}
@@ -619,8 +623,8 @@ Return JSON array: [{ insight, counterpartyPattern, suggestedPosition, strength 
             startOffset: liabilityMatch.index || 0,
             endOffset: (liabilityMatch.index || 0) + liabilityMatch[0].length,
           },
-          explanation: `Liability cap $${amount.toLocaleString()} is below playbook minimum of $${thresholds.minLiabilityCap.toLocaleString()}`,
-          suggestedFix: `Negotiate for minimum $${thresholds.minLiabilityCap.toLocaleString()} cap`,
+          explanation: `Liability cap ${formatMoneyText(amount)} is below playbook minimum of ${formatMoneyText(thresholds.minLiabilityCap)}`,
+          suggestedFix: `Negotiate for minimum ${formatMoneyText(thresholds.minLiabilityCap)} cap`,
           playbookReference: context.activePlaybook?.name,
         });
       }
@@ -638,6 +642,8 @@ Return JSON array: [{ insight, counterpartyPattern, suggestedPosition, strength 
     context: CopilotContext
   ): Promise<RealtimeSuggestion[]> {
     const prompt = `You are a contract drafting assistant. Analyze this partial clause and suggest improvements.
+${analysisLanguageInstructions({ contractText: text })}
+Keep suggested clause text in the same language as the current text. Do not translate.
 
 Contract Type: ${context.contractType || 'General'}
 Current Text: "${text}"
@@ -686,7 +692,10 @@ Return JSON: { "suggestions": [{ "type": "improvement|risk_mitigation|clarity", 
     clauseType: string | undefined,
     context: CopilotContext
   ): Promise<ClauseCompletion[]> {
-    const prompt = `Complete this partial contract clause:
+    const prompt = `${analysisLanguageInstructions({ contractText: text })}
+Keep completions in the same language as the partial text.
+
+Complete this partial contract clause:
 
 Clause Type: ${clauseType || 'Unknown'}
 Contract Type: ${context.contractType || 'General'}
@@ -723,7 +732,10 @@ Provide 2 possible completions. Return JSON:
     text: string,
     context: CopilotContext
   ): Promise<RiskHighlight[]> {
-    const prompt = `Analyze this contract text for legal risks:
+    const prompt = `${analysisLanguageInstructions({ contractText: text })}
+Keep excerpts verbatim.
+
+Analyze this contract text for legal risks:
 
 Contract Type: ${context.contractType || 'General'}
 Text: "${text.slice(0, 3000)}"

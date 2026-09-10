@@ -1,6 +1,5 @@
 /**
- * Redirect: /import → /rate-cards/dashboard
- * Import functionality has been consolidated into respective modules
+ * Redirect: /import → /contracts/upload (rate cards module is hidden)
  */
 
 'use client';
@@ -14,7 +13,7 @@ export default function ImportRedirect() {
   const router = useRouter();
 
   useEffect(() => {
-    router.replace('/rate-cards/dashboard');
+    router.replace('/contracts/upload');
   }, [router]);
 
   return (
@@ -24,7 +23,6 @@ export default function ImportRedirect() {
         <h2 className="text-xl font-semibold mb-2 bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">Redirecting...</h2>
         <p className="text-slate-600">Import functionality is now available in each module</p>
         <p className="text-sm text-slate-500 mt-2">
-          Rate Cards: Rate Cards → Dashboard<br />
           Contracts: Contracts → Upload
         </p>
       </div>

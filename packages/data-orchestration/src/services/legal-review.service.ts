@@ -15,6 +15,7 @@
 import OpenAI from 'openai';
 import { Prisma } from '@prisma/client';
 import { prisma as prismaSingleton, PrismaClient } from '../lib/prisma';
+import { analysisLanguageInstructions } from '@repo/utils';
 
 // ============================================================================
 // TYPES
@@ -782,7 +783,10 @@ export class LegalReviewService {
   }
 
   private async extractClauses(content: string): Promise<ExtractedClause[]> {
-    const prompt = `Analyze this contract and extract distinct clauses. For each clause identify:
+    const prompt = `${analysisLanguageInstructions({ contractText: content })}
+Keep clause text verbatim. Write summaries in the document language. JSON keys stay English.
+
+Analyze this contract and extract distinct clauses. For each clause identify:
 1. The category (liability, indemnification, termination, ip_ownership, confidentiality, payment, warranties, compliance, dispute_resolution, limitation_of_liability, force_majeure, data_protection, non_compete, assignment, other)
 2. The exact text of the clause
 3. A brief summary
@@ -855,7 +859,10 @@ Return JSON: { "clauses": [{ "category": "category_name", "text": "exact clause 
     clause: ExtractedClause,
     playbookClause?: PlaybookClause
   ): Promise<{ riskScore: number; issues: RiskIssue[]; recommendations: string[] }> {
-    const prompt = `Assess the risk of this contract clause:
+    const prompt = `${analysisLanguageInstructions({ contractText: clause.text })}
+Keep quoted clause text verbatim. Write issue descriptions and recommendations in the clause language. JSON keys stay English.
+
+Assess the risk of this contract clause:
 
 Clause Category: ${clause.category}
 Clause Text: "${clause.text}"
@@ -904,7 +911,10 @@ Return JSON: {
     playbookClause: PlaybookClause,
     issues: RiskIssue[]
   ): Promise<{ suggestedText: string; explanation: string }> {
-    const prompt = `Generate a redline suggestion for this clause:
+    const prompt = `${analysisLanguageInstructions({ contractText: originalText })}
+Keep the redline in the same language as the original clause. Do not translate.
+
+Generate a redline suggestion for this clause:
 
 Original clause:
 "${originalText}"

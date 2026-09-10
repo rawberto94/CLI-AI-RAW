@@ -19,6 +19,7 @@ import { generateObject, streamText } from 'ai';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { hybridSearch } from '@/lib/rag/advanced-rag.service';
+import { analysisLanguageInstructions } from '@repo/utils';
 import pino from 'pino';
 
 const logger = pino({ name: 'negotiation-copilot' });
@@ -135,7 +136,9 @@ export async function generateNegotiationPlaybook(params: {
   const { object: playbook } = await generateObject({
     model: getAIModel(),
     schema: NegotiationPlaybookSchema,
-    system: PLAYBOOK_SYSTEM_PROMPT,
+    system: `${PLAYBOOK_SYSTEM_PROMPT}
+
+${analysisLanguageInstructions({ contractText: text })}`,
     prompt: `Generate a negotiation playbook for this ${contractType || 'contract'}.${roleHint}${contextHint}${portfolioBenchmark}
 
 --- CONTRACT TEXT ---
@@ -179,7 +182,9 @@ export async function generateRedlineSuggestion(params: {
   const { object: redline } = await generateObject({
     model: getAIModel(),
     schema: RedlineSuggestionSchema,
-    system: `You are an expert contract editor. Generate specific, word-for-word redline suggestions that improve the clause for our side while remaining commercially reasonable. The suggested text should be a complete replacement that could be sent to the counterparty.`,
+    system: `You are an expert contract editor. Generate specific, word-for-word redline suggestions that improve the clause for our side while remaining commercially reasonable. The suggested text should be a complete replacement that could be sent to the counterparty.
+${analysisLanguageInstructions({ contractText: clauseText })}
+Keep the redline in the same language as the original clause. Do not translate.`,
     prompt: `Generate a redline suggestion for this ${clauseType || 'clause'} from a ${contractType || 'contract'}.
 ${objective ? `Objective: ${objective}` : ''}
 
@@ -229,7 +234,9 @@ export async function streamNegotiationAdvice(params: {
     model: getAIModel(),
     system: `You are a real-time negotiation advisor embedded in a contract management platform. Your role is to help the user navigate active negotiations with practical, specific advice.
 
-Be concise and actionable. Use bullet points. Reference specific contract terms when relevant.${playbookContext}`,
+Be concise and actionable. Use bullet points. Reference specific contract terms when relevant.
+${analysisLanguageInstructions({ contractText: contractText || question })}
+Match the user's language. Keep quoted contract text verbatim.${playbookContext}`,
     prompt: `${question}${contractContext}`,
     temperature: 0.3,
   });

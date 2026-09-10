@@ -25,6 +25,7 @@ import {
   X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import {
@@ -41,6 +42,8 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import { useDisplayCurrency } from '@/hooks/useDisplayCurrency';
+import { formatDisplayTotal, summarizeConvertedCurrency } from '@/lib/utils/formatters';
 
 // ============================================================================
 // Types
@@ -84,13 +87,21 @@ interface ContractKanbanProps {
 // Helper Functions
 // ============================================================================
 
-const formatCurrency = (value: number, currency = 'USD') => {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency,
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(value);
+const formatCurrency = (value: number, currency?: string) => {
+  const code = typeof currency === 'string' ? currency.trim() : '';
+  if (code.length === 3 && code !== 'XXX') {
+    try {
+      return new Intl.NumberFormat('de-CH', {
+        style: 'currency',
+        currency: code,
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+      }).format(value);
+    } catch {
+      return `${code} ${value.toLocaleString('de-CH')}`;
+    }
+  }
+  return value.toLocaleString('de-CH');
 };
 
 const getPriorityColor = (priority?: string) => {
@@ -240,7 +251,7 @@ function KanbanCard({ contract, onView, onEdit, onDelete, isDragging }: KanbanCa
               <Calendar className="w-3 h-3" />
               {contract.daysUntilExpiry !== undefined && contract.daysUntilExpiry > 0 
                 ? `${contract.daysUntilExpiry}d left`
-                : new Date(contract.expirationDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                : new Date(contract.expirationDate).toLocaleDateString('de-CH', { month: 'short', day: 'numeric' })
               }
             </div>
           )}
@@ -308,9 +319,14 @@ function KanbanColumnComponent({
   isCollapsed,
   onToggleCollapse,
 }: KanbanColumnProps) {
-  const totalValue = useMemo(() => {
-    return column.contracts.reduce((sum, c) => sum + (c.totalValue || 0), 0);
-  }, [column.contracts]);
+  const displayCurrency = useDisplayCurrency();
+  const convertedSum = useMemo(() => {
+    return summarizeConvertedCurrency(
+      column.contracts.map((c) => ({ amount: c.totalValue, currency: c.currency })),
+      displayCurrency,
+    );
+  }, [column.contracts, displayCurrency]);
+  const totalValue = convertedSum.total;
 
   return (
     <motion.div
@@ -348,14 +364,24 @@ function KanbanColumnComponent({
             <div className="flex-1">
               <h3 className="font-semibold text-white text-sm">{column.title}</h3>
               <p className="text-xs text-white/70">
-                {formatCurrency(totalValue)} total
+                {formatDisplayTotal(totalValue, displayCurrency, { converted: convertedSum.convertedCount > 0 })} total
               </p>
             </div>
             <Badge className="bg-white/30 text-white border-0">
               {column.contracts.length}
             </Badge>
             {isCollapsed !== undefined && (
-              <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-white/70 hover:text-white hover:bg-white/20" aria-label={isCollapsed ? 'Expand column' : 'Collapse column'}>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0 text-white/70 hover:text-white hover:bg-white/20"
+                aria-label={isCollapsed ? 'Expand column' : 'Collapse column'}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleCollapse?.();
+                }}
+              >
                 {isCollapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
               </Button>
             )}
@@ -391,14 +417,7 @@ function KanbanColumnComponent({
             )}
           </AnimatePresence>
 
-          {/* Add Contract Button */}
-          <Button
-            variant="ghost"
-            className="w-full justify-start text-slate-400 hover:text-slate-600 hover:bg-white/50 border-2 border-dashed border-slate-200 rounded-xl"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Add contract
-          </Button>
+
         </div>
       )}
     </motion.div>
@@ -416,6 +435,7 @@ export function ContractKanban({
   onContractDelete,
   className,
 }: ContractKanbanProps) {
+  const displayCurrency = useDisplayCurrency();
   const [collapsedColumns, setCollapsedColumns] = useState<Set<string>>(new Set());
 
   // Define columns
@@ -492,7 +512,11 @@ export function ContractKanban({
 
   // Stats
   const totalContracts = contracts.length;
-  const totalValue = contracts.reduce((sum, c) => sum + (c.totalValue || 0), 0);
+  const boardSum = summarizeConvertedCurrency(
+    contracts.map((c) => ({ amount: c.totalValue, currency: c.currency })),
+    displayCurrency,
+  );
+  const totalValue = boardSum.total;
   const activeCount = contracts.filter(c => c.status === 'active').length;
   const expiringCount = contracts.filter(c => c.status === 'expiring').length;
 
@@ -510,7 +534,8 @@ export function ContractKanban({
             </div>
             <div className="h-6 w-px bg-slate-200" />
             <div className="text-sm text-slate-600">
-              <span className="font-semibold text-violet-600">{formatCurrency(totalValue)}</span> total value
+              <span className="font-semibold text-violet-600">{formatDisplayTotal(totalValue, displayCurrency, { converted: boardSum.convertedCount > 0 })}</span> total value
+              {boardSum.skippedCount > 0 ? <span className="ml-2 text-xs text-slate-500">{boardSum.skippedCount} excluded — currency unknown</span> : null}
             </div>
             <div className="h-6 w-px bg-slate-200" />
             <div className="flex items-center gap-4 text-sm">
@@ -521,9 +546,11 @@ export function ContractKanban({
             </div>
           </div>
           
-          <Button variant="outline" size="sm" className="gap-2">
-            <Plus className="w-4 h-4" />
-            New Contract
+          <Button variant="outline" size="sm" className="gap-2" asChild>
+            <Link href="/contracts/upload">
+              <Plus className="w-4 h-4" />
+              New Contract
+            </Link>
           </Button>
         </div>
 

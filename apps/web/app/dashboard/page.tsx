@@ -6,7 +6,8 @@ import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { formatCurrency } from "@/components/ui/design-system";
+import { DEFAULT_DISPLAY_CURRENCY } from "@/lib/display-currency";
+import { formatDisplayTotal } from "@/lib/utils/formatters";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 
@@ -81,6 +82,10 @@ interface DashboardData {
     activeContracts: number;
     portfolioValue: number;
     recentlyAdded: number;
+    displayCurrency?: string;
+    unconvertedValueCount?: number;
+    converted?: boolean;
+    fxAsOf?: string | null;
   };
   renewals: {
     expiringIn30Days: number;
@@ -547,10 +552,19 @@ export default function DashboardPage() {
                 <div className="space-y-1 mt-auto">
                   <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('kpi.portfolioValue')}</p>
                   <p className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
-                    {formatCurrency(dashboardData.overview.portfolioValue)}
+                    <span title={dashboardData.overview.fxAsOf ? `FX as of ${new Date(dashboardData.overview.fxAsOf).toLocaleString('de-CH')}` : undefined}>
+                    {formatDisplayTotal(
+                      dashboardData.overview.portfolioValue,
+                      dashboardData.overview.displayCurrency || DEFAULT_DISPLAY_CURRENCY,
+                      { converted: Boolean(dashboardData.overview.converted) },
+                    )}
+                    </span>
                   </p>
                   <p className="text-xs text-muted-foreground pt-1">
                     From {dashboardData.overview.totalContracts} contracts
+                    {dashboardData.overview.unconvertedValueCount
+                      ? ` · ${dashboardData.overview.unconvertedValueCount} excluded — currency unknown`
+                      : ''}
                   </p>
                 </div>
               </CardContent>

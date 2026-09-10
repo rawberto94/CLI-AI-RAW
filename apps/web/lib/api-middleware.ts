@@ -392,7 +392,23 @@ export function handleApiError(
     status = 500;
   }
 
-  return createErrorResponse(context, code, 'An error occurred', status, {
+  const userMessage = (() => {
+    if (code === 'RATE_LIMITED') return 'Too many requests — wait a moment and retry';
+    if (code === 'NOT_FOUND') return 'The requested record was not found';
+    if (code === 'UNAUTHORIZED' || code === 'FORBIDDEN') return 'Your session expired — refresh the page and retry';
+    if (code === 'TIMEOUT') return 'The request timed out — retry';
+    if (code === 'CONNECTION_ERROR') return 'Connection lost — retry';
+    if (code === 'DATABASE_ERROR') return 'Something went wrong on our side — retry';
+    if (/queue call timed out|queue unavailable/i.test(errorMessage)) {
+      return 'Processing could not start because the job queue is unavailable — retry';
+    }
+    if (/virus|security scan/i.test(errorMessage)) return 'File rejected by security scan';
+    if (/unsupported|invalid file type|mime/i.test(errorMessage)) return "This file type isn't supported";
+    if (/too large|payload too large/i.test(errorMessage)) return 'File is too large — the limit is 100 MB';
+    return 'An error occurred';
+  })();
+
+  return createErrorResponse(context, code, userMessage, status, {
     details: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
     retryable,
   });

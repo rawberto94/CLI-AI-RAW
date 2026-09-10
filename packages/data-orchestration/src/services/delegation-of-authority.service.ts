@@ -4,6 +4,7 @@
  */
 
 import { Prisma, PrismaClient } from '@prisma/client';
+import { resolvePersistCurrency } from '@repo/utils';
 
 const prisma = new PrismaClient();
 
@@ -31,7 +32,7 @@ export class DelegationOfAuthorityService {
     const result = await prisma.$queryRaw`INSERT INTO delegation_of_authority (id, tenant_id, name, role, department, contract_types, max_value, currency, requires_counter_sign, counter_sign_role, can_delegate, delegation_depth, conditions, is_active, effective_from, effective_until, created_by)
        VALUES (gen_random_uuid()::text, ${input.tenantId}, ${input.name}, ${input.role}, ${input.department || null},
       ${JSON.stringify(input.contractTypes || [])}, ${input.maxValue || null},
-      ${input.currency || 'USD'}, ${input.requiresCounterSign ?? false},
+      ${resolvePersistCurrency(input.currency)}, ${input.requiresCounterSign ?? false},
       ${input.counterSignRole || null}, ${input.canDelegate ?? true},
       ${input.delegationDepth || 1}, ${JSON.stringify(input.conditions || {})},
       ${input.isActive ?? true}, ${input.effectiveFrom || null},

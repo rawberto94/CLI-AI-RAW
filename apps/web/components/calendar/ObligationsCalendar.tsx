@@ -448,7 +448,7 @@ export function ObligationsCalendar({ obligations, onStatusUpdate, onComplete }:
               <CalendarIcon className="w-4 h-4 text-violet-500" />
               {selectedDate ? (
                 <>
-                  {selectedDate.toLocaleDateString('en-US', { 
+                  {selectedDate.toLocaleDateString('de-CH', { 
                     weekday: 'long',
                     month: 'long', 
                     day: 'numeric',

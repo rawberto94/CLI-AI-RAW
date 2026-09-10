@@ -17,6 +17,7 @@
  */
 
 import type { PrismaClient } from '@prisma/client';
+import { formatMoneyText } from '@repo/utils';
 
 // ============================================================================
 // TYPES
@@ -253,7 +254,7 @@ export async function detectSavingsOpportunities(
       urgency,
       confidence: Math.min(0.95, 0.7 + savingsPercent / 100),
       title: `Potential Savings: ${contract.contractTitle}`,
-      description: `Contract is ${Math.round(savingsPercent)}% above market rate. Estimated savings: $${Math.round(savingsPotential)}/year.`,
+      description: `Contract is ${Math.round(savingsPercent)}% above market rate. Estimated savings: ${formatMoneyText(Math.round(savingsPotential))}/year.`,
       contractId: contract.id,
       contractTitle: contract.contractTitle,
       supplierName: contract.supplierName,

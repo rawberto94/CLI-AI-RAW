@@ -104,10 +104,15 @@ export function RateCardTable({
   });
 
   const formatCurrency = (amount: number, currency: string) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: currency || 'USD',
-    }).format(amount);
+    const code = typeof currency === 'string' ? currency.trim() : '';
+    if (code.length === 3 && code !== 'XXX') {
+      try {
+        return new Intl.NumberFormat('de-CH', { style: 'currency', currency: code }).format(amount);
+      } catch {
+        return `${code} ${amount.toLocaleString('de-CH')}`;
+      }
+    }
+    return amount.toLocaleString('de-CH');
   };
 
   if (loading) {

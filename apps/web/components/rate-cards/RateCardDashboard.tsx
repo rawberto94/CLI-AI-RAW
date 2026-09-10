@@ -23,6 +23,7 @@ import {
   ArrowDownRight,
   Sparkles,
 } from 'lucide-react';
+import { formatRateMoney } from '@/lib/rate-cards/format';
 
 interface DashboardStats {
   totalRateCards: number;
@@ -158,7 +159,7 @@ export function RateCardDashboard() {
               <div>
                 <p className="text-sm font-medium text-green-600">Annual Spend</p>
                 <h3 className="text-3xl font-bold text-gray-900 mt-2">
-                  ${(stats.totalAnnualSpend / 1000000).toFixed(1)}M
+                  {formatRateMoney(stats.totalAnnualSpend)}
                 </h3>
                 <div className="flex items-center gap-1 mt-2 text-sm text-green-600">
                   <TrendingDown className="w-4 h-4" />
@@ -179,7 +180,7 @@ export function RateCardDashboard() {
               <div>
                 <p className="text-sm font-medium text-orange-600">Savings Identified</p>
                 <h3 className="text-3xl font-bold text-gray-900 mt-2">
-                  ${(stats.totalSavingsIdentified / 1000000).toFixed(2)}M
+                  {formatRateMoney(stats.totalSavingsIdentified)}
                 </h3>
                 <div className="flex items-center gap-2 mt-2">
                   <div className="h-2 flex-1 bg-gray-200 rounded-full overflow-hidden">
@@ -250,7 +251,7 @@ export function RateCardDashboard() {
                   </div>
                   <div className="text-right">
                     <div className="text-2xl font-bold text-gray-900">
-                      ${role.currentAvg.toLocaleString()}
+                      {formatRateMoney(role.currentAvg)}
                       <span className="text-sm text-gray-500">/day</span>
                     </div>
                     <div className={`flex items-center gap-1 justify-end mt-1 ${
@@ -301,7 +302,7 @@ export function RateCardDashboard() {
                   </div>
                   <div className="mt-2 flex items-center justify-between">
                     <div className="text-lg font-bold text-orange-600">
-                      ${((opp as any).annualSavingsPotential / 1000).toFixed(0)}K
+                      {formatRateMoney((opp as any).annualSavingsPotential)}
                       <span className="text-xs text-gray-600">/year</span>
                     </div>
                     <div className="text-xs text-gray-600">
@@ -356,7 +357,7 @@ export function RateCardDashboard() {
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span className="text-gray-600">Avg Rate:</span>
-                      <span className="font-semibold">${supplier.averageRate}</span>
+                      <span className="font-semibold">{formatRateMoney(supplier.averageRate)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">Roles:</span>

@@ -15,6 +15,7 @@
 
 import { createLogger } from '../utils/logger';
 import { estimateTokens } from '../utils/token-estimation';
+import { analysisLanguageInstructions, detectCurrencyFromText, formatMoneyText, UNKNOWN_CURRENCY } from '@repo/utils';
 
 const logger = createLogger('enhanced-extraction-engine');
 
@@ -223,6 +224,10 @@ const EXTRACTION_PATTERNS: ExtractionPattern[] = [
       /effective\s+(?:date|as\s+of)[:\s]+([A-Za-z]+\s+\d{1,2},?\s+\d{4})/i,
       /effective\s+(?:date|as\s+of)[:\s]+(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/i,
       /this\s+agreement\s+is\s+effective\s+(?:as\s+of\s+)?([A-Za-z]+\s+\d{1,2},?\s+\d{4})/i,
+      /inkrafttreten[:\s]+(\d{1,2}\.\d{1,2}\.\d{2,4})/i,
+      /g[uü]ltig\s+ab[:\s]+(\d{1,2}\.\d{1,2}\.\d{2,4})/i,
+      /vertragsbeginn[:\s]+(\d{1,2}\.\d{1,2}\.\d{2,4})/i,
+      /date\s+d['’]entr[eé]e\s+en\s+vigueur[:\s]+(\d{1,2}[./]\d{1,2}[./]\d{2,4})/i,
     ],
     confidence: 0.9,
     priority: 10
@@ -234,6 +239,8 @@ const EXTRACTION_PATTERNS: ExtractionPattern[] = [
       /(?:expiration|expiry|end)\s+date[:\s]+([A-Za-z]+\s+\d{1,2},?\s+\d{4})/i,
       /(?:expiration|expiry|end)\s+date[:\s]+(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/i,
       /(?:terminates?|expires?|ends?)\s+(?:on|upon)[:\s]+([A-Za-z]+\s+\d{1,2},?\s+\d{4})/i,
+      /vertragsende[:\s]+(\d{1,2}\.\d{1,2}\.\d{2,4})/i,
+      /l[aä]uft\s+ab[:\s]+(\d{1,2}\.\d{1,2}\.\d{2,4})/i,
     ],
     confidence: 0.9,
     priority: 10
@@ -254,9 +261,10 @@ const EXTRACTION_PATTERNS: ExtractionPattern[] = [
     name: 'total_value',
     category: 'financial',
     patterns: [
-      /total\s+(?:contract\s+)?value[:\s]+[$€£¥]?\s*([\d,]+(?:\.\d{2})?)/i,
-      /(?:aggregate|maximum)\s+amount[:\s]+[$€£¥]?\s*([\d,]+(?:\.\d{2})?)/i,
-      /not\s+(?:to\s+)?exceed[:\s]+[$€£¥]?\s*([\d,]+(?:\.\d{2})?)/i,
+      /total\s+(?:contract\s+)?value[:\s]+(?:CHF|SFr\.?|Fr\.|[$€£¥])?\s*([\d''',]+(?:\.\d{2})?)/i,
+      /gesamtvertragswert[:\s]+(?:CHF|SFr\.?|Fr\.|[$€£¥])?\s*([\d''',]+(?:\.\d{2})?)/i,
+      /(?:aggregate|maximum)\s+amount[:\s]+(?:CHF|SFr\.?|Fr\.|[$€£¥])?\s*([\d''',]+(?:\.\d{2})?)/i,
+      /not\s+(?:to\s+)?exceed[:\s]+(?:CHF|SFr\.?|Fr\.|[$€£¥])?\s*([\d''',]+(?:\.\d{2})?)/i,
     ],
     confidence: 0.85,
     priority: 10
@@ -265,8 +273,9 @@ const EXTRACTION_PATTERNS: ExtractionPattern[] = [
     name: 'currency',
     category: 'financial',
     patterns: [
-      /(?:all\s+)?amounts?\s+(?:are\s+)?(?:in|expressed\s+in)[:\s]+(USD|EUR|GBP|CAD|AUD|JPY|CHF)/i,
+      /(?:all\s+)?amounts?\s+(?:are\s+)?(?:in|expressed\s+in)[:\s]+(USD|EUR|GBP|CAD|AUD|JPY|CHF|SFr\.?|Fr\.)/i,
       /\((USD|EUR|GBP|CAD|AUD|JPY|CHF)\)/i,
+      /\b(CHF|SFr\.?|Fr\.)\b/,
     ],
     confidence: 0.9,
     priority: 8
@@ -302,6 +311,7 @@ const EXTRACTION_PATTERNS: ExtractionPattern[] = [
     patterns: [
       /(?:initial\s+)?term\s+(?:of|is|shall\s+be)[:\s]+(\d+)\s*(year|month|day)s?/i,
       /(?:for\s+a\s+)?(?:period|term)\s+of\s+(\d+)\s*(year|month|day)s?/i,
+      /laufzeit[:\s]+(\d+)\s*(jahr|jahre|monat|monate|tag|tage)/i,
     ],
     confidence: 0.85,
     priority: 9
@@ -322,6 +332,7 @@ const EXTRACTION_PATTERNS: ExtractionPattern[] = [
     patterns: [
       /(?:prior\s+)?(?:written\s+)?notice\s+(?:of\s+)?(?:at\s+least\s+)?(\d+)\s*(?:calendar\s+|business\s+)?(days?|months?)/i,
       /(\d+)\s*(?:calendar\s+|business\s+)?(days?|months?)\s+(?:prior\s+)?(?:written\s+)?notice/i,
+      /k[uü]ndigungsfrist[:\s]+(\d+)\s*(tag|tage|monat|monate)/i,
     ],
     confidence: 0.8,
     priority: 8
@@ -509,6 +520,9 @@ const CROSS_VALIDATION_RULES: CrossValidationRule[] = [
       const expectedTotal = monthly * months;
       const tolerance = 0.05; // 5% tolerance
       const matched = Math.abs(total - expectedTotal) / total <= tolerance;
+      const currency =
+        detectCurrencyFromText(String(totalValue.value ?? totalValue.normalizedValue ?? '')) ||
+        detectCurrencyFromText(String(monthlyFee.value ?? monthlyFee.normalizedValue ?? ''));
       
       return {
         fieldIds: [totalValue.id, monthlyFee.id, termDuration.id],
@@ -516,7 +530,7 @@ const CROSS_VALIDATION_RULES: CrossValidationRule[] = [
         passed: matched,
         message: matched 
           ? 'Financial values are consistent'
-          : `Total value ($${total}) doesn't match monthly ($${monthly}) × term (${months} months) = $${expectedTotal}`,
+          : `Total value (${formatMoneyText(total, currency)}) doesn't match monthly (${formatMoneyText(monthly, currency)}) × term (${months} months) = ${formatMoneyText(expectedTotal, currency)}`,
         severity: matched ? 'info' : 'warning'
       };
     }
@@ -583,18 +597,32 @@ const VALUE_NORMALIZERS: Record<string, ValueNormalizer> = {
       const str = String(value).trim();
       
       // Try multiple date formats
+      const dotted = str.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
+      if (dotted) {
+        const day = dotted[1]!.padStart(2, '0');
+        const month = dotted[2]!.padStart(2, '0');
+        return `${dotted[3]}-${month}-${day}`;
+      }
+
       const formats = [
         /(\d{4})-(\d{2})-(\d{2})/,                    // ISO
-        /(\d{2})\/(\d{2})\/(\d{4})/,                  // MM/DD/YYYY
-        /(\d{2})-(\d{2})-(\d{4})/,                    // MM-DD-YYYY
-        /([A-Za-z]+)\s+(\d{1,2}),?\s+(\d{4})/,        // Month DD, YYYY
-        /(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})/,          // DD Month YYYY
+        /(\d{1,2})\.(\d{1,2})\.(\d{4})/,              // DD.MM.YYYY
+        /([A-Za-zäöüÄÖÜ]+)\s+(\d{1,2}),?\s+(\d{4})/, // Month DD, YYYY
+        /(\d{1,2})\.?\s+([A-Za-zäöüÄÖÜ]+)\s+(\d{4})/, // DD Month YYYY
+        /(\d{2})\/(\d{2})\/(\d{4})/,                  // numeric slash
+        /(\d{2})-(\d{2})-(\d{4})/,
       ];
       
       for (const format of formats) {
         const match = str.match(format);
         if (match) {
           try {
+            if (match[0].includes('.')) {
+              const swiss = str.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
+              if (swiss) {
+                return `${swiss[3]}-${swiss[2]!.padStart(2, '0')}-${swiss[1]!.padStart(2, '0')}`;
+              }
+            }
             const date = new Date(str);
             if (!isNaN(date.getTime())) {
               return date.toISOString().split('T')[0];
@@ -624,13 +652,7 @@ const VALUE_NORMALIZERS: Record<string, ValueNormalizer> = {
       if (!value) return null;
       const str = String(value).trim();
       
-      // Extract currency symbol or code
-      let currency = 'USD';
-      if (str.includes('€') || /EUR/i.test(str)) currency = 'EUR';
-      else if (str.includes('£') || /GBP/i.test(str)) currency = 'GBP';
-      else if (str.includes('¥') || /JPY/i.test(str)) currency = 'JPY';
-      else if (/CAD/i.test(str)) currency = 'CAD';
-      else if (/AUD/i.test(str)) currency = 'AUD';
+      const currency = detectCurrencyFromText(str) || UNKNOWN_CURRENCY;
       
       // Extract numeric value
       const numericStr = str.replace(/[^\d.,]/g, '').replace(/,/g, '');
@@ -994,6 +1016,7 @@ export class EnhancedExtractionEngine {
       : '';
 
     const prompt = `You are an expert contract analyst performing PRECISE data extraction.
+${analysisLanguageInstructions({ contractText: documentText })}
 
 Document Type: ${profile.estimatedType || contractType}
 Complexity: ${profile.complexity}
@@ -1354,7 +1377,7 @@ REQUIRED OUTPUT FORMAT (JSON):
     const str = String(value);
     
     // Currency
-    if (/[$€£¥]|\b\d+(?:,\d{3})*(?:\.\d{2})?\s*(?:USD|EUR|GBP|CAD)/i.test(str)) {
+    if (/[$€£¥]|CHF|SFr\.?|Fr\.|\b\d+(?:[',]\d{3})*(?:\.\d{2})?\s*(?:USD|EUR|GBP|CAD|CHF)/i.test(str)) {
       return 'currency';
     }
     
@@ -1364,7 +1387,7 @@ REQUIRED OUTPUT FORMAT (JSON):
     }
     
     // Date
-    if (/\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}|[A-Z][a-z]+\s+\d{1,2},?\s+\d{4}/.test(str)) {
+    if (/\d{1,2}[./\-]\d{1,2}[./\-]\d{2,4}|[A-Z][a-zäöü]+\s+\d{1,2},?\s+\d{4}|\d{1,2}\.?\s+(?:Januar|Februar|März|April|Mai|Juni|Juli)/i.test(str)) {
       return 'date';
     }
     

@@ -13,6 +13,7 @@ import { prisma } from '@/lib/prisma';
 import { aiContractSummarizationService } from 'data-orchestration/services';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 import { checkRateLimit, rateLimitResponse, AI_RATE_LIMITS } from '@/lib/ai/rate-limit';
+import { analysisLanguageInstructions } from '@repo/utils';
 
 let _openai: OpenAI | null = null;
 function getOpenAI(): OpenAI {
@@ -129,7 +130,8 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
       messages: [
         {
           role: 'system',
-          content: `You are an expert contract analyst. Provide clear, professional summaries that highlight critical business and legal points. Use markdown formatting for readability.` },
+          content: `You are an expert contract analyst. Provide clear, professional summaries that highlight critical business and legal points. Use markdown formatting for readability.
+${analysisLanguageInstructions({ contractText: truncatedText })}` },
         {
           role: 'user',
           content: `${summaryPrompt}\n\nContract text:\n${truncatedText}${wasTruncated ? '\n\n[Contract truncated for analysis]' : ''}` },

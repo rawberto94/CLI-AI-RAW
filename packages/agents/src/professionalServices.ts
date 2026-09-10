@@ -7,8 +7,15 @@ import {
   KeyClauseMatrixV1Schema as ClauseMatrix,
   IntelligenceBundleV1Schema as Bundle,
 } from 'schemas';
-import { convertCurrency, normalizeToDaily } from 'utils';
-import { mapRoleDetail } from 'utils';
+import {
+  analysisLanguageInstructions,
+  detectCurrencyFromText,
+  formatMoneyText,
+  mapRoleDetail,
+  normalizeToDaily,
+  tryConvertCurrency,
+  UNKNOWN_CURRENCY,
+} from '@repo/utils';
 
 const detectDocTypePrompt = `Classify the contract document type into one of: MSA, SOW, Secondment, LOI, LOE, Addendum, Unknown.
 Return strict JSON: { docType: "..." }`;
@@ -72,16 +79,17 @@ export class ProfessionalServicesAnalyzer {
   }
 
   async analyze(text: string) {
+    const langBlock = analysisLanguageInstructions({ contractText: text });
     // doc type first
-    const dtRaw = await this.chain(detectDocTypePrompt).invoke({ text });
+    const dtRaw = await this.chain(`${detectDocTypePrompt}\n${langBlock}`).invoke({ text });
     const docType = DocumentTypeEnum.safeParse(dtRaw?.docType).success ? dtRaw.docType : 'Unknown';
 
     // overview
-    const ovwRaw = await this.chain(overviewPrompt).invoke({ text });
+    const ovwRaw = await this.chain(`${overviewPrompt}\n${langBlock}`).invoke({ text });
     const overview = PSOverview.safeParse({ docType, ...ovwRaw }).success ? { docType, ...ovwRaw } : { docType, summary: String(ovwRaw?.summary || text.slice(0, 400)), parties: Array.isArray(ovwRaw?.parties) ? ovwRaw.parties : [] };
 
     // clauses matrix
-    const cmRaw = await this.chain(clauseMatrixPrompt).invoke({ text });
+    const cmRaw = await this.chain(`${clauseMatrixPrompt}\n${langBlock}`).invoke({ text });
     const clauseMatrix = ClauseMatrix.safeParse(cmRaw).success ? cmRaw : { clauses: [] };
 
     return { overview, clauseMatrix };
@@ -93,18 +101,17 @@ export class ProfessionalServicesAnalyzer {
     for (const line of lines) {
       // Match role and amount/uom/currency
       const roleMatch = line.match(/(Analyst|Consultant|Senior Consultant|Manager|Senior Manager|Director|Partner|Engineer|Developer|Architect|Specialist|Category Manager|Contract Specialist)/i);
-      const amtMatch = line.match(/(?:(USD|EUR|GBP|INR|CAD|AUD)|\$|€|£)?\s*(\d{2,5})(?:[.,](\d{1,2}))?\s*(per\s*)?(Hour|Day|Month|Year|Hr|h|Mo|Yr|Annum)?/i);
+      const amtMatch = line.match(/(?:(USD|EUR|GBP|INR|CAD|AUD|CHF)|\$|€|£|Fr\.|SFr\.?)?\s*(\d{2,5})(?:[.,](\d{1,2}))?\s*(per\s*)?(Hour|Day|Month|Year|Hr|h|Mo|Yr|Annum|Tag|Monat|Jahr)?/i);
       if (!roleMatch || !amtMatch) continue;
       const pdfRole = roleMatch[1];
       const rawAmount = parseFloat(`${amtMatch[2]}${amtMatch[3] ? '.' + amtMatch[3] : ''}`);
       const uomRaw = (amtMatch[5] || '').toLowerCase();
-      const uom = /hour|hr|h/.test(uomRaw) ? 'Hour' : /month|mo/.test(uomRaw) ? 'Month' : /year|yr|annum/.test(uomRaw) ? 'Year' : 'Day';
-      const sym = amtMatch[1] || (line.includes('€') ? 'EUR' : line.includes('£') ? 'GBP' : line.includes('$') ? 'USD' : 'USD');
-      const currency = sym.toUpperCase();
+      const uom = /hour|hr|h/.test(uomRaw) ? 'Hour' : /month|mo|monat/.test(uomRaw) ? 'Month' : /year|yr|annum|jahr/.test(uomRaw) ? 'Year' : /tag/.test(uomRaw) ? 'Day' : 'Day';
+      const currency = detectCurrencyFromText(line) || UNKNOWN_CURRENCY;
       const mapped = mapRoleDetail(pdfRole || '');
       const daily = normalizeToDaily(rawAmount, uom);
-      const usd = convertCurrency(daily, currency, 'USD');
-      rows.push({ pdfRole: pdfRole || '', role: mapped.role, seniority: mapped.seniority, mappingConfidence: mapped.confidence, currency, uom, amount: rawAmount, dailyUsd: Math.round(usd) });
+      const usd = currency === UNKNOWN_CURRENCY ? null : tryConvertCurrency(daily, currency, 'USD');
+      rows.push({ pdfRole: pdfRole || '', role: mapped.role, seniority: mapped.seniority, mappingConfidence: mapped.confidence, currency, uom, amount: rawAmount, dailyUsd: usd == null ? undefined : Math.round(usd) });
       if (rows.length >= 64) break;
     }
     return rows;
@@ -116,7 +123,7 @@ export class ProfessionalServicesAnalyzer {
     if (missing('Liability Cap')) insights.push({ id: 'risk-liability-cap', type: 'risk', severity: 'high', title: 'Missing Liability Cap', description: 'The contract may lack a clear liability cap.', suggestions: ['Add a liability cap aligned to risk/tcv.'] });
     if (missing('Confidentiality')) insights.push({ id: 'risk-conf', type: 'risk', severity: 'medium', title: 'Missing Confidentiality Clause', description: 'Confidentiality may be insufficient.', suggestions: ['Add NDA/confidentiality terms.'] });
     const high = rates.filter(r => (r.dailyUsd || 0) > 2000);
-    if (high.length) insights.push({ id: 'cost-high-rates', type: 'deviation', severity: 'medium', title: 'High daily rates detected', description: `${high.length} role(s) above $2000/day.`, suggestions: ['Negotiate rates', 'Consider blended rate caps'] });
+    if (high.length) insights.push({ id: 'cost-high-rates', type: 'deviation', severity: 'medium', title: 'High daily rates detected', description: `${high.length} role(s) above ${formatMoneyText(2000)}/day.`, suggestions: ['Negotiate rates', 'Consider blended rate caps'] });
     return { insights };
   }
 

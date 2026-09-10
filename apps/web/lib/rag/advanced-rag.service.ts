@@ -17,7 +17,7 @@
 
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
-import { clampSqlInteger } from '@repo/utils';
+import { clampSqlInteger, retrievalLanguageInstructions, sanitizeFtsQuery } from '@repo/utils';
 import { getSemanticCache } from './semantic-cache.service';
 import { selfCorrectiveRetrieval } from './self-corrective-rag.service';
 import { expandWithGraphContext, getChunkGraph, buildContractGraph } from './chunk-graph.service';
@@ -244,6 +244,7 @@ export async function expandQuery(
           content: `You are a query expansion assistant for a contract management system.
 Generate 4 alternative phrasings of the user's search query to improve search recall.
 Return ONLY a JSON array of strings, no explanation.
+${retrievalLanguageInstructions(query)}
 
 **Domain-specific expansion rules:**
 - "termination" → also search "cancellation", "exit clause", "notice period"
@@ -437,13 +438,7 @@ async function keywordSearch(
     ? Prisma.sql`AND ${Prisma.join(conditions, ' AND ')}` 
     : Prisma.empty;
   
-  // Sanitize query for tsquery - remove special characters and create safe search terms
-  const sanitizedQuery = query
-    .replace(/[^\w\s]/g, ' ')
-    .split(/\s+/)
-    .filter(w => w.length > 2)
-    .slice(0, 10) // Limit to 10 terms
-    .join(' | ');
+  const sanitizedQuery = sanitizeFtsQuery(query, ' | ');
   
   if (!sanitizedQuery) {
     return [];
@@ -480,9 +475,15 @@ async function keywordSearch(
           ce."chunkIndex",
           ce."chunkText",
           length(ce."chunkText") as doc_len,
-          ts_rank_cd(to_tsvector('english', ce."chunkText"), plainto_tsquery('english', ${sanitizedQuery})) as cd_rank
+          GREATEST(
+            ts_rank_cd(to_tsvector('english', ce."chunkText"), plainto_tsquery('english', ${sanitizedQuery})),
+            ts_rank_cd(to_tsvector('simple', ce."chunkText"), plainto_tsquery('simple', ${sanitizedQuery}))
+          ) as cd_rank
         FROM "ContractEmbedding" ce
-        WHERE to_tsvector('english', ce."chunkText") @@ plainto_tsquery('english', ${sanitizedQuery})
+        WHERE (
+          to_tsvector('english', ce."chunkText") @@ plainto_tsquery('english', ${sanitizedQuery})
+          OR to_tsvector('simple', ce."chunkText") @@ plainto_tsquery('simple', ${sanitizedQuery})
+        )
         ${additionalWhere}
       )
       SELECT 
@@ -1237,11 +1238,14 @@ async function rawTextFallbackSearch(
     }>>`
       SELECT c.id, c.filename as "fileName", 
              substring(c."rawText" from 1 for 16000) as "rawText",
-             ts_rank_cd(to_tsvector('english', c."rawText"), plainto_tsquery('english', ${query})) as rank
+             ts_rank_cd(to_tsvector('simple', c."rawText"), plainto_tsquery('simple', ${query})) as rank
       FROM "Contract" c
       WHERE c."rawText" IS NOT NULL 
         AND length(c."rawText") > 50
-        AND to_tsvector('english', c."rawText") @@ plainto_tsquery('english', ${query})
+        AND (
+          to_tsvector('english', c."rawText") @@ plainto_tsquery('english', ${query})
+          OR to_tsvector('simple', c."rawText") @@ plainto_tsquery('simple', ${query})
+        )
         AND c."tenantId" = ${filters.tenantId}
         ${contractIds.length ? Prisma.sql`AND c.id IN (${Prisma.join(contractIds)})` : Prisma.empty}
         ${statuses.length ? Prisma.sql`AND c."status" IN (${Prisma.join(statuses)})` : Prisma.empty}

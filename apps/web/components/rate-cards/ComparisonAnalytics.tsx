@@ -24,6 +24,7 @@ import {
   ArrowRight,
   BarChart3
 } from 'lucide-react';
+import { formatRateMoney } from '@/lib/rate-cards/format';
 
 interface RateCardEntry {
   id: string;
@@ -171,8 +172,8 @@ export function ComparisonAnalytics({ rateCards }: ComparisonAnalyticsProps) {
           }
 
           // Assess benefits
-          benefits.push(`Save $${savings.toLocaleString()} per day`);
-          benefits.push(`Annual savings of $${annualSavings.toLocaleString()}`);
+          benefits.push(`Save ${formatRateMoney(savings)} per day`);
+          benefits.push(`Annual savings of ${formatRateMoney(annualSavings)}`);
           if (bestRateCard.isNegotiated) {
             benefits.push('Rate is already negotiated');
           }
@@ -261,7 +262,7 @@ export function ComparisonAnalytics({ rateCards }: ComparisonAnalyticsProps) {
               <div>
                 <p className="text-sm text-muted-foreground">Total Potential Savings</p>
                 <p className="text-2xl font-bold text-green-600">
-                  ${totalPotentialSavings.toLocaleString()}
+                  {formatRateMoney(totalPotentialSavings)}
                 </p>
                 <p className="text-xs text-muted-foreground">per year</p>
               </div>
@@ -319,7 +320,7 @@ export function ComparisonAnalytics({ rateCards }: ComparisonAnalyticsProps) {
                 <div className="flex-1">
                   <p className="font-medium">{analysis.supplierName}</p>
                   <p className="text-sm text-muted-foreground">
-                    Current: ${analysis.currentRate.toLocaleString()} USD/day
+                    Current: {formatRateMoney(analysis.currentRate)}/day
                   </p>
                 </div>
                 <div className="text-right">
@@ -331,10 +332,10 @@ export function ComparisonAnalytics({ rateCards }: ComparisonAnalyticsProps) {
                   ) : (
                     <div>
                       <p className="text-lg font-bold text-red-600">
-                        ${analysis.dailySavings.toLocaleString()}/day
+                        {formatRateMoney(analysis.dailySavings)}/day
                       </p>
                       <p className="text-sm text-muted-foreground">
-                        ${analysis.annualSavingsPotential.toLocaleString()}/year potential
+                        {formatRateMoney(analysis.annualSavingsPotential)}/year potential
                       </p>
                       <Badge variant="outline" className="mt-1">
                         +{analysis.savingsPercentage.toFixed(1)}% vs best
@@ -419,13 +420,13 @@ export function ComparisonAnalytics({ rateCards }: ComparisonAnalyticsProps) {
                     <div>
                       <p className="text-sm text-muted-foreground">Daily Savings</p>
                       <p className="text-xl font-bold text-green-600">
-                        ${rec.potentialSavings.toLocaleString()}
+                        {formatRateMoney(rec.potentialSavings)}
                       </p>
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">Annual Savings</p>
                       <p className="text-xl font-bold text-green-600">
-                        ${rec.annualSavingsPotential.toLocaleString()}
+                        {formatRateMoney(rec.annualSavingsPotential)}
                       </p>
                     </div>
                   </div>

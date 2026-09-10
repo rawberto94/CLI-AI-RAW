@@ -1,3 +1,4 @@
+import { analysisLanguageInstructions, ourOrganizationPromptBlock } from '@repo/utils';
 
 // Stub function for real examples (original file was removed during cleanup)
 function getRealExamples(_type: string, _count: number): Array<{ input: string; output: unknown }> {
@@ -20,7 +21,12 @@ function jsonSchemaRequirement(name: string, schema: string) {
   return `RETURN JSON OBJECT with keys: ${name}. Schema: ${schema}. Respond ONLY with the JSON object.`;
 }
 
-export function getEnhancedPrompt(type: string): EnhancedPromptConfig | null {
+export function getEnhancedPrompt(
+  type: string,
+  ourOrganization?: { name: string; aliases?: string[] } | null,
+): EnhancedPromptConfig | null {
+  const orgBlock = ourOrganizationPromptBlock(ourOrganization);
+  const withOrg = (prompt: string) => (orgBlock ? `${prompt}\n${orgBlock}` : prompt);
   // Get real contract examples for this artifact type
   const realExamples = getRealExamples(type, 1);
   const firstExample = realExamples[0];
@@ -43,55 +49,60 @@ Example (OVERVIEW):
   switch (type) {
     case 'OVERVIEW':
       return {
-        systemPrompt:
+        systemPrompt: withOrg(
           'You are a contract analysis assistant. Extract a concise structured overview from the contract text. Prefer accuracy over verbosity. If uncertain, include nulls and explain in the confidence field.',
+        ),
         userPrompt: (text: string, extra = '') => {
           const schema = '{summary: string, contractType: string|null, parties: [{role:string,name:string}] , effectiveDate: string|null, expirationDate: string|null, confidenceScore: number}';
-          return `${fewShotOverview}\nCONTRACT_TEXT:\n${text}\n\n${jsonSchemaRequirement('overview', schema)} ${extra}`;
+          return `${analysisLanguageInstructions({ contractText: text })}\n${fewShotOverview}\nCONTRACT_TEXT:\n${text}\n\n${jsonSchemaRequirement('overview', schema)} ${extra}`;
         },
         temperature: 0.0,
       };
 
     case 'CLAUSES':
       return {
-        systemPrompt:
+        systemPrompt: withOrg(
           'You are a contract clause extractor. Identify key clauses, give clause name, short extract (one sentence), and relevance score 0-1. Provide sources (page or snippet indices) if available.',
+        ),
         userPrompt: (text: string, extra = '') => {
           const schema = '{clauses: [{name:string, excerpt:string, relevance:number, location?:string}] }';
-          return `CONTRACT_TEXT:\n${text}\n\n${jsonSchemaRequirement('clauses', schema)} ${extra}`;
+          return `${analysisLanguageInstructions({ contractText: text })}\nCONTRACT_TEXT:\n${text}\n\n${jsonSchemaRequirement('clauses', schema)} ${extra}`;
         },
         temperature: 0.0,
       };
 
     case 'FINANCIAL':
       return {
-        systemPrompt:
-          'You are a financial extraction assistant. Extract monetary values, currencies, payment terms, totals, and any obligations. Where numbers are ambiguous, provide best-guess and a confidence field.',
+        systemPrompt: withOrg(
+          'You are a financial extraction assistant. Extract monetary values, currencies, payment terms, totals, and any obligations. If a number is ambiguous, return null and a low confidence — do not guess. Fr. and SFr. are CHF. Do not invent USD.',
+        ),
         userPrompt: (text: string, extra = '') => {
           const schema = '{currency:string|null, totalValue:number|null, paymentTerms:[string], paymentSchedule:[{milestone:string, amount:number|null}], confidenceScore:number}';
-          return `CONTRACT_TEXT:\n${text}\n\n${jsonSchemaRequirement('financial', schema)} ${extra}`;
+          return `${analysisLanguageInstructions({ contractText: text })}\nCONTRACT_TEXT:\n${text}\n\n${jsonSchemaRequirement('financial', schema)} ${extra}`;
         },
         temperature: 0.0,
       };
 
     case 'RISK':
       return {
-        systemPrompt:
+        systemPrompt: withOrg(
           'You are a risk analysis assistant. Identify potential risks, severity (low/medium/high), suggested mitigations, and a short rationale.',
+        ),
         userPrompt: (text: string, extra = '') => {
           const schema = '{risks:[{title:string, severity:string, mitigation:string, rationale:string}], confidenceScore:number}';
-          return `CONTRACT_TEXT:\n${text}\n\n${jsonSchemaRequirement('risk', schema)} ${extra}`;
+          return `${analysisLanguageInstructions({ contractText: text })}\nCONTRACT_TEXT:\n${text}\n\n${jsonSchemaRequirement('risk', schema)} ${extra}`;
         },
         temperature: 0.0,
       };
 
     case 'COMPLIANCE':
       return {
-        systemPrompt:
+        systemPrompt: withOrg(
           'You are a compliance extraction assistant. Identify regulatory clauses, requirements, and whether the contract meets common standards (GDPR, PCI, SOC2) with explanations.',
+        ),
         userPrompt: (text: string, extra = '') => {
           const schema = '{compliance:[{standard:string, present:boolean, excerpt?:string, notes?:string}], summary:string, confidenceScore:number}';
-          return `CONTRACT_TEXT:\n${text}\n\n${jsonSchemaRequirement('compliance', schema)} ${extra}`;
+          return `${analysisLanguageInstructions({ contractText: text })}\nCONTRACT_TEXT:\n${text}\n\n${jsonSchemaRequirement('compliance', schema)} ${extra}`;
         },
         temperature: 0.0,
       };

@@ -327,13 +327,13 @@ async function extractChunkMetadata(text: string): Promise<Record<string, unknow
   const metadata: Record<string, unknown> = {};
 
   // Extract dates
-  const dateMatches = text.match(/\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}/g);
+  const dateMatches = text.match(/\d{1,2}[./\-]\d{1,2}[./\-]\d{2,4}/g);
   if (dateMatches) {
     metadata.dates = dateMatches;
   }
 
   // Extract monetary amounts
-  const moneyMatches = text.match(/\$[\d,]+(?:\.\d{2})?/g);
+  const moneyMatches = text.match(/(?:CHF|SFr\.?|Fr\.|EUR|€|USD|US\$|\$)\s*[\d''’.,]+/gi);
   if (moneyMatches) {
     metadata.amounts = moneyMatches;
   }
@@ -346,14 +346,14 @@ async function extractChunkMetadata(text: string): Promise<Record<string, unknow
 
   // Detect key clause types
   const clausePatterns = {
-    termination: /termination|terminate|ending|conclusion/i,
-    liability: /liability|liable|indemnif|damages/i,
-    payment: /payment|pay|invoice|fee|price/i,
-    confidentiality: /confidential|secret|nda|non-disclosure/i,
-    warranty: /warranty|warrants|guarantee/i,
-    force_majeure: /force majeure|act of god|unforeseeable/i,
-    intellectual_property: /intellectual property|ip|copyright|patent|trademark/i,
-    dispute: /dispute|arbitration|litigation|court/i,
+    termination: /termination|terminate|ending|conclusion|kündigung|résiliation|risoluzione/i,
+    liability: /liability|liable|indemnif|damages|haftung|responsabilité|responsabilità/i,
+    payment: /payment|pay|invoice|fee|price|vergütung|zahlung|rémunération/i,
+    confidentiality: /confidential|secret|nda|non-disclosure|vertraulich|confidentialité|riservatezza/i,
+    warranty: /warranty|warrants|guarantee|gewährleistung/i,
+    force_majeure: /force majeure|act of god|unforeseeable|höhere gewalt/i,
+    intellectual_property: /intellectual property|ip|copyright|patent|trademark|geistiges eigentum/i,
+    dispute: /dispute|arbitration|litigation|court|streitigkeit|schiedsgericht/i,
   };
 
   metadata.clauseTypes = Object.entries(clausePatterns)

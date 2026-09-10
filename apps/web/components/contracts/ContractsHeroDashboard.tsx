@@ -30,6 +30,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
+import { useDisplayCurrency } from '@/hooks/useDisplayCurrency';
+import { formatDisplayTotal } from '@/lib/utils/formatters';
 
 // ============================================================================
 // Types
@@ -48,6 +50,8 @@ export interface ContractStats {
   processingCount?: number;
   pendingReview: number;
   recentlyAdded: number;
+  unconvertedValueCount?: number;
+  converted?: boolean;
   avgRiskScore?: number;
   trends?: {
     contracts: number; // percentage change
@@ -483,15 +487,9 @@ export const ContractsHeroDashboard = memo(function ContractsHeroDashboard({
   onCompareClick,
   onAskAIClick,
 }: ContractsHeroDashboardProps) {
-  // Format currency
-  const formatCurrency = (value: number): string => {
-    if (value >= 1000000) {
-      return `$${(value / 1000000).toFixed(1)}M`;
-    } else if (value >= 1000) {
-      return `$${(value / 1000).toFixed(0)}K`;
-    }
-    return `$${value.toFixed(0)}`;
-  };
+  const displayCurrency = useDisplayCurrency();
+  const formatMoney = (value: number): string =>
+    formatDisplayTotal(value, displayCurrency, { converted: Boolean(stats.converted) });
 
   // Generate sample sparkline data
   const generateSparkline = (trend: number): number[] => {
@@ -576,7 +574,8 @@ export const ContractsHeroDashboard = memo(function ContractsHeroDashboard({
               </h1>
             </div>
             <p className="text-slate-300 text-xs md:text-sm">
-              Real-time overview of your {stats.totalContracts?.toLocaleString() || 0} contracts worth {formatCurrency(stats.totalValue ?? 0)}
+              Real-time overview of your {stats.totalContracts?.toLocaleString() || 0} contracts worth {formatMoney(stats.totalValue ?? 0)}
+              {stats.unconvertedValueCount ? ` · ${stats.unconvertedValueCount} excluded — currency unknown` : ''}
             </p>
           </motion.div>
 
@@ -672,7 +671,7 @@ export const ContractsHeroDashboard = memo(function ContractsHeroDashboard({
               <h3 className="text-3xl md:text-4xl font-bold text-white tracking-tight">
                 <AnimatedCounter 
                   value={stats.totalValue ?? 0} 
-                  formatFn={formatCurrency}
+                  formatFn={formatMoney}
                 />
               </h3>
               <p className="text-sm text-slate-200 mt-1 font-medium">Portfolio Value</p>

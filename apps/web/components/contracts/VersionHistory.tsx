@@ -431,10 +431,7 @@ export const VersionHistory = memo(function VersionHistory({
                                 <Download className="h-4 w-4 mr-2" />
                                 Download
                               </Button>
-                              <Button variant="outline" size="sm">
-                                <Eye className="h-4 w-4 mr-2" />
-                                Preview
-                              </Button>
+
                               {version.status !== 'current' && (
                                 <Button variant="outline" size="sm" onClick={() => handleRestore(version)}>
                                   <RefreshCw className="h-4 w-4 mr-2" />

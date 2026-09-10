@@ -345,7 +345,7 @@ export function ExtractionAnalyticsDashboard({
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis 
                       dataKey="date" 
-                      tickFormatter={(date) => new Date(date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                      tickFormatter={(date) => new Date(date).toLocaleDateString("de-CH", { month: "short", day: "numeric" })}
                     />
                     <YAxis yAxisId="left" />
                     <YAxis yAxisId="right" orientation="right" domain={[0, 100]} />

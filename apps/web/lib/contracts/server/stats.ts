@@ -6,6 +6,9 @@ import {
 import { CacheTTL, createTimer, makeCacheKey } from '@/lib/api-performance';
 import { getCached, setCached } from '@/lib/cache';
 import { prisma } from '@/lib/prisma';
+import { portfolioWhere } from '@/lib/contracts/server/portfolio';
+import { resolveDisplayCurrency, sumGroupedTotalValue } from '@/lib/display-currency.server';
+import { UNKNOWN_CURRENCY } from '@/lib/fx';
 
 interface ContractStats {
   overview: {
@@ -18,6 +21,9 @@ interface ContractStats {
   financial: {
     totalValue: number;
     averageValue: number;
+    displayCurrency: string;
+    converted: boolean;
+    unconvertedValueCount: number;
     currency: Record<string, { count: number; total: number }>;
     valueRanges: {
       under10k: number;
@@ -63,7 +69,8 @@ export async function getContractStats(context: ContractApiContext) {
     return createErrorResponse(context, 'VALIDATION_ERROR', 'Tenant ID is required', 400);
   }
 
-  const cacheKey = makeCacheKey('contracts:stats', tenantId);
+  const displayCurrency = await resolveDisplayCurrency(tenantId);
+  const cacheKey = makeCacheKey('contracts:stats', tenantId, displayCurrency);
   const cached = await getCached<ContractStats>(cacheKey);
 
   if (cached) {
@@ -77,7 +84,7 @@ export async function getContractStats(context: ContractApiContext) {
     });
   }
 
-  const stats = await fetchContractStats(tenantId);
+  const stats = await fetchContractStats(tenantId, displayCurrency);
   setCached(cacheKey, stats, { ttl: CacheTTL.short }).catch(() => undefined);
 
   return createSuccessResponse(context, stats, {
@@ -90,7 +97,7 @@ export async function getContractStats(context: ContractApiContext) {
   });
 }
 
-async function fetchContractStats(tenantId: string): Promise<ContractStats> {
+async function fetchContractStats(tenantId: string, displayCurrency: string): Promise<ContractStats> {
   const now = new Date();
   const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
   const ninetyDaysFromNow = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
@@ -110,7 +117,7 @@ async function fetchContractStats(tenantId: string): Promise<ContractStats> {
     dataQualityStats,
   ] = await Promise.all([
     prisma.contract.count({
-      where: { tenantId, isDeleted: false },
+      where: portfolioWhere(tenantId),
     }),
     prisma.contract.groupBy({
       by: ['status'],
@@ -199,10 +206,10 @@ async function fetchContractStats(tenantId: string): Promise<ContractStats> {
         distinct: ['supplierName'],
       }),
     ]),
-    prisma.contract.aggregate({
-      where: { tenantId, isDeleted: false, totalValue: { not: null } },
+    prisma.contract.groupBy({
+      by: ['currency'],
+      where: { ...portfolioWhere(tenantId), totalValue: { not: null } },
       _sum: { totalValue: true },
-      _avg: { totalValue: true },
       _count: { id: true },
     }),
     Promise.all([
@@ -278,8 +285,18 @@ async function fetchContractStats(tenantId: string): Promise<ContractStats> {
       failed: statusMap.failed || 0,
     },
     financial: {
-      totalValue: Number(valueStats._sum.totalValue) || 0,
-      averageValue: Number(valueStats._avg.totalValue) || 0,
+      totalValue: sumGroupedTotalValue(valueStats, displayCurrency),
+      averageValue: 0,
+      displayCurrency,
+      converted: valueStats.some((row) => {
+        const code = typeof row.currency === 'string' ? row.currency.trim().toUpperCase() : ''
+        return Boolean(code) && code !== displayCurrency && code !== UNKNOWN_CURRENCY
+      }),
+      unconvertedValueCount: valueStats.reduce((sum, row) => {
+        const code = typeof row.currency === 'string' ? row.currency.trim().toUpperCase() : ''
+        if (!code || code === UNKNOWN_CURRENCY) return sum + (row._count.id || 0)
+        return sum
+      }, 0),
       currency: {},
       valueRanges: {
         under10k: valueRanges[0],

@@ -17,6 +17,8 @@ import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
 import { logger } from '@/lib/logger';
 import { createOpenAIClient, hasAIClientConfig } from '@/lib/openai-client';
+import { resolvePersistCurrency } from '@/lib/fx';
+import { formatMoneyText } from '@repo/utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,7 +36,7 @@ const CreateRFxSchema = z.object({
   category: z.string().optional(),
   contractType: z.string().optional(),
   estimatedValue: z.number().optional(),
-  currency: z.string().default('USD'),
+  currency: z.string().length(3).optional(),
   deadline: z.string().optional(), // ISO date string
   // User-provided baseline requirements — AI will enhance these
   userRequirements: z.array(z.object({
@@ -137,6 +139,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
         category: input.category,
         contractType: input.contractType,
         estimatedValue: input.estimatedValue,
+        currency: input.currency,
         userRequirements: input.userRequirements,
         requirementCategories: input.requirementCategories,
       });
@@ -182,7 +185,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
       category: input.category || null,
       contractType: input.contractType || null,
       estimatedValue: input.estimatedValue || null,
-      currency: input.currency,
+      currency: resolvePersistCurrency(input.currency),
       responseDeadline,
       requirements: mergedRequirements as any,
       evaluationCriteria: evaluationCriteria as any,
@@ -226,6 +229,7 @@ interface AIEnhancementInput {
   category?: string;
   contractType?: string;
   estimatedValue?: number;
+  currency?: string;
   userRequirements: Array<{ title: string; description?: string; category?: string; priority?: string }>;
   requirementCategories: string[];
 }
@@ -249,7 +253,7 @@ Type: ${input.type}
 ${input.description ? `Description: ${input.description}` : ''}
 ${input.category ? `Category: ${input.category}` : ''}
 ${input.contractType ? `Contract Type: ${input.contractType}` : ''}
-${input.estimatedValue ? `Estimated Value: $${input.estimatedValue.toLocaleString()}` : ''}
+${input.estimatedValue ? `Estimated Value: ${formatMoneyText(input.estimatedValue, input.currency)}` : ''}
 ${userReqText}
 ${categoriesText}
 

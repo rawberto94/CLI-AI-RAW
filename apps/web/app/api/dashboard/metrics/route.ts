@@ -10,11 +10,13 @@ import { prisma } from '@/lib/prisma';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 import { analyticsService } from 'data-orchestration/services';
 import { getCached, setCached } from '@/lib/cache';
+import { expirationOrEndDateFilter, portfolioWhere } from '@/lib/contracts/server/portfolio';
+import { clampTrendPercent } from '@/lib/utils/percent';
 
 export const GET = withAuthApiHandler(async (request: NextRequest, ctx: AuthenticatedApiContext) => {
   const tenantId = ctx.tenantId;
 
-  const cacheKey = `dashboard:metrics:${tenantId}`;
+  const cacheKey = `dashboard:metrics:${tenantId}:v2`;
   const cached = await getCached(cacheKey);
   if (cached) return createSuccessResponse(ctx, cached);
 
@@ -22,194 +24,131 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
     return createErrorResponse(ctx, 'TENANT_REQUIRED', 'Tenant ID required', 400);
   }
 
-  // Get contract counts by status (tenant-scoped, excluding DELETED)
+  const portfolio = portfolioWhere(tenantId);
+  const now = new Date();
+  const todayStart = new Date(now);
+  todayStart.setHours(0, 0, 0, 0);
+  const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+  const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+  const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
   const [
     totalContracts,
     activeContracts,
     processingContracts,
     pendingContracts,
-    _completedContracts,
+    completedToday,
+    byCategory,
+    byStatus,
+    valueAgg,
+    expiringContracts,
+    atRiskContracts,
+    recentContracts,
+    contractsLastMonth,
+    contractsThisMonth,
+    valueLastMonthAgg,
+    valueThisMonthAgg,
   ] = await Promise.all([
-    prisma.contract.count({ where: { tenantId, isDeleted: false } }),
-    prisma.contract.count({ where: { tenantId, status: 'COMPLETED' } }),
-    prisma.contract.count({ where: { tenantId, status: 'PROCESSING' } }),
-    prisma.contract.count({ where: { tenantId, status: 'PENDING' } }),
-    prisma.contract.count({ where: { tenantId, status: 'COMPLETED' } }),
+    prisma.contract.count({ where: portfolio }),
+    prisma.contract.count({ where: { ...portfolio, status: 'ACTIVE' } }),
+    prisma.contract.count({ where: { tenantId, isDeleted: false, status: 'PROCESSING' } }),
+    prisma.contract.count({ where: { tenantId, isDeleted: false, status: 'PENDING' } }),
+    prisma.contract.count({
+      where: {
+        tenantId,
+        isDeleted: false,
+        status: 'COMPLETED',
+        updatedAt: { gte: todayStart },
+      },
+    }),
+    prisma.contract.groupBy({
+      by: ['category'],
+      _count: { id: true },
+      where: { ...portfolio, category: { not: null } },
+    }),
+    prisma.contract.groupBy({
+      by: ['status'],
+      _count: { id: true },
+      where: { tenantId, isDeleted: false },
+    }),
+    prisma.contract.aggregate({
+      where: { ...portfolio, totalValue: { not: null } },
+      _sum: { totalValue: true },
+    }),
+    prisma.contract.count({
+      where: {
+        ...portfolio,
+        ...expirationOrEndDateFilter({ gte: now, lte: thirtyDaysFromNow }),
+      },
+    }),
+    prisma.contract.count({
+      where: {
+        ...portfolio,
+        OR: [
+          expirationOrEndDateFilter({ gte: thirtyDaysAgo, lt: now }),
+          expirationOrEndDateFilter({ gte: now, lte: sevenDaysFromNow }),
+        ],
+      },
+    }),
+    prisma.contract.findMany({
+      take: 5,
+      orderBy: { updatedAt: 'desc' },
+      where: { tenantId, isDeleted: false },
+      select: {
+        id: true,
+        fileName: true,
+        status: true,
+        updatedAt: true,
+      },
+    }),
+    prisma.contract.count({
+      where: { ...portfolio, createdAt: { gte: lastMonthStart, lt: thisMonthStart } },
+    }),
+    prisma.contract.count({
+      where: { ...portfolio, createdAt: { gte: thisMonthStart } },
+    }),
+    prisma.contract.aggregate({
+      where: {
+        ...portfolio,
+        createdAt: { gte: lastMonthStart, lt: thisMonthStart },
+        totalValue: { not: null },
+      },
+      _sum: { totalValue: true },
+    }),
+    prisma.contract.aggregate({
+      where: {
+        ...portfolio,
+        createdAt: { gte: thisMonthStart },
+        totalValue: { not: null },
+      },
+      _sum: { totalValue: true },
+    }),
   ]);
-
-  // Get contracts completed today (tenant-scoped)
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
-  
-  const completedToday = await prisma.contract.count({
-    where: {
-      tenantId,
-      status: 'COMPLETED',
-      updatedAt: { gte: todayStart },
-      NOT: { status: 'DELETED' },
-    },
-  });
-
-  // Get contracts by category (tenant-scoped, excluding DELETED)
-  const byCategory = await prisma.contract.groupBy({
-    by: ['category'],
-    _count: { id: true },
-    where: { tenantId, category: { not: null }, isDeleted: false },
-  });
-
-  // Get contracts by status (tenant-scoped, excluding DELETED)
-  const byStatus = await prisma.contract.groupBy({
-    by: ['status'],
-    _count: { id: true },
-    where: { tenantId, isDeleted: false },
-  });
-
-  // Calculate total value (tenant-scoped, from metadata, excluding DELETED)
-  const contractsWithValue = await prisma.contract.findMany({
-    select: { metadata: true },
-    where: { tenantId, status: 'COMPLETED' },
-  });
-
-  let totalValue = 0;
-  for (const contract of contractsWithValue) {
-    if (contract.metadata && typeof contract.metadata === 'object') {
-      const metadata = contract.metadata as Record<string, unknown>;
-      const value = metadata.contractValue || metadata.value;
-      if (typeof value === 'number') {
-        totalValue += value;
-      } else if (typeof value === 'string') {
-        const parsed = parseFloat(value.replace(/[^0-9.-]/g, ''));
-        if (!isNaN(parsed)) {
-          totalValue += parsed;
-        }
-      }
-    }
-  }
-
-  // Get expiring contracts (next 30 days) from metadata.expirationDate
-  const now = new Date();
-  const thirtyDaysFromNow = new Date();
-  thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
-
-  // Get all contracts with metadata to check expiration dates (tenant-scoped)
-  const contractsWithMetadata = await prisma.contract.findMany({
-    select: { id: true, metadata: true },
-    where: { tenantId, isDeleted: false },
-  });
-
-  // Calculate expiring contracts from metadata
-  let expiringContracts = 0;
-  let atRiskContracts = 0;
-  
-  for (const contract of contractsWithMetadata) {
-    if (contract.metadata && typeof contract.metadata === 'object') {
-      const metadata = contract.metadata as Record<string, unknown>;
-      
-      // Check for expiration date in various formats
-      const expirationDate = metadata.expirationDate || metadata.endDate || metadata.expiryDate;
-      if (expirationDate) {
-        const expDate = new Date(String(expirationDate));
-        if (!isNaN(expDate.getTime())) {
-          // Expiring within 30 days
-          if (expDate >= now && expDate <= thirtyDaysFromNow) {
-            expiringContracts++;
-          }
-          // At-risk: expired within last 30 days (not renewed) or expiring within 7 days
-          const sevenDaysFromNow = new Date();
-          sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
-          const thirtyDaysAgo = new Date();
-          thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-          
-          if ((expDate >= thirtyDaysAgo && expDate < now) || 
-              (expDate >= now && expDate <= sevenDaysFromNow)) {
-            atRiskContracts++;
-          }
-        }
-      }
-    }
-  }
-
-  // Recent activity (tenant-scoped, excluding DELETED)
-  const recentContracts = await prisma.contract.findMany({
-    take: 5,
-    orderBy: { updatedAt: 'desc' },
-    where: { tenantId, isDeleted: false },
-    select: {
-      id: true,
-      fileName: true,
-      status: true,
-      updatedAt: true,
-    },
-  });
 
   const recentActivity = recentContracts.map(c => ({
     id: c.id,
-    action: c.status === 'COMPLETED' ? 'Processed' : 
+    action: c.status === 'COMPLETED' ? 'Processed' :
             c.status === 'PROCESSING' ? 'Processing' : 'Created',
     contract: c.fileName,
     time: c.updatedAt,
   }));
 
-  // Calculate trends based on actual historical data (tenant-scoped)
-  const lastMonthStart = new Date();
-  lastMonthStart.setMonth(lastMonthStart.getMonth() - 1);
-  lastMonthStart.setDate(1);
-  lastMonthStart.setHours(0, 0, 0, 0);
-  
-  const thisMonthStart = new Date();
-  thisMonthStart.setDate(1);
-  thisMonthStart.setHours(0, 0, 0, 0);
-  
-  const [contractsLastMonth, contractsThisMonth] = await Promise.all([
-    prisma.contract.count({
-      where: {
-        tenantId,
-        isDeleted: false,
-        createdAt: { gte: lastMonthStart, lt: thisMonthStart }
-      }
-    }),
-    prisma.contract.count({
-      where: {
-        tenantId,
-        isDeleted: false,
-        createdAt: { gte: thisMonthStart }
-      }
-    })
-  ]);
-  
-  const contractsChange = contractsLastMonth > 0
-    ? Math.round(((contractsThisMonth - contractsLastMonth) / contractsLastMonth) * 1000) / 10
+  const totalValue = Number(valueAgg._sum.totalValue || 0);
+  const rawContractsChange = contractsLastMonth > 0
+    ? ((contractsThisMonth - contractsLastMonth) / contractsLastMonth) * 100
     : contractsThisMonth > 0 ? 100 : 0;
-  
-  // Calculate value trend from metadata
-  const _valueLastMonth = 0;
-  let _valueThisMonth = 0;
-  for (const contract of contractsWithMetadata) {
-    if (contract.metadata && typeof contract.metadata === 'object') {
-      const metadata = contract.metadata as Record<string, unknown>;
-      const value = metadata.contractValue || metadata.value;
-      let numValue = 0;
-      if (typeof value === 'number') {
-        numValue = value;
-      } else if (typeof value === 'string') {
-        const parsed = parseFloat(value.replace(/[^0-9.-]/g, ''));
-        if (!isNaN(parsed)) {
-          numValue = parsed;
-        }
-      }
-      // We don't have createdAt in this query, so we just use total value trend
-      _valueThisMonth += numValue;
-    }
-  }
-  
-  // Estimate last month's value (use 90% of current if no historical data)
-  const valueLastMonth = totalValue * 0.9;
-  const valueChange = valueLastMonth > 0
-    ? Math.round(((totalValue - valueLastMonth) / valueLastMonth) * 1000) / 10
-    : 0;
-  
-  // Calculate risk trend (compared to last month's at-risk count)
-  const riskChange = 0; // Would need historical risk data, display 0 as neutral
+  const contractsChange = clampTrendPercent(rawContractsChange, contractsLastMonth);
+
+  const lastMonthValue = Number(valueLastMonthAgg._sum.totalValue || 0);
+  const thisMonthValue = Number(valueThisMonthAgg._sum.totalValue || 0);
+  const rawValueChange = lastMonthValue > 0
+    ? ((thisMonthValue - lastMonthValue) / lastMonthValue) * 100
+    : thisMonthValue > 0 ? 100 : 0;
+  const valueChange = clampTrendPercent(rawValueChange, contractsLastMonth);
+
+  const riskChange = 0;
 
   const data = {
     totalContracts,

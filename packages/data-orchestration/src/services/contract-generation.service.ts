@@ -863,7 +863,7 @@ Generate the complete contract now.`;
     }
     
     if (variables.contractValue) {
-      parts.push(`valued at ${variables.currency || '$'}${variables.contractValue.toLocaleString()}`);
+      parts.push(`valued at ${variables.currency ? `${variables.currency} ` : ''}${variables.contractValue.toLocaleString('de-CH')}`);
     }
     
     if (variables.effectiveDate) {

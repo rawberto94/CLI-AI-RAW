@@ -12,6 +12,7 @@
  */
 
 import OpenAI from 'openai';
+import { analysisLanguageInstructions } from '@repo/utils';
 
 // Types
 export type SummaryLevel = 'executive' | 'detailed' | 'sections' | 'risks' | 'financial' | 'complete';
@@ -255,7 +256,8 @@ class AIContractSummarizationService {
   ): Promise<{ summary: ExecutiveSummary; tokens: { prompt: number; completion: number; total: number } }> {
     const systemPrompt = `You are an expert contract analyst. Generate a concise executive summary of the contract.
 Focus on: key obligations, important dates, financial terms, and any notable risks or opportunities.
-Be objective and factual. Highlight anything that requires attention.`;
+Be objective and factual. Highlight anything that requires attention.
+${analysisLanguageInstructions({ contractText: request.contractText })}`;
 
     const userPrompt = `Analyze this ${request.contractType || 'contract'} and provide:
 1. A clear summary paragraph (max ${request.maxLength || 300} words)
@@ -304,7 +306,8 @@ ${request.contractText.substring(0, 15000)}`;
     request: SummaryRequest
   ): Promise<{ points: KeyPoint[]; tokens: { prompt: number; completion: number; total: number } }> {
     const systemPrompt = `You are an expert contract analyst. Extract the most important points from the contract.
-Categorize each point and rate its importance level.`;
+Categorize each point and rate its importance level.
+${analysisLanguageInstructions({ contractText: request.contractText })}`;
 
     const userPrompt = `Extract key points from this ${request.contractType || 'contract'}.
 For each point, provide:
@@ -348,7 +351,8 @@ ${request.contractText.substring(0, 15000)}`;
     openai: OpenAI,
     request: SummaryRequest
   ): Promise<{ sections: SectionSummary[]; tokens: { prompt: number; completion: number; total: number } }> {
-    const systemPrompt = `You are an expert contract analyst. Break down the contract into sections and summarize each.`;
+    const systemPrompt = `You are an expert contract analyst. Break down the contract into sections and summarize each.
+${analysisLanguageInstructions({ contractText: request.contractText })}`;
 
     const userPrompt = `Analyze this ${request.contractType || 'contract'} section by section.
 For each section, provide:
@@ -393,7 +397,8 @@ ${request.contractText.substring(0, 15000)}`;
     request: SummaryRequest
   ): Promise<{ risks: RiskHighlight[]; tokens: { prompt: number; completion: number; total: number } }> {
     const systemPrompt = `You are an expert contract risk analyst. Identify and assess risks in the contract.
-Consider: liability exposure, termination risks, compliance requirements, financial risks, operational risks.`;
+Consider: liability exposure, termination risks, compliance requirements, financial risks, operational risks.
+${analysisLanguageInstructions({ contractText: request.contractText })}`;
 
     const userPrompt = `Analyze risks in this ${request.contractType || 'contract'}.
 For each risk, provide:
@@ -438,7 +443,9 @@ ${request.contractText.substring(0, 15000)}`;
     openai: OpenAI,
     request: SummaryRequest
   ): Promise<{ financial: FinancialSummary; tokens: { prompt: number; completion: number; total: number } }> {
-    const systemPrompt = `You are an expert contract financial analyst. Extract and summarize all financial terms.`;
+    const systemPrompt = `You are an expert contract financial analyst. Extract and summarize all financial terms.
+${analysisLanguageInstructions({ contractText: request.contractText })}
+Do not invent USD or TCV 0. Fr. and SFr. mean CHF.`;
 
     const userPrompt = `Extract financial information from this ${request.contractType || 'contract'}:
 - totalValue (contract value if stated)
@@ -497,7 +504,8 @@ ${request.contractText.substring(0, 15000)}`;
       financial: summary.financial,
     });
 
-    const systemPrompt = `You are an expert contract advisor. Based on the analysis, provide actionable recommendations.`;
+    const systemPrompt = `You are an expert contract advisor. Based on the analysis, provide actionable recommendations.
+${analysisLanguageInstructions({ contractText: request.contractText })}`;
 
     const userPrompt = `Based on this contract analysis, provide 3-7 specific, actionable recommendations:
 

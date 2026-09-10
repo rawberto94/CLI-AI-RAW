@@ -87,7 +87,7 @@ function isSameDay(a: Date, b: Date): boolean {
 
 function formatDate(date: Date | null): string {
   if (!date) return '';
-  return date.toLocaleDateString('en-US', {
+  return date.toLocaleDateString('de-CH', {
     month: 'short',
     day: 'numeric',
     year: 'numeric',

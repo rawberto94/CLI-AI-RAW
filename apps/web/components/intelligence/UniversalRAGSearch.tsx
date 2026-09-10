@@ -30,6 +30,7 @@ import {
   Star,
   Loader2,
 } from 'lucide-react';
+import { formatAmountWithCurrency } from '@/lib/utils/formatters';
 
 
 // ============================================================================
@@ -192,7 +193,7 @@ const SearchResultCard: React.FC<SearchResultCardProps> = ({ result, onViewSourc
             {result.metadata.value && (
               <span className="flex items-center gap-1">
                 <DollarSign className="w-3 h-3" />
-                ${result.metadata.value.toLocaleString()}
+                {formatAmountWithCurrency(result.metadata.value, result.metadata.currency)}
               </span>
             )}
             {result.source.page && (

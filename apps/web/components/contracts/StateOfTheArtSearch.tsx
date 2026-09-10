@@ -566,7 +566,7 @@ interface FilterChipProps {
   color: string;
   count: number;
   isActive: boolean;
-  onClick: () => void;
+  onClick?: () => void;
   children?: React.ReactNode;
 }
 
@@ -1228,8 +1228,8 @@ export const StateOfTheArtSearch = memo(function StateOfTheArtSearch({
     }
 
     if (filterState.valueRange.min > 0 || filterState.valueRange.max < 1000000) {
-      const min = filterState.valueRange.min > 0 ? `$${(filterState.valueRange.min / 1000).toFixed(0)}K` : '$0';
-      const max = filterState.valueRange.max < 1000000 ? `$${(filterState.valueRange.max / 1000).toFixed(0)}K` : '$1M+';
+      const min = filterState.valueRange.min > 0 ? `${(filterState.valueRange.min / 1000).toFixed(0)}K` : '0';
+      const max = filterState.valueRange.max < 1000000 ? `${(filterState.valueRange.max / 1000).toFixed(0)}K` : '1M+';
       filters.push({
         id: 'value-range',
         label: `${min} – ${max}`,
@@ -1480,7 +1480,7 @@ export const StateOfTheArtSearch = memo(function StateOfTheArtSearch({
                   color="amber"
                   count={filterState.riskLevels.length}
                   isActive={filterState.riskLevels.length > 0}
-                  onClick={() => {}}
+                 
                 >
                   <div className="space-y-0.5">
                     {RISK_OPTIONS.map((option) => (
@@ -1501,7 +1501,7 @@ export const StateOfTheArtSearch = memo(function StateOfTheArtSearch({
                   color="blue"
                   count={filterState.contractTypes.length}
                   isActive={filterState.contractTypes.length > 0}
-                  onClick={() => {}}
+                 
                 >
                   <SearchableFilterList
                     options={CONTRACT_TYPES}
@@ -1518,7 +1518,7 @@ export const StateOfTheArtSearch = memo(function StateOfTheArtSearch({
                   color="red"
                   count={filterState.expirationFilters.length}
                   isActive={filterState.expirationFilters.length > 0}
-                  onClick={() => {}}
+                 
                 >
                   <div className="space-y-0.5">
                     {EXPIRATION_OPTIONS.map((option) => (
@@ -1539,7 +1539,7 @@ export const StateOfTheArtSearch = memo(function StateOfTheArtSearch({
                   color="emerald"
                   count={filterState.signatureFilters.length}
                   isActive={filterState.signatureFilters.length > 0}
-                  onClick={() => {}}
+                 
                 >
                   <div className="space-y-0.5">
                     {SIGNATURE_OPTIONS.map((option) => (
@@ -1560,7 +1560,7 @@ export const StateOfTheArtSearch = memo(function StateOfTheArtSearch({
                   color="slate"
                   count={filterState.documentTypeFilters.length}
                   isActive={filterState.documentTypeFilters.length > 0}
-                  onClick={() => {}}
+                 
                 >
                   <div className="space-y-0.5">
                     {DOCUMENT_TYPE_OPTIONS.map((option) => (
@@ -1581,7 +1581,7 @@ export const StateOfTheArtSearch = memo(function StateOfTheArtSearch({
                   color="violet"
                   count={filterState.relationshipType?.length ?? 0}
                   isActive={(filterState.relationshipType?.length ?? 0) > 0}
-                  onClick={() => {}}
+                 
                 >
                   <div className="space-y-0.5">
                     {RELATIONSHIP_OPTIONS.map((option) => (
@@ -1602,7 +1602,7 @@ export const StateOfTheArtSearch = memo(function StateOfTheArtSearch({
                   color="blue"
                   count={filterState.documentRoles.length}
                   isActive={filterState.documentRoles.length > 0}
-                  onClick={() => {}}
+                 
                 >
                   <div className="space-y-0.5">
                     {DOCUMENT_ROLE_OPTIONS.map((option) => (
@@ -1624,7 +1624,7 @@ export const StateOfTheArtSearch = memo(function StateOfTheArtSearch({
                     color="emerald"
                     count={filterState.categories.length}
                     isActive={filterState.categories.length > 0}
-                    onClick={() => {}}
+                   
                   >
                     <div className="space-y-0.5 max-h-48 overflow-y-auto">
                       {categories.map((option) => (
@@ -1673,7 +1673,7 @@ export const StateOfTheArtSearch = memo(function StateOfTheArtSearch({
                     color="violet"
                     count={filterState.suppliers.length}
                     isActive={filterState.suppliers.length > 0}
-                    onClick={() => {}}
+                   
                   >
                     <SearchableFilterList
                       options={supplierOptions}
@@ -1692,7 +1692,7 @@ export const StateOfTheArtSearch = memo(function StateOfTheArtSearch({
                     color="purple"
                     count={filterState.clients.length}
                     isActive={filterState.clients.length > 0}
-                    onClick={() => {}}
+                   
                   >
                     <SearchableFilterList
                       options={clientOptions}
@@ -1711,7 +1711,7 @@ export const StateOfTheArtSearch = memo(function StateOfTheArtSearch({
                     color="teal"
                     count={filterState.currencies.length}
                     isActive={filterState.currencies.length > 0}
-                    onClick={() => {}}
+                   
                   >
                     <SearchableFilterList
                       options={currencyOptions}
@@ -1730,7 +1730,7 @@ export const StateOfTheArtSearch = memo(function StateOfTheArtSearch({
                     color="amber"
                     count={filterState.jurisdictions.length}
                     isActive={filterState.jurisdictions.length > 0}
-                    onClick={() => {}}
+                   
                   >
                     <SearchableFilterList
                       options={jurisdictionOptions}
@@ -1749,7 +1749,7 @@ export const StateOfTheArtSearch = memo(function StateOfTheArtSearch({
                     color="teal"
                     count={filterState.paymentTerms.length}
                     isActive={filterState.paymentTerms.length > 0}
-                    onClick={() => {}}
+                   
                   >
                     <SearchableFilterList
                       options={paymentTermOptions}
@@ -1768,7 +1768,7 @@ export const StateOfTheArtSearch = memo(function StateOfTheArtSearch({
                     color="indigo"
                     count={filterState.tags.length}
                     isActive={filterState.tags.length > 0}
-                    onClick={() => {}}
+                   
                   >
                     <SearchableFilterList
                       options={tagOptions}
@@ -1786,7 +1786,7 @@ export const StateOfTheArtSearch = memo(function StateOfTheArtSearch({
                   color="amber"
                   count={filterState.metadataIssues.length}
                   isActive={filterState.metadataIssues.length > 0}
-                  onClick={() => {}}
+                 
                 >
                   <div className="space-y-0.5">
                     {METADATA_ISSUE_OPTIONS.map((option) => (
@@ -1807,7 +1807,7 @@ export const StateOfTheArtSearch = memo(function StateOfTheArtSearch({
                   color="violet"
                   count={(filterState.valueRangePreset ? 1 : 0) + (filterState.valueRange.min > 0 || filterState.valueRange.max < 1000000 ? 1 : 0)}
                   isActive={!!filterState.valueRangePreset || filterState.valueRange.min > 0 || filterState.valueRange.max < 1000000}
-                  onClick={() => {}}
+                 
                 >
                   <div className="space-y-3 p-1">
                     <div className="space-y-0.5">
@@ -1834,8 +1834,8 @@ export const StateOfTheArtSearch = memo(function StateOfTheArtSearch({
                         }
                       />
                       <div className="flex items-center justify-between text-xs text-slate-600">
-                        <span>${filterState.valueRange.min.toLocaleString()}</span>
-                        <span>${filterState.valueRange.max === 1000000 ? '1M+' : filterState.valueRange.max.toLocaleString()}</span>
+                        <span>{filterState.valueRange.min.toLocaleString('de-CH')}</span>
+                        <span>{filterState.valueRange.max === 1000000 ? '1M+' : filterState.valueRange.max.toLocaleString('de-CH')}</span>
                       </div>
                     </div>
                   </div>
@@ -1848,7 +1848,7 @@ export const StateOfTheArtSearch = memo(function StateOfTheArtSearch({
                   color="violet"
                   count={(filterState.dateRangePreset ? 1 : 0) + (filterState.dateRange.from || filterState.dateRange.to ? 1 : 0)}
                   isActive={!!filterState.dateRangePreset || !!filterState.dateRange.from || !!filterState.dateRange.to}
-                  onClick={() => {}}
+                 
                 >
                   <div className="space-y-3 p-1">
                     <div className="space-y-0.5">

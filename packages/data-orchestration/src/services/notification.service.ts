@@ -1,4 +1,5 @@
 import { prisma } from '../lib/prisma';
+import { formatMoneyText } from '@repo/utils';
 
 
 // Dynamic import for email service (apps/web)
@@ -289,7 +290,7 @@ export class NotificationService {
 
     await this.sendNotification(
       'Rate Increase Detected',
-      `A rate card has increased by ${percentChange.toFixed(1)}% from $${oldRate}/hr to $${newRate}/hr`,
+      `A rate card has increased by ${percentChange.toFixed(1)}% from ${formatMoneyText(oldRate)}/hr to ${formatMoneyText(newRate)}/hr`,
       {
         tenantId,
         type: 'both',
@@ -327,7 +328,7 @@ export class NotificationService {
   ): Promise<void> {
     await this.sendNotification(
       'New Savings Opportunity',
-      `A ${opportunityType} opportunity has been identified with potential savings of $${savingsAmount.toLocaleString()}`,
+      `A ${opportunityType} opportunity has been identified with potential savings of ${formatMoneyText(savingsAmount)}`,
       {
         tenantId,
         type: 'in-app',

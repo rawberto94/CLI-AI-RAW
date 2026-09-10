@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { withAuthApiHandler, createSuccessResponse, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 import { prisma } from '@/lib/prisma';
+import { expirationOrEndDateFilter, portfolioWhere } from '@/lib/contracts/server/portfolio';
 
 /**
  * Dashboard Widgets API
@@ -73,15 +74,14 @@ async function getRenewalsStats(tenantId: string) {
 
   const expiringContracts = await prisma.contract.findMany({
     where: {
-      tenantId,
-      isDeleted: false,
-      expirationDate: { gte: now, lte: ninetyDaysOut },
-      status: { notIn: ['EXPIRED', 'CANCELLED'] },
+      ...portfolioWhere(tenantId),
+      ...expirationOrEndDateFilter({ gte: now, lte: ninetyDaysOut }),
     },
     select: {
       id: true,
       contractTitle: true,
       expirationDate: true,
+      endDate: true,
       totalValue: true,
       autoRenewalEnabled: true,
       status: true,
@@ -90,27 +90,37 @@ async function getRenewalsStats(tenantId: string) {
   });
 
   const thisMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  const sevenDaysOut = new Date(Date.now() + 7 * 86400000);
 
   return {
     total: expiringContracts.length,
-    urgentCount: expiringContracts.filter(c => c.expirationDate && c.expirationDate < new Date(Date.now() + 7 * 86400000)).length,
-    expiringThisMonth: expiringContracts.filter(c => c.expirationDate && c.expirationDate <= thisMonthEnd).length,
+    urgentCount: expiringContracts.filter(c => {
+      const expiry = c.expirationDate || c.endDate;
+      return expiry != null && expiry < sevenDaysOut;
+    }).length,
+    expiringThisMonth: expiringContracts.filter(c => {
+      const expiry = c.expirationDate || c.endDate;
+      return expiry != null && expiry <= thisMonthEnd;
+    }).length,
     autoRenewalCount: expiringContracts.filter(c => c.autoRenewalEnabled).length,
     totalValue: expiringContracts.reduce((sum, c) => sum + (c.totalValue ? Number(c.totalValue) : 0), 0),
-    recentItems: expiringContracts.slice(0, 5).map(c => ({
-      id: c.id,
-      contractName: c.contractTitle || 'Untitled Contract',
-      daysUntil: c.expirationDate ? Math.ceil((c.expirationDate.getTime() - now.getTime()) / 86400000) : null,
-      value: c.totalValue ? Number(c.totalValue) : null,
-      autoRenewal: c.autoRenewalEnabled ?? false,
-      status: c.expirationDate && c.expirationDate < new Date(Date.now() + 7 * 86400000) ? 'urgent' : 'pending-review',
-    })),
+    recentItems: expiringContracts.slice(0, 5).map(c => {
+      const expiry = c.expirationDate || c.endDate;
+      return {
+        id: c.id,
+        contractName: c.contractTitle || 'Untitled Contract',
+        daysUntil: expiry ? Math.ceil((expiry.getTime() - now.getTime()) / 86400000) : null,
+        value: c.totalValue ? Number(c.totalValue) : null,
+        autoRenewal: c.autoRenewalEnabled ?? false,
+        status: expiry && expiry < sevenDaysOut ? 'urgent' : 'pending-review',
+      };
+    }),
   };
 }
 
 async function getIntelligenceStats(tenantId: string) {
   const [totalContracts, metadata] = await Promise.all([
-    prisma.contract.count({ where: { tenantId, isDeleted: false } }),
+    prisma.contract.count({ where: portfolioWhere(tenantId) }),
     prisma.contractMetadata.findMany({
       where: { tenantId },
       select: { riskScore: true },
@@ -135,7 +145,7 @@ async function getIntelligenceStats(tenantId: string) {
 
 async function getGovernanceStats(tenantId: string) {
   const [totalContracts, pendingReviewCount] = await Promise.all([
-    prisma.contract.count({ where: { tenantId, isDeleted: false } }),
+    prisma.contract.count({ where: portfolioWhere(tenantId) }),
     prisma.contract.count({ where: { tenantId, isDeleted: false, status: 'PENDING' } }),
   ]);
 

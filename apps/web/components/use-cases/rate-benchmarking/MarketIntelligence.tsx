@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
+import { formatRateMoney } from '@/lib/rate-cards/format';
 import {
   TrendingUp,
   TrendingDown,
@@ -131,8 +132,8 @@ export function MarketIntelligence({
                   <div className="flex items-center gap-3">
                     <div className="flex-1">
                       <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
-                        <span>Your rate: ${trend.currentRate}</span>
-                        <span>Market avg: ${trend.marketAverage}</span>
+                        <span>Your rate: {formatRateMoney(trend.currentRate)}</span>
+                        <span>Market avg: {formatRateMoney(trend.marketAverage)}</span>
                       </div>
                       <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
                         <div
@@ -185,7 +186,7 @@ export function MarketIntelligence({
                     {getTrendIcon(competitor.trend)}
                   </div>
                   <span className="text-sm text-slate-600">
-                    ${competitor.rateRange.min} - ${competitor.rateRange.max}
+                    {formatRateMoney(competitor.rateRange.min)} - {formatRateMoney(competitor.rateRange.max)}
                   </span>
                 </div>
                 <div className="flex items-center gap-3">

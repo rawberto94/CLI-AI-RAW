@@ -32,6 +32,7 @@ import {
   RefreshCw,
   Loader2,
 } from 'lucide-react';
+import { formatRateMoney } from '@/lib/rate-cards/format';
 import { 
   useSavedComparisonsQuery, 
   useDeleteComparisonMutation, 
@@ -117,7 +118,7 @@ export function SavedComparisons({ onViewComparison }: SavedComparisonsProps) {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
+    return new Date(dateString).toLocaleDateString('de-CH', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
@@ -216,11 +217,11 @@ export function SavedComparisons({ onViewComparison }: SavedComparisonsProps) {
                     <div>
                       <span className="text-muted-foreground">Range: </span>
                       <span className="font-semibold text-green-600">
-                        ${getLowestRate(comparison).toLocaleString()}
+                        {formatRateMoney(getLowestRate(comparison))}
                       </span>
                       <span className="text-muted-foreground"> - </span>
                       <span className="font-semibold text-red-600">
-                        ${getHighestRate(comparison).toLocaleString()}
+                        {formatRateMoney(getHighestRate(comparison))}
                       </span>
                     </div>
                   </div>

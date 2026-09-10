@@ -23,11 +23,20 @@ export const IngestionArtifactV1Schema = z.object({
 export const ClausesArtifactV1Schema = z.object({
   metadata: BaseMetadataSchema,
   clauses: z.array(z.object({
-    clauseId: z.string(),
-    text: z.string(),
-    page: z.number().int(),
-    confidence: z.number().min(0).max(1),
-  })),
+    // Worker prompt shape
+    title: z.string().optional(),
+    section: z.string().optional(),
+    content: z.string().optional(),
+    fullText: z.string().optional(),
+    source: z.string().optional(),
+    importance: z.string().optional(),
+    category: z.string().optional(),
+    // Legacy / schema-v1 aliases — same clause, different keys
+    clauseId: z.string().optional(),
+    text: z.string().optional(),
+    page: z.number().int().optional(),
+    confidence: z.number().min(0).max(1).optional(),
+  }).passthrough()),
 });
 
 export const OverviewArtifactV1Schema = z.object({
@@ -163,7 +172,7 @@ export const ProfessionalServicesOverviewV1Schema = z.object({
 });
 
 export const InsightSeverityEnum = z.enum(['low', 'medium', 'high']);
-export const InsightTypeEnum = z.enum(['risk', 'opportunity', 'deviation', 'info']);
+export const InsightTypeEnum = z.enum(['risk', 'opportunity', 'deviation', 'info', 'compliance', 'obligation', 'action']);
 
 export const InteractiveInsightV1Schema = z.object({
   id: z.string(),

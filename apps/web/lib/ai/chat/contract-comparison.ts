@@ -221,7 +221,7 @@ export async function findContractsForComparison(
         rates: rateCards.map(r => ({
           roleName: r.roleStandardized || r.roleOriginal || 'Unknown Role',
           rate: Number(r.dailyRate) || 0,
-          currency: r.currency || 'USD',
+          currency: r.currency || '',
           unit: r.unit || 'day' })) });
     }
     
@@ -263,11 +263,20 @@ export async function performContractComparison(
   const keyInsights: string[] = [];
   
   // Helper function to format currency
-  const formatCurrency = (value: number, currency: string = 'USD') => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency,
-      maximumFractionDigits: 0 }).format(value);
+  const formatCurrency = (value: number, currency?: string | null) => {
+    const code = typeof currency === 'string' ? currency.trim() : '';
+    if (code.length === 3) {
+      try {
+        return new Intl.NumberFormat('de-CH', {
+          style: 'currency',
+          currency: code,
+          maximumFractionDigits: 0,
+        }).format(value);
+      } catch {
+        return `${code} ${value.toLocaleString()}`;
+      }
+    }
+    return value.toLocaleString('de-CH');
   };
   
   // Helper function to analyze difference
@@ -297,8 +306,8 @@ export async function performContractComparison(
         differences.push({
           field: 'totalValue',
           label: 'Total Contract Value',
-          value1: formatCurrency(contract1.totalValue, contract1.currency || 'USD'),
-          value2: formatCurrency(contract2.totalValue, contract2.currency || 'USD'),
+          value1: formatCurrency(contract1.totalValue, contract1.currency),
+          value2: formatCurrency(contract2.totalValue, contract2.currency),
           analysis: analyzeDifference('totalValue', contract1.totalValue, contract2.totalValue) });
         
         // Generate insight
@@ -310,7 +319,7 @@ export async function performContractComparison(
         similarities.push({
           field: 'totalValue',
           label: 'Total Contract Value',
-          sharedValue: formatCurrency(contract1.totalValue, contract1.currency || 'USD') });
+          sharedValue: formatCurrency(contract1.totalValue, contract1.currency) });
       }
       
       // Annual value
@@ -318,8 +327,8 @@ export async function performContractComparison(
         differences.push({
           field: 'annualValue',
           label: 'Annual Value',
-          value1: formatCurrency(contract1.annualValue, contract1.currency || 'USD'),
-          value2: formatCurrency(contract2.annualValue, contract2.currency || 'USD'),
+          value1: formatCurrency(contract1.annualValue, contract1.currency),
+          value2: formatCurrency(contract2.annualValue, contract2.currency),
           analysis: analyzeDifference('annualValue', contract1.annualValue, contract2.annualValue) });
       }
     }
@@ -704,8 +713,17 @@ export async function performGroupComparison(
   tenantId: string
 ): Promise<GroupComparisonResult> {
   
-  const formatCurrency = (val: number, curr: string = 'USD') =>
-    new Intl.NumberFormat('en-US', { style: 'currency', currency: curr, maximumFractionDigits: 0 }).format(val);
+  const formatCurrency = (val: number, curr?: string | null) => {
+    const code = typeof curr === 'string' ? curr.trim() : '';
+    if (code.length === 3 && code !== 'XXX') {
+      try {
+        return new Intl.NumberFormat('de-CH', { style: 'currency', currency: code, maximumFractionDigits: 0 }).format(val);
+      } catch {
+        return `${code} ${val.toLocaleString('de-CH')}`;
+      }
+    }
+    return val.toLocaleString('de-CH');
+  };
   
   const now = new Date();
   const thirtyDaysLater = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);

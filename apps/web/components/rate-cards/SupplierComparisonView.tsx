@@ -28,6 +28,7 @@ import {
   CheckCircle,
   XCircle,
 } from 'lucide-react';
+import { formatRateMoney } from '@/lib/rate-cards/format';
 import {
   BarChart,
   Bar,
@@ -224,7 +225,7 @@ export function SupplierComparisonView({
                   <p className="text-xs text-gray-600 mb-1">Average Rate</p>
                   <div className="flex items-center gap-2">
                     <p className="text-xl font-bold">
-                      ${supplier.averageRate.toFixed(0)}
+                      {formatRateMoney(supplier.averageRate)}
                     </p>
                     {supplier.averageRate === bestRate && (
                       <Badge variant="default" className="text-xs">
@@ -282,7 +283,7 @@ export function SupplierComparisonView({
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="name" />
               <YAxis />
-              <Tooltip formatter={(value: any) => `$${value.toFixed(0)}`} />
+              <Tooltip formatter={(value: any) => formatRateMoney(Number(value))} />
               <Legend />
               <Bar dataKey="Average Rate" fill="#3b82f6" />
               <Bar dataKey="Market Average" fill="#94a3b8" />
@@ -357,7 +358,7 @@ export function SupplierComparisonView({
                     <td key={supplier.supplierId} className="py-3 px-4">
                       <div className="flex items-center gap-2">
                         <span className="font-medium">
-                          ${supplier.averageRate.toFixed(0)}
+                          {formatRateMoney(supplier.averageRate)}
                         </span>
                         {supplier.averageRate === bestRate && (
                           <CheckCircle className="h-4 w-4 text-green-600" />
@@ -463,7 +464,7 @@ export function SupplierComparisonView({
                       key={supplier.supplierId}
                       className="py-3 px-4 font-medium"
                     >
-                      ${supplier.totalAnnualValue.toLocaleString()}
+                      {formatRateMoney(supplier.totalAnnualValue)}
                     </td>
                   ))}
                 </tr>
@@ -475,7 +476,7 @@ export function SupplierComparisonView({
                       key={supplier.supplierId}
                       className="py-3 px-4 font-medium text-green-600"
                     >
-                      ${supplier.potentialSavings.toLocaleString()}
+                      {formatRateMoney(supplier.potentialSavings)}
                     </td>
                   ))}
                 </tr>
@@ -534,8 +535,8 @@ export function SupplierComparisonView({
                       Best Value: {supplier.supplierName}
                     </p>
                     <p className="text-sm text-green-700">
-                      Offers the lowest average rate at $
-                      {supplier.averageRate.toFixed(0)} with{' '}
+                      Offers the lowest average rate at{' '}
+                      {formatRateMoney(supplier.averageRate)} with{' '}
                       {supplier.competitivenessScore.toFixed(0)}%
                       competitiveness score
                     </p>

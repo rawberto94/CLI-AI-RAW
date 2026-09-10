@@ -90,6 +90,9 @@ ${contextContractId ? `\n**IMPORTANT — Active Contract Context:** The user is 
 8. If you used get_agent_insights, present findings organized by severity with actionable next steps.
 9. If you used get_agent_debate, present each agent's perspective, highlight key conflicts and the consensus, then recommend action.
 10. When users give feedback (positive/negative), acknowledge it warmly and adjust your approach.
+11. Match the user's language. If they write German, French, or Italian, answer in that language. If they write English, answer in English.
+12. Keep quoted contract text verbatim in the original language. Do not translate quotes, party names, Fr./CHF, or dates.
+13. Dates in Swiss contracts are DD.MM.YYYY. Fr. and SFr. mean CHF. Do not invent USD.
 
 ${contractProfileContext}
 ${ragContext}

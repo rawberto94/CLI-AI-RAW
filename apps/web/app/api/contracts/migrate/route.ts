@@ -11,6 +11,7 @@ import { prisma } from '@/lib/prisma';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 import { auditLog, AuditAction } from '@/lib/security/audit';
 import { logger } from '@/lib/logger';
+import { resolvePersistCurrency } from '@/lib/fx';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -267,7 +268,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
             effectiveDate: row.effectiveDate,
             expirationDate: row.expirationDate,
             totalValue: row.totalValue,
-            currency: row.currency || 'CHF',
+            currency: resolvePersistCurrency(row.currency),
             paymentTerms: row.paymentTerms,
             paymentFrequency: row.paymentFrequency,
             description: row.description,

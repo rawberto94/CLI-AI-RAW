@@ -4,6 +4,7 @@ import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { useDataMode } from '@/contexts/DataModeContext';
+import { formatAmountWithCurrency } from '@/lib/utils/formatters';
 import {
   Share2,
   ZoomIn,
@@ -363,7 +364,7 @@ const NodeDetailPanel: React.FC<NodeDetailPanelProps> = ({ node, onClose, relate
                 <span className="text-slate-500 capitalize">{key.replace(/([A-Z])/g, ' $1')}</span>
                 <span className="font-medium text-slate-900">
                   {typeof value === 'number' && key.toLowerCase().includes('value')
-                    ? `$${value.toLocaleString()}`
+                    ? formatAmountWithCurrency(value)
                     : String(value)}
                 </span>
               </div>

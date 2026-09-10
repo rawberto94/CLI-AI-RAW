@@ -30,7 +30,8 @@ import {
   Download,
 } from 'lucide-react';
 import { PageBreadcrumb } from '@/components/navigation';
-import { formatCurrency } from '@/components/ui/design-system';
+import { formatAmountWithCurrency, formatDisplayTotal } from '@/lib/utils/formatters';
+import { useDisplayCurrency } from '@/hooks/useDisplayCurrency';
 import { cn } from '@/lib/utils';
 import { useTranslations } from 'next-intl';
 
@@ -138,6 +139,7 @@ function StatusBadge({ status }: { status: string }) {
 export default function RenewalsObligationsDashboard() {
   const t = useTranslations('obligations');
   const tCommon = useTranslations('common');
+  const displayCurrency = useDisplayCurrency();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -273,7 +275,7 @@ export default function RenewalsObligationsDashboard() {
                   <div>
                     <p className="text-sm text-slate-500">{t('combined.kpi.valueAtRisk')}</p>
                     <p className="text-3xl font-bold mt-1">
-                      {formatCurrency(metrics.renewals.totalValueAtRisk, 'CHF')}
+                      {formatDisplayTotal(metrics.renewals.totalValueAtRisk, displayCurrency)}
                     </p>
                     <p className="text-xs text-slate-400 mt-1">{t('combined.kpi.contractsCount', { count: metrics.renewals.totalExpiring90d })}</p>
                   </div>
@@ -374,7 +376,7 @@ export default function RenewalsObligationsDashboard() {
                         <UrgencyBadge urgency={r.urgency} />
                         {r.totalValue && (
                           <p className="text-xs text-slate-500 mt-1">
-                            {formatCurrency(r.totalValue, r.currency || 'CHF')}
+                            {formatAmountWithCurrency(r.totalValue, r.currency)}
                           </p>
                         )}
                       </div>
@@ -469,7 +471,7 @@ export default function RenewalsObligationsDashboard() {
                             )}
                           </td>
                           <td className="py-3 text-slate-600">
-                            {r.totalValue ? formatCurrency(r.totalValue, r.currency || 'CHF') : '-'}
+                            {r.totalValue ? formatAmountWithCurrency(r.totalValue, r.currency) : '-'}
                           </td>
                           <td className="py-3 text-slate-600">
                             {r.paymentTerms || '-'} {r.paymentFrequency && <span className="text-xs text-slate-400">({r.paymentFrequency.toLowerCase()})</span>}

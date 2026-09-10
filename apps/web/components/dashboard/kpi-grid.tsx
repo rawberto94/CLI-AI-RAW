@@ -19,7 +19,7 @@ import {
 const kpiCards = [
   {
     title: "Total Contract Value",
-    value: "$3.7M",
+    value: "3.7M",
     change: "+12%",
     trend: "up",
     icon: DollarSign,

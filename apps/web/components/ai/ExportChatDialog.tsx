@@ -498,7 +498,7 @@ function sanitizeFilename(name: string): string {
 }
 
 function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString('en-US', {
+  return new Date(dateStr).toLocaleDateString('de-CH', {
     year: 'numeric',
     month: 'long',
     day: 'numeric',

@@ -8,6 +8,7 @@
  */
 
 import { PrismaClient } from '@prisma/client';
+import { formatMoneyText } from '@repo/utils';
 
 // ============================================================================
 // Types & Interfaces
@@ -172,7 +173,7 @@ Focus on practical procurement implications and actionable insights.`;
 **Portfolio Overview:**
 - Total Rate Cards: ${totalRateCards}
 - Above-Market Rates: ${highCostCount} (${((highCostCount / totalRateCards) * 100).toFixed(1)}%)
-- Average Savings Opportunity: $${avgSavingsOpportunity.toLocaleString()}/year per rate card
+- Average Savings Opportunity: ${formatMoneyText(avgSavingsOpportunity)}/year per rate card
 - Supplier Concentration: ${supplierConcentration.toFixed(1)}% with ${topSupplierName}
 
 Provide a JSON response with:
@@ -198,7 +199,7 @@ Prioritize by business impact and feasibility. Be specific and actionable.`;
 **Current Situation:**
 - Your Rate: ${context.rate}/day
 - Market Median: ${context.median}/day
-- Potential Savings: $${savingsOpportunity.toFixed(2)}/day
+- Potential Savings: ${formatMoneyText(savingsOpportunity)}/day
 - Market Position: ${context.percentileRank}th percentile
 
 **Details:**

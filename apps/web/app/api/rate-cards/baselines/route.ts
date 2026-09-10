@@ -131,7 +131,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
         procurementCategoryId,
         targetRateUSD: dailyRateUSD,
         targetRate: dailyRateUSD,
-        currency: currency || 'USD',
+        currency: currency || 'XXX',
         rateUnit: 'daily',
         minimumRate: minimumRate || null,
         maximumRate: maximumRate || null,

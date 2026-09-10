@@ -9,6 +9,7 @@ import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 import { rateCardManagementService } from 'data-orchestration/services';
+import { formatMoneyText } from '@repo/utils';
 
 /**
  * Rate card filter types
@@ -223,9 +224,9 @@ function generateFilterSummary(filters: RateCardFilters | null): string {
     parts.push(`Date: ${from} to ${to}`);
   }
   if (filters.rateMin || filters.rateMax) {
-    const min = filters.rateMin || '0';
-    const max = filters.rateMax || '∞';
-    parts.push(`Rate: $${min} - $${max}`);
+    const min = filters.rateMin ? formatMoneyText(Number(filters.rateMin)) : '0';
+    const max = filters.rateMax ? formatMoneyText(Number(filters.rateMax)) : '∞';
+    parts.push(`Rate: ${min} - ${max}`);
   }
 
   return parts.length > 0 ? parts.join(', ') : 'No filters applied';
@@ -359,10 +360,10 @@ ${rateCards.map((rc, index) => `
 ${index + 1}. ${rc.roleStandardized} - ${rc.supplierName}
    Seniority: ${rc.seniority}
    Location: ${rc.country}, ${rc.region}
-   Rate: $${rc.dailyRateUSD}/day (${rc.currency} ${rc.dailyRate})
+   Rate: ${formatMoneyText(Number(rc.dailyRate), rc.currency)}/day
    Effective: ${rc.effectiveDate ? new Date(rc.effectiveDate).toLocaleDateString() : 'N/A'}
    Market Position: ${rc.percentileRank ? `${rc.percentileRank}th percentile` : 'N/A'}
-   ${rc.savingsAmount ? `Potential Savings: $${rc.savingsAmount}/day` : ''}
+   ${rc.savingsAmount ? `Potential Savings: ${formatMoneyText(Number(rc.savingsAmount), rc.currency)}/day` : ''}
 `).join('\n')}`;
 
   return new NextResponse(content, {

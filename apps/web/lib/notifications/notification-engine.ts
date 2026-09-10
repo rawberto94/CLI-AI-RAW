@@ -7,6 +7,7 @@
  */
 
 import { prisma } from '@/lib/prisma';
+import { formatMoneyText } from '@repo/utils';
 
 // ============================================================================
 // TYPES
@@ -310,7 +311,7 @@ export async function notifyOpportunity(
   return sendNotification({
     tenantId,
     title: `💡 ${title}`,
-    message: description + (estimatedSavings ? ` (Est. savings: $${estimatedSavings.toLocaleString()})` : ''),
+    message: description + (estimatedSavings ? ` (Est. savings: ${formatMoneyText(estimatedSavings)})` : ''),
     category: 'opportunity',
     priority: estimatedSavings && estimatedSavings > 50000 ? 'high' : 'medium',
     sourceAgent: 'opportunity-discovery-engine',

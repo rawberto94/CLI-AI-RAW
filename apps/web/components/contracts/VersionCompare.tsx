@@ -419,12 +419,7 @@ export function VersionCompare({
             Lines
           </Button>
 
-          <Button variant="ghost" size="sm" className="gap-1">
-            <Download className="w-4 h-4" />
-            Export
-          </Button>
-
-          <Button variant="ghost" size="sm" className="gap-1">
+          <Button variant="ghost" size="sm" className="gap-1" onClick={() => window.print()}>
             <Printer className="w-4 h-4" />
             Print
           </Button>

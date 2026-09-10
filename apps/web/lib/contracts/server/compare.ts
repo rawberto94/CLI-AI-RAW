@@ -3,6 +3,7 @@ import { NextRequest } from 'next/server';
 import { z } from 'zod';
 
 import { createErrorResponse, createSuccessResponse, type ContractApiContext } from '@/lib/api-middleware';
+import { formatMoneyText } from '@repo/utils';
 
 interface ComparisonResult {
   contracts: Array<{
@@ -209,11 +210,28 @@ async function compareContractsEnhanced(
   const similarities: ComparisonSimilarity[] = [];
   const keyInsights: string[] = [];
 
-  const formatCurrency = (value: number, currency = 'USD') => new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency,
-    maximumFractionDigits: 0,
-  }).format(value);
+  const formatCurrency = (value: number, currency?: string | null) => {
+    const code = typeof currency === 'string' ? currency.trim().toUpperCase() : '';
+    if (code.length === 3) {
+      try {
+        return new Intl.NumberFormat('de-CH', {
+          style: 'currency',
+          currency: code,
+          maximumFractionDigits: 0,
+        }).format(value);
+      } catch {
+        return `${code} ${value.toLocaleString()}`;
+      }
+    }
+    return value.toLocaleString('de-CH');
+  };
+
+  const numericValue = (value: unknown): number | null => {
+    if (value == null || value === '') return null;
+    const amount = Number(value);
+    if (!Number.isFinite(amount) || amount === 0) return null;
+    return amount;
+  };
 
   const getDuration = (contract: ContractWithMetadata) => {
     if (!contract.effectiveDate || !contract.expirationDate) return 0;
@@ -228,28 +246,28 @@ async function compareContractsEnhanced(
     return Math.ceil((date.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
   };
 
-  const value1 = Number(contract1.totalValue) || 0;
-  const value2 = Number(contract2.totalValue) || 0;
-  if (value1 !== value2) {
+  const value1 = numericValue(contract1.totalValue);
+  const value2 = numericValue(contract2.totalValue);
+  if (value1 != null && value2 != null && value1 !== value2) {
     const diff = value1 - value2;
     const pct = value2 > 0 ? Math.round((diff / value2) * 100) : 0;
     differences.push({
       field: 'totalValue',
       label: 'Total Value',
-      value1: formatCurrency(value1, contract1.currency || 'USD'),
-      value2: formatCurrency(value2, contract2.currency || 'USD'),
+      value1: formatCurrency(value1, contract1.currency),
+      value2: formatCurrency(value2, contract2.currency),
       analysis: `${Math.abs(pct)}% ${diff > 0 ? 'higher' : 'lower'}`,
       advantage: diff < 0 ? 'entity1' : diff > 0 ? 'entity2' : 'neutral',
     });
 
     if (Math.abs(diff) > 100000) {
-      keyInsights.push(`Significant value difference of ${formatCurrency(Math.abs(diff))}`);
+      keyInsights.push(`Significant value difference of ${formatCurrency(Math.abs(diff), contract1.currency || contract2.currency)}`);
     }
-  } else {
+  } else if (value1 != null && value2 != null) {
     similarities.push({
       field: 'totalValue',
       label: 'Total Value',
-      sharedValue: formatCurrency(value1),
+      sharedValue: formatCurrency(value1, contract1.currency || contract2.currency),
     });
   }
 
@@ -512,7 +530,7 @@ function generateComparisonSummary(
 
   const totalValue = contracts.reduce((sum, contract) => sum + (contract.value || 0), 0);
   if (totalValue > 0) {
-    parts.push(`Combined contract value: $${totalValue.toLocaleString()}.`);
+    parts.push(`Combined contract value: ${formatMoneyText(totalValue)}.`);
   }
 
   return parts.join(' ');

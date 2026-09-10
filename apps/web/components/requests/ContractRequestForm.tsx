@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,6 +13,7 @@ import { ArrowLeft, Send, Upload, X, FileText, Clock, Shield, CheckCircle2, Pape
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import { useDisplayCurrency } from '@/hooks/useDisplayCurrency';
 
 const SLA_INFO: Record<string, { label: string; time: string; color: string }> = {
   CRITICAL: { label: 'Critical', time: '4 hours', color: 'text-red-600 bg-red-50 border-red-200' },
@@ -27,18 +28,28 @@ const ACCEPTED_TYPES = '.pdf,.docx,.doc,.xlsx,.xls,.pptx,.png,.jpg,.jpeg,.txt,.c
 
 export default function ContractRequestForm() {
   const router = useRouter();
+  const displayCurrency = useDisplayCurrency();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [submitting, setSubmitting] = useState(false);
   const [step, setStep] = useState(1);
   const [files, setFiles] = useState<File[]>([]);
   const [form, setForm] = useState({
     title: '', description: '', requestType: 'NEW_CONTRACT', urgency: 'MEDIUM',
-    department: '', costCenter: '', estimatedValue: '', currency: 'USD',
+    department: '', costCenter: '', estimatedValue: '', currency: displayCurrency,
     counterpartyName: '', counterpartyEmail: '', contractType: '',
     desiredStartDate: '', desiredEndDate: '', businessJustification: '',
   });
 
-  const update = (field: string, value: string) => setForm((p) => ({ ...p, [field]: value }));
+  const [currencyTouched, setCurrencyTouched] = useState(false);
+  const update = (field: string, value: string) => {
+    if (field === 'currency') setCurrencyTouched(true);
+    setForm((p) => ({ ...p, [field]: value }));
+  };
+
+  useEffect(() => {
+    if (currencyTouched) return;
+    setForm((prev) => (prev.currency === displayCurrency ? prev : { ...prev, currency: displayCurrency }));
+  }, [displayCurrency, currencyTouched]);
 
   const handleFiles = (newFiles: FileList | null) => {
     if (!newFiles) return;
@@ -230,10 +241,10 @@ export default function ContractRequestForm() {
                       <Select value={form.currency} onValueChange={(v) => update('currency', v)}>
                         <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="USD">USD</SelectItem>
-                          <SelectItem value="EUR">EUR</SelectItem>
-                          <SelectItem value="GBP">GBP</SelectItem>
                           <SelectItem value="CHF">CHF</SelectItem>
+                          <SelectItem value="EUR">EUR</SelectItem>
+                          <SelectItem value="USD">USD</SelectItem>
+                          <SelectItem value="GBP">GBP</SelectItem>
                           <SelectItem value="JPY">JPY</SelectItem>
                           <SelectItem value="AUD">AUD</SelectItem>
                           <SelectItem value="CAD">CAD</SelectItem>

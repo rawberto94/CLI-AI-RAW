@@ -17,6 +17,7 @@ import { prisma } from '@/lib/prisma';
 import { aiInsightsGeneratorService } from 'data-orchestration/services';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 import { logger } from '@/lib/logger';
+import { formatMoneyText } from '@repo/utils';
 
 let _openai: OpenAI | null = null;
 function getOpenAI(): OpenAI {
@@ -29,10 +30,18 @@ function getOpenAI(): OpenAI {
 }
 const openai = new Proxy({} as OpenAI, { get: (_, prop) => (getOpenAI() as any)[prop] });
 
+const CANONICAL_INSIGHT_TYPES = ['risk', 'opportunity', 'compliance', 'obligation', 'info', 'action'] as const;
+type InsightType = (typeof CANONICAL_INSIGHT_TYPES)[number];
+
+function coerceInsightType(value: unknown): InsightType | null {
+  const type = String(value || '').toLowerCase();
+  return (CANONICAL_INSIGHT_TYPES as readonly string[]).includes(type) ? (type as InsightType) : null;
+}
+
 interface Insight {
   id: string;
-  type: 'risk' | 'opportunity' | 'compliance' | 'trend' | 'action';
-  severity: 'critical' | 'high' | 'medium' | 'low' | 'info';
+  type: InsightType;
+  severity: 'critical' | 'high' | 'medium' | 'low';
   title: string;
   description: string;
   impact?: string;
@@ -123,8 +132,8 @@ export const GET = withAuthApiHandler(async (request, ctx) => {
     if (recentContracts > 0) {
       insights.push({
         id: 'volume-1',
-        type: 'trend',
-        severity: 'info',
+        type: 'info',
+        severity: 'low',
         title: `${recentContracts} New Contracts This Month`,
         description: `Your contract portfolio has grown with ${recentContracts} new contracts in the last 30 days.`,
         data: { recentContracts, totalContracts } });
@@ -135,10 +144,10 @@ export const GET = withAuthApiHandler(async (request, ctx) => {
     if (totalValueNum > 0) {
       insights.push({
         id: 'value-1',
-        type: 'info' as any,
-        severity: 'info',
-        title: `$${(totalValueNum / 1000000).toFixed(1)}M Total Contract Value`,
-        description: `Your managed contract portfolio has a total value of $${totalValueNum.toLocaleString()}.`,
+        type: 'info',
+        severity: 'low',
+        title: `${formatMoneyText(totalValueNum)} Total Contract Value`,
+        description: `Your managed contract portfolio has a total value of ${formatMoneyText(totalValueNum)}.`,
         data: { totalValue: totalValueNum } });
     }
 
@@ -206,7 +215,7 @@ export const GET = withAuthApiHandler(async (request, ctx) => {
     if (ragCoverage < 80 && totalContracts > 0) {
       insights.push({
         id: 'rag-coverage-1',
-        type: 'opportunity',
+        type: 'action',
         severity: 'low',
         title: 'AI Search Can Be Improved',
         description: `Only ${ragCoverage}% of your contracts are indexed for AI-powered search. Process remaining contracts to improve search accuracy.`,
@@ -239,8 +248,8 @@ export const GET = withAuthApiHandler(async (request, ctx) => {
       : insights;
 
     // Sort by severity
-    const severityOrder = { critical: 0, high: 1, medium: 2, low: 3, info: 4 };
-    filteredInsights.sort((a, b) => severityOrder[a.severity] - severityOrder[b.severity]);
+    const severityOrder: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
+    filteredInsights.sort((a, b) => (severityOrder[a.severity] ?? 4) - (severityOrder[b.severity] ?? 4));
 
     return createSuccessResponse(ctx, {
       insights: filteredInsights,
@@ -278,14 +287,14 @@ async function generateAIInsight(
     messages: [
       {
         role: 'system',
-        content: `You are a contract management AI analyst. Generate a single actionable insight based on portfolio statistics. Return JSON with: title (string), description (string), recommendation (string), severity (critical|high|medium|low).` },
+        content: `You are a contract management AI analyst. Generate a single actionable insight based on portfolio statistics. Return JSON with: type (risk|opportunity|compliance|obligation|info|action), title (string), description (string), recommendation (string), severity (critical|high|medium|low).` },
       {
         role: 'user',
         content: `Contract portfolio stats:
 - Total contracts: ${stats.totalContracts}
 - Expiring in 90 days: ${stats.expiringContracts}
 - High-risk contracts: ${stats.highRiskCount}
-- Total value: $${stats.totalValue.toLocaleString()}
+- Total value: ${formatMoneyText(stats.totalValue)}
 - Risk categories: ${JSON.stringify(stats.riskCategories)}
 
 Generate one strategic insight about this portfolio.` },
@@ -296,10 +305,14 @@ Generate one strategic insight about this portfolio.` },
 
   try {
     const content = JSON.parse(completion.choices[0]?.message?.content || '{}');
+    const type = coerceInsightType(content.type) ?? (content.recommendation ? 'action' : 'info');
+    const severity = ['critical', 'high', 'medium', 'low'].includes(String(content.severity))
+      ? content.severity
+      : 'medium';
     return {
       id: 'ai-insight-1',
-      type: 'opportunity',
-      severity: content.severity || 'medium',
+      type,
+      severity,
       title: content.title || 'AI Portfolio Analysis',
       description: content.description || 'AI analysis of your contract portfolio.',
       recommendation: content.recommendation };

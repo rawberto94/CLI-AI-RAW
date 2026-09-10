@@ -78,6 +78,8 @@ export interface FieldTrustChipProps {
   className?: string;
   /** compact = icon only with tooltip */
   compact?: boolean;
+  sourceQuote?: string | null;
+  pageNumbers?: number[] | null;
 }
 
 export function FieldTrustChip({
@@ -85,11 +87,13 @@ export function FieldTrustChip({
   confidence,
   className,
   compact = false,
+  sourceQuote,
+  pageNumbers,
 }: FieldTrustChipProps) {
   const ui = TRUST_UI[trust] ?? TRUST_UI.missing;
   const confLabel =
     typeof confidence === 'number' && Number.isFinite(confidence)
-      ? ` · ${Math.round(confidence * 100)}%`
+      ? ` · ${confidence <= 1 ? Math.round(confidence * 100) : Math.round(confidence)}%`
       : '';
 
   const chip = (
@@ -123,7 +127,13 @@ export function FieldTrustChip({
           <p className="font-medium">{ui.label}</p>
           <p className="text-muted-foreground mt-0.5">{ui.description}</p>
           {typeof confidence === 'number' && (
-            <p className="mt-1">Confidence: {Math.round(confidence * 100)}%</p>
+            <p className="mt-1">Confidence: {confidence <= 1 ? Math.round(confidence * 100) : Math.round(confidence)}%</p>
+          )}
+          {Array.isArray(pageNumbers) && pageNumbers.length > 0 && (
+            <p className="mt-1">Page {pageNumbers.join(', ')}</p>
+          )}
+          {sourceQuote && (
+            <p className="mt-1 italic text-muted-foreground line-clamp-3">“{sourceQuote}”</p>
           )}
         </TooltipContent>
       </Tooltip>

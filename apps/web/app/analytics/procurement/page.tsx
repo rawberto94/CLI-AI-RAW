@@ -24,6 +24,8 @@ import {
   RefreshCw,
   LineChart
 } from 'lucide-react';
+import { formatAmountWithCurrency } from '@/lib/utils/formatters';
+import { isRateCardsEnabled } from '@/lib/features';
 
 export default function ProcurementAnalyticsHub() {
   const [statsError, setStatsError] = useState<string | null>(null);
@@ -84,7 +86,7 @@ export default function ProcurementAnalyticsHub() {
           },
           {
             label: 'Savings Pipeline',
-            value: totalSavings > 0 ? `$${(totalSavings / 1000000).toFixed(1)}M` : '$0',
+            value: totalSavings > 0 ? formatAmountWithCurrency(totalSavings) : '—',
             change: totalSavings > 0 ? '+18%' : '',
             trend: 'up'
           },
@@ -196,7 +198,7 @@ export default function ProcurementAnalyticsHub() {
       ],
       status: 'active'
     }
-  ];
+  ].filter((module) => isRateCardsEnabled() || module.route !== '/rate-cards/benchmarking');
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-purple-50/20">

@@ -289,7 +289,7 @@ class RenewalIntelligenceService {
         supplierName: contract.supplierName || 'Unknown',
         category: contract.category ?? undefined,
         currentValue: Number(contract.totalValue || 0),
-        currency: contract.currency || 'USD',
+        currency: contract.currency || '',
         renewalDate,
         daysUntilRenewal,
         autoRenewal: renewalData?.autoRenewal || false,

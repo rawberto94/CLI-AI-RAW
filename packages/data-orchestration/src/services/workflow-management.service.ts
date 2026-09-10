@@ -15,6 +15,7 @@
 import { prisma } from '../lib/prisma';
 import { EventEmitter } from 'events';
 import { v4 as uuidv4 } from 'uuid';
+import { formatMoneyText } from '@repo/utils';
 
 
 // ============================================================================
@@ -502,7 +503,7 @@ export class WorkflowManagementService extends EventEmitter {
         return {
           templateKey: 'executive',
           template: WORKFLOW_TEMPLATES.executive,
-          reason: `High-value contract ($${value.toLocaleString()}) requires executive approval`
+          reason: `High-value contract (${formatMoneyText(value)}) requires executive approval`
         };
       }
 
@@ -510,7 +511,7 @@ export class WorkflowManagementService extends EventEmitter {
         return {
           templateKey: 'legal_review',
           template: WORKFLOW_TEMPLATES.legal_review,
-          reason: `Contract value ($${value.toLocaleString()}) requires legal review workflow`
+          reason: `Contract value (${formatMoneyText(value)}) requires legal review workflow`
         };
       }
 
@@ -518,7 +519,7 @@ export class WorkflowManagementService extends EventEmitter {
         return {
           templateKey: 'express',
           template: WORKFLOW_TEMPLATES.express,
-          reason: `Low-value contract ($${value.toLocaleString()}) qualifies for express approval`
+          reason: `Low-value contract (${formatMoneyText(value)}) qualifies for express approval`
         };
       }
     }

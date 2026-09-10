@@ -244,7 +244,7 @@ export default function SigningPage() {
           <div className="bg-green-50 rounded-lg p-4 text-left text-sm text-green-800 space-y-1">
             <p><strong>Document:</strong> {signerInfo?.contractTitle}</p>
             <p><strong>Signed by:</strong> {signerInfo?.name}</p>
-            <p><strong>Date:</strong> {new Date().toLocaleDateString('en-US', { dateStyle: 'long' })}</p>
+            <p><strong>Date:</strong> {new Date().toLocaleDateString('de-CH', { dateStyle: 'long' })}</p>
           </div>
         </motion.div>
       </div>
@@ -307,7 +307,7 @@ export default function SigningPage() {
           {signerInfo?.expiresAt && (
             <div className="mt-4 flex items-center gap-2 text-sm text-amber-600 bg-amber-50 rounded-lg px-3 py-2">
               <Clock className="w-4 h-4" />
-              <span>This signing request expires on {new Date(signerInfo.expiresAt).toLocaleDateString('en-US', { dateStyle: 'long' })}</span>
+              <span>This signing request expires on {new Date(signerInfo.expiresAt).toLocaleDateString('de-CH', { dateStyle: 'long' })}</span>
             </div>
           )}
         </div>

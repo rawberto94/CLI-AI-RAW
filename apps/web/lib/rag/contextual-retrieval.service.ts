@@ -18,6 +18,7 @@
 
 import OpenAI from 'openai';
 import { createOpenAIClient, hasAIClientConfig } from '@/lib/openai-client';
+import { analysisLanguageInstructions } from '@repo/utils';
 
 const openai = createOpenAIClient();
 
@@ -49,7 +50,8 @@ export async function getDocumentSummary(
       messages: [
         {
           role: 'system',
-          content: `Summarize this contract in 3-4 sentences. Include: document type, parties involved, primary subject matter, and key terms. Be factual and concise.`,
+          content: `Summarize this contract in 3-4 sentences. Include: document type, parties involved, primary subject matter, and key terms. Be factual and concise.
+${analysisLanguageInstructions({ contractText: rawText })}`,
         },
         {
           role: 'user',
@@ -96,6 +98,7 @@ Given the document summary and a specific chunk, write a 1-2 sentence context pr
 2. Provides enough context so the chunk can be understood in isolation
 3. Mentions the contract type and relevant party names if applicable
 
+${analysisLanguageInstructions({ contractText: chunk.text })}
 Return ONLY the context prefix — no explanation, no quotes.
 
 Example:

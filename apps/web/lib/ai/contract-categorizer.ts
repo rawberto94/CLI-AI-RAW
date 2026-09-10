@@ -13,6 +13,7 @@
  */
 
 import { openai } from "@/lib/openai-client";
+import { analysisLanguageInstructions } from "@repo/utils";
 
 // ============================================================================
 // TYPES
@@ -598,7 +599,8 @@ export class AIContractCategorizer {
         messages: [
           {
             role: 'system',
-            content: `You are a senior legal analyst specializing in contract classification, risk assessment, and regulatory compliance. 
+            content: `You are a senior legal analyst specializing in contract classification, risk assessment, and regulatory compliance.
+${analysisLanguageInstructions({ contractText: truncatedText })} 
 You have deep expertise in commercial agreements, corporate transactions, employment law, procurement, IP licensing, and data protection.
 
 CLASSIFICATION PRINCIPLES:
@@ -687,6 +689,7 @@ Always respond with valid JSON matching the requested schema exactly.`,
           {
             role: 'system',
             content: `Classify the contract by its primary legal purpose and assess risk. Use the most specific type available.
+${analysisLanguageInstructions({ contractText: truncatedText })}
 
 Contract Types: MSA|SOW|NDA|SLA|DPA|LICENSE|EMPLOYMENT|CONSULTING|VENDOR|PURCHASE|LEASE|PARTNERSHIP|AMENDMENT|RENEWAL|SUBCONTRACT|SUBSCRIPTION|LOAN|INVESTMENT|MERGER_ACQUISITION|INSURANCE|FRANCHISE|DISTRIBUTION|SUPPLY|MANUFACTURING|MAINTENANCE|CONSTRUCTION|OFFER_LETTER|INDEPENDENT_CONTRACTOR|NON_COMPETE|SEPARATION_AGREEMENT|LETTER_OF_INTENT|MEMORANDUM_OF_UNDERSTANDING|ENGAGEMENT_LETTER|WORK_ORDER|CHANGE_ORDER|PURCHASE_ORDER|TERMS_OF_SERVICE|PRIVACY_POLICY|OTHER
 

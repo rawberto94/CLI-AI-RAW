@@ -7,6 +7,8 @@
  * - MISTRAL_API_URL: Optional custom endpoint (default: https://api.mistral.ai)
  */
 
+import { analysisLanguageInstructions } from '@repo/utils';
+
 export interface MistralAnalysisResult {
   summary: string;
   keyTerms: string[];
@@ -101,6 +103,7 @@ export async function analyzeDocumentWithMistral(
 1. A concise summary (2-3 sentences)
 2. Key terms and concepts (up to 10)
 ${options?.extractEntities ? '3. Named entities (parties, dates, amounts, locations) with confidence scores' : ''}
+${analysisLanguageInstructions({ contractText: truncatedText })}
 
 Respond in JSON format:
 {
@@ -167,7 +170,9 @@ export async function generateContractInsights(
   }
 
   const systemPrompt = `You are a contract analysis assistant. Answer questions about the provided contract.
-Respond in JSON format with question numbers as keys.`;
+Respond in JSON format with question numbers as keys.
+${analysisLanguageInstructions({ contractText })}
+Keep quoted contract text verbatim.`;
 
   const userPrompt = `Contract:\n${contractText.substring(0, 25000)}\n\nQuestions:\n${questions.map((q, i) => `${i + 1}. ${q}`).join('\n')}`;
 

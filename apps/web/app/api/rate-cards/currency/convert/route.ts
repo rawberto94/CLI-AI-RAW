@@ -26,7 +26,11 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
       return createErrorResponse(ctx, 'VALIDATION_ERROR', 'amount and from currency are required', 400);
     }
 
-    const rate = EXCHANGE_RATES[from.toUpperCase()] ?? EXCHANGE_RATES['USD']!;
+    const fromCode = String(from).toUpperCase();
+    const rate = EXCHANGE_RATES[fromCode];
+    if (!rate) {
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', `Unknown currency: ${fromCode}`, 400);
+    }
 
     const converted = {
       usd: amount * rate.usd,

@@ -1,5 +1,6 @@
 
 import { prisma } from '../lib/prisma';
+import { formatMoneyText } from '@repo/utils';
 
 
 export interface NegotiationScenario {
@@ -277,7 +278,7 @@ export class NegotiationScenarioService {
 
     const highConfidence = analyses.filter((a) => a.confidenceLevel > 70).length;
 
-    return `Analyzed ${analyses.length} rate cards with total expected savings of $${totalSavings.toLocaleString()}. ${highConfidence} rate cards have high confidence levels (>70%).`;
+    return `Analyzed ${analyses.length} rate cards with total expected savings of ${formatMoneyText(totalSavings)}. ${highConfidence} rate cards have high confidence levels (>70%).`;
   }
 }
 

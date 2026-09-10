@@ -8,7 +8,8 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import { getTenantId } from '@/lib/tenant';
-import { formatCurrency, formatDate } from '@/lib/design-tokens'
+import { formatDate } from '@/lib/design-tokens'
+import { formatAmountWithCurrency } from '@/lib/utils/formatters'
 import Link from 'next/link'
 import {
   FileText,
@@ -16,7 +17,6 @@ import {
   Users,
   Calendar,
   DollarSign,
-  ArrowRight,
   RefreshCw,
   Layers,
 } from 'lucide-react'
@@ -94,7 +94,7 @@ const ContractCard = memo(function ContractCard({ contract }: { contract: Relate
               {contract.totalValue && (
                 <span className="flex items-center gap-1">
                   <DollarSign className="h-3 w-3" />
-                  {formatCurrency(contract.totalValue, contract.currency || 'CHF')}
+                  {formatAmountWithCurrency(contract.totalValue, contract.currency)}
                 </span>
               )}
               {contract.expirationDate && (
@@ -226,12 +226,9 @@ export const RelatedContracts = memo(function RelatedContracts({
             </AnimatePresence>
             
             {contracts.length > 5 && (
-              <Link href={`/contracts?relatedTo=${contractId}`}>
-                <Button variant="ghost" size="sm" className="w-full text-xs text-slate-500 hover:text-slate-700">
-                  View all {contracts.length} related contracts
-                  <ArrowRight className="h-3.5 w-3.5 ml-1.5" />
-                </Button>
-              </Link>
+              <p className="pt-1 text-center text-xs font-medium leading-4 text-slate-500">
+                Showing 5 of {contracts.length} related contracts
+              </p>
             )}
           </div>
         )}

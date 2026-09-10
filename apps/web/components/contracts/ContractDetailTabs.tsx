@@ -31,6 +31,7 @@ import { useRouter } from 'next/navigation'
 import { useToast } from '@/components/ui/toast-provider'
 import type { Contract, Artifact, OverviewData, ClausesData, FinancialData, RiskData, ComplianceData } from '@/types/artifacts'
 import { logError, logUserAction, logPerformance } from '@/lib/logger'
+import { formatAmountWithCurrency } from '@/lib/utils/formatters'
 import { EnhancedArtifactViewer } from '@/components/contracts/EnhancedArtifactViewer'
 import { useKeyboardShortcuts, type KeyboardShortcut } from '@/hooks/useKeyboardShortcuts'
 import { KeyboardShortcutsHelp } from '@/components/contracts/KeyboardShortcutsHelp'
@@ -392,7 +393,7 @@ export function ContractDetailTabs({ contract, artifacts, initialTab, onEdit, on
               <div className="flex items-center gap-2">
                 <DollarSign className="h-5 w-5 text-violet-600" />
                 <span className="text-2xl font-bold">
-                  ${enrichedContract?.totalValue?.toLocaleString() || '0'}
+                  {formatAmountWithCurrency(enrichedContract?.totalValue, enrichedContract?.currency)}
                 </span>
               </div>
             </CardContent>
@@ -610,13 +611,13 @@ export function ContractDetailTabs({ contract, artifacts, initialTab, onEdit, on
               <div className="p-4 bg-violet-50 rounded-lg">
                 <p className="text-sm text-violet-600 mb-1">Total Contract Value</p>
                 <p className="text-2xl font-bold text-violet-900">
-                  ${contract?.totalValue?.toLocaleString() || '0'}
+                  {formatAmountWithCurrency(contract?.totalValue, contract?.currency)}
                 </p>
               </div>
               <div className="p-4 bg-green-50 rounded-lg">
                 <p className="text-sm text-green-600 mb-1">Potential Savings</p>
                 <p className="text-2xl font-bold text-green-900">
-                  ${contract?.potentialSavings?.toLocaleString() || '0'}
+                  {formatAmountWithCurrency(contract?.potentialSavings, contract?.currency)}
                 </p>
               </div>
             </div>
@@ -701,10 +702,7 @@ export function ContractDetailTabs({ contract, artifacts, initialTab, onEdit, on
                       {dataMode === 'real' ? 'Loading...' : `Updated ${version} days ago`}
                     </p>
                   </div>
-                  <Button variant="outline" size="sm">
-                    <Eye className="h-4 w-4 mr-1" />
-                    View
-                  </Button>
+
                 </div>
               ))}
             </div>
@@ -752,7 +750,7 @@ export function ContractDetailTabs({ contract, artifacts, initialTab, onEdit, on
                 <div>
                   <p className="font-medium text-violet-900">Compliance Status</p>
                   <p className="text-sm text-violet-700 mt-1">
-                    All required clauses present and up to date
+                    Open the Compliance and Clauses insights for findings from this document. This panel no longer assumes every clause is present.
                   </p>
                 </div>
               </div>

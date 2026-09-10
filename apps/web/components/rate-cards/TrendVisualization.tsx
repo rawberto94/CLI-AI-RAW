@@ -4,6 +4,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { TrendingUp, TrendingDown, Minus, Activity, Calendar } from 'lucide-react';
+import { formatRateMoney } from '@/lib/rate-cards/format'
 
 // ============================================================================
 // Types
@@ -34,12 +35,7 @@ interface TrendVisualizationProps {
 // ============================================================================
 
 function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(value);
+  return formatRateMoney(value);
 }
 
 function formatPercent(value: number, includeSign: boolean = true): string {
@@ -274,12 +270,12 @@ function SimpleHistoricalChart({
 
       {/* X-axis labels */}
       <div className="flex justify-between text-xs text-gray-500 px-4">
-        <div>{firstData ? new Date(firstData.date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : ''}</div>
+        <div>{firstData ? new Date(firstData.date).toLocaleDateString('de-CH', { month: 'short', year: 'numeric' }) : ''}</div>
         {data.length > 2 && (() => {
           const midData = data[Math.floor(data.length / 2)];
-          return midData ? <div>{new Date(midData.date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</div> : null;
+          return midData ? <div>{new Date(midData.date).toLocaleDateString('de-CH', { month: 'short', year: 'numeric' })}</div> : null;
         })()}
-        <div>{lastData ? new Date(lastData.date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : ''}</div>
+        <div>{lastData ? new Date(lastData.date).toLocaleDateString('de-CH', { month: 'short', year: 'numeric' }) : ''}</div>
       </div>
     </div>
   );

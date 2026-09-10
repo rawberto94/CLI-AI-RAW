@@ -28,6 +28,7 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -340,8 +341,8 @@ export const ActivityFeed = memo(function ActivityFeed({
 
       {filteredActivities.length > 0 && (
         <div className="text-center">
-          <Button variant="ghost" size="sm" className="text-slate-500">
-            View all activity
+          <Button variant="ghost" size="sm" className="text-slate-500" asChild>
+            <Link href="/audit-logs">View all activity</Link>
           </Button>
         </div>
       )}

@@ -78,19 +78,19 @@ const simulatedResponses: Record<string, string> = {
    - Specialized expertise: +10-15%
    - Long-term commitment: -5-8%
 
-3. **Market positioning:** You're currently at the 55th percentile. Moving to 60th would add ~$8K/year without significant churn risk.`,
+3. **Market positioning:** You're currently at the 55th percentile. Moving to 60th would add ~8K/year without significant churn risk.`,
   benchmark: `Comparing your current rates against industry benchmarks:
 
 | Metric | Your Rate | Market P50 | Difference |
 |--------|-----------|------------|------------|
-| Base Rate | $125/hr | $120/hr | +4.2% |
-| Senior Rate | $175/hr | $180/hr | -2.8% |
-| Manager Rate | $200/hr | $210/hr | -4.8% |
+| Base Rate | 125/hr | 120/hr | +4.2% |
+| Senior Rate | 175/hr | 180/hr | -2.8% |
+| Manager Rate | 200/hr | 210/hr | -4.8% |
 
 **Key Insights:**
 • Your base rates are competitive
 • Senior and manager tiers have room for increase
-• Consider adjusting by $5-10/hr to align with market`,
+• Consider adjusting by 5-10/hr to align with market`,
   negotiation: `Based on the contract analysis, here are key negotiation points:
 
 🎯 **High Priority:**
@@ -98,7 +98,7 @@ const simulatedResponses: Record<string, string> = {
 2. Rate escalation clause is missing - request 3% annual increase
 
 💡 **Moderate Priority:**
-3. Travel expenses at $500/day cap - market is $750/day
+3. Travel expenses at 500/day cap - market is 750/day
 4. Overtime multiplier at 1.25x - standard is 1.5x
 
 ⚠️ **Risk Areas:**

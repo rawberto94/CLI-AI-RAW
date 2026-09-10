@@ -111,17 +111,25 @@ export function ContractCard({
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
-  const formatCurrency = (value: number, currency: string = "CHF") => {
-    return new Intl.NumberFormat("de-CH", {
-      style: "currency",
-      currency,
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(value);
+  const formatCurrency = (value: number, currency?: string) => {
+    const code = typeof currency === 'string' ? currency.trim() : '';
+    if (code.length === 3 && code !== 'XXX') {
+      try {
+        return new Intl.NumberFormat("de-CH", {
+          style: "currency",
+          currency: code,
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 0,
+        }).format(value);
+      } catch {
+        return `${code} ${value.toLocaleString("de-CH")}`;
+      }
+    }
+    return value.toLocaleString("de-CH");
   };
 
   const formatDate = (date: Date) => {
-    return new Intl.DateTimeFormat("en-US", {
+    return new Intl.DateTimeFormat("de-CH", {
       month: "short",
       day: "numeric",
       year: "numeric",

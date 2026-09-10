@@ -661,14 +661,7 @@ export const ContractComments = memo(function ContractComments({
             className="text-sm"
           />
           <div className="flex items-center justify-between mt-2">
-            <div className="flex gap-1">
-              <Button variant="ghost" size="sm" className="h-7">
-                <AtSign className="h-4 w-4" />
-              </Button>
-              <Button variant="ghost" size="sm" className="h-7">
-                <Paperclip className="h-4 w-4" />
-              </Button>
-            </div>
+            <div />
             <Button
               size="sm"
               onClick={handleSubmitComment}

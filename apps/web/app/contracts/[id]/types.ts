@@ -44,6 +44,7 @@ export interface ChildContract {
   effectiveDate: string | null
   expirationDate: string | null
   totalValue: number | null
+  currency?: string | null
   createdAt: string | null
 }
 

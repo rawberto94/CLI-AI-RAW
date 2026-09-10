@@ -122,15 +122,26 @@ export const formatDateRange = (range: DateRange): string => {
   return `${format(range.from!, 'MMM d, yyyy')} - ${format(range.to!, 'MMM d, yyyy')}`
 }
 
-export const formatNumberRange = (range: NumberRange, currency = 'USD'): string => {
+export const formatNumberRange = (range: NumberRange, currency?: string): string => {
   if (range.min === undefined && range.max === undefined) return ''
-  
-  const formatter = new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency,
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  })
+
+  const code = typeof currency === 'string' ? currency.trim() : ''
+  const format = (amount: number) => {
+    if (code.length === 3 && code !== 'XXX') {
+      try {
+        return new Intl.NumberFormat('de-CH', {
+          style: 'currency',
+          currency: code,
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 0,
+        }).format(amount)
+      } catch {
+        return `${code} ${amount.toLocaleString('de-CH')}`
+      }
+    }
+    return amount.toLocaleString('de-CH')
+  }
+  const formatter = { format }
   
   if (range.min !== undefined && range.max === undefined) {
     return `From ${formatter.format(range.min)}`

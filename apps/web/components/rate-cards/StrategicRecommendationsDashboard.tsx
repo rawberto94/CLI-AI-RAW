@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { useStrategicRecommendations, type StrategicRecommendation } from '@/hooks/use-rate-card-queries';
 import { DataFreshnessIndicator } from '@/components/shared/DataFreshnessIndicator';
+import { formatRateMoney } from '@/lib/rate-cards/format'
 
 // ============================================================================
 // Types (re-exported from hook for local use)
@@ -76,13 +77,8 @@ function getEffortColor(effort: 'LOW' | 'MEDIUM' | 'HIGH'): string {
   }
 }
 
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(amount);
+function formatCurrency(value: number): string {
+  return formatRateMoney(value);
 }
 
 // ============================================================================

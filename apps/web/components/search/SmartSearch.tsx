@@ -19,6 +19,7 @@ import {
   TrendingUp
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { formatAmountWithCurrency } from '@/lib/utils/formatters'
 import Link from 'next/link'
 
 interface SearchResult {
@@ -29,6 +30,7 @@ interface SearchResult {
   metadata: {
     supplier?: string
     value?: number
+    currency?: string | null
     date?: string
     status?: string
   }
@@ -209,7 +211,7 @@ export function SmartSearch() {
                   <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2 block">Min Value</label>
                   <Input
                     type="number"
-                    placeholder="$0"
+                    placeholder="0"
                     value={filters.minValue || ''}
                     onChange={(e) => setFilters({ ...filters, minValue: Number(e.target.value) })}
                   />
@@ -261,10 +263,7 @@ export function SmartSearch() {
             <p className="text-sm text-slate-600 dark:text-slate-400">
               Found <strong className="text-slate-900 dark:text-white">{results.length}</strong> results for &ldquo;<span className="text-violet-600 dark:text-violet-400 font-medium">{query}</span>&rdquo;
             </p>
-            <Button variant="outline" size="sm">
-              <TrendingUp className="h-4 w-4 mr-2" />
-              Sort by relevance
-            </Button>
+
           </div>
 
           {results.map((result) => (
@@ -304,7 +303,7 @@ export function SmartSearch() {
                     {result.metadata.value && (
                       <div className="flex items-center gap-1.5">
                         <DollarSign className="h-4 w-4 text-emerald-500" />
-                        ${result.metadata.value.toLocaleString()}
+                        {formatAmountWithCurrency(result.metadata.value, result.metadata.currency)}
                       </div>
                     )}
                     {result.metadata.date && (

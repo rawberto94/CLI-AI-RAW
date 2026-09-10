@@ -17,6 +17,7 @@ import {
   ComposedChart,
   ReferenceLine,
 } from 'recharts';
+import { formatRateMoney } from '@/lib/rate-cards/format'
 
 // ============================================================================
 // Types
@@ -62,12 +63,7 @@ interface ForecastChartProps {
 // ============================================================================
 
 function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(value);
+  return formatRateMoney(value);
 }
 
 function getRiskLevelColor(riskLevel: string): string {
@@ -282,7 +278,7 @@ export function ForecastChart({
               <YAxis 
                 stroke="#6b7280"
                 style={{ fontSize: '12px' }}
-                tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+                tickFormatter={(value) => formatRateMoney(value)}
               />
               <Tooltip content={<CustomTooltip />} />
               <Legend 

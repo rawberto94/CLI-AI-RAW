@@ -26,6 +26,7 @@ import {
   BarChart3
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { formatAmountWithCurrency } from '@/lib/utils/formatters';
 
 export default function SavingsPipelinePage() {
   const [mode, setMode] = useState<DataMode>('real');
@@ -202,11 +203,7 @@ export default function SavingsPipelinePage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="flex items-end">
-              <Button className="w-full">
-                Apply Filters
-              </Button>
-            </div>
+
           </div>
         </CardContent>
       </Card>
@@ -253,7 +250,7 @@ export default function SavingsPipelinePage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  ${(data.pipeline.total / 1000000).toFixed(2)}M
+                  {formatAmountWithCurrency(data.pipeline.total)}
                 </div>
                 <p className="text-xs text-muted-foreground">
                   Weighted by probability
@@ -268,7 +265,7 @@ export default function SavingsPipelinePage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  ${((data.pipeline.byStatus.identified || 0) / 1000000).toFixed(2)}M
+                  {formatAmountWithCurrency(data.pipeline.byStatus.identified || 0)}
                 </div>
                 <p className="text-xs text-muted-foreground">
                   Opportunities found
@@ -283,7 +280,7 @@ export default function SavingsPipelinePage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  ${((data.pipeline.byStatus.in_progress || 0) / 1000000).toFixed(2)}M
+                  {formatAmountWithCurrency(data.pipeline.byStatus.in_progress || 0)}
                 </div>
                 <p className="text-xs text-muted-foreground">
                   Being pursued
@@ -298,7 +295,7 @@ export default function SavingsPipelinePage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-green-600">
-                  ${((data.pipeline.byStatus.realized || 0) / 1000000).toFixed(2)}M
+                  {formatAmountWithCurrency(data.pipeline.byStatus.realized || 0)}
                 </div>
                 <p className="text-xs text-muted-foreground">
                   Savings achieved
@@ -338,7 +335,7 @@ export default function SavingsPipelinePage() {
                       </div>
                       <div className="text-right ml-4">
                         <div className="text-lg font-bold text-green-600">
-                          ${(opp.potentialSavings / 1000).toFixed(0)}K
+                          {formatAmountWithCurrency(opp.potentialSavings)}
                         </div>
                         <div className="flex items-center gap-2 mt-1">
                           <div className={`w-2 h-2 rounded-full ${getStatusColor(opp.status)}`} />
@@ -374,7 +371,7 @@ export default function SavingsPipelinePage() {
                       <div className="flex justify-between items-center">
                         <span className="text-sm font-medium">{category}</span>
                         <span className="text-sm font-bold">
-                          ${(value / 1000).toFixed(0)}K ({percentage.toFixed(1)}%)
+                          {formatAmountWithCurrency(value)} ({percentage.toFixed(1)}%)
                         </span>
                       </div>
                       <div className="h-2 bg-muted rounded-full overflow-hidden">
@@ -417,7 +414,7 @@ export default function SavingsPipelinePage() {
                             style={{ width: `${(trend.identified / ((data.trends[data.trends.length - 1] as { identified: number } | undefined)?.identified || 1)) * 100}%` }}
                           >
                             <span className="text-xs font-medium text-white">
-                              ${(trend.identified / 1000000).toFixed(1)}M
+                              {formatAmountWithCurrency(trend.identified)}
                             </span>
                           </div>
                         </div>
@@ -430,7 +427,7 @@ export default function SavingsPipelinePage() {
                             style={{ width: `${(trend.realized / ((data.trends[data.trends.length - 1] as { identified: number } | undefined)?.identified || 1)) * 100}%` }}
                           >
                             <span className="text-xs font-medium text-white">
-                              ${(trend.realized / 1000000).toFixed(1)}M
+                              {formatAmountWithCurrency(trend.realized)}
                             </span>
                           </div>
                         </div>

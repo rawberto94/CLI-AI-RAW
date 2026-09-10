@@ -7,6 +7,7 @@ import { createErrorResponse, createSuccessResponse } from '@/lib/api-middleware
 import { applyContractChangeSideEffects } from '@/lib/contracts/server/contract-change-side-effects';
 
 import type { ContractApiContext } from '@/lib/contracts/server/context';
+import { pickOurOrganization } from '@repo/utils';
 
 const RAG_TRIGGER_ARTIFACT_TYPES = [
   'OVERVIEW',
@@ -19,6 +20,20 @@ const RAG_TRIGGER_ARTIFACT_TYPES = [
 async function getPrismaClient() {
   const { prisma } = await import('@/lib/prisma');
   return prisma;
+}
+
+async function loadOurOrganization(
+  prisma: Awaited<ReturnType<typeof getPrismaClient>>,
+  tenantId: string,
+) {
+  const [tenant, settings] = await Promise.all([
+    prisma.tenant.findUnique({ where: { id: tenantId }, select: { name: true } }),
+    prisma.tenantSettings.findFirst({ where: { tenantId }, select: { customFields: true } }),
+  ]);
+  return pickOurOrganization({
+    settings: settings?.customFields,
+    tenantName: tenant?.name,
+  });
 }
 
 async function clearRegeneratedArtifactFailureState(
@@ -279,6 +294,7 @@ export async function postContractArtifactRegeneration(
   }
 
   const { aiArtifactGeneratorService } = await import('data-orchestration/services');
+  const ourOrganization = await loadOurOrganization(prisma, tenantId);
   const result = await aiArtifactGeneratorService.generateArtifact(
     artifactType,
     contract.rawText,
@@ -288,6 +304,7 @@ export async function postContractArtifactRegeneration(
       preferredMethod: 'ai',
       enableFallback: true,
       userId: context.userId,
+      ourOrganization,
     },
   );
 
@@ -397,12 +414,13 @@ async function regenerateContractArtifactAsync(
   try {
     const startTime = Date.now();
     const { aiArtifactGeneratorService } = await import('data-orchestration/services');
+    const ourOrganization = await loadOurOrganization(prisma, tenantId);
 
     const generateResult = await (aiArtifactGeneratorService.generateArtifact as any)(
       contractId,
       tenantId,
       artifactType,
-      { rawText },
+      { rawText, ourOrganization },
     );
 
     if (!generateResult.success || !generateResult.artifact) {

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { DEFAULT_DISPLAY_CURRENCY } from '@/lib/display-currency';
 import { Button } from '@/components/ui/button';
 import { LoadingButton } from '@/components/feedback/LoadingButton';
 import { Input } from '@/components/ui/input';
@@ -31,7 +32,7 @@ export function BaselineEntryForm({
     categoryL1: initialData?.categoryL1 || '',
     categoryL2: initialData?.categoryL2 || '',
     dailyRateUSD: initialData?.dailyRateUSD || '',
-    currency: initialData?.currency || 'USD',
+    currency: initialData?.currency || DEFAULT_DISPLAY_CURRENCY,
     minimumRate: initialData?.minimumRate || '',
     maximumRate: initialData?.maximumRate || '',
     tolerancePercentage: initialData?.tolerancePercentage || '5',
@@ -277,7 +278,7 @@ export function BaselineEntryForm({
         
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <Label htmlFor="dailyRateUSD">Target Daily Rate (USD) *</Label>
+            <Label htmlFor="dailyRateUSD">Target Daily Rate *</Label>
             <Input
               id="dailyRateUSD"
               type="number"
@@ -297,7 +298,7 @@ export function BaselineEntryForm({
               id="currency"
               value={formData.currency}
               onChange={(e) => handleChange('currency', e.target.value)}
-              placeholder="USD"
+              placeholder="CHF"
             />
           </div>
         </div>

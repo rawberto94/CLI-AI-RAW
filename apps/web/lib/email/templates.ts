@@ -318,7 +318,7 @@ export const emailTemplates = {
           <div class="container">
             <div class="header">
               <h1 style="margin: 0;">📊 Daily Contract Summary</h1>
-              <p style="margin: 10px 0 0 0; opacity: 0.9;">${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+              <p style="margin: 10px 0 0 0; opacity: 0.9;">${new Date().toLocaleDateString('de-CH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
             </div>
             <div class="content">
               <p>Good morning, ${data.recipientName}!</p>

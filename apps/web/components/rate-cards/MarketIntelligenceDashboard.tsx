@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { TrendingUp, TrendingDown, Minus, AlertTriangle, Globe, Users, BarChart3 } from 'lucide-react';
+import { formatRateMoney } from '@/lib/rate-cards/format';
 
 interface MarketIntelligenceProps {
   tenantId?: string;
@@ -210,7 +211,7 @@ export function MarketIntelligenceDashboard({ tenantId }: MarketIntelligenceProp
                     <CardTitle className="text-sm font-medium">Average Rate</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">${intelligence.statistics.mean.toFixed(0)}</div>
+                    <div className="text-2xl font-bold">{formatRateMoney(intelligence.statistics.mean)}</div>
                     <p className="text-xs text-muted-foreground">per day</p>
                   </CardContent>
                 </Card>
@@ -220,7 +221,7 @@ export function MarketIntelligenceDashboard({ tenantId }: MarketIntelligenceProp
                     <CardTitle className="text-sm font-medium">Median Rate</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">${intelligence.statistics.median.toFixed(0)}</div>
+                    <div className="text-2xl font-bold">{formatRateMoney(intelligence.statistics.median)}</div>
                     <p className="text-xs text-muted-foreground">per day</p>
                   </CardContent>
                 </Card>
@@ -265,23 +266,23 @@ export function MarketIntelligenceDashboard({ tenantId }: MarketIntelligenceProp
                     <div className="grid grid-cols-5 gap-4 text-center">
                       <div>
                         <div className="text-sm text-muted-foreground">P10</div>
-                        <div className="text-lg font-semibold">${intelligence.statistics.p10.toFixed(0)}</div>
+                        <div className="text-lg font-semibold">{formatRateMoney(intelligence.statistics.p10)}</div>
                       </div>
                       <div>
                         <div className="text-sm text-muted-foreground">P25</div>
-                        <div className="text-lg font-semibold">${intelligence.statistics.p25.toFixed(0)}</div>
+                        <div className="text-lg font-semibold">{formatRateMoney(intelligence.statistics.p25)}</div>
                       </div>
                       <div>
                         <div className="text-sm text-muted-foreground">P50</div>
-                        <div className="text-lg font-semibold">${intelligence.statistics.p50.toFixed(0)}</div>
+                        <div className="text-lg font-semibold">{formatRateMoney(intelligence.statistics.p50)}</div>
                       </div>
                       <div>
                         <div className="text-sm text-muted-foreground">P75</div>
-                        <div className="text-lg font-semibold">${intelligence.statistics.p75.toFixed(0)}</div>
+                        <div className="text-lg font-semibold">{formatRateMoney(intelligence.statistics.p75)}</div>
                       </div>
                       <div>
                         <div className="text-sm text-muted-foreground">P90</div>
-                        <div className="text-lg font-semibold">${intelligence.statistics.p90.toFixed(0)}</div>
+                        <div className="text-lg font-semibold">{formatRateMoney(intelligence.statistics.p90)}</div>
                       </div>
                     </div>
                     <div className="h-2 bg-gradient-to-r from-violet-500 via-yellow-500 to-red-500 rounded-full" />
@@ -311,7 +312,7 @@ export function MarketIntelligenceDashboard({ tenantId }: MarketIntelligenceProp
                           </div>
                         </div>
                         <div className="text-right">
-                          <div className="font-semibold">${supplier.averageRate.toFixed(0)}/day</div>
+                          <div className="font-semibold">{formatRateMoney(supplier.averageRate)}/day</div>
                         </div>
                       </div>
                     ))}
@@ -397,7 +398,7 @@ export function MarketIntelligenceDashboard({ tenantId }: MarketIntelligenceProp
                           </span>
                         </div>
                         <div className="text-sm text-muted-foreground">
-                          ${role.currentAverage.toFixed(0)}/day
+                          {formatRateMoney(role.currentAverage)}/day
                         </div>
                       </div>
                     </div>
@@ -441,7 +442,7 @@ export function MarketIntelligenceDashboard({ tenantId }: MarketIntelligenceProp
                           Score: {supplier.competitivenessScore.toFixed(0)}
                         </div>
                         <div className="text-sm text-muted-foreground">
-                          Avg: ${supplier.averageRate.toFixed(0)}/day
+                          Avg: {formatRateMoney(supplier.averageRate)}/day
                         </div>
                       </div>
                     </div>

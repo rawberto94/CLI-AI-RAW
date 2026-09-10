@@ -112,7 +112,7 @@ function formatDueDate(dueDate: Date): string {
   if (days === 0) return 'Due today';
   if (days === 1) return 'Due tomorrow';
   if (days <= 7) return `Due in ${days} days`;
-  return new Date(dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  return new Date(dueDate).toLocaleDateString('de-CH', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 // ============================================================================

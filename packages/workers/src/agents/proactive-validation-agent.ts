@@ -13,6 +13,7 @@ import type {
   AgentAction,
 } from './types';
 import { logger } from '../utils/logger';
+import { formatMoneyText } from '@repo/utils';
 
 export class ProactiveValidationAgent extends BaseAgent {
   name = 'proactive-validation-agent';
@@ -402,7 +403,7 @@ export class ProactiveValidationAgent extends BaseAgent {
           type: 'value_out_of_range',
           field: 'value',
           severity: 'medium',
-          description: `Unusually high contract value: $${value.toLocaleString()}`,
+          description: `Unusually high contract value: ${formatMoneyText(value, data.currency)}`,
           suggestedAction: 'flag',
           autoFixable: false,
         });

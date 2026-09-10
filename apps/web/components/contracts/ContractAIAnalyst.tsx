@@ -683,9 +683,9 @@ export function ContractAIAnalyst({
                     Legal
                   </Badge>
                 </div>
-                <Button variant="ghost" size="sm" className="group-hover:bg-violet-100 dark:group-hover:bg-violet-900/30">
+                <span className="inline-flex h-8 w-8 items-center justify-center rounded-md group-hover:bg-violet-100 dark:group-hover:bg-violet-900/30">
                   <ChevronDown className="w-4 h-4 group-hover:text-violet-600 dark:group-hover:text-indigo-400" />
-                </Button>
+                </span>
               </div>
             </div>
             {/* Quick hint */}

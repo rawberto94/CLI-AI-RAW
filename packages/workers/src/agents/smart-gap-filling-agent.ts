@@ -13,6 +13,7 @@ import type {
   GapFillingResult,
   AgentAction,
 } from './types';
+import { analysisLanguageInstructions, parseMonetaryAmount } from '@repo/utils';
 import { logger } from '../utils/logger';
 import { openai } from '../lib/openai';
 
@@ -266,6 +267,8 @@ export class SmartGapFillingAgent extends BaseAgent {
   ): Promise<{ value: any; confidence: number; reasoning: string } | null> {
     try {
       const prompt = `You are a contract analysis expert. Based on the full context of this contract, infer the most likely value for the missing field.
+${analysisLanguageInstructions({ contractText })}
+Do not invent USD, TCV 0, or a currency that is not written in the contract. If the value is not explicit, return null.
 
 Field to infer: ${field}
 
@@ -286,7 +289,9 @@ If you cannot make a reasonable inference, return: { "value": null, "confidence"
       const response = await openai.chat.completions.create({
         model: 'gpt-4o-mini',
         messages: [
-          { role: 'system', content: 'You are an expert at analyzing contracts and inferring missing information from context.' },
+          { role: 'system', content: `You are an expert at analyzing contracts and inferring missing information from context.
+${analysisLanguageInstructions({ contractText })}
+Do not invent USD or TCV 0.` },
           { role: 'user', content: prompt },
         ],
         temperature: 0.2,
@@ -473,9 +478,9 @@ If you cannot make a reasonable inference, return: { "value": null, "confidence"
         
         if (liabilityClause) {
           // Extract amount from clause content
-          const amountMatch = liabilityClause.content?.match(/\$[\d,]+(?:\.\d{2})?/);
+          const amountMatch = liabilityClause.content?.match(/(?:CHF|SFr\.?|Fr\.|EUR|€|USD|\$)\s*[\d''’.,]+/i);
           if (amountMatch) {
-            return parseFloat(amountMatch[0].replace(/[$,]/g, ''));
+            return parseMonetaryAmount(amountMatch[0]);
           }
         }
         return null;
@@ -515,7 +520,8 @@ If you cannot make a reasonable inference, return: { "value": null, "confidence"
         messages: [
           {
             role: 'system',
-            content: prompt,
+            content: `${prompt}
+${analysisLanguageInstructions({ contractText })}`,
           },
           {
             role: 'user',
@@ -548,12 +554,12 @@ If you cannot make a reasonable inference, return: { "value": null, "confidence"
    */
   private buildFieldSpecificPrompt(field: string, artifactType: string, aggressiveMode: boolean = false): string {
     const basePrompts: Record<string, string> = {
-      'effectiveDate': `Extract the contract effective date. Look for "effective date", "commencement date", "start date", or dates mentioned near the beginning. Return JSON: { "value": "YYYY-MM-DD", "confidence": 0.0-1.0, "reasoning": "explanation" }`,
-      'expirationDate': `Extract the contract expiration/termination date. Look for "expiration", "termination", "end date", or term duration clauses. Return JSON: { "value": "YYYY-MM-DD", "confidence": 0.0-1.0, "reasoning": "explanation" }`,
+      'effectiveDate': `Extract the contract effective date. Look for "effective date", "commencement date", "start date", "Inkrafttreten", "Gültig ab", or dates near the beginning. Dates may be DD.MM.YYYY. Return JSON: { "value": "YYYY-MM-DD", "confidence": 0.0-1.0, "reasoning": "explanation" }`,
+      'expirationDate': `Extract the contract expiration/termination date. Look for "expiration", "termination", "end date", "Vertragsende", "Kündigung", or term duration clauses. Dates may be DD.MM.YYYY. Return JSON: { "value": "YYYY-MM-DD", "confidence": 0.0-1.0, "reasoning": "explanation" }`,
       'parties': `Extract all contract parties with their roles. Look for signature blocks, "between...and", "parties" sections. Return JSON: { "value": [{"name": "Party Name", "role": "buyer|seller|service_provider|customer|etc"}], "confidence": 0.0-1.0, "reasoning": "explanation" }`,
-      'contractValue': `Extract the total contract value/amount. Look for total price, contract amount, consideration, or fee sections. Return JSON: { "value": numeric_value, "confidence": 0.0-1.0, "reasoning": "explanation" }`,
+      'contractValue': `Extract the total contract value/amount. Look for total price, Gesamtvertragswert, Fr./CHF, consideration, or fee sections. Do not invent USD or 0. Missing is null. Return JSON: { "value": numeric_value_or_null, "confidence": 0.0-1.0, "reasoning": "explanation" }`,
       'paymentTerms': `Extract payment terms (e.g., "Net 30", "Monthly", "Upon delivery"). Look for payment, invoicing, or billing sections. Return JSON: { "value": "terms", "confidence": 0.0-1.0, "reasoning": "explanation" }`,
-      'currency': `Extract the contract currency (USD, EUR, GBP, etc). Look for currency symbols or explicit currency mentions. Return JSON: { "value": "currency_code", "confidence": 0.0-1.0, "reasoning": "explanation" }`,
+      'currency': `Extract the contract currency (CHF, EUR, USD, GBP). Fr. and SFr. mean CHF. Do not invent USD. Return JSON: { "value": "currency_code_or_null", "confidence": 0.0-1.0, "reasoning": "explanation" }`,
       'governingLaw': `Extract the governing law/jurisdiction. Look for "governed by", "jurisdiction", or "applicable law" clauses. Return JSON: { "value": "jurisdiction", "confidence": 0.0-1.0, "reasoning": "explanation" }`,
       'terminationConditions': `Extract termination conditions. Look for termination clause, notice periods, and termination for cause/convenience. Return JSON: { "value": "conditions summary", "confidence": 0.0-1.0, "reasoning": "explanation" }`,
       'renewalTerms': `Extract renewal terms. Look for auto-renewal, renewal notice, or term extension clauses. Return JSON: { "value": "renewal terms", "confidence": 0.0-1.0, "reasoning": "explanation" }`,

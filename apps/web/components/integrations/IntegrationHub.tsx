@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Link2,
@@ -22,11 +23,8 @@ import {
   ArrowLeftRight,
   Plus,
   Search,
-  Filter,
-  MoreVertical,
   ExternalLink,
   Play,
-  Pause,
   History,
   Code,
   Key,
@@ -320,6 +318,7 @@ const getTypeIcon = (type: Integration['type']) => {
 export function IntegrationHub() {
   const { useRealData } = useDataMode();
   const { toast } = useToast();
+  const router = useRouter();
   
   const [integrations, setIntegrations] = useState<Integration[]>([]);
   const [syncLogs, setSyncLogs] = useState<SyncLog[]>([]);
@@ -510,14 +509,9 @@ export function IntegrationHub() {
     }
   }, [syncLogs, toast]);
 
-  // Handle configure integration
-  const handleConfigure = useCallback((integrationId: string, integrationName: string) => {
-    toast({
-      title: 'Configuration',
-      description: `Opening settings for ${integrationName}...`,
-    });
-    // In a real app, this would open a configuration modal
-  }, [toast]);
+  const handleConfigure = useCallback(() => {
+    router.push('/admin/integrations');
+  }, [router]);
 
   // Handle enable sync
   const handleEnableSync = useCallback(async (integrationId: string) => {
@@ -722,10 +716,7 @@ export function IntegrationHub() {
                       className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500"
                     />
                   </div>
-                  <button onClick={() => toast({ title: 'Filters', description: 'Opening filter options...' })} className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-lg hover:bg-gray-50">
-                    <Filter className="h-4 w-4" />
-                    Filter
-                  </button>
+
                 </div>
 
                 {/* Integrations Grid */}
@@ -770,9 +761,7 @@ export function IntegrationHub() {
                             </div>
                           </div>
                         </div>
-                        <button className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100">
-                          <MoreVertical className="h-4 w-4" />
-                        </button>
+
                       </div>
 
                       <AnimatePresence>
@@ -832,7 +821,7 @@ export function IntegrationHub() {
                                   Enable Sync
                                 </button>
                               )}
-                              <button onClick={() => handleConfigure(integration.id, integration.name)} className="flex items-center justify-center gap-2 px-3 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 text-sm">
+                              <button onClick={handleConfigure} className="flex items-center justify-center gap-2 px-3 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 text-sm">
                                 <Settings className="h-4 w-4" />
                                 Configure
                               </button>
@@ -905,10 +894,6 @@ export function IntegrationHub() {
               <div className="space-y-6">
                 <div className="flex items-center justify-between">
                   <h3 className="font-semibold text-gray-900">Outbound Webhooks</h3>
-                  <button className="flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 text-sm">
-                    <Plus className="h-4 w-4" />
-                    Add Webhook
-                  </button>
                 </div>
                 <div className="space-y-4">
                   {mockWebhooks.map((webhook) => (
@@ -930,14 +915,7 @@ export function IntegrationHub() {
                             <span>Success rate: {webhook.successRate}%</span>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <button className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-200">
-                            <Settings className="h-4 w-4" />
-                          </button>
-                          <button className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-200">
-                            {webhook.status === 'active' ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                          </button>
-                        </div>
+
                       </div>
                     </div>
                   ))}
@@ -952,10 +930,7 @@ export function IntegrationHub() {
                     <h3 className="font-semibold text-gray-900">API Keys</h3>
                     <p className="text-sm text-gray-500">Manage API keys for external integrations</p>
                   </div>
-                  <button className="flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 text-sm">
-                    <Plus className="h-4 w-4" />
-                    Generate New Key
-                  </button>
+
                 </div>
 
                 <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex items-start gap-3">
@@ -993,18 +968,7 @@ export function IntegrationHub() {
                             </div>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          {key.status === 'active' && (
-                            <>
-                              <button className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg hover:bg-gray-100">
-                                Reveal
-                              </button>
-                              <button className="px-3 py-1.5 text-sm text-red-600 border border-red-200 rounded-lg hover:bg-red-50">
-                                Revoke
-                              </button>
-                            </>
-                          )}
-                        </div>
+
                       </div>
                     </div>
                   ))}

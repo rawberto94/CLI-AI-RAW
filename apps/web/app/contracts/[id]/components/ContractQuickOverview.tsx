@@ -1,10 +1,12 @@
 'use client'
 
-import React, { memo, useMemo } from 'react'
+import React, { memo, useMemo, useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
-import { formatCurrency, formatDate } from '@/lib/design-tokens'
+import { formatDate } from '@/lib/design-tokens'
+import { convertToDisplayCurrency, formatAmountWithCurrency, formatCurrency } from '@/lib/utils/formatters'
+import { useDisplayCurrency } from '@/hooks/useDisplayCurrency'
 import { 
   formatPaymentType, 
   formatPeriodicity 
@@ -60,6 +62,13 @@ const ValueSection = memo(function ValueSection({
   paymentType,
   periodicity,
 }: Pick<QuickOverviewProps, 'tcvAmount' | 'currency' | 'paymentType' | 'periodicity'>) {
+  const displayCurrency = useDisplayCurrency()
+  const sourceCode = typeof currency === 'string' ? currency.trim().toUpperCase() : ''
+  const converted = tcvAmount != null && tcvAmount > 0
+    ? convertToDisplayCurrency(tcvAmount, sourceCode, displayCurrency)
+    : null
+  const showConverted = converted != null && sourceCode && sourceCode !== displayCurrency && sourceCode !== 'XXX'
+
   return (
     <div className={cn(overviewTileClassName, 'bg-[linear-gradient(135deg,rgba(245,243,255,0.95),rgba(255,255,255,1))]')}>
       <div className={overviewTileHeaderClassName}>
@@ -70,9 +79,12 @@ const ValueSection = memo(function ValueSection({
       </div>
       <p className="mb-3 min-w-0 break-words text-sm font-semibold leading-5 text-slate-900 sm:text-base">
         {tcvAmount != null && tcvAmount > 0 
-          ? formatCurrency(tcvAmount, currency || 'CHF')
+          ? formatAmountWithCurrency(tcvAmount, currency)
           : <span className={overviewFieldEmptyClassName}>Not specified</span>}
       </p>
+      {showConverted && (
+        <p className="mb-2 text-xs text-slate-500">≈ {formatCurrency(converted, displayCurrency)}</p>
+      )}
       <div className="mt-auto flex flex-wrap items-center gap-1.5">
         {paymentType && paymentType !== 'none' && (
           <Badge className={cn(overviewBadgeClassName, 'max-w-full whitespace-normal bg-violet-100 text-violet-700 border-0 hover:bg-violet-100')}>
@@ -92,7 +104,11 @@ const ValueSection = memo(function ValueSection({
 const PartiesSection = memo(function PartiesSection({
   parties,
 }: { parties: Party[] }) {
-  const displayParties = useMemo(() => parties.slice(0, 2), [parties])
+  const [showAllParties, setShowAllParties] = useState(false)
+  const displayParties = useMemo(
+    () => (showAllParties ? parties : parties.slice(0, 2)),
+    [parties, showAllParties]
+  )
   
   return (
     <div className={overviewTileClassName}>
@@ -130,8 +146,12 @@ const PartiesSection = memo(function PartiesSection({
           <div className={cn('flex flex-1 items-center rounded-lg border border-dashed border-slate-200 bg-slate-50 px-3 py-2.5', overviewFieldEmptyClassName)}>No parties identified</div>
         )}
         {parties.length > 2 && (
-          <button className="mt-auto text-left text-xs font-medium leading-4 text-violet-600 hover:text-violet-700">
-            +{parties.length - 2} more
+          <button
+            type="button"
+            onClick={() => setShowAllParties((open) => !open)}
+            className="mt-auto text-left text-xs font-medium leading-4 text-violet-600 hover:text-violet-700"
+          >
+            {showAllParties ? 'Show less' : `+${parties.length - 2} more`}
           </button>
         )}
       </div>

@@ -19,7 +19,6 @@ import {
   CheckCircle2,
   Lightbulb,
   Target,
-  Zap,
   ChevronRight,
   RefreshCw,
   BarChart3,
@@ -43,16 +42,18 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
+import { useDisplayCurrency } from '@/hooks/useDisplayCurrency'
+import { formatDisplayTotal } from '@/lib/utils/formatters'
 
 // ============ TYPES ============
 
-export type InsightCategory = 'risk' | 'opportunity' | 'compliance' | 'optimization' | 'trend' | 'alert'
+export type InsightCategory = 'risk' | 'opportunity' | 'compliance' | 'obligation' | 'info' | 'action'
 export type InsightPriority = 'critical' | 'high' | 'medium' | 'low'
 
 export interface AIInsight {
   id: string
-  category: InsightCategory
-  priority: InsightPriority
+  category: InsightCategory | string
+  priority: InsightPriority | string
   title: string
   description: string
   metric?: {
@@ -95,56 +96,67 @@ interface AIInsightsSummaryWidgetProps {
 
 // ============ HELPERS ============
 
-const CATEGORY_CONFIG = {
+const CATEGORY_CONFIG: Record<string, { icon: React.ElementType; color: string; bg: string; label: string }> = {
   risk: { 
     icon: AlertTriangle, 
     color: 'text-red-600', 
     bg: 'bg-red-50',
-    label: 'Risk Alert'
+    label: 'Risk'
   },
   opportunity: { 
-    icon: Lightbulb, 
+    icon: TrendingUp, 
     color: 'text-green-600', 
     bg: 'bg-green-50',
     label: 'Opportunity'
   },
   compliance: { 
     icon: Shield, 
-    color: 'text-violet-600', 
+    color: 'text-violet-600',
     bg: 'bg-violet-50',
     label: 'Compliance'
   },
-  optimization: { 
-    icon: Target, 
-    color: 'text-violet-600', 
-    bg: 'bg-violet-50',
-    label: 'Optimization'
-  },
-  trend: { 
-    icon: TrendingUp, 
-    color: 'text-violet-600', 
-    bg: 'bg-violet-50',
-    label: 'Trend'
-  },
-  alert: { 
-    icon: Zap, 
-    color: 'text-amber-600', 
+  obligation: {
+    icon: Target,
+    color: 'text-amber-600',
     bg: 'bg-amber-50',
-    label: 'Alert'
+    label: 'Obligation'
+  },
+  info: {
+    icon: Info,
+    color: 'text-slate-600',
+    bg: 'bg-slate-50',
+    label: 'Info'
+  },
+  action: {
+    icon: Lightbulb,
+    color: 'text-violet-600',
+    bg: 'bg-violet-50',
+    label: 'Action'
   },
 }
 
-const PRIORITY_CONFIG = {
+const UNKNOWN_CATEGORY_CONFIG = {
+  icon: AlertTriangle,
+  color: 'text-amber-700',
+  bg: 'bg-amber-50',
+  label: 'Finding',
+}
+
+function getCategoryConfig(category: string) {
+  return CATEGORY_CONFIG[category] ?? UNKNOWN_CATEGORY_CONFIG
+}
+
+const PRIORITY_CONFIG: Record<string, { color: string; bg: string; border: string }> = {
   critical: { color: 'text-red-600', bg: 'bg-red-100', border: 'border-red-200' },
   high: { color: 'text-orange-600', bg: 'bg-orange-100', border: 'border-orange-200' },
   medium: { color: 'text-amber-600', bg: 'bg-amber-100', border: 'border-amber-200' },
   low: { color: 'text-slate-600', bg: 'bg-slate-100', border: 'border-slate-200' },
 }
 
-const formatCurrency = (value: number): string => {
-  if (value >= 1000000) return `CHF ${(value / 1000000).toFixed(1)}M`
-  if (value >= 1000) return `CHF ${(value / 1000).toFixed(0)}K`
-  return `CHF ${value}`
+const UNKNOWN_PRIORITY_CONFIG = { color: 'text-amber-700', bg: 'bg-amber-100', border: 'border-amber-200' }
+
+function getPriorityConfig(priority: string) {
+  return PRIORITY_CONFIG[priority] ?? UNKNOWN_PRIORITY_CONFIG
 }
 
 const formatPercentage = (value: number): string => `${value.toFixed(1)}%`
@@ -190,8 +202,8 @@ interface InsightItemProps {
 }
 
 function InsightItem({ insight, onView, compact = false }: InsightItemProps) {
-  const categoryConfig = CATEGORY_CONFIG[insight.category]
-  const priorityConfig = PRIORITY_CONFIG[insight.priority]
+  const categoryConfig = getCategoryConfig(insight.category)
+  const priorityConfig = getPriorityConfig(insight.priority)
   const CategoryIcon = categoryConfig.icon
   
   return (
@@ -261,10 +273,10 @@ function InsightItem({ insight, onView, compact = false }: InsightItemProps) {
                     <TooltipTrigger>
                       <div className="flex items-center gap-1 text-xs text-slate-400">
                         <Brain className="h-3 w-3" />
-                        {Math.round(insight.confidence * 100)}%
+                        {insight.confidence <= 1 ? Math.round(insight.confidence * 100) : Math.round(insight.confidence)}%
                       </div>
                     </TooltipTrigger>
-                    <TooltipContent>AI confidence score</TooltipContent>
+                    <TooltipContent>Model confidence for this finding</TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
               </div>
@@ -361,6 +373,7 @@ export function AIInsightsSummaryWidget({
   variant = 'card',
 }: AIInsightsSummaryWidgetProps) {
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const displayCurrency = useDisplayCurrency()
   
   const handleRefresh = async () => {
     setIsRefreshing(true)
@@ -371,8 +384,8 @@ export function AIInsightsSummaryWidget({
   // Sort insights by priority
   const sortedInsights = [...insights]
     .sort((a, b) => {
-      const priorityOrder = { critical: 0, high: 1, medium: 2, low: 3 }
-      return priorityOrder[a.priority] - priorityOrder[b.priority]
+      const priorityOrder: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 }
+      return (priorityOrder[a.priority] ?? 4) - (priorityOrder[b.priority] ?? 4)
     })
     .slice(0, maxInsights)
   
@@ -442,7 +455,7 @@ export function AIInsightsSummaryWidget({
               <MetricCard 
                 icon={DollarSign}
                 label="Savings Found"
-                value={formatCurrency(metrics.costSavingsIdentified)}
+                value={formatDisplayTotal(metrics.costSavingsIdentified, displayCurrency)}
                 color="bg-green-500"
               />
               <MetricCard 
@@ -464,7 +477,7 @@ export function AIInsightsSummaryWidget({
         {/* Category summary */}
         <div className="flex items-center gap-2 mb-4 overflow-x-auto pb-1">
           {Object.entries(categoryCount).map(([category, count]) => {
-            const config = CATEGORY_CONFIG[category as InsightCategory]
+            const config = getCategoryConfig(category)
             const Icon = config.icon
             return (
               <Badge 

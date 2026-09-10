@@ -83,7 +83,20 @@ describe('RateNormalizationService', () => {
 
       expect(result.hourlyRate).toBe(108); // 100 * 1.08 EUR to USD rate
       expect(result.currency).toBe('USD');
-      expect(result.confidence).toBeLessThan(1.0); // Reduced for currency conversion
+      expect(result.confidence).toBe(1);
+    });
+
+    it('does not treat CHF as an unknown currency', () => {
+      const result = service.normalizeRate({
+        role: 'Developer',
+        level: 'Mid',
+        rate: 100,
+        unit: 'hourly',
+        currency: 'CHF',
+      });
+      expect(result.hourlyRate).toBe(112);
+      expect(result.currency).toBe('USD');
+      expect(result.confidence).toBe(1);
     });
 
     it('should standardize role names', () => {

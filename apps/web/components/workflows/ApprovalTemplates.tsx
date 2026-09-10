@@ -70,6 +70,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { Separator } from '@/components/ui/separator';
+import { formatAmountWithCurrency } from '@/lib/utils/formatters';
 
 // Types
 export type TemplateCategory = 'vendor' | 'client' | 'internal' | 'compliance' | 'financial';
@@ -517,11 +518,11 @@ export function TemplateCard({
                         <Tooltip>
                           <TooltipTrigger>
                             <Badge variant="secondary" className="text-xs">
-                              Auto &lt;${step.autoApproveBelow.toLocaleString()}
+                              Auto &lt;{formatAmountWithCurrency(step.autoApproveBelow)}
                             </Badge>
                           </TooltipTrigger>
                           <TooltipContent>
-                            Auto-approves for amounts below ${step.autoApproveBelow.toLocaleString()}
+                            Auto-approves for amounts below {formatAmountWithCurrency(step.autoApproveBelow)}
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>

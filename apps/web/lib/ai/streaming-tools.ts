@@ -1241,7 +1241,7 @@ async function executeRiskAssessment(tenantId: string, start: number): Promise<T
       recommendations: [
         exp30.length > 0 && `Review ${exp30.length} contracts expiring within 30 days`,
         autoRenewals.length > 0 && `Review ${autoRenewals.length} auto-renewing contracts`,
-        highValue.length > 0 && `High-value contracts ($${highValue.reduce((s, c) => s + Number(c.totalValue || 0), 0).toLocaleString()}) at risk`,
+        highValue.length > 0 && `High-value contracts (${highValue.reduce((s, c) => s + Number(c.totalValue || 0), 0).toLocaleString('de-CH')}) at risk`,
       ].filter(Boolean),
     },
     executionTimeMs: Date.now() - start,
@@ -2229,7 +2229,7 @@ async function executeAgentInsights(args: Record<string, unknown>, tenantId: str
         where: { tenantId, expirationRisk: { in: ['HIGH', 'CRITICAL'] } },
         take: 5,
         orderBy: { expirationDate: 'asc' },
-        select: { id: true, contractTitle: true, expirationDate: true, totalValue: true, expirationRisk: true },
+        select: { id: true, contractTitle: true, expirationDate: true, totalValue: true, currency: true, expirationRisk: true },
       });
 
       for (const c of riskyContracts) {
@@ -2238,7 +2238,7 @@ async function executeAgentInsights(args: Record<string, unknown>, tenantId: str
           type: 'risk',
           severity: c.expirationRisk === 'CRITICAL' ? 'critical' : 'high',
           title: `${c.contractTitle || 'Contract'} — ${c.expirationRisk} risk`,
-          detail: days !== null && days > 0 ? `Expires in ${days} days, value: $${Number(c.totalValue || 0).toLocaleString()}` : 'Expiration risk flagged',
+          detail: days !== null && days > 0 ? `Expires in ${days} days, value: ${c.currency ? `${c.currency} ` : ''}${Number(c.totalValue || 0).toLocaleString('de-CH')}` : 'Expiration risk flagged',
           source: 'risk-detector',
         });
       }
@@ -2479,8 +2479,8 @@ async function executeCompareContracts(args: Record<string, unknown>, tenantId: 
     },
     dimensions: {
       value: {
-        A: contractA.totalValue ? `${contractA.currency || 'USD'} ${Number(contractA.totalValue).toLocaleString()}` : 'Not specified',
-        B: contractB.totalValue ? `${contractB.currency || 'USD'} ${Number(contractB.totalValue).toLocaleString()}` : 'Not specified',
+        A: contractA.totalValue ? `${contractA.currency ? `${contractA.currency} ` : ''}${Number(contractA.totalValue).toLocaleString()}` : 'Not specified',
+        B: contractB.totalValue ? `${contractB.currency ? `${contractB.currency} ` : ''}${Number(contractB.totalValue).toLocaleString()}` : 'Not specified',
         difference: contractA.totalValue && contractB.totalValue
           ? Number(contractA.totalValue) - Number(contractB.totalValue)
           : null,

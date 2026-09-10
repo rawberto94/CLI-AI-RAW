@@ -327,7 +327,7 @@ export function AIAnalyticsDashboard() {
                 <XAxis 
                   dataKey="date" 
                   tick={{ fontSize: 12 }}
-                  tickFormatter={(v) => new Date(v).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  tickFormatter={(v) => new Date(v).toLocaleDateString('de-CH', { month: 'short', day: 'numeric' })}
                 />
                 <YAxis tick={{ fontSize: 12 }} />
                 <Tooltip 
@@ -372,7 +372,7 @@ export function AIAnalyticsDashboard() {
                 <XAxis 
                   dataKey="date" 
                   tick={{ fontSize: 12 }}
-                  tickFormatter={(v) => new Date(v).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  tickFormatter={(v) => new Date(v).toLocaleDateString('de-CH', { month: 'short', day: 'numeric' })}
                 />
                 <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => `$${v}`} />
                 <Tooltip 

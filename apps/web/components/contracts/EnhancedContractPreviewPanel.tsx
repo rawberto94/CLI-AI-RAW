@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { formatAmountWithCurrency } from '@/lib/utils/formatters'
 import {
   X,
   FileText,
@@ -48,6 +49,7 @@ interface Contract {
   documentRole?: string
   parties?: ContractParty
   value?: number
+  currency?: string
   effectiveDate?: string
   expirationDate?: string
   createdAt?: string
@@ -135,7 +137,7 @@ export const EnhancedContractPreviewPanel = memo(function EnhancedContractPrevie
   onRedline,
   onRenewal,
   onAmendment,
-  formatCurrency = (v) => v ? new Intl.NumberFormat('de-CH', { style: 'currency', currency: 'CHF', maximumFractionDigits: 0 }).format(v) : '—',
+  formatCurrency = (v) => formatAmountWithCurrency(v, contract?.currency),
   formatDate = (d) => d ? new Date(d).toLocaleDateString() : '—',
   className,
 }: EnhancedContractPreviewPanelProps) {

@@ -3,6 +3,8 @@
  * Tracks negotiation outcomes and learns from past successes
  */
 
+import { formatRateMoney } from '@/lib/rate-cards/format'
+
 export interface NegotiationOutcome {
   id: string
   role: string
@@ -225,7 +227,7 @@ export class NegotiationHistoryService {
           reasoning: [
             `Based on ${supplierHistory.totalNegotiations} past negotiations with ${supplier}`,
             `${supplierHistory.bestStrategy} strategy has ${supplierHistory.successRate.toFixed(0)}% success rate`,
-            `Average savings: CHF ${supplierHistory.averageSavings.toLocaleString()}`
+            `Average savings: ${formatRateMoney(supplierHistory.averageSavings)}`
           ]
         }
       }
@@ -285,7 +287,7 @@ export class NegotiationHistoryService {
       .filter(o => o.achieved)
       .reduce((sum, o) => sum + o.savingsAchieved, 0)
 
-    insights.push(`CHF ${totalSavings.toLocaleString()} total savings achieved`)
+    insights.push(`${formatRateMoney(totalSavings)} total savings achieved`)
 
     return insights
   }

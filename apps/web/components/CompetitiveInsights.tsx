@@ -411,10 +411,7 @@ export const CompetitivePopup: React.FC<CompetitivePopupProps> = ({
             <Button variant="outline" onClick={onClose}>
               Close Analysis
             </Button>
-            <Button className="bg-gradient-to-r from-violet-500 to-purple-600 text-white">
-              <ArrowRight className="w-4 h-4 mr-2" />
-              Continue Demo
-            </Button>
+
           </div>
         </CardContent>
       </Card>

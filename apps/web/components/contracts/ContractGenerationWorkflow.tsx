@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
+import { useDisplayCurrency } from '@/hooks/useDisplayCurrency';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FileText,
@@ -15,9 +16,7 @@ import {
   Sparkles,
   Loader2,
   Send,
-  Edit3,
   Download,
-  Eye,
   RefreshCw,
   Shield,
   Scale,
@@ -255,6 +254,7 @@ export const ContractGenerationWorkflow: React.FC<{
   onComplete?: (contractId: string) => void;
   onCancel?: () => void;
 }> = ({ onComplete, onCancel }) => {
+  const displayCurrency = useDisplayCurrency();
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState<ContractFormData>({
     templateId: '',
@@ -264,11 +264,11 @@ export const ContractGenerationWorkflow: React.FC<{
     startDate: '',
     endDate: '',
     totalValue: '',
-    currency: 'USD',
+    currency: displayCurrency,
     paymentTerms: 'Net 30',
     description: '',
     specialTerms: '',
-    jurisdiction: 'Delaware, USA',
+    jurisdiction: 'Switzerland',
     autoRenew: false,
     renewalNotice: '30',
   });
@@ -807,17 +807,6 @@ export const ContractGenerationWorkflow: React.FC<{
               <div className="border border-slate-200 rounded-xl overflow-hidden mb-6">
                 <div className="bg-slate-100 px-4 py-2 flex items-center justify-between border-b border-slate-200">
                   <span className="text-sm font-medium text-slate-700">Contract Preview</span>
-                  <div className="flex items-center gap-2">
-                    <button className="p-1.5 hover:bg-slate-200 rounded transition-colors">
-                      <Eye className="w-4 h-4 text-slate-600" />
-                    </button>
-                    <button className="p-1.5 hover:bg-slate-200 rounded transition-colors">
-                      <Edit3 className="w-4 h-4 text-slate-600" />
-                    </button>
-                    <button className="p-1.5 hover:bg-slate-200 rounded transition-colors">
-                      <Download className="w-4 h-4 text-slate-600" />
-                    </button>
-                  </div>
                 </div>
                 <div className="p-4 max-h-60 overflow-y-auto bg-white">
                   <pre className="text-sm text-slate-700 whitespace-pre-wrap font-mono">
@@ -839,7 +828,19 @@ export const ContractGenerationWorkflow: React.FC<{
                   Regenerate
                 </button>
                 <div className="flex items-center gap-3">
-                  <button className="flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 transition-colors">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const blob = new Blob([generatedContract.content], { type: 'text/plain;charset=utf-8' });
+                      const url = URL.createObjectURL(blob);
+                      const link = document.createElement('a');
+                      link.href = url;
+                      link.download = `${generatedContract.name || 'contract-draft'}.txt`;
+                      link.click();
+                      URL.revokeObjectURL(url);
+                    }}
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 transition-colors"
+                  >
                     <Download className="w-4 h-4" />
                     Download Draft
                   </button>

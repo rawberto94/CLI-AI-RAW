@@ -80,11 +80,11 @@ function getSampleSizeQuality(sampleSize: number): {
 }
 
 function formatDateRange(start: Date, end: Date): string {
-  const startStr = new Date(start).toLocaleDateString('en-US', {
+  const startStr = new Date(start).toLocaleDateString('de-CH', {
     month: 'short',
     year: 'numeric',
   });
-  const endStr = new Date(end).toLocaleDateString('en-US', {
+  const endStr = new Date(end).toLocaleDateString('de-CH', {
     month: 'short',
     year: 'numeric',
   });
@@ -325,7 +325,7 @@ export function CohortInformation(props: CohortInformationProps = {}) {
             <div className="text-right">
               <div className="text-sm text-gray-600 mb-1">Last Updated</div>
               <div className="text-sm font-medium text-gray-900">
-                {new Date(calculatedAt).toLocaleDateString('en-US', {
+                {new Date(calculatedAt).toLocaleDateString('de-CH', {
                   month: 'short',
                   day: 'numeric',
                   year: 'numeric',

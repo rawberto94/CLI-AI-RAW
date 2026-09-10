@@ -15,6 +15,7 @@ import { logger } from '../utils/logger';
 import { openai } from '../lib/openai';
 import clientsDb from 'clients-db';
 import { Prisma } from '@prisma/client';
+import { formatMoneyText, parseMonetaryAmount, retrievalLanguageInstructions, sanitizeFtsQuery } from '@repo/utils';
 
 const getClient = typeof clientsDb === 'function' ? clientsDb : (clientsDb as any).default;
 const prisma = getClient();
@@ -173,7 +174,10 @@ export class IntelligentSearchAgent extends BaseAgent {
         messages: [
           {
             role: 'system',
-            content: `You are a search intent classifier. Analyze the user's query and determine their search intent. Return JSON with:
+            content: `You are a search intent classifier. Analyze the user's query and determine their search intent.
+${retrievalLanguageInstructions(query)}
+German/French/Italian queries are valid. Do not require English.
+Return JSON with:
 {
   "type": "find_expiring" | "find_high_risk" | "find_by_person" | "find_by_value" | "analyze_costs" | "compare_suppliers" | "general_search",
   "confidence": 0.0-1.0,
@@ -282,17 +286,24 @@ export class IntelligentSearchAgent extends BaseAgent {
       const whereClause = Prisma.join(intentConditions, ' AND ');
 
       // Strategy 1: Full-text search on Contract.searchableText + rawText
-      const ftsQuery = query.replace(/[^a-zA-Z0-9\s]/g, ' ').trim().split(/\s+/).filter(Boolean).join(' & ');
+      const ftsQuery = sanitizeFtsQuery(query, ' & ');
       
       if (ftsQuery) {
         const ftsResults = await prisma.$queryRaw<any[]>`
           SELECT c.id, c."contractTitle", c."supplierName", c."contractType",
                  c."totalValue", c."expirationDate", c.status,
-                 ts_rank(to_tsvector('english', COALESCE(c."searchableText", '') || ' ' || COALESCE(c."rawText", '')), to_tsquery('english', ${ftsQuery})) as rank
+                 GREATEST(
+                   ts_rank(to_tsvector('english', COALESCE(c."searchableText", '') || ' ' || COALESCE(c."rawText", '')), to_tsquery('english', ${ftsQuery})),
+                   ts_rank(to_tsvector('simple', COALESCE(c."searchableText", '') || ' ' || COALESCE(c."rawText", '')), to_tsquery('simple', ${ftsQuery}))
+                 ) as rank
           FROM "Contract" c
           WHERE ${whereClause}
-            AND to_tsvector('english', COALESCE(c."searchableText", '') || ' ' || COALESCE(c."rawText", ''))
-                @@ to_tsquery('english', ${ftsQuery})
+            AND (
+              to_tsvector('english', COALESCE(c."searchableText", '') || ' ' || COALESCE(c."rawText", ''))
+                  @@ to_tsquery('english', ${ftsQuery})
+              OR to_tsvector('simple', COALESCE(c."searchableText", '') || ' ' || COALESCE(c."rawText", ''))
+                  @@ to_tsquery('simple', ${ftsQuery})
+            )
           ORDER BY rank DESC
           LIMIT 20
         `;
@@ -380,7 +391,7 @@ export class IntelligentSearchAgent extends BaseAgent {
       
       case 'find_by_value':
         const totalValue = results.reduce((sum, r) => sum + (r.value || 0), 0);
-        return `Found ${results.length} contracts with total value of $${totalValue.toLocaleString()}.`;
+        return `Found ${results.length} contracts with total value of ${formatMoneyText(totalValue)}.`;
       
       default:
         return `Found ${results.length} contracts matching your search.`;
@@ -486,17 +497,10 @@ export class IntelligentSearchAgent extends BaseAgent {
    * Extract amount from query
    */
   private extractAmount(query: string): number | null {
-    const match = query.match(/\$?([\d,]+(?:\.\d{2})?)\s*(?:k|thousand|m|million|b|billion)?/i);
+    const match = query.match(/(?:CHF|Fr\.|SFr\.|EUR|€|USD|\$)?\s*([\d''’.,]+)\s*(?:k|thousand|m|million|b|billion)?/i);
     if (!match?.[1]) return null;
 
-    let amount = parseFloat(match[1].replace(/,/g, ''));
-    const unit = query.match(/\b(k|thousand|m|million|b|billion)\b/i)?.[1]?.toLowerCase();
-
-    if (unit === 'k' || unit === 'thousand') amount *= 1000;
-    else if (unit === 'm' || unit === 'million') amount *= 1000000;
-    else if (unit === 'b' || unit === 'billion') amount *= 1000000000;
-
-    return amount;
+    return parseMonetaryAmount(match[0]);
   }
 
   /**

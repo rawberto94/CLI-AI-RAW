@@ -11,30 +11,103 @@ import { RISK_LEVELS } from './constants';
 // FORMATTING
 // ============================================================================
 
-export const formatCurrency = (value?: number, currency = 'USD'): string => {
+export const formatCurrency = (value?: number, currency?: string): string => {
   if (value === undefined || value === null) return '—';
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency,
-    maximumFractionDigits: 0,
-  }).format(value);
+  const code = typeof currency === 'string' ? currency.trim() : '';
+  if (code.length === 3 && code !== 'XXX') {
+    try {
+      return new Intl.NumberFormat('de-CH', {
+        style: 'currency',
+        currency: code,
+        maximumFractionDigits: 0,
+      }).format(value);
+    } catch {
+      return `${code} ${value.toLocaleString('de-CH')}`;
+    }
+  }
+  return value.toLocaleString('de-CH');
 };
 
-export const formatCurrencyCompact = (value?: number, currency = 'USD'): string => {
+export const formatCurrencyCompact = (value?: number, currency?: string): string => {
   if (value === undefined || value === null) return '—';
-  
-  if (value >= 1000000) {
-    return `$${(value / 1000000).toFixed(1)}M`;
+  const amount = Number(value);
+  if (!Number.isFinite(amount)) return '—';
+
+  const code = (currency || '').trim().toUpperCase();
+  const locale = 'de-CH';
+  if (!code || code === 'XXX') {
+    const absBare = Math.abs(amount);
+    let scaledBare = amount;
+    let suffixBare = '';
+    let digitsBare = 0;
+    if (absBare >= 1_000_000) {
+      scaledBare = amount / 1_000_000;
+      suffixBare = 'M';
+      digitsBare = 1;
+    } else if (absBare >= 1_000) {
+      scaledBare = amount / 1_000;
+      suffixBare = 'K';
+    }
+    const number = new Intl.NumberFormat(locale, {
+      minimumFractionDigits: digitsBare,
+      maximumFractionDigits: digitsBare,
+    }).format(scaledBare);
+    return suffixBare ? `${number}${suffixBare}` : number;
   }
-  if (value >= 1000) {
-    return `$${(value / 1000).toFixed(0)}K`;
+  const abs = Math.abs(amount);
+
+  let scaled = amount;
+  let suffix = '';
+  let fractionDigits = 0;
+  if (abs >= 1_000_000) {
+    scaled = amount / 1_000_000;
+    suffix = 'M';
+    fractionDigits = 1;
+  } else if (abs >= 1_000) {
+    scaled = amount / 1_000;
+    suffix = 'K';
+    fractionDigits = 0;
   }
-  return formatCurrency(value, currency);
+
+  try {
+    const parts = new Intl.NumberFormat(locale, {
+      style: 'currency',
+      currency: code,
+      minimumFractionDigits: fractionDigits,
+      maximumFractionDigits: fractionDigits,
+    }).formatToParts(scaled);
+
+    if (!suffix) {
+      return parts.map((part) => part.value).join('');
+    }
+
+    let lastNumberIndex = -1;
+    for (let i = 0; i < parts.length; i++) {
+      if (
+        parts[i].type === 'integer' ||
+        parts[i].type === 'group' ||
+        parts[i].type === 'decimal' ||
+        parts[i].type === 'fraction'
+      ) {
+        lastNumberIndex = i;
+      }
+    }
+
+    return parts
+      .map((part, index) => (index === lastNumberIndex ? `${part.value}${suffix}` : part.value))
+      .join('');
+  } catch {
+    const number = new Intl.NumberFormat(locale, {
+      minimumFractionDigits: fractionDigits,
+      maximumFractionDigits: fractionDigits,
+    }).format(scaled);
+    return suffix ? `${code} ${number}${suffix}` : `${code} ${number}`;
+  }
 };
 
 export const formatDate = (dateString?: string): string => {
   if (!dateString) return '—';
-  return new Date(dateString).toLocaleDateString('en-US', {
+  return new Date(dateString).toLocaleDateString('de-CH', {
     month: 'short',
     day: 'numeric',
     year: 'numeric',

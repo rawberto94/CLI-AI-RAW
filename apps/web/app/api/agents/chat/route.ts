@@ -24,6 +24,7 @@ import {
   parseMentions,
   resolveMentionedAgentIds,
 } from '@/lib/agents/agent-catalog';
+import { formatMoneyText } from '@repo/utils';
 
 // ── Structured logger ─────────────────────────────────────────────────
 const log = pino({ name: 'agent-chat', level: process.env.LOG_LEVEL ?? 'info' });
@@ -105,7 +106,8 @@ async function enhanceWithAI(
 Analyze the data provided and respond to the user's query with specific, actionable insights.
 Use markdown formatting. Link contracts as [Contract Name](/contracts/CONTRACT_ID).
 Be concise but insightful — provide analysis and recommendations, not just data dumps.
-If the data is empty or limited, acknowledge that and suggest next steps.`,
+If the data is empty or limited, acknowledge that and suggest next steps.
+Match the user's language. Keep quoted contract text verbatim. Fr. and SFr. mean CHF. Do not invent USD.`,
           },
           {
             role: 'user',
@@ -963,7 +965,7 @@ async function handleProspectorQuery(
     totalPortfolioValue: contracts.reduce((s, c) => s + Number(c.totalValue || 0), 0),
   };
 
-  const templateContent = `I'm **Prospector**, scanning your portfolio of ${contracts.length} active contracts for hidden opportunities.\n\nTop suppliers by spend:\n${[...supplierSpend.entries()].sort((a, b) => b[1].total - a[1].total).slice(0, 5).map(([name, data]) => `• **${name}**: ${data.count} contracts, $${data.total.toLocaleString()}`).join('\n')}`;
+  const templateContent = `I'm **Prospector**, scanning your portfolio of ${contracts.length} active contracts for hidden opportunities.\n\nTop suppliers by spend:\n${[...supplierSpend.entries()].sort((a, b) => b[1].total - a[1].total).slice(0, 5).map(([name, data]) => `• **${name}**: ${data.count} contracts, ${formatMoneyText(data.total)}`).join('\n')}`;
 
   const content = await enhanceWithAI(
     'Prospector',
@@ -1368,11 +1370,7 @@ async function handleSynthesizerQuery(
   ]);
 
   const totalVal = Number(totalValue._sum?.totalValue || 0);
-  const formattedValue = totalVal > 1_000_000
-    ? `$${(totalVal / 1_000_000).toFixed(1)}M`
-    : totalVal > 1_000
-      ? `$${(totalVal / 1_000).toFixed(0)}K`
-      : `$${totalVal.toFixed(0)}`;
+  const formattedValue = formatMoneyText(totalVal);
 
   const portfolioData = { totalContracts, activeContracts, totalValue: totalVal, formattedValue, expiringContracts };
 
@@ -1567,7 +1565,7 @@ async function handleSwarmQuery(
     totalValue: contracts.reduce((sum, c) => sum + (Number(c.totalValue) || 0), 0),
   };
 
-  const templateResponse = `🐝 **Swarm — Collective Intelligence**\n\nRunning multi-perspective analysis on **${summary.total}** contracts...\n\n**Portfolio snapshot:**\n- Total value: $${(summary.totalValue / 1_000_000).toFixed(2)}M\n- By status: ${Object.entries(summary.byStatus).map(([k, v]) => `${k} (${v})`).join(', ')}\n- By type: ${Object.entries(summary.byType).map(([k, v]) => `${k} (${v})`).join(', ')}\n\n_The Swarm deploys multiple agents simultaneously for deep-dive analysis. Try "@swarm analyse all vendor contracts" for a comprehensive review._`;
+  const templateResponse = `🐝 **Swarm — Collective Intelligence**\n\nRunning multi-perspective analysis on **${summary.total}** contracts...\n\n**Portfolio snapshot:**\n- Total value: ${formatMoneyText(summary.totalValue)}\n- By status: ${Object.entries(summary.byStatus).map(([k, v]) => `${k} (${v})`).join(', ')}\n- By type: ${Object.entries(summary.byType).map(([k, v]) => `${k} (${v})`).join(', ')}\n\n_The Swarm deploys multiple agents simultaneously for deep-dive analysis. Try "@swarm analyse all vendor contracts" for a comprehensive review._`;
 
   return {
     content: await enhanceWithAI('Swarm', 'collective multi-agent intelligence and portfolio analysis', message, summary, templateResponse),

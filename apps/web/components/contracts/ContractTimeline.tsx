@@ -59,6 +59,7 @@ export interface ContractPeriod {
   endDate: Date;
   status: 'active' | 'expiring' | 'expired' | 'pending' | 'draft';
   value?: number;
+  currency?: string;
   supplierName?: string;
   riskLevel?: 'low' | 'medium' | 'high';
   events: ContractEvent[];
@@ -128,13 +129,21 @@ const getEventIcon = (type: ContractEvent['type']) => {
   }
 };
 
-const formatCurrency = (value: number) => {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(value);
+const formatCurrency = (value: number, currency?: string) => {
+  const code = typeof currency === 'string' ? currency.trim() : '';
+  if (code.length === 3 && code !== 'XXX') {
+    try {
+      return new Intl.NumberFormat('de-CH', {
+        style: 'currency',
+        currency: code,
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+      }).format(value);
+    } catch {
+      return `${code} ${value.toLocaleString('de-CH')}`;
+    }
+  }
+  return value.toLocaleString('de-CH');
 };
 
 // ============================================================================
@@ -454,7 +463,7 @@ export function ContractTimeline({ contracts, onContractClick, className }: Cont
                             </p>
                             {contract.value && (
                               <p className="text-xs font-semibold text-green-600">
-                                {formatCurrency(contract.value)}
+                                {formatCurrency(contract.value, contract.currency)}
                               </p>
                             )}
                           </div>

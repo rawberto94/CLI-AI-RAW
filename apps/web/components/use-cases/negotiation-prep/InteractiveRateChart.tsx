@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { formatRateMoney } from '@/lib/rate-cards/format';
 import {
   TrendingUp,
   TrendingDown,
@@ -112,7 +113,7 @@ export function InteractiveRateChart({
         <div className="flex items-center gap-4 mt-3 text-sm">
           <div className="flex items-center gap-1.5">
             <DollarSign className="h-4 w-4 text-slate-400" />
-            <span className="text-slate-600">Avg: ${stats.avg.toFixed(0)}</span>
+            <span className="text-slate-600">Avg: {formatRateMoney(stats.avg)}</span>
           </div>
           {stats.aboveMarket > 0 && (
             <Badge variant="outline" className="text-rose-600 border-rose-200 bg-rose-50">
@@ -159,11 +160,11 @@ export function InteractiveRateChart({
                   </div>
                   <div className="text-right">
                     <p className="font-bold text-lg text-slate-900">
-                      ${rate.rate.toLocaleString()}
+                      {formatRateMoney(rate.rate)}
                     </p>
                     {rate.marketRate && (
                       <p className="text-xs text-slate-500">
-                        Market: ${rate.marketRate.toLocaleString()}
+                        Market: {formatRateMoney(rate.marketRate)}
                       </p>
                     )}
                   </div>

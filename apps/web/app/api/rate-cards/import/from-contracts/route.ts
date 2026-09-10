@@ -2,6 +2,12 @@ import { NextRequest } from 'next/server';
 import { prisma } from "@/lib/prisma";
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 import { rateCardExtractionService, rateCardManagementService } from 'data-orchestration/services';
+import {
+  UNKNOWN_CURRENCY,
+  convertedDailyRates,
+  resolvePersistCurrency,
+  resolvePersistGeo,
+} from '@/lib/rate-cards/persist-fields';
 
 /**
  * Rate card artifact data types
@@ -107,6 +113,23 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
               'OFFSHORE': 'OFFSHORE',
             };
             const supplierTier = tierMap[rate.supplierTier?.toUpperCase() ?? ''] || 'TIER_2';
+            const amount = Number(rate.dailyRate ?? rate.rate)
+            if (!Number.isFinite(amount) || amount <= 0) {
+              errors.push({
+                rate: rate.roleOriginal || rate.role,
+                error: 'Missing rate amount',
+              })
+              continue
+            }
+            const currency = resolvePersistCurrency(rate.currency, contract.currency)
+            if (currency === UNKNOWN_CURRENCY) {
+              errors.push({
+                rate: rate.roleOriginal || rate.role,
+                error: 'Missing currency — not imported as USD',
+              })
+              continue
+            }
+            const converted = convertedDailyRates(amount, currency)
             
             // Create rate card entry
             const rateCardEntry = await prisma.rateCardEntry.create({
@@ -117,25 +140,25 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
                 roleStandardized: rate.roleStandardized || rate.role || rate.position || '',
                 roleCategory: rate.roleCategory || rate.category || 'Professional Services',
                 seniority,
-                dailyRate: rate.dailyRate || rate.rate || 0,
-                dailyRateUSD: rate.dailyRateUSD || rate.dailyRate || rate.rate || 0,
-                dailyRateCHF: rate.dailyRateCHF || rate.dailyRateUSD || rate.dailyRate || rate.rate || 0,
-                currency: rate.currency || contract.currency || 'USD',
-                country: rate.country || 'United States',
-                region: rate.region || 'North America',
+                dailyRate: amount,
+                dailyRateUSD: converted.usd,
+                dailyRateCHF: converted.chf,
+                currency,
+                country: resolvePersistGeo(rate.country),
+                region: resolvePersistGeo(rate.region),
                 lineOfService: rate.lineOfService || rate.category || 'Professional Services',
                 supplierId: contract.supplierId || 'unknown',
                 supplierName: contract.supplierName || 'Unknown Supplier',
                 supplierTier,
-                supplierCountry: rate.supplierCountry || 'United States',
-                supplierRegion: rate.supplierRegion || 'North America',
+                supplierCountry: resolvePersistGeo(rate.supplierCountry),
+                supplierRegion: resolvePersistGeo(rate.supplierRegion),
                 effectiveDate: rate.effectiveDate 
                   ? new Date(rate.effectiveDate) 
                   : contract.startDate || new Date(),
                 source: 'PDF_EXTRACTION',
-                confidence: artifact.confidence || 0.85,
+                confidence: artifact.confidence ?? 0,
                 dataQuality: 'MEDIUM',
-                volumeCommitted: rate.volumeCommitted || rate.quantity || 1,
+                volumeCommitted: rate.volumeCommitted ?? rate.quantity ?? null,
                 isNegotiated: true,
               }
             });

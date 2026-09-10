@@ -25,7 +25,9 @@ import {
   CheckCircle2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { formatCurrency } from '@/lib/design-tokens'
+import { unwrapApiResponseData } from '@/lib/api-fetch'
+import { DEFAULT_DISPLAY_CURRENCY } from '@/lib/display-currency'
+import { formatAmountWithCurrency, formatDisplayTotal } from '@/lib/utils/formatters'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
 
@@ -48,6 +50,7 @@ interface OrphanContract {
   clientName: string | null
   supplierName: string | null
   totalValue: number | null
+  currency?: string | null
   effectiveDate: string | null
   expirationDate: string | null
   isExpired: boolean
@@ -63,6 +66,7 @@ interface OrphanStats {
   expired: number
   byCategory: Record<string, number>
   totalValue: number
+  displayCurrency?: string
 }
 
 interface OrphanContractsBannerProps {
@@ -114,7 +118,7 @@ export function OrphanContractsBanner({
       const response = await fetch(`/api/contracts/orphans?limit=${maxItems}`)
       if (!response.ok) throw new Error('Failed to fetch')
       
-      const data = await response.json()
+      const data = unwrapApiResponseData<{ orphans?: OrphanContract[]; stats?: OrphanStats }>(await response.json())
       setOrphans(data.orphans || [])
       setStats(data.stats || null)
     } catch {
@@ -190,7 +194,7 @@ export function OrphanContractsBanner({
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Link href="/contracts?filter=orphans">
+            <Link href="/contracts">
               <Badge 
                 variant="secondary" 
                 className={cn(
@@ -230,7 +234,7 @@ export function OrphanContractsBanner({
               <CardDescription className="text-amber-700 dark:text-amber-300">
                 {stats.totalOrphans} contract{stats.totalOrphans !== 1 ? 's' : ''} may need to be linked to parent agreements
                 {stats.totalValue > 0 && (
-                  <span className="ml-1">• {formatCurrency(stats.totalValue)} total value</span>
+                  <span className="ml-1">• {formatDisplayTotal(stats.totalValue, stats.displayCurrency || DEFAULT_DISPLAY_CURRENCY)} total value</span>
                 )}
               </CardDescription>
             </div>
@@ -300,7 +304,7 @@ export function OrphanContractsBanner({
                           </span>
                         )}
                         {orphan.totalValue && (
-                          <span>{formatCurrency(orphan.totalValue)}</span>
+                          <span>{formatAmountWithCurrency(orphan.totalValue, orphan.currency)}</span>
                         )}
                       </div>
 
@@ -352,16 +356,7 @@ export function OrphanContractsBanner({
           </div>
         </ScrollArea>
 
-        {stats.totalOrphans > maxItems && (
-          <div className="mt-3 pt-3 border-t border-amber-200/50 dark:border-amber-800/50">
-            <Link href="/contracts?filter=orphans">
-              <Button variant="outline" size="sm" className="w-full">
-                View all {stats.totalOrphans} orphan contracts
-                <ChevronRight className="h-3.5 w-3.5 ml-1" />
-              </Button>
-            </Link>
-          </div>
-        )}
+
       </CardContent>
     </Card>
   )

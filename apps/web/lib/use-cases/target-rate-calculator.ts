@@ -1,4 +1,5 @@
 import { RateCardRole } from './multi-client-rate-data'
+import { formatRateMoney } from '@/lib/rate-cards/format'
 import { TargetRates, MarketPercentiles } from './rate-history-types'
 
 // Helper function to calculate market percentiles
@@ -218,7 +219,7 @@ export const TargetRateUtils = {
     text: string
     color: string
   } {
-    const formatted = showCurrency ? `CHF ${savings.toLocaleString()}` : savings.toLocaleString()
+    const formatted = showCurrency ? formatRateMoney(savings) : savings.toLocaleString('de-CH')
     const color = savings > 0 ? 'text-green-600' : savings < 0 ? 'text-red-600' : 'text-gray-600'
     
     return { text: formatted, color }

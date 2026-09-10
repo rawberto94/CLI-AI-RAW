@@ -57,28 +57,26 @@ export default function RateComplianceChecker() {
         setRateCardCount(json.data.rateCardCount || 0);
       }
     } catch {
-      // Fallback sample data
-      setSummary({
-        totalContracts: 42,
-        compliant: 28,
-        nonCompliant: 8,
-        unmatched: 6,
-        complianceRate: 78,
-        totalViolations: 12,
-        highSeverity: 3,
-      });
-      setViolations([
-        { contractId: '1', contractTitle: 'IT Services Agreement', supplierName: 'TechCorp', rateCardId: '1', rateCardName: 'Standard IT Rates 2024', role: 'Senior Developer', contractRate: 185, baselineRate: 150, variance: 23.3, severity: 'MEDIUM', currency: 'USD' },
-        { contractId: '2', contractTitle: 'Consulting Services', supplierName: 'ConsultCo', rateCardId: '2', rateCardName: 'Consulting Baseline', role: 'Partner', contractRate: 600, baselineRate: 450, variance: 33.3, severity: 'HIGH', currency: 'USD' },
-      ]);
+      toast.error('Failed to load rate compliance data');
+      setSummary(null);
+      setViolations([]);
     }
     finally { setLoading(false); }
   }, []);
 
   useEffect(() => { fetchCompliance(); }, [fetchCompliance]);
 
-  const formatCurrency = (amount: number, currency: string) =>
-    new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(amount);
+  const formatCurrency = (amount: number, currency: string) => {
+    const code = typeof currency === 'string' ? currency.trim() : '';
+    if (code.length === 3 && code !== 'XXX') {
+      try {
+        return new Intl.NumberFormat('de-CH', { style: 'currency', currency: code }).format(amount);
+      } catch {
+        return `${code} ${amount.toLocaleString('de-CH')}`;
+      }
+    }
+    return amount.toLocaleString('de-CH');
+  };
 
   if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>;
 

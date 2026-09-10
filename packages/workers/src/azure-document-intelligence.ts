@@ -19,6 +19,15 @@ import pino from 'pino';
 import { getDIRegionInfo } from '@repo/utils';
 import { startSpan, endSpan, setSpanAttributes, addSpanEvent } from './observability/opentelemetry';
 import { RateLimiter } from './resilience/backpressure';
+import { resolveDIPollAttempts } from './utils/di-page-range';
+
+export {
+  computeMetadataPageRange,
+  peekPdfPageCount,
+  resolveDIPollAttempts,
+  DI_DEFAULT_POLL_ATTEMPTS,
+  DI_LARGE_DOC_PAGE_THRESHOLD,
+} from './utils/di-page-range';
 
 const logger = pino({ name: 'azure-document-intelligence' });
 
@@ -104,7 +113,12 @@ export const diMetrics = {
 
 const DI_API_VERSION = '2024-11-30';
 
-const MAX_POLL_ATTEMPTS = 120; // 2 minutes
+/** Locale hint for DI date/number parsing. Swiss tenant default is de-CH. */
+export function getDILocale(): string {
+  const fromEnv = process.env.AZURE_DI_LOCALE?.trim();
+  return fromEnv || 'de-CH';
+}
+
 const POLL_INTERVAL_MS = 1000;
 
 // Azure DI pricing per page (USD, S0 tier as of 2025)
@@ -416,6 +430,10 @@ async function analyzeDocument(
     locale?: string;
     /** Page range to analyze, e.g. '1-50'. Reduces cost for large documents. */
     pages?: string;
+    /** Hint for poll budget when page count is known before the result returns. */
+    estimatedPageCount?: number;
+    /** Override poll attempts (1s interval). Caps at 300. */
+    maxPollAttempts?: number;
     onProgress?: (pct: number, message: string) => void;
   } = {}
 ): Promise<any> {
@@ -447,8 +465,9 @@ async function analyzeDocument(
   if (options.outputContentFormat) {
     params.set('outputContentFormat', options.outputContentFormat);
   }
-  if (options.locale) {
-    params.set('locale', options.locale);
+  const locale = options.locale || getDILocale();
+  if (locale) {
+    params.set('locale', locale);
   }
   // Page-range limiting — reduces cost for large documents
   if (options.pages) {
@@ -481,18 +500,19 @@ async function analyzeDocument(
     throw new Error('Document Intelligence did not return Operation-Location header');
   }
 
-  // Poll for results
+  // Poll for results. 120s is tight for 20–30 page layout jobs.
   let result: any = null;
   let attempts = 0;
+  const pollLimit = resolveDIPollAttempts(options.estimatedPageCount, options.maxPollAttempts);
 
   options.onProgress?.(10, `Submitted to DI (${model}), polling for result…`);
 
-  while (attempts < MAX_POLL_ATTEMPTS) {
+  while (attempts < pollLimit) {
     await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
     attempts++;
 
     // Report progress based on polling progress (10-90%)
-    const pct = 10 + Math.min(80, Math.floor((attempts / MAX_POLL_ATTEMPTS) * 80));
+    const pct = 10 + Math.min(80, Math.floor((attempts / pollLimit) * 80));
     if (attempts % 5 === 0) {
       options.onProgress?.(pct, `DI analysis in progress (${attempts}s elapsed)…`);
     }
@@ -519,7 +539,7 @@ async function analyzeDocument(
   }
 
   if (!result) {
-    throw new Error(`Document Intelligence timed out after ${MAX_POLL_ATTEMPTS}s`);
+    throw new Error(`Document Intelligence timed out after ${pollLimit}s`);
   }
 
   const processingTime = Date.now() - startTime;
@@ -574,16 +594,28 @@ function parseTables(raw: any): DITable[] {
       confidence: c.confidence ?? 0.9,
     }));
 
-    // Extract headers
-    const headers = cells
+    // Extract headers. Scanned rate cards often omit columnHeader kinds —
+    // treat the first row as headers so financial analysis still sees labels.
+    const markedHeaders = cells
       .filter((c) => c.kind === 'columnHeader')
       .sort((a, b) => a.columnIndex - b.columnIndex)
       .map((c) => c.content);
+    const inferredHeaderRow =
+      markedHeaders.length === 0 && cells.length > 0
+        ? Math.min(...cells.map((c) => c.rowIndex))
+        : null;
+    const headers = markedHeaders.length > 0
+      ? markedHeaders
+      : cells
+          .filter((c) => c.rowIndex === inferredHeaderRow)
+          .sort((a, b) => a.columnIndex - b.columnIndex)
+          .map((c) => c.content);
 
     // Group content cells into rows
     const rowMap = new Map<number, string[]>();
     for (const cell of cells) {
       if (cell.kind === 'columnHeader') continue;
+      if (inferredHeaderRow !== null && cell.rowIndex === inferredHeaderRow) continue;
       if (!rowMap.has(cell.rowIndex)) rowMap.set(cell.rowIndex, []);
       const row = rowMap.get(cell.rowIndex)!;
       row[cell.columnIndex] = cell.content;
@@ -707,6 +739,9 @@ export async function analyzeLayout(
     outputFormat?: 'text' | 'markdown';
     /** Page range to analyze, e.g. '1-50'. Reduces cost for large documents. */
     pages?: string;
+    estimatedPageCount?: number;
+    maxPollAttempts?: number;
+    highResolution?: boolean;
   } = {}
 ): Promise<DIAnalyzeResult> {
   const span = startSpan({ name: 'di.analyzeLayout', kind: 'client', attributes: { 'di.model': 'prebuilt-layout', 'di.buffer_size': fileBuffer.length } });
@@ -715,12 +750,17 @@ export async function analyzeLayout(
     if (options.extractKeyValuePairs !== false) {
       features.push('keyValuePairs');
     }
+    if (options.highResolution) {
+      features.push('ocrHighResolution');
+    }
 
     const raw = await analyzeDocument(fileBuffer, 'prebuilt-layout', {
       features,
       locale: options.locale,
-      outputContentFormat: options.outputFormat,
+      outputContentFormat: options.outputFormat ?? 'markdown',
       pages: options.pages,
+      estimatedPageCount: options.estimatedPageCount,
+      maxPollAttempts: options.maxPollAttempts,
     });
 
     const region = raw._region as string;
@@ -818,13 +858,15 @@ export async function analyzeRead(
  */
 export async function analyzeContract(
   fileBuffer: Buffer,
-  options: { locale?: string; pages?: string } = {}
+  options: { locale?: string; pages?: string; estimatedPageCount?: number; maxPollAttempts?: number } = {}
 ): Promise<{ analysis: DIAnalyzeResult; contract: ContractExtractionResult }> {
   const span = startSpan({ name: 'di.analyzeContract', kind: 'client', attributes: { 'di.model': 'prebuilt-contract', 'di.buffer_size': fileBuffer.length } });
   try {
   const raw = await analyzeDocument(fileBuffer, 'prebuilt-contract', {
     locale: options.locale,
     pages: options.pages,
+    estimatedPageCount: options.estimatedPageCount,
+    maxPollAttempts: options.maxPollAttempts,
     features: ['keyValuePairs', 'barcodes', 'formulas'],
   });
 
@@ -925,12 +967,14 @@ export async function analyzeContract(
  */
 export async function analyzeInvoice(
   fileBuffer: Buffer,
-  options: { locale?: string } = {}
+  options: { locale?: string; estimatedPageCount?: number; maxPollAttempts?: number } = {}
 ): Promise<{ analysis: DIAnalyzeResult; invoice: InvoiceExtractionResult }> {
   const span = startSpan({ name: 'di.analyzeInvoice', kind: 'client', attributes: { 'di.model': 'prebuilt-invoice', 'di.buffer_size': fileBuffer.length } });
   try {
   const raw = await analyzeDocument(fileBuffer, 'prebuilt-invoice', {
     locale: options.locale,
+    estimatedPageCount: options.estimatedPageCount,
+    maxPollAttempts: options.maxPollAttempts,
   });
 
   const region = raw._region as string;
@@ -1045,7 +1089,7 @@ export async function analyzeInvoice(
 export async function analyzeWithQueries(
   fileBuffer: Buffer,
   queryFields: string[],
-  options: { locale?: string; pages?: string } = {}
+  options: { locale?: string; pages?: string; estimatedPageCount?: number; maxPollAttempts?: number } = {}
 ): Promise<{ analysis: DIAnalyzeResult; answers: Record<string, string> }> {
   const span = startSpan({ name: 'di.analyzeWithQueries', kind: 'client', attributes: { 'di.model': 'prebuilt-layout', 'di.queries': queryFields.length } });
   try {
@@ -1054,6 +1098,8 @@ export async function analyzeWithQueries(
     queryFields,
     locale: options.locale,
     pages: options.pages,
+    estimatedPageCount: options.estimatedPageCount,
+    maxPollAttempts: options.maxPollAttempts,
   });
 
   const region = raw._region as string;

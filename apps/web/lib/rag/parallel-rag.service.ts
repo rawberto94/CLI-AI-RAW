@@ -17,6 +17,7 @@ import { createOpenAIClient, createEmbeddingClient, getOpenAIApiKey } from '@/li
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 import { logger } from '@/lib/logger';
+import { expandQueryWithLegalSynonyms, retrievalLanguageInstructions } from '@repo/utils';
 
 // =============================================================================
 // TYPES
@@ -262,9 +263,12 @@ export async function parallelMultiQueryRAG(
         SELECT id, "contractTitle", filename as "fileName", "supplierName", LEFT("rawText", 16000) as "rawText"
         FROM "Contract"
         WHERE "rawText" IS NOT NULL
-          AND to_tsvector('english', "rawText") @@ plainto_tsquery('english', ${query})
+          AND (
+            to_tsvector('english', "rawText") @@ plainto_tsquery('english', ${query})
+            OR to_tsvector('simple', "rawText") @@ plainto_tsquery('simple', ${query})
+          )
           ${tenantFilter}
-        ORDER BY ts_rank_cd(to_tsvector('english', "rawText"), plainto_tsquery('english', ${query})) DESC
+        ORDER BY ts_rank_cd(to_tsvector('simple', "rawText"), plainto_tsquery('simple', ${query})) DESC
         LIMIT ${k}
       `;
       if (rawResults.length > 0) {
@@ -308,7 +312,8 @@ async function generateHyDE(query: string, openai: OpenAI): Promise<string | nul
       messages: [
         {
           role: 'system',
-          content: `You are generating a hypothetical contract clause that would answer the user's question. Write a realistic 2-3 sentence contract excerpt. Do NOT explain or prefix it - just write the clause text directly.`,
+          content: `You are generating a hypothetical contract clause that would answer the user's question. Write a realistic 2-3 sentence contract excerpt. Do NOT explain or prefix it - just write the clause text directly.
+${retrievalLanguageInstructions(query)}`,
         },
         { role: 'user', content: query },
       ],
@@ -337,7 +342,8 @@ async function expandQueryVariations(query: string, openai: OpenAI): Promise<str
 Focus on:
 1. Different terminology (legal vs business)
 2. More specific or more general versions
-3. Different question structures`,
+3. Different question structures
+${retrievalLanguageInstructions(query)}`,
         },
         { role: 'user', content: query },
       ],
@@ -347,9 +353,9 @@ Focus on:
 
     let content = response.choices[0]?.message?.content || '[]';
     content = content.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
-    return JSON.parse(content);
+    return [...JSON.parse(content), ...expandQueryWithLegalSynonyms(query)];
   } catch {
-    return [];
+    return expandQueryWithLegalSynonyms(query);
   }
 }
 
@@ -470,10 +476,13 @@ async function keywordSearch(
         ce."contractId",
         ce."chunkIndex",
         ce."chunkText" as text,
-        ts_rank(to_tsvector('english', ce."chunkText"), plainto_tsquery('english', ${query})) as rank
+        ts_rank(to_tsvector('simple', ce."chunkText"), plainto_tsquery('simple', ${query})) as rank
       FROM "ContractEmbedding" ce
       JOIN "Contract" c ON c.id = ce."contractId"
-      WHERE to_tsvector('english', ce."chunkText") @@ plainto_tsquery('english', ${query})
+      WHERE (
+        to_tsvector('english', ce."chunkText") @@ plainto_tsquery('english', ${query})
+        OR to_tsvector('simple', ce."chunkText") @@ plainto_tsquery('simple', ${query})
+      )
       ${whereClause}
       ORDER BY rank DESC
       LIMIT ${k}

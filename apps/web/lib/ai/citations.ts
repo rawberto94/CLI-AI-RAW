@@ -161,14 +161,103 @@ export interface BuildCitationHrefOptions {
   searchParams?: string | URLSearchParams | null;
 }
 
+function foldCitationChar(ch: string): string {
+  if (ch === '\u2018' || ch === '\u2019' || ch === '`') return "'";
+  if (ch === '\u201C' || ch === '\u201D') return '"';
+  if (ch === '\u2013' || ch === '\u2014') return '-';
+  if (ch === '\u00A0') return ' ';
+  return ch;
+}
+
+/** Fold quotes, OCR hyphenation, and whitespace so LLM excerpts still match. */
+export function buildCitationIndex(source: string): { text: string; map: number[] } {
+  let text = '';
+  const map: number[] = [];
+  for (let i = 0; i < source.length; i++) {
+    const raw = source[i]!;
+    if (raw === '\u00AD') continue;
+    if (raw === '-' && i + 1 < source.length && /\s/.test(source[i + 1]!)) {
+      while (i + 1 < source.length && /\s/.test(source[i + 1]!)) i += 1;
+      continue;
+    }
+    let ch = foldCitationChar(raw);
+    if (/\s/.test(ch)) {
+      if (text.endsWith(' ')) continue;
+      ch = ' ';
+    }
+    map.push(i);
+    text += ch;
+  }
+  return { text, map };
+}
+
 /**
- * Build deep-link to contract details with citation highlight query params.
- * Matches FloatingAIBubble link convention.
+ * Find a quoted snippet inside OCR/raw text even when whitespace, quotes, or casing differ.
  */
+export function locateSnippetInText(
+  sourceText: string,
+  snippet: string | null | undefined,
+): { start: number; end: number } | null {
+  if (!sourceText || !snippet) return null;
+  const needle = snippet.replace(/\u2026|\.{3}/g, ' ').trim();
+  if (needle.length < 8) return null;
+
+  const exact = sourceText.indexOf(needle);
+  if (exact >= 0) return { start: exact, end: exact + needle.length };
+
+  const indexed = buildCitationIndex(sourceText);
+  const foldedNeedle = buildCitationIndex(needle).text.toLowerCase();
+  if (!foldedNeedle) return null;
+  const haystack = indexed.text.toLowerCase();
+
+  let foldedIndex = haystack.indexOf(foldedNeedle);
+  if (foldedIndex < 0 && foldedNeedle.length > 24) {
+    foldedIndex = haystack.indexOf(foldedNeedle.slice(0, 48));
+  }
+  if (foldedIndex < 0) {
+    const tokens = foldedNeedle.split(' ').filter((token) => token.length > 2).slice(0, 8);
+    if (tokens.length >= 4) {
+      foldedIndex = haystack.indexOf(tokens.join(' '));
+    }
+  }
+  if (foldedIndex < 0) return null;
+
+  const start = indexed.map[foldedIndex] ?? 0;
+  const endIndex = Math.min(indexed.map.length - 1, foldedIndex + Math.max(foldedNeedle.length - 1, 0));
+  const end = (indexed.map[endIndex] ?? sourceText.length - 1) + 1;
+  return { start, end: Math.max(end, start + 1) };
+}
+
+/** Prefer live snippet match when stored offsets no longer contain the quote. */
+export function resolveCitationSpan(
+  sourceText: string,
+  opts: { startOffset?: number; endOffset?: number; snippet?: string | null },
+): { start: number; end: number; strategy: 'offset' | 'snippet' } | null {
+  const snippet = opts.snippet?.trim();
+  if (
+    typeof opts.startOffset === 'number' &&
+    typeof opts.endOffset === 'number' &&
+    opts.endOffset > opts.startOffset &&
+    opts.startOffset >= 0 &&
+    opts.startOffset < sourceText.length
+  ) {
+    const slice = sourceText.slice(opts.startOffset, Math.min(opts.endOffset, sourceText.length));
+    const stillMatches = !snippet || locateSnippetInText(slice, snippet) != null || slice.toLowerCase().includes(snippet.slice(0, 24).toLowerCase());
+    if (stillMatches) {
+      return { start: opts.startOffset, end: Math.min(opts.endOffset, sourceText.length), strategy: 'offset' };
+    }
+  }
+  if (snippet) {
+    const located = locateSnippetInText(sourceText, snippet);
+    if (located) return { ...located, strategy: 'snippet' };
+  }
+  return null;
+}
+
 export function buildCitationHref(
   citation: Pick<
     Citation,
-    'contractId' | 'index' | 'heading' | 'section' | 'startOffset' | 'endOffset' | 'snippet'
+    'contractId' | 'index' | 'heading' | 'section' | 'startOffset' | 'endOffset' | 'snippet' | 'page'
   >,
   options: BuildCitationHrefOptions = {},
 ): string | null {
@@ -183,8 +272,11 @@ export function buildCitationHref(
         : '';
   const next = new URLSearchParams(isCurrentContractPage ? existing : '');
 
-  next.set('tab', 'details');
+  if (!isCurrentContractPage || !next.get('tab')) {
+    next.set('tab', 'details');
+  }
   next.set('cite', '1');
+  next.set('pdf', '1');
   next.set('citeIndex', String(citation.index));
 
   if (citation.heading) next.set('citeHeading', citation.heading);
@@ -201,6 +293,9 @@ export function buildCitationHref(
 
   if (citation.snippet) next.set('citeSnippet', citation.snippet.slice(0, 320));
   else next.delete('citeSnippet');
+
+  if (typeof citation.page === 'number' && citation.page > 0) next.set('citePage', String(citation.page));
+  else next.delete('citePage');
 
   return `/contracts/${citation.contractId}?${next.toString()}`;
 }

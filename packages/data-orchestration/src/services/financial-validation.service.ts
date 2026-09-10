@@ -272,7 +272,7 @@ export class FinancialValidationService {
     }
 
     const normalized = this.normalizeAmount(amount, currencyInfo.decimalPlaces);
-    const formatted = normalized.toLocaleString('en-US', {
+    const formatted = normalized.toLocaleString('de-CH', {
       minimumFractionDigits: currencyInfo.decimalPlaces,
       maximumFractionDigits: currencyInfo.decimalPlaces,
     });

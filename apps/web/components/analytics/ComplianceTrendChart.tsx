@@ -108,7 +108,7 @@ export function ComplianceTrendChart({ data, isLoading }: ComplianceTrendChartPr
                 <div key={index} className="space-y-1">
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-muted-foreground">
-                      {new Date(point.date).toLocaleDateString('en-US', {
+                      {new Date(point.date).toLocaleDateString('de-CH', {
                         month: 'short',
                         day: 'numeric',
                       })}

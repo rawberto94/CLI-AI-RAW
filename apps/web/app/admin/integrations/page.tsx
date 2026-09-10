@@ -850,9 +850,7 @@ export default function DataConnectionsPage() {
                         >
                           <RefreshCw className={cn("h-4 w-4", connection.status === 'syncing' && "animate-spin")} />
                         </Button>
-                        <Button variant="outline" size="sm">
-                          <Settings className="h-4 w-4" />
-                        </Button>
+
                         <Button
                           variant="outline"
                           size="sm"

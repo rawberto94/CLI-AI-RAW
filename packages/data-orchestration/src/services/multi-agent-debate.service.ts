@@ -18,6 +18,7 @@
 import { ChatOpenAI } from '@langchain/openai';
 import { SystemMessage, HumanMessage, AIMessage } from '@langchain/core/messages';
 import { z } from 'zod';
+import { analysisLanguageInstructions } from '@repo/utils';
 
 // Note: @langchain/anthropic is an optional peer dependency
 // Claude models will automatically fall back to OpenAI GPT-4o if not installed
@@ -530,7 +531,10 @@ export class MultiAgentDebateService {
   ): Promise<DebateTurn> {
     const startTime = Date.now();
     const llm = this.getLLMForAgent(agent);
-    const systemPrompt = AGENT_PROMPTS[agent.role];
+    const systemPrompt = `${AGENT_PROMPTS[agent.role]}
+
+${analysisLanguageInstructions({ contractText: context.contractText })}
+Keep quoted source text verbatim. JSON keys stay English.`;
 
     const conversationHistory = previousTurns.map(turn => 
       `[${turn.agentName} - ${turn.role.toUpperCase()}]:\n${turn.message}`

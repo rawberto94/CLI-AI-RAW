@@ -4,6 +4,7 @@ import { RateCardBenchmarkingEngine } from './rate-card-benchmarking.service';
 import { SavingsOpportunityService } from './savings-opportunity.service';
 import { SupplierBenchmarkService } from './supplier-benchmark.service';
 import { notificationService } from './notification.service';
+import { formatMoneyText } from '@repo/utils';
 
 const rateCardBenchmarkingService = new RateCardBenchmarkingEngine(prisma);
 const savingsOpportunityService = new SavingsOpportunityService(prisma);
@@ -403,7 +404,7 @@ export class AutomatedReportingService {
         (opportunities as any[]).reduce((sum: number, o: any) => sum + (o.potentialSavings || 0), 0) /
         opportunities.length;
       insights.push(
-        `Average savings per opportunity: $${avgSavings.toLocaleString()}`
+        `Average savings per opportunity: ${formatMoneyText(avgSavings)}`
       );
     }
 

@@ -14,6 +14,7 @@ import { ClusterVisualization } from '@/components/rate-cards/ClusterVisualizati
 import { Loader2, Play, RefreshCw, Boxes } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { formatAmountWithCurrency } from '@/lib/utils/formatters';
 
 const fetchClusters = async () => {
   const response = await fetch('/api/rate-cards/clusters');
@@ -205,7 +206,7 @@ export default function ClusteringPage() {
                   >
                     <div className="text-sm text-slate-500 font-medium">Consolidation Savings</div>
                     <div className="text-2xl font-bold bg-gradient-to-r from-violet-600 to-violet-600 bg-clip-text text-transparent">
-                      ${Math.round(summary.totalConsolidationSavings).toLocaleString()}
+                      {formatAmountWithCurrency(Math.round(summary.totalConsolidationSavings))}
                     </div>
                   </motion.div>
                   <motion.div 
@@ -214,7 +215,7 @@ export default function ClusteringPage() {
                   >
                     <div className="text-sm text-slate-500 font-medium">Arbitrage Savings</div>
                     <div className="text-2xl font-bold bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent">
-                      ${Math.round(summary.totalArbitrageSavings).toLocaleString()}
+                      {formatAmountWithCurrency(Math.round(summary.totalArbitrageSavings))}
                     </div>
                   </motion.div>
                 </div>

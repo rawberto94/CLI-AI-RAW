@@ -57,7 +57,9 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
       contractId,
       totalPotentialSavings: {
         amount: totalSavings,
-        currency: 'USD',
+        currency: [...new Set(opportunities.map((opp) => opp.potentialSavingsCurrency).filter((code) => code && code !== 'XXX'))].length === 1
+          ? opportunities.find((opp) => opp.potentialSavingsCurrency && opp.potentialSavingsCurrency !== 'XXX')?.potentialSavingsCurrency || ''
+          : '',
         percentage: 0 // Calculate based on contract value if available
       },
       opportunities: opportunities.map(opp => ({
@@ -141,7 +143,9 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
     tenantId,
     totalContracts: uniqueContracts.size,
     totalPotentialSavings: totalSavings,
-    currency: 'USD',
+    currency: [...new Set(opportunities.map((opp) => opp.potentialSavingsCurrency).filter((code) => code && code !== 'XXX'))].length === 1
+      ? opportunities.find((opp) => opp.potentialSavingsCurrency && opp.potentialSavingsCurrency !== 'XXX')?.potentialSavingsCurrency || ''
+      : '',
     totalOpportunities: opportunities.length,
     quickWinsCount: quickWins.length,
     strategicInitiativesCount: strategicInitiatives.length,

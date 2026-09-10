@@ -2,6 +2,7 @@ import { ContractStatus } from '@prisma/client';
 
 import { createSuccessResponse, type ContractApiContext } from '@/lib/api-middleware';
 import { prisma } from '@/lib/prisma';
+import { PORTFOLIO_STATUSES } from '@/lib/contracts/server/portfolio';
 
 const SUMMARY_STATUS_BUCKETS = {
   activeContracts: [ContractStatus.ACTIVE, ContractStatus.COMPLETED],
@@ -41,7 +42,12 @@ export async function getContractsSummary(context: ContractApiContext) {
   const baseWhere = {
     tenantId,
     isDeleted: false,
-  } as const;
+  };
+
+  const portfolioWhere = {
+    ...baseWhere,
+    status: { in: PORTFOLIO_STATUSES },
+  };
 
   const [
     totalContracts,
@@ -51,7 +57,7 @@ export async function getContractsSummary(context: ContractApiContext) {
     valueResult,
   ] = await Promise.all([
     prisma.contract.count({
-      where: baseWhere,
+      where: portfolioWhere,
     }),
     prisma.contract.groupBy({
       by: ['status'],
@@ -60,7 +66,7 @@ export async function getContractsSummary(context: ContractApiContext) {
     }),
     prisma.contract.count({
       where: {
-        ...baseWhere,
+        ...portfolioWhere,
         expirationDate: {
           gte: new Date(),
           lte: getDateOffsetFromNow(30),
@@ -69,7 +75,7 @@ export async function getContractsSummary(context: ContractApiContext) {
     }),
     prisma.contract.count({
       where: {
-        ...baseWhere,
+        ...portfolioWhere,
         createdAt: {
           gte: getDateOffsetFromNow(-7),
         },
@@ -77,7 +83,7 @@ export async function getContractsSummary(context: ContractApiContext) {
     }),
     prisma.contract.aggregate({
       where: {
-        ...baseWhere,
+        ...portfolioWhere,
         totalValue: { not: null },
       },
       _sum: { totalValue: true },

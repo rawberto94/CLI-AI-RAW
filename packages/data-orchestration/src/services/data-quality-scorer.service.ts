@@ -10,6 +10,7 @@
 
 import { PrismaClient } from '@prisma/client';
 import { createLogger } from '../utils/logger';
+import { formatMoneyText } from '@repo/utils';
 
 const logger = createLogger('data-quality-scorer-service');
 
@@ -210,7 +211,7 @@ export class DataQualityScorerService {
         dimension: 'ACCURACY',
         severity,
         field: 'dailyRateUSD',
-        description: `Rate of $${rate}/day is outside typical range ($50-$5000)`,
+        description: `Rate of ${formatMoneyText(rate, rateCard.currency)}/day is outside typical range (${formatMoneyText(50)}-${formatMoneyText(5000)})`,
         impact: 'May indicate data entry error or currency conversion issue',
       });
       deductions.push(severity === 'HIGH' ? 30 : 15);
@@ -262,7 +263,7 @@ export class DataQualityScorerService {
         dimension: 'ACCURACY',
         severity: 'MEDIUM',
         field: 'seniority',
-        description: `Rate of $${rate}/day seems inconsistent with ${rateCard.seniority} seniority level`,
+        description: `Rate of ${formatMoneyText(rate, rateCard.currency)}/day seems inconsistent with ${rateCard.seniority} seniority level`,
         impact: 'May indicate misclassification',
       });
       deductions.push(15);

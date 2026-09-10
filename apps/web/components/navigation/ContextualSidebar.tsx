@@ -15,8 +15,6 @@ import {
   Building2,
   Zap,
   Shield,
-  Eye,
-  ArrowRight,
   Clock,
 } from 'lucide-react';
 
@@ -223,21 +221,7 @@ export function ContextualSidebar({
               )}
             </div>
 
-            {/* Footer Actions */}
-            {items.length > 0 && (
-              <div className="flex-none p-4 border-t border-slate-200 bg-slate-50">
-                <div className="flex gap-2">
-                  <button className="flex-1 px-3 py-2 text-sm font-medium bg-white border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors flex items-center justify-center gap-2">
-                    <Eye className="h-4 w-4" />
-                    View All
-                  </button>
-                  <button className="flex-1 px-3 py-2 text-sm font-medium bg-violet-500 text-white rounded-lg hover:bg-violet-600 transition-colors flex items-center justify-center gap-2">
-                    Take Action
-                    <ArrowRight className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-            )}
+
           </motion.aside>
         </div>
       )}

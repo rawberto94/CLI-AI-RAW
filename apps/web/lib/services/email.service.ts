@@ -18,6 +18,19 @@
 import { logger } from '@/lib/logger';
 import { getPublicAppUrl } from '@/lib/public-app-url';
 
+function formatEmailMoney(value?: number, currency?: string): string | undefined {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return undefined;
+  const code = typeof currency === 'string' ? currency.trim() : '';
+  if (code.length === 3 && code !== 'XXX') {
+    try {
+      return new Intl.NumberFormat('de-CH', { style: 'currency', currency: code, maximumFractionDigits: 0 }).format(value);
+    } catch {
+      return `${code} ${value.toLocaleString('de-CH')}`;
+    }
+  }
+  return value.toLocaleString('de-CH');
+}
+
 // Email provider types
 type EmailProvider = 'resend' | 'sendgrid' | 'ses' | 'smtp' | 'console';
 
@@ -642,7 +655,7 @@ export class EmailService {
       recipientName: data.recipientName,
       contractName: data.contractName,
       daysRemaining: data.daysRemaining,
-      expiryDate: data.expiryDate.toLocaleDateString('en-US', {
+      expiryDate: data.expiryDate.toLocaleDateString('de-CH', {
         weekday: 'long',
         year: 'numeric',
         month: 'long',
@@ -676,6 +689,7 @@ export class EmailService {
     stage: string;
     dueDate: Date;
     value?: number;
+    currency?: string;
     baseUrl?: string;
   }): Promise<EmailResult> {
     const baseUrl = data.baseUrl || getPublicAppUrl();
@@ -685,16 +699,13 @@ export class EmailService {
       requestedBy: data.requestedBy,
       priority: data.priority,
       stage: data.stage,
-      dueDate: data.dueDate.toLocaleDateString('en-US', {
+      dueDate: data.dueDate.toLocaleDateString('de-CH', {
         weekday: 'short',
         year: 'numeric',
         month: 'short',
         day: 'numeric',
       }),
-      value: data.value ? new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'USD',
-      }).format(data.value) : undefined,
+      value: formatEmailMoney(data.value, data.currency),
       viewUrl: `${baseUrl}/approvals?contract=${data.contractId}`,
     });
 
@@ -762,6 +773,7 @@ export class EmailService {
     renewalDate: Date;
     expiryDate: Date;
     value?: number;
+    currency?: string;
     submittedForApproval?: boolean;
     baseUrl?: string;
   }): Promise<EmailResult> {
@@ -771,22 +783,19 @@ export class EmailService {
       originalContractName: data.originalContractName,
       renewedContractName: data.renewedContractName,
       renewedContractId: data.renewedContractId,
-      renewalDate: data.renewalDate.toLocaleDateString('en-US', {
+      renewalDate: data.renewalDate.toLocaleDateString('de-CH', {
         weekday: 'short',
         year: 'numeric',
         month: 'short',
         day: 'numeric',
       }),
-      expiryDate: data.expiryDate.toLocaleDateString('en-US', {
+      expiryDate: data.expiryDate.toLocaleDateString('de-CH', {
         weekday: 'short',
         year: 'numeric',
         month: 'short',
         day: 'numeric',
       }),
-      value: data.value ? new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'USD',
-      }).format(data.value) : undefined,
+      value: formatEmailMoney(data.value, data.currency),
       viewUrl: `${baseUrl}/contracts/${data.renewedContractId}`,
       submittedForApproval: data.submittedForApproval || false,
     });

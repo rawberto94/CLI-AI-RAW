@@ -33,6 +33,8 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import { useDisplayCurrency } from '@/hooks/useDisplayCurrency';
+import { formatAmountWithCurrency, formatDisplayTotal, sumConvertedCurrency } from '@/lib/utils/formatters';
 
 // Types
 interface RenewalContract {
@@ -42,6 +44,7 @@ interface RenewalContract {
   supplierName: string;
   currentValue: number;
   projectedValue: number;
+  currency?: string;
   renewalDate: string;
   autoRenewal: boolean;
   noticeDeadline?: string;
@@ -101,17 +104,8 @@ const MONTHS = [
   'July', 'August', 'September', 'October', 'November', 'December'
 ];
 
-function formatCurrency(value: number): string {
-  if (value >= 1000000) {
-    return `$${(value / 1000000).toFixed(1)}M`;
-  }
-  if (value >= 1000) {
-    return `$${(value / 1000).toFixed(0)}K`;
-  }
-  return `$${value.toFixed(0)}`;
-}
-
 export function RenewalsCalendar({ renewals, onSelect, selectedId }: RenewalsCalendarProps) {
+  const displayCurrency = useDisplayCurrency();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [viewMode, setViewMode] = useState<'month' | 'quarter'>('month');
@@ -210,12 +204,15 @@ export function RenewalsCalendar({ renewals, onSelect, selectedId }: RenewalsCal
     
     return {
       total: monthRenewals.length,
-      totalValue: monthRenewals.reduce((sum, r) => sum + r.currentValue, 0),
+      totalValue: sumConvertedCurrency(
+        monthRenewals.map((r) => ({ amount: r.currentValue, currency: r.currency })),
+        displayCurrency,
+      ),
       autoRenewal: monthRenewals.filter(r => r.autoRenewal).length,
       urgent: monthRenewals.filter(r => r.daysUntilRenewal <= 30).length,
       potentialSavings: monthRenewals.reduce((sum, r) => sum + (r.savings?.potential || 0), 0),
     };
-  }, [renewals, currentDate]);
+  }, [renewals, currentDate, displayCurrency]);
 
   // Quarter view data
   const quarterData = useMemo(() => {
@@ -236,7 +233,10 @@ export function RenewalsCalendar({ renewals, onSelect, selectedId }: RenewalsCal
         month,
         name: MONTHS[month],
         renewals: monthRenewals,
-        totalValue: monthRenewals.reduce((sum, r) => sum + r.currentValue, 0),
+        totalValue: sumConvertedCurrency(
+          monthRenewals.map((r) => ({ amount: r.currentValue, currency: r.currency })),
+          displayCurrency,
+        ),
       });
     }
     return months;
@@ -270,7 +270,7 @@ export function RenewalsCalendar({ renewals, onSelect, selectedId }: RenewalsCal
             </div>
             <div className="flex items-center gap-1.5">
               <DollarSign className="w-4 h-4 text-green-500" />
-              <span className="text-slate-600 dark:text-slate-400">{formatCurrency(monthStats.totalValue)}</span>
+              <span className="text-slate-600 dark:text-slate-400">{formatDisplayTotal(monthStats.totalValue, displayCurrency)}</span>
             </div>
             {monthStats.urgent > 0 && (
               <div className="flex items-center gap-1.5">
@@ -430,7 +430,7 @@ export function RenewalsCalendar({ renewals, onSelect, selectedId }: RenewalsCal
                       <h3 className="font-semibold text-slate-900 dark:text-slate-100">{name}</h3>
                       <div className="flex items-center gap-4 text-sm">
                         <span className="text-slate-500">{monthRenewals.length} renewals</span>
-                        <span className="font-medium text-green-600">{formatCurrency(totalValue)}</span>
+                        <span className="font-medium text-green-600">{formatDisplayTotal(totalValue, displayCurrency)}</span>
                       </div>
                     </div>
                     {monthRenewals.length > 0 ? (
@@ -463,7 +463,7 @@ export function RenewalsCalendar({ renewals, onSelect, selectedId }: RenewalsCal
               <CalendarIcon className="w-4 h-4 text-green-500" />
               {selectedDate ? (
                 <>
-                  {selectedDate.toLocaleDateString('en-US', { 
+                  {selectedDate.toLocaleDateString('de-CH', { 
                     weekday: 'long',
                     month: 'long', 
                     day: 'numeric',
@@ -574,6 +574,7 @@ function RenewalCard({
   onSelect?: (renewal: RenewalContract) => void;
   detailed?: boolean;
 }) {
+  const displayCurrency = useDisplayCurrency();
   return (
     <div 
       className={cn(
@@ -620,7 +621,7 @@ function RenewalCard({
               <div className="flex items-center gap-4 mt-2 text-xs">
                 <div className="flex items-center gap-1">
                   <DollarSign className="w-3 h-3 text-green-500" />
-                  <span className="text-slate-600 dark:text-slate-400">{formatCurrency(renewal.currentValue)}</span>
+                  <span className="text-slate-600 dark:text-slate-400">{formatAmountWithCurrency(renewal.currentValue, renewal.currency)}</span>
                 </div>
                 {renewal.projectedValue !== renewal.currentValue && (
                   <div className="flex items-center gap-1">
@@ -629,7 +630,7 @@ function RenewalCard({
                     ) : (
                       <TrendingDown className="w-3 h-3 text-green-500" />
                     )}
-                    <span className="text-slate-600 dark:text-slate-400">→ {formatCurrency(renewal.projectedValue)}</span>
+                    <span className="text-slate-600 dark:text-slate-400">→ {formatAmountWithCurrency(renewal.projectedValue, renewal.currency)}</span>
                   </div>
                 )}
               </div>
@@ -667,13 +668,13 @@ function RenewalCard({
         
         <div className="text-right">
           <div className="text-xs text-slate-500 dark:text-slate-400">
-            {new Date(renewal.renewalDate).toLocaleDateString('en-US', { 
+            {new Date(renewal.renewalDate).toLocaleDateString('de-CH', { 
               month: 'short', 
               day: 'numeric' 
             })}
           </div>
           <div className="text-sm font-semibold text-green-600 dark:text-green-400">
-            {formatCurrency(renewal.currentValue)}
+            {formatAmountWithCurrency(renewal.currentValue, renewal.currency)}
           </div>
         </div>
       </div>

@@ -6,6 +6,7 @@
 import React, { memo } from 'react';
 import { FileText } from 'lucide-react';
 import type { OverviewData } from '@/types/artifacts';
+import { formatAmountWithCurrency } from '@/lib/utils/formatters';
 
 interface OverviewRendererProps {
   data: OverviewData;
@@ -48,7 +49,7 @@ export const OverviewRenderer = memo(function OverviewRenderer({ data }: Overvie
             <div className="p-5 bg-white dark:bg-gray-800 rounded-lg border-2 shadow-sm">
               <p className="text-sm text-gray-500 dark:text-gray-400 mb-2 font-medium">Total Value</p>
               <p className="font-bold text-lg text-green-600 dark:text-green-400">
-                ${data.totalValue.toLocaleString()}
+                {formatAmountWithCurrency(data.totalValue, data.currency)}
               </p>
             </div>
           )}

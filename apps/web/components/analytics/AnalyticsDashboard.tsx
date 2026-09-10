@@ -16,12 +16,13 @@ import {
   AlertTriangle,
   Calendar,
   ArrowRight,
-  Download,
   RefreshCw,
   Filter,
   ChevronDown,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useDisplayCurrency } from '@/hooks/useDisplayCurrency';
+import { formatDisplayTotal } from '@/lib/utils/formatters';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -39,6 +40,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
+import Link from 'next/link';
 
 interface MetricCardProps {
   title: string;
@@ -127,6 +129,7 @@ interface AnalyticsDashboardProps {
 export const AnalyticsDashboard = memo(function AnalyticsDashboard({
   className,
 }: AnalyticsDashboardProps) {
+  const displayCurrency = useDisplayCurrency();
   const [timeRange, setTimeRange] = useState<string>('30d');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -256,10 +259,6 @@ export const AnalyticsDashboard = memo(function AnalyticsDashboard({
             <RefreshCw className={cn('h-4 w-4 mr-2', isRefreshing && 'animate-spin')} />
             Refresh
           </Button>
-          <Button variant="outline">
-            <Download className="h-4 w-4 mr-2" />
-            Export
-          </Button>
         </div>
       </div>
 
@@ -274,7 +273,7 @@ export const AnalyticsDashboard = memo(function AnalyticsDashboard({
         />
         <MetricCard
           title="Total Value"
-          value={totalValue >= 1_000_000 ? `$${(totalValue / 1_000_000).toFixed(1)}M` : `$${totalValue.toLocaleString()}`}
+          value={formatDisplayTotal(totalValue, displayCurrency)}
           icon={DollarSign}
           trend="up"
           color="green"
@@ -350,8 +349,10 @@ export const AnalyticsDashboard = memo(function AnalyticsDashboard({
             </div>
             <div className="mt-4 pt-4 border-t flex items-center justify-between">
               <span className="text-sm text-slate-500">Total: {computedTotalContracts} contracts</span>
-              <Button variant="link" size="sm" className="p-0 h-auto">
-                View all <ArrowRight className="h-3 w-3 ml-1" />
+              <Button variant="link" size="sm" className="p-0 h-auto" asChild>
+                <Link href="/contracts">
+                  View all <ArrowRight className="h-3 w-3 ml-1" />
+                </Link>
               </Button>
             </div>
           </CardContent>
@@ -380,7 +381,7 @@ export const AnalyticsDashboard = memo(function AnalyticsDashboard({
                   {cat.value > 0 && (
                     <div className="w-24 text-right">
                       <span className="text-sm font-medium text-green-600">
-                        ${(cat.value / 1000000).toFixed(1)}M
+                        {formatDisplayTotal(cat.value, displayCurrency)}
                       </span>
                     </div>
                   )}
@@ -434,9 +435,11 @@ export const AnalyticsDashboard = memo(function AnalyticsDashboard({
             <CardTitle>Upcoming Deadlines</CardTitle>
             <CardDescription>Contracts requiring attention</CardDescription>
           </div>
-          <Button variant="outline" size="sm">
-            View All
-            <ArrowRight className="h-4 w-4 ml-2" />
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/deadlines">
+              View All
+              <ArrowRight className="h-4 w-4 ml-2" />
+            </Link>
           </Button>
         </CardHeader>
         <CardContent>

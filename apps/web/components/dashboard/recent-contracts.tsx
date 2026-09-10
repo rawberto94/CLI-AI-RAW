@@ -4,7 +4,6 @@ import * as React from "react"
 import Link from "next/link"
 import {
   Eye,
-  Download,
   CheckCircle2,
   XCircle,
   Hourglass,
@@ -21,6 +20,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
 import { API_BASE_URL } from "../../lib/config"
 import { tenantHeaders } from "../../lib/tenant"
+import { formatAmountWithCurrency } from "../../lib/utils/formatters"
 
 type Contract = {
   id: string
@@ -136,7 +136,7 @@ export function RecentContracts() {
                   </TableCell>
                   <TableCell>{contract.supplier || "Unknown"}</TableCell>
                   <TableCell>
-                    ${getContractValue(contract.supplier).toLocaleString()}
+                    {formatAmountWithCurrency(getContractValue(contract.supplier), null)}
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center space-x-2">
@@ -168,9 +168,6 @@ export function RecentContracts() {
                       >
                         <Eye className="w-4 h-4" />
                       </Link>
-                      <button className="p-2 rounded-md hover:bg-muted">
-                        <Download className="w-4 h-4" />
-                      </button>
                     </div>
                   </TableCell>
                 </TableRow>

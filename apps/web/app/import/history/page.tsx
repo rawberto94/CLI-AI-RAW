@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
+import { isRateCardsEnabled } from '@/lib/features';
 
 interface ImportJob {
   id: string;
@@ -131,12 +132,14 @@ export default function ImportHistoryPage() {
             Track and manage all rate card imports
           </p>
         </div>
+        {isRateCardsEnabled() && (
         <Link
           href="/import/rate-cards"
           className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors"
         >
           New Import
         </Link>
+        )}
       </div>
 
       {/* Stats */}
@@ -222,7 +225,7 @@ export default function ImportHistoryPage() {
               ? 'Try adjusting your filters'
               : 'Start by importing your first rate card'}
           </p>
-          {statusFilter === 'all' && sourceFilter === 'all' && (
+          {isRateCardsEnabled() && statusFilter === 'all' && sourceFilter === 'all' && (
             <Link
               href="/import/rate-cards"
               className="inline-block px-6 py-3 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors"

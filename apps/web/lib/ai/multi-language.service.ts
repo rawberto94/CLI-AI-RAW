@@ -44,8 +44,8 @@ export const LANGUAGES: Record<SupportedLanguage, LanguageConfig> = {
     name: 'English',
     nativeName: 'English',
     direction: 'ltr',
-    dateFormat: 'MM/DD/YYYY',
-    numberFormat: { decimal: '.', thousands: ',', currency: '$' },
+    dateFormat: 'DD.MM.YYYY',
+    numberFormat: { decimal: '.', thousands: "'", currency: 'Fr.' },
   },
   es: {
     code: 'es',
@@ -60,8 +60,8 @@ export const LANGUAGES: Record<SupportedLanguage, LanguageConfig> = {
     name: 'French',
     nativeName: 'Français',
     direction: 'ltr',
-    dateFormat: 'DD/MM/YYYY',
-    numberFormat: { decimal: ',', thousands: ' ', currency: '€' },
+    dateFormat: 'DD.MM.YYYY',
+    numberFormat: { decimal: '.', thousands: "'", currency: 'Fr.' },
   },
   de: {
     code: 'de',
@@ -69,7 +69,7 @@ export const LANGUAGES: Record<SupportedLanguage, LanguageConfig> = {
     nativeName: 'Deutsch',
     direction: 'ltr',
     dateFormat: 'DD.MM.YYYY',
-    numberFormat: { decimal: ',', thousands: '.', currency: '€' },
+    numberFormat: { decimal: '.', thousands: "'", currency: 'Fr.' },
   },
   it: {
     code: 'it',
@@ -568,13 +568,21 @@ class MultiLanguageAIService {
    * Format currency for locale
    */
   formatCurrency(value: number, language: SupportedLanguage, currency?: string): string {
-    const _config = LANGUAGES[language];
-    const currencyCode = currency || this.getCurrencyCode(language);
-    
-    return new Intl.NumberFormat(language, {
-      style: 'currency',
-      currency: currencyCode,
-    }).format(value);
+    const code = typeof currency === 'string' ? currency.trim().toUpperCase() : '';
+    if (!code || code === 'XXX') {
+      return new Intl.NumberFormat(language, {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2,
+      }).format(value);
+    }
+    try {
+      return new Intl.NumberFormat(language, {
+        style: 'currency',
+        currency: code,
+      }).format(value);
+    } catch {
+      return `${code} ${new Intl.NumberFormat(language).format(value)}`;
+    }
   }
 
   /**
@@ -582,10 +590,10 @@ class MultiLanguageAIService {
    */
   private getCurrencyCode(language: SupportedLanguage): string {
     const currencyMap: Record<SupportedLanguage, string> = {
-      en: 'USD',
+      en: 'CHF',
       es: 'EUR',
-      fr: 'EUR',
-      de: 'EUR',
+      fr: 'CHF',
+      de: 'CHF',
       it: 'EUR',
       pt: 'BRL',
       nl: 'EUR',
@@ -597,7 +605,7 @@ class MultiLanguageAIService {
       ru: 'RUB',
       pl: 'PLN',
     };
-    return currencyMap[language] || 'USD';
+    return currencyMap[language] || 'CHF';
   }
 }
 

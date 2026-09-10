@@ -15,6 +15,7 @@
 import { ContractAnonymizer, processWithAnonymization } from './anonymizer';
 import OpenAI from 'openai';
 import { createOpenAIClient, hasAIClientConfig } from '@/lib/openai-client';
+import { resolveAnalysisLanguage } from '@repo/utils';
 
 // Initialize OpenAI client
 const openai = createOpenAIClient();
@@ -507,10 +508,11 @@ export async function customContractAnalysis(
     conversationHistory = [],
     template = 'custom',
     focusAreas = [],
-    language = 'en',
+    language: languageOpt,
     model = 'gpt-4o-mini',
     format = 'text',
   } = request;
+  const language = languageOpt || resolveAnalysisLanguage({ contractText });
 
   // Get template configuration
   const templateConfig = ANALYSIS_TEMPLATES[template];

@@ -28,6 +28,7 @@ import {
   Award
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { formatAmountWithCurrency } from '@/lib/utils/formatters';
 
 export default function NegotiationPrepPage() {
   const [mode, setMode] = useState<DataMode>('real');
@@ -194,7 +195,7 @@ export default function NegotiationPrepPage() {
                   />
             </div>
             <div className="flex items-end">
-              <Button className="w-full">
+              <Button className="w-full" onClick={() => void refetch()}>
                 Generate Prep
               </Button>
             </div>
@@ -377,7 +378,7 @@ export default function NegotiationPrepPage() {
                       <h4 className="font-medium">{rec.action}</h4>
                       <div className="text-right">
                         <div className="text-lg font-bold text-green-600">
-                          ${(rec.expectedSavings / 1000).toFixed(0)}K
+                          {formatAmountWithCurrency(rec.expectedSavings)}
                         </div>
                         <div className="text-xs text-muted-foreground">
                           potential savings
@@ -406,7 +407,7 @@ export default function NegotiationPrepPage() {
                   </div>
                   <div className="text-right">
                     <div className="text-2xl font-bold text-green-900">
-                      ${(data.recommendations.reduce((sum: number, rec: any) => sum + rec.expectedSavings, 0) / 1000).toFixed(0)}K
+                      {formatAmountWithCurrency(data.recommendations.reduce((sum: number, rec: any) => sum + rec.expectedSavings, 0))}
                     </div>
                   </div>
                 </div>

@@ -159,7 +159,7 @@ export const createContractSchema = z.object({
   effectiveDate: z.string().datetime().optional(),
   expirationDate: z.string().datetime().optional(),
   totalValue: z.number().optional(),
-  currency: z.string().length(3).default('CHF'),
+  currency: z.string().length(3).optional(),
   tags: z.array(z.string()).optional(),
 });
 
@@ -206,13 +206,13 @@ export const createRateCardSchema = z.object({
   contractId: z.string().optional(),
   effectiveDate: z.string().datetime().optional(),
   expiryDate: z.string().datetime().optional(),
-  currency: z.string().length(3).default('CHF'),
+  currency: z.string().length(3).optional(),
   rates: z.array(z.object({
     roleName: z.string(),
     level: z.string().optional(),
     location: z.string().optional(),
     dailyRate: z.number().positive(),
-    currency: z.string().length(3).default('CHF'),
+    currency: z.string().length(3).optional(),
   })).optional(),
 });
 

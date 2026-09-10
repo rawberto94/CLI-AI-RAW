@@ -12,6 +12,7 @@
  */
 
 import OpenAI from 'openai';
+import { analysisLanguageInstructions } from '@repo/utils';
 
 // Types
 export type FieldType = 
@@ -650,7 +651,10 @@ class SmartFieldValidationService {
   ): Promise<ValidationIssue[]> {
     const openai = this.getOpenAI();
 
-    const prompt = `You are validating extracted contract data against the original contract text.
+    const prompt = `${analysisLanguageInstructions({ contractText })}
+Keep source values verbatim. JSON keys stay English. Do not invent USD.
+
+You are validating extracted contract data against the original contract text.
 
 EXTRACTED FIELDS:
 ${JSON.stringify(fields, null, 2)}

@@ -689,6 +689,8 @@ export function generateDynamicSystemPrompt(
 - Provide 2-3 suggested follow-up questions
 - If uncertain, ask clarifying questions
 - Be honest about limitations
+- Match the user's language. If they write German, French, or Italian, answer in that language.
+- Keep quoted contract text verbatim. Fr. and SFr. mean CHF. Do not invent USD.
 
 `;
 

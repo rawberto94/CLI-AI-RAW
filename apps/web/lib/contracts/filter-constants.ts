@@ -142,17 +142,25 @@ export const QUICK_PRESETS: Array<{
 
 export function formatCurrency(value?: number, currency?: string) {
   if (value == null) return "—";
-  return new Intl.NumberFormat("de-CH", {
-    style: "currency",
-    currency: currency || "CHF",
-    maximumFractionDigits: 0,
-  }).format(value);
+  const code = typeof currency === "string" ? currency.trim() : "";
+  if (code.length === 3 && code !== "XXX") {
+    try {
+      return new Intl.NumberFormat("de-CH", {
+        style: "currency",
+        currency: code,
+        maximumFractionDigits: 0,
+      }).format(value);
+    } catch {
+      return `${code} ${value.toLocaleString("de-CH")}`;
+    }
+  }
+  return value.toLocaleString("de-CH");
 }
 
 export function formatDate(dateString?: string) {
   if (!dateString) return "—";
   const date = new Date(dateString);
-  return new Intl.DateTimeFormat("en-US", {
+  return new Intl.DateTimeFormat("de-CH", {
     month: "short",
     day: "numeric",
     year: "numeric",

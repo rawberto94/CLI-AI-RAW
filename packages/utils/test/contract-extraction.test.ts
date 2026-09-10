@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { assessCriticalContractEvidence, assessContractTermEvidence, CONTRACT_DI_QUERY_FIELDS, CONTRACT_DI_QUERY_IDENTIFIERS, extractFinancialEvidence, normalizeDIQueryAnswers, validateDIQueryAnswers } from '../src/contract-extraction';
+import { assessCriticalContractEvidence, assessContractTermEvidence, CONTRACT_DI_QUERY_FIELDS, CONTRACT_DI_QUERY_IDENTIFIERS, extractFinancialEvidence, isHumanTcvLocked, normalizeDIQueryAnswers, parseIsoDate, resolveTcvWinner, validateDIQueryAnswers } from '../src/contract-extraction';
 
 describe('assessContractTermEvidence', () => {
   it('derives an end date from a two-year initial term', () => {
@@ -98,16 +98,122 @@ The first installment of $25,000 is payable on kickoff.`;
 
     expect(extractFinancialEvidence(text).totalValue).toBeNull();
   });
+
+  it('parses Swiss apostrophe thousands as TCV and does not sum installments', () => {
+    const text = 'The total contract value is CHF 1\'200\'000 for the full term.';
+
+    expect(extractFinancialEvidence(text)).toMatchObject({
+      totalValue: 1_200_000,
+      currency: 'CHF',
+      bestCandidate: { kind: 'aggregate' },
+    });
+  });
+
+  it('treats Fr. as CHF', () => {
+    const text = 'The total contract value amounts to Fr. 250000 for the services.';
+    expect(extractFinancialEvidence(text)).toMatchObject({
+      totalValue: 250000,
+      currency: 'CHF',
+    });
+  });
+
+});
+
+describe('resolveTcvWinner', () => {
+  it('prefers a DI query aggregate over overview and invoice totals', () => {
+    const winner = resolveTcvWinner({
+      contractType: 'MSA',
+      diQueryAnswers: {
+        totalContractValue: 'CHF 1\'200\'000',
+      },
+      overviewTotal: 25000,
+      invoiceTotal: 500,
+      financialTotal: 800000,
+    });
+    expect(winner.source).toBe('di_query');
+    expect(winner.value).toBe(1_200_000);
+    expect(winner.currency).toBe('CHF');
+  });
+
+  it('does not use invoice totals for ordinary contracts', () => {
+    const winner = resolveTcvWinner({
+      contractType: 'MSA',
+      invoiceTotal: 9_999,
+      invoiceCurrency: 'USD',
+    });
+    expect(winner.source).toBe('none');
+    expect(winner.value).toBeNull();
+  });
+
+  it('uses invoice total only for invoice documents', () => {
+    const winner = resolveTcvWinner({
+      contractType: 'INVOICE',
+      invoiceTotal: 9_999,
+      invoiceCurrency: 'USD',
+    });
+    expect(winner).toMatchObject({ source: 'invoice', value: 9999, currency: 'USD' });
+  });
+
+  it('picks Gesamtvertragswert over Haftung and Tagessatz', () => {
+    const text = `
+Dienstleistungsvertrag zwischen Contigo AG und Vendor GmbH.
+Der Gesamtvertragswert beträgt CHF 1,200,000.
+Die Haftung ist begrenzt auf CHF 2,000,000.
+Honorartabelle: Senior Consultant Tagessatz CHF 1,400.
+`;
+    const winner = resolveTcvWinner({
+      contractType: 'MSA',
+      contractText: text,
+      financialTotal: 2_000_000,
+      overviewTotal: 1400,
+    });
+    expect(winner.value).toBe(1_200_000);
+    expect(winner.currency).toBe('CHF');
+    expect(winner.source).toBe('heuristic');
+    expect(winner.quote).toMatch(/Gesamtvertragswert/i);
+  });
+
+  it('rejects a DI TCV that is clearly a liability cap', () => {
+    const text = `
+Die Haftung (Haftungsobergrenze) beträgt CHF 2,000,000.
+Der Gesamtvertragswert beträgt CHF 1,200,000.
+`;
+    const winner = resolveTcvWinner({
+      contractType: 'MSA',
+      contractText: text,
+      diQueryAnswers: {
+        totalContractValue: 'CHF 2,000,000',
+      },
+    });
+    expect(winner.value).toBe(1_200_000);
+    expect(winner.source).toBe('heuristic');
+  });
+
+  it('does not use an LLM total with no supporting aggregate quote', () => {
+    const winner = resolveTcvWinner({
+      contractType: 'MSA',
+      financialTotal: 999_999,
+      overviewTotal: 888_888,
+    });
+    expect(winner.source).toBe('none');
+    expect(winner.value).toBeNull();
+  });
+
+  it('locks human-saved TCV', () => {
+    expect(isHumanTcvLocked({ tcvSource: 'human' })).toBe(true);
+    expect(isHumanTcvLocked({ tcvSource: 'heuristic' })).toBe(false);
+    expect(isHumanTcvLocked(null)).toBe(false);
+  });
 });
 
 describe('normalizeDIQueryAnswers', () => {
   it('normalizes DI query answers into metadata and evidence', () => {
     const result = normalizeDIQueryAnswers({
-      'What is the contract effective date?': 'March 9, 2026',
-      'What is the contract expiration date or end date?': 'March 9, 2028',
-      'What is the total contract value or aggregate fee?': 'CHF 1.2 million',
-      'What is the termination or renewal notice period?': '60 days before expiration',
-      'Who are the contracting parties?': 'ClientCo AG and AdvisoryFirm Global Advisory Country X AG',
+      effectiveDate: 'March 9, 2026',
+      expirationDate: 'March 9, 2028',
+      totalContractValue: 'CHF 1.2 million',
+      noticePeriod: '60 days before expiration',
+      contractingParties: 'ClientCo AG and AdvisoryFirm Global Advisory Country X AG',
     });
 
     expect(result.metadata).toMatchObject({
@@ -123,8 +229,8 @@ describe('normalizeDIQueryAnswers', () => {
 
   it('derives end date from DI effective date and initial duration when no explicit expiration answer exists', () => {
     const result = normalizeDIQueryAnswers({
-      'What is the contract effective date?': 'March 9, 2026',
-      'What is the initial contract term or duration?': '2 years from the Effective Date',
+      effectiveDate: 'March 9, 2026',
+      initialTerm: '2 years from the Effective Date',
     });
 
     expect(result.metadata).toMatchObject({
@@ -136,16 +242,16 @@ describe('normalizeDIQueryAnswers', () => {
 
   it('normalizes expanded critical-field lookup answers', () => {
     const result = normalizeDIQueryAnswers({
-      'What is the contract title or agreement name?': 'Strategic Supply Agreement',
-      'What type of contract is this?': 'Supplier Agreement',
-      'Who is the client, buyer, or customer?': 'ClientCo AG',
-      'Who is the supplier, vendor, or service provider?': 'Nordic Components GmbH',
-      'Is the contract signed, partially signed, unsigned, or unknown?': 'Not signed; signature fields are blank.',
-      'What is the signature or execution date?': 'not specified',
-      'Does the contract automatically renew?': 'No, it does not automatically renew.',
-      'What is the termination clause or termination right?': 'Either party may terminate with 90 days written notice.',
-      'What is the liability cap or limitation of liability amount?': 'Liability is capped at CHF 500,000.',
-      'What are the key deliverables, service levels, or obligations?': 'Supplier will deliver components according to the monthly forecast.',
+      contractTitle: 'Strategic Supply Agreement',
+      contractType: 'Supplier Agreement',
+      clientName: 'ClientCo AG',
+      supplierName: 'Nordic Components GmbH',
+      signatureStatus: 'Not signed; signature fields are blank.',
+      signatureDate: 'not specified',
+      autoRenewal: 'No, it does not automatically renew.',
+      terminationClause: 'Either party may terminate with 90 days written notice.',
+      liabilityCap: 'Liability is capped at CHF 500,000.',
+      keyObligations: 'Supplier will deliver components according to the monthly forecast.',
     });
 
     expect(result.metadata).toMatchObject({
@@ -170,7 +276,23 @@ describe('normalizeDIQueryAnswers', () => {
 
   it('uses API-compliant identifiers, not full sentences', () => {
     expect(CONTRACT_DI_QUERY_IDENTIFIERS[0]).toBe('contractTitle');
+    expect(CONTRACT_DI_QUERY_IDENTIFIERS).toContain('contractCurrency');
     expect(CONTRACT_DI_QUERY_IDENTIFIERS.every((id) => /^[\p{L}\p{M}\p{N}_]{1,64}$/u.test(id))).toBe(true);
+  });
+
+  it('maps Fr. answers to CHF and infers Fr. from body text', () => {
+    const fromField = normalizeDIQueryAnswers({
+      totalContractValue: '1 200 000',
+      contractCurrency: 'Fr.',
+    });
+    expect(fromField.metadata.currency).toBe('CHF');
+    expect(fromField.metadata.totalValue).toBe(1_200_000);
+
+    const inferred = validateDIQueryAnswers(
+      { totalContractValue: '1\'200\'000' },
+      'Der Gesamtvertragswert beträgt Fr. 1\'200\'000.',
+    );
+    expect(inferred.answers.contractCurrency).toBe('CHF');
   });
 
   it('rejects non-numeric/example total contract values', () => {
@@ -198,6 +320,29 @@ describe('normalizeDIQueryAnswers', () => {
     );
     expect(result.answers.effectiveDate).toBe('2026-03-09');
     expect(result.answers.contractCurrency).toBe('CHF');
+  });
+
+  it('parses Swiss numeric and German month dates from DI answers', () => {
+    const dotted = validateDIQueryAnswers(
+      { effectiveDate: '01.04.2026', expirationDate: '31.03.2029' },
+      'Inkrafttreten: 01.04.2026. Gültig bis 31.03.2029.',
+    );
+    expect(dotted.answers.effectiveDate).toBe('2026-04-01');
+    expect(dotted.answers.expirationDate).toBe('2029-03-31');
+
+    const named = validateDIQueryAnswers(
+      { effectiveDate: '1. Januar 2026' },
+      'Inkrafttreten am 1. Januar 2026.',
+    );
+    expect(named.answers.effectiveDate).toBe('2026-01-01');
+  });
+});
+
+describe('parseIsoDate', () => {
+  it('treats dotted numerics as DD.MM.YYYY', () => {
+    expect(parseIsoDate('03.04.2026')).toBe('2026-04-03');
+    expect(parseIsoDate('1. Januar 2026')).toBe('2026-01-01');
+    expect(parseIsoDate('March 9, 2026')).toBe('2026-03-09');
   });
 });
 

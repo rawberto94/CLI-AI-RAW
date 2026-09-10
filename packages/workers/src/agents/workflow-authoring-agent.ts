@@ -12,6 +12,7 @@
 import { BaseAgent } from './base-agent';
 import type { AgentInput, AgentOutput, AgentRecommendation } from './types';
 import { logger } from '../utils/logger';
+import { formatMoneyText } from '@repo/utils';
 
 // --------------------------------------------------------------------------
 // Internal types
@@ -220,7 +221,7 @@ export class WorkflowAuthoringAgent extends BaseAgent {
 
     const definition: WorkflowDefinition = {
       name: `${contractType} Approval — ${tier.charAt(0).toUpperCase() + tier.slice(1)} Tier`,
-      description: `Auto-generated ${steps.length}-step approval workflow for ${contractType} contracts in the ${tier} value tier ($${totalValue.toLocaleString()}).`,
+      description: `Auto-generated ${steps.length}-step approval workflow for ${contractType} contracts in the ${tier} value tier (${formatMoneyText(totalValue, ctx.currency)}).`,
       contractType,
       valueTier: tier,
       steps,
@@ -243,7 +244,7 @@ export class WorkflowAuthoringAgent extends BaseAgent {
         effort: 'low' as const,
         timeframe: 'Before execution',
         actions: [],
-        reasoning: `Contract value $${totalValue.toLocaleString()} exceeds $1M threshold.`,
+        reasoning: `Contract value ${formatMoneyText(totalValue, ctx.currency)} exceeds 1M threshold.`,
       });
     }
 
@@ -305,7 +306,7 @@ export class WorkflowAuthoringAgent extends BaseAgent {
       confidence,
       reasoning: this.formatReasoning([
         `Contract type: ${contractType} | Industry: ${industry}`,
-        `Value tier: ${tier} ($${totalValue.toLocaleString()})`,
+        `Value tier: ${tier} (${formatMoneyText(totalValue, ctx.currency)})`,
         `Generated ${steps.length} workflow steps (${parallelGroups.length} parallelisable group(s))`,
         `${routingRules.length} routing rules (including ${industry !== 'general' ? 'industry-specific' : 'standard'})`,
         `Estimated duration: ${estimatedDurationHours} hours (${Math.ceil(estimatedDurationHours / 24)} business days)`,

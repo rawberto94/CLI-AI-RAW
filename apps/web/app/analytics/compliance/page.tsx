@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Shield, Download, RefreshCw, FileText, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
+import Link from 'next/link';
 
 
 
@@ -232,8 +233,8 @@ export default function ComplianceAnalyticsPage() {
                 immediate attention
               </p>
             </div>
-            <Button variant="outline" size="sm">
-              Review
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/contracts">Review</Link>
             </Button>
           </div>
           <div className="flex items-start gap-3 p-3 border rounded-lg">
@@ -244,8 +245,8 @@ export default function ComplianceAnalyticsPage() {
                 Add new compliance requirements to standardized checks
               </p>
             </div>
-            <Button variant="outline" size="sm">
-              Configure
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/settings">Configure</Link>
             </Button>
           </div>
         </CardContent>

@@ -2,7 +2,6 @@
 
 import React, { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
 import {
   Collapsible,
   CollapsibleContent,
@@ -22,6 +21,9 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { detailUi } from '@/app/contracts/[id]/components/detail-ui'
+import { describeHeaderCompliance, type HeaderComplianceInfo } from '@/lib/contracts/header-compliance'
+import { AnalysisCoverageChip, type AnalysisPackSummary } from '@/components/contracts/AnalysisCoverageChip'
+import { FindingSourceLink } from '@/components/contracts/FindingSourceLink'
 
 // ============ TYPES ============
 
@@ -40,17 +42,13 @@ export interface RiskInfo {
   score?: number
   riskScore?: number
   factors?: string[]
-  risks?: Array<{ title: string; description?: string; severity?: string }>
+  risks?: Array<{ title?: string; description?: string; severity?: string; sourceClause?: string; source?: string }>
   mitigations?: string[]
 }
 
-export interface ComplianceInfo {
+export type ComplianceInfo = HeaderComplianceInfo & {
   compliant?: boolean | null
-  isCompliant?: boolean | null
-  score?: number
-  violations?: string[]
   requirements?: string[]
-  checks?: Array<{ name: string; status: string; message?: string }>
 }
 
 export interface HealthInfo {
@@ -67,8 +65,12 @@ export interface ContractScoresCardProps {
   riskInfo?: RiskInfo | null
   complianceInfo?: ComplianceInfo | null
   healthInfo?: HealthInfo | null
+  analysisPack?: AnalysisPackSummary | null
+  ocrNeedsReview?: boolean
+  analysisLanguage?: string | null
+  scanType?: 'native' | 'scanned' | 'mixed' | string | null
+  contractId?: string
   isProcessing?: boolean
-  onRefresh?: () => void
   className?: string
 }
 
@@ -223,23 +225,33 @@ export function ContractScoresCard({
   riskInfo,
   complianceInfo,
   healthInfo,
+  analysisPack,
+  ocrNeedsReview,
+  analysisLanguage,
+  scanType,
+  contractId,
   isProcessing,
-  onRefresh,
   className,
 }: ContractScoresCardProps) {
   const [active, setActive] = useState<MetricKey | null>(null)
 
-  // Normalize risk info
+  // Normalize risk info — never invent a score when nothing was assessed
   const riskLevel = riskInfo?.level || riskInfo?.riskLevel || 'unknown'
-  const riskScore = riskInfo?.score ?? riskInfo?.riskScore ?? (riskLevel === 'low' ? 25 : riskLevel === 'medium' ? 50 : riskLevel === 'high' ? 75 : 0)
+  const explicitRiskScore = riskInfo?.score ?? riskInfo?.riskScore
+  const riskAssessed = explicitRiskScore != null || riskLevel !== 'unknown' || (riskInfo?.factors?.length ?? 0) > 0 || (riskInfo?.risks?.length ?? 0) > 0
+  const riskScore = explicitRiskScore ?? (riskLevel === 'low' ? 25 : riskLevel === 'medium' ? 50 : riskLevel === 'high' ? 75 : 0)
   const riskFactors = riskInfo?.factors || riskInfo?.risks?.map(r => r.title) || []
 
   // Normalize compliance info
   const isCompliant = complianceInfo?.compliant ?? complianceInfo?.isCompliant ?? null
-  const complianceScore = complianceInfo?.score ?? (isCompliant === true ? 100 : isCompliant === false ? 0 : 50)
+  const complianceScore = complianceInfo?.score
   const complianceIssues = complianceInfo?.violations || complianceInfo?.checks?.filter(c => c.status !== 'passed').map(c => c.message || c.name) || []
+  const complianceExplanation = complianceInfo
+    ? describeHeaderCompliance(complianceInfo)
+    : 'Compliance has not been assessed for this document.'
 
   const healthScore = healthInfo?.score ?? 100
+  const compliancePercent = complianceScore ?? 0
 
   const riskColors = getRiskColor(riskLevel)
   const complianceColors = getComplianceColor(isCompliant)
@@ -256,18 +268,7 @@ export function ContractScoresCard({
             <span>Scores & Assessment</span>
             {isProcessing && <RefreshCw className="h-3.5 w-3.5 animate-spin text-slate-400 ml-1" />}
           </div>
-          {onRefresh && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onRefresh}
-              disabled={isProcessing}
-              className="h-8 w-8 p-0 text-slate-500"
-              aria-label="Refresh scores"
-            >
-              <RefreshCw className={cn("h-3.5 w-3.5", isProcessing && "animate-spin")} />
-            </Button>
-          )}
+
         </div>
       </CardHeader>
 
@@ -286,7 +287,7 @@ export function ContractScoresCard({
             label="Compliance"
             value={isCompliant === true ? 'OK' : isCompliant === false ? 'Issues' : '—'}
             icon={<Scale className={cn("h-3.5 w-3.5", complianceColors.text)} />}
-            percent={complianceScore}
+            percent={compliancePercent}
             active={active === 'compliance'}
             onClick={() => toggle('compliance')}
             colorScheme={{ ...complianceColors, progress: isCompliant === true ? 'bg-green-500' : isCompliant === false ? 'bg-red-500' : 'bg-slate-400' }}
@@ -307,19 +308,38 @@ export function ContractScoresCard({
             {active === 'risk' && (
               <>
                 <p className="font-medium text-slate-700 flex items-center gap-1.5">
-                  <Info className="h-3.5 w-3.5" /> Risk Level — {riskScore}/100
+                  <Info className="h-3.5 w-3.5" /> Risk Level — {riskAssessed ? `${riskScore}/100` : 'not assessed'}
                 </p>
                 <p>
-                  Based on liability, indemnification, termination, and penalty provisions detected in the contract.
+                  {riskAssessed
+                    ? (riskFactors.length > 0
+                      ? `From this document's risk analysis (${riskFactors.length} factor${riskFactors.length === 1 ? '' : 's'}). Score is 0–100 from the RISK artifact, not a confidence percentage.`
+                      : 'Score is 0–100 from this document\'s RISK artifact (liability, indemnification, termination, penalties). Not a model-confidence percentage.')
+                    : 'Risk has not been assessed for this document yet.'}
                 </p>
                 {riskFactors.length > 0 && (
                   <ul className="space-y-1 pt-1">
-                    {riskFactors.slice(0, 6).map((f, i) => (
+                    {(riskInfo?.risks?.length ? riskInfo.risks : riskFactors.map((title) => ({ title }))).slice(0, 6).map((item, i) => {
+                      const risk = typeof item === 'string' ? { title: item } : item
+                      const label = risk.title || risk.description || riskFactors[i]
+                      const snippet = risk.sourceClause || risk.source
+                      return (
                       <li key={i} className="flex items-start gap-1.5">
                         <AlertCircle className="h-3 w-3 mt-0.5 text-red-500 flex-shrink-0" />
-                        <span>{f}</span>
+                        <span className="min-w-0">
+                          <span>{label}</span>
+                          {snippet && (
+                            <FindingSourceLink
+                              className="ml-1"
+                              contractId={contractId}
+                              snippet={snippet}
+                              heading={risk.title}
+                            />
+                          )}
+                        </span>
                       </li>
-                    ))}
+                      )
+                    })}
                   </ul>
                 )}
                 {riskInfo?.mitigations && riskInfo.mitigations.length > 0 && (
@@ -337,17 +357,30 @@ export function ContractScoresCard({
             {active === 'compliance' && (
               <>
                 <p className="font-medium text-slate-700 flex items-center gap-1.5">
-                  <Info className="h-3.5 w-3.5" /> Compliance — {complianceScore}% confidence
+                  <Info className="h-3.5 w-3.5" /> Compliance — {complianceScore == null ? 'not assessed' : `${complianceScore}%`}
                 </p>
                 <p>
-                  Checks contract terms against regulatory requirements, company policies, and industry standards.
+                  {complianceExplanation}
                 </p>
                 {complianceIssues.length > 0 && (
                   <ul className="space-y-1 pt-1">
-                    {complianceIssues.slice(0, 6).map((v, i) => (
+                    {(complianceInfo?.checks?.filter((c) => c.passed !== true).length
+                      ? complianceInfo.checks.filter((c) => c.passed !== true)
+                      : complianceIssues.map((message) => ({ name: message, message, status: 'failed' }))
+                    ).slice(0, 6).map((item, i) => (
                       <li key={i} className="flex items-start gap-1.5">
                         <AlertCircle className="h-3 w-3 mt-0.5 text-red-500 flex-shrink-0" />
-                        <span>{v}</span>
+                        <span className="min-w-0">
+                          <span>{item.message || item.name || complianceIssues[i]}</span>
+                          <FindingSourceLink
+                            className="ml-1"
+                            contractId={contractId}
+                            snippet={item.quote}
+                            heading={item.name}
+                            startOffset={item.startOffset}
+                            endOffset={item.endOffset}
+                          />
+                        </span>
                       </li>
                     ))}
                   </ul>
@@ -385,10 +418,13 @@ export function ContractScoresCard({
           </div>
         )}
 
-        <p className="mt-2 text-xs leading-4 text-slate-400 flex items-center gap-1">
-          <HelpCircle className="h-3 w-3" />
-          Click a tile for details
-        </p>
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+          <p className="text-xs leading-4 text-slate-400 flex items-center gap-1">
+            <HelpCircle className="h-3 w-3" />
+            Click a tile for details
+          </p>
+          <AnalysisCoverageChip pack={analysisPack} ocrNeedsReview={ocrNeedsReview} analysisLanguage={analysisLanguage} scanType={scanType} />
+        </div>
       </CardContent>
     </Card>
   )

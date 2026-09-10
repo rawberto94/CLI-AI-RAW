@@ -11,7 +11,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Upload, Download, CheckCircle, XCircle, AlertCircle, FileSpreadsheet } from 'lucide-react';
 import { toast } from 'sonner';
-import { useCurrencyConverter } from '@/lib/services/currency.service';
 
 interface ImportResult {
   success: number;
@@ -33,7 +32,6 @@ export function BulkImportDialog({ open, onOpenChange, onImportComplete }: BulkI
   const [file, setFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [result, setResult] = useState<ImportResult | null>(null);
-  const { convert } = useCurrencyConverter();
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -162,28 +160,14 @@ Global IT Partners,Mid-Level Developer,MID,600,GBP,GB,"JavaScript,Vue,PostgreSQL
         return;
       }
 
-      // Process records
-      const processedRecords = await Promise.all(
-        records.map(async (record) => {
-          // Convert to USD for storage
+      const processedRecords = records.map((record) => {
           const dailyRate = Number(record['Daily Rate']);
           const currency = record['Currency'];
-          
-          let rateInUSD = dailyRate;
-          if (currency !== 'USD') {
-            try {
-              const conversion = await convert(dailyRate, currency, 'USD');
-              rateInUSD = conversion.convertedAmount;
-            } catch {
-              // Currency conversion failed, using original rate
-            }
-          }
-
           return {
             supplierName: record['Supplier Name'],
             roleName: record['Role Name'],
             seniority: record['Seniority'],
-            dailyRate: rateInUSD,
+            dailyRate,
             originalRate: dailyRate,
             currency,
             location: record['Location'] || '',
@@ -192,8 +176,7 @@ Global IT Partners,Mid-Level Developer,MID,600,GBP,GB,"JavaScript,Vue,PostgreSQL
             endDate: record['End Date'] || null,
             notes: record['Notes'] || '',
           };
-        })
-      );
+        });
 
       // Send to API
       const response = await fetch('/api/rate-cards/bulk-import', {

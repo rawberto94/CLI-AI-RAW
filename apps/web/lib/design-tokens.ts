@@ -273,13 +273,21 @@ export function getComplianceColor(score: number) {
 }
 
 // Utility to format currency
-export function formatCurrency(value: number, currency = 'CHF'): string {
-  return new Intl.NumberFormat('de-CH', {
-    style: 'currency',
-    currency,
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  }).format(value);
+export function formatCurrency(value: number, currency?: string): string {
+  const code = typeof currency === 'string' ? currency.trim() : '';
+  if (code.length === 3 && code !== 'XXX') {
+    try {
+      return new Intl.NumberFormat('de-CH', {
+        style: 'currency',
+        currency: code,
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2,
+      }).format(value);
+    } catch {
+      return `${code} ${value.toLocaleString('de-CH')}`;
+    }
+  }
+  return value.toLocaleString('de-CH');
 }
 
 // Utility to format large numbers
@@ -300,13 +308,13 @@ export function formatNumber(value: number): string {
 export function formatDate(date: string | Date, style: 'short' | 'long' = 'short'): string {
   const d = typeof date === 'string' ? new Date(date) : date;
   if (style === 'long') {
-    return d.toLocaleDateString('en-US', { 
+    return d.toLocaleDateString('de-CH', { 
       year: 'numeric', 
       month: 'long', 
       day: 'numeric' 
     });
   }
-  return d.toLocaleDateString('en-US', { 
+  return d.toLocaleDateString('de-CH', { 
     month: 'short', 
     day: 'numeric',
     year: 'numeric'

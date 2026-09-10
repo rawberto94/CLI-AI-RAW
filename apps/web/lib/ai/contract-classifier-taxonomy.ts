@@ -6,6 +6,7 @@
  */
 
 import { openai } from "@/lib/openai-client";
+import { analysisLanguageInstructions } from "@repo/utils";
 import {
   CONTRACT_TAXONOMY,
   ContractCategoryId,
@@ -201,7 +202,8 @@ export async function classifyContract(
       messages: [
         {
           role: "system",
-          content: "You are a contract classification expert. Always respond with valid JSON."
+          content: `You are a contract classification expert. Always respond with valid JSON.
+${analysisLanguageInstructions({ contractText: input.text })}`
         },
         {
           role: "user",
@@ -244,7 +246,8 @@ export async function classifyContract(
       messages: [
         {
           role: "system",
-          content: "You are a contract analysis expert. Always respond with valid JSON."
+          content: `You are a contract analysis expert. Always respond with valid JSON.
+${analysisLanguageInstructions({ contractText: input.text })}`
         },
         {
           role: "user",
@@ -358,7 +361,8 @@ Respond in JSON format with the extracted values. Use null if a field cannot be 
       messages: [
         {
           role: "system",
-          content: "You are a contract data extraction expert. Extract requested fields and respond in JSON."
+          content: `You are a contract data extraction expert. Extract requested fields and respond in JSON.
+${analysisLanguageInstructions({ contractText: text })}`
         },
         {
           role: "user",

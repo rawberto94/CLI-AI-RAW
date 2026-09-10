@@ -11,6 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { GripVertical, Plus, Lock, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { EmptyState } from '@/components/shared/EmptyState';
+import { formatAmountWithCurrency } from '@/lib/utils/formatters';
 
 export default function PreApprovalGates() {
   const [gates, setGates] = useState<any[]>([]);
@@ -59,7 +60,7 @@ export default function PreApprovalGates() {
                 <p className="text-sm text-muted-foreground mt-1">{gate.description || 'No description'}</p>
                 <div className="flex gap-3 mt-2 text-xs text-muted-foreground">
                   {gate.sla_hours && <span>SLA: {gate.sla_hours}h</span>}
-                  {gate.applies_to_values_above && <span>Min value: ${Number(gate.applies_to_values_above).toLocaleString()}</span>}
+                  {gate.applies_to_values_above && <span>Min value: {formatAmountWithCurrency(Number(gate.applies_to_values_above))}</span>}
                   <span>Mode: {gate.approval_mode}</span>
                 </div>
               </div>

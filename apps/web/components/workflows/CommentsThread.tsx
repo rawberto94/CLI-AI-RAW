@@ -5,14 +5,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   MessageSquare, 
   Send, 
-  Paperclip, 
   MoreHorizontal, 
   Edit2, 
   Trash2, 
-  Reply, 
-  ThumbsUp,
-  AtSign,
-  Smile,
+  Reply,
   X,
   ChevronDown,
   Clock,
@@ -542,27 +538,7 @@ export function CommentsThread({
                     className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-500 min-h-[40px] max-h-[120px]"
                     rows={1}
                   />
-                  <div className="flex items-center justify-between mt-2">
-                    <div className="flex items-center gap-1" role="toolbar" aria-label="Formatting options">
-                      <button 
-                        className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded focus:outline-none focus:ring-2 focus:ring-violet-500"
-                        aria-label="Mention someone"
-                      >
-                        <AtSign className="w-4 h-4" aria-hidden="true" />
-                      </button>
-                      <button 
-                        className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded focus:outline-none focus:ring-2 focus:ring-violet-500"
-                        aria-label="Add emoji"
-                      >
-                        <Smile className="w-4 h-4" aria-hidden="true" />
-                      </button>
-                      <button 
-                        className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded focus:outline-none focus:ring-2 focus:ring-violet-500"
-                        aria-label="Attach file"
-                      >
-                        <Paperclip className="w-4 h-4" aria-hidden="true" />
-                      </button>
-                    </div>
+                  <div className="flex items-center justify-end mt-2">
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-slate-400" aria-hidden="true">
                         ⌘+Enter to send

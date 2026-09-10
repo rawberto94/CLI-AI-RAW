@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
+import { DEFAULT_DISPLAY_CURRENCY } from '@/lib/display-currency';
 import { Save, X, Edit2, History } from 'lucide-react';
 
 interface RateCardData {
@@ -256,14 +257,14 @@ export function EnhancedRateCardEditor({
                 <Label htmlFor="currency">Currency</Label>
                 <select
                   id="currency"
-                  value={formData.currency || 'USD'}
+                  value={formData.currency || DEFAULT_DISPLAY_CURRENCY}
                   onChange={(e) => handleChange('currency', e.target.value)}
                   disabled={!isEditing}
                   className="w-full border rounded-md p-2"
                 >
-                  <option value="USD">USD</option>
                   <option value="CHF">CHF</option>
                   <option value="EUR">EUR</option>
+                  <option value="USD">USD</option>
                   <option value="GBP">GBP</option>
                 </select>
               </div>

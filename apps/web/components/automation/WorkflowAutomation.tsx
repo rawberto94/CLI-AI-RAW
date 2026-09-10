@@ -12,12 +12,10 @@ import {
   Play,
   Pause,
   Trash2,
-  Edit,
   Copy,
   MoreVertical,
   ChevronRight,
   ArrowRight,
-  Settings,
   Loader2,
   CheckCircle2,
   XCircle,
@@ -530,17 +528,9 @@ export const WorkflowAutomation = memo(function WorkflowAutomation({
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem>
-                              <Edit className="h-4 w-4 mr-2" />
-                              Edit
-                            </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => duplicateWorkflow(workflow)}>
                               <Copy className="h-4 w-4 mr-2" />
                               Duplicate
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <Settings className="h-4 w-4 mr-2" />
-                              View Logs
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem 

@@ -1,3 +1,9 @@
+import {
+  documentNumberFromFileName,
+  isOpaqueDocumentNumber,
+  resolveDocumentNumber,
+} from '@/lib/contracts/document-number';
+
 export interface UploadMetadataConfidence {
   value?: number;
   source?: string;
@@ -13,6 +19,7 @@ export interface UploadMetadataParty {
 
 export interface UploadMetadataReviewPayload {
   metadata?: {
+    document_number?: string;
     document_title?: string;
     document_classification?: string;
     document_classification_confidence?: number;
@@ -37,6 +44,7 @@ function isObjectRecord(value: unknown): value is Record<string, unknown> {
 }
 
 export type UploadMetadataReviewFieldKey =
+  | 'document_number'
   | 'document_title'
   | 'document_classification'
   | 'contractType'
@@ -53,10 +61,11 @@ export interface UploadMetadataReviewField {
   label: string;
   value: string;
   confidence: number | null;
-  reason: 'title-review' | 'missing' | 'low-confidence';
+  reason: 'title-review' | 'document-number-review' | 'missing' | 'low-confidence';
 }
 
 export interface UploadMetadataReviewDraft {
+  document_number: string;
   document_title: string;
   document_classification: string;
   contractType: string;
@@ -152,6 +161,28 @@ function shouldPromptForTitle(documentTitle: string, uploadedFileName: string): 
   return normalizeComparisonText(documentTitle) === normalizeComparisonText(uploadedFileName);
 }
 
+function shouldPromptForDocumentNumber(documentNumber: string, uploadedFileName: string): boolean {
+  if (!documentNumber || isOpaqueDocumentNumber(documentNumber)) return true;
+  if (!uploadedFileName) return false;
+
+  const fromFile = documentNumberFromFileName(uploadedFileName);
+  return (
+    normalizeComparisonText(documentNumber) === normalizeComparisonText(uploadedFileName) ||
+    (Boolean(fromFile) &&
+      normalizeComparisonText(documentNumber) === normalizeComparisonText(fromFile))
+  );
+}
+
+function documentNumberReviewReason(
+  documentNumber: string,
+  confidence: number | null,
+): UploadMetadataReviewField['reason'] {
+  if (!documentNumber || isOpaqueDocumentNumber(documentNumber)) return 'missing';
+  const confidenceReason = needsReview(documentNumber, confidence);
+  if (confidenceReason === 'low-confidence') return 'low-confidence';
+  return 'document-number-review';
+}
+
 function needsReview(value: string, confidence: number | null): 'missing' | 'low-confidence' | null {
   if (!value) return 'missing';
   if (confidence !== null && confidence < REVIEW_CONFIDENCE_THRESHOLD) {
@@ -189,6 +220,10 @@ export function createUploadMetadataReviewDraft(
   const documentClassification = normalizeText(metadata.document_classification).toLowerCase() || 'unknown';
 
   return {
+    document_number: resolveDocumentNumber({
+      extracted: metadata.document_number,
+      fileName: uploadedFileName,
+    }),
     document_title: normalizeText(metadata.document_title) || normalizeText(uploadedFileName),
     document_classification: documentClassification,
     contractType: normalizeText(payload.data?.contractType),
@@ -260,7 +295,7 @@ export function buildUploadMetadataReviewFields(
     });
   }
 
-  const candidates: Array<{ key: Exclude<UploadMetadataReviewFieldKey, 'document_title' | 'document_classification' | 'contractType'>; label: string; value: string; confidenceKey?: string }> = [
+  const candidates: Array<{ key: Exclude<UploadMetadataReviewFieldKey, 'document_number' | 'document_title' | 'document_classification' | 'contractType'>; label: string; value: string; confidenceKey?: string }> = [
     { key: 'clientName', label: 'Client / buyer', value: draft.clientName, confidenceKey: 'clientName' },
     { key: 'supplierName', label: 'Supplier / vendor', value: draft.supplierName, confidenceKey: 'supplierName' },
     { key: 'start_date', label: 'Effective date', value: draft.start_date, confidenceKey: 'start_date' },
@@ -284,6 +319,21 @@ export function buildUploadMetadataReviewFields(
       value: candidate.value,
       confidence: candidateConfidence,
       reason,
+    });
+  }
+
+  const documentNumberConfidence = normalizeConfidence(confidence.document_number);
+  const promptForDocumentNumber =
+    shouldPromptForDocumentNumber(draft.document_number, uploadedFileName) ||
+    needsReview(draft.document_number, documentNumberConfidence) !== null;
+
+  if (promptForDocumentNumber || fields.length > 0) {
+    fields.unshift({
+      key: 'document_number',
+      label: 'Document number',
+      value: draft.document_number,
+      confidence: documentNumberConfidence,
+      reason: documentNumberReviewReason(draft.document_number, documentNumberConfidence),
     });
   }
 

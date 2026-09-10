@@ -10,6 +10,7 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { redis } from "@/lib/redis";
 import { withAuthApiHandler, createSuccessResponse, type AuthenticatedApiContext } from '@/lib/api-middleware';
+import { expirationOrEndDateFilter, portfolioWhere } from '@/lib/contracts/server/portfolio';
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -18,7 +19,7 @@ const CACHE_TTL_SECONDS = 60; // 1 minute cache for dashboard data
 
 export const GET = withAuthApiHandler(async (request: NextRequest, ctx: AuthenticatedApiContext) => {
   const tenantId = ctx.tenantId;
-  const cacheKey = `dashboard:renewals-obligations:${tenantId}`;
+  const cacheKey = `dashboard:renewals-obligations:${tenantId}:v2`;
 
   // Try cache first
   const cached = await redis.get(cacheKey);
@@ -34,6 +35,12 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
   const now = new Date();
   const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
   const ninetyDaysFromNow = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
+  const recentlyExpired = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const portfolio = portfolioWhere(tenantId);
+  const renewalWindow = expirationOrEndDateFilter({
+    gte: recentlyExpired,
+    lte: ninetyDaysFromNow,
+  });
 
   const [
     expiringContracts,
@@ -43,16 +50,11 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
     completedObligations,
     totalValueAtRisk,
   ] = await Promise.all([
-    // Contracts expiring in next 90 days
+    // Portfolio contracts expiring in the next 90 days (plus recently expired)
     prisma.contract.findMany({
       where: {
-        tenantId,
-        OR: [
-          { endDate: { gte: now, lte: ninetyDaysFromNow } },
-          { expirationDate: { gte: now, lte: ninetyDaysFromNow } },
-        ],
-        status: { in: ['COMPLETED', 'ACTIVE', 'PROCESSING'] },
-        isDeleted: false,
+        ...portfolio,
+        ...renewalWindow,
       },
       select: {
         id: true,
@@ -137,31 +139,26 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
     // Total contract value expiring in 90 days
     prisma.contract.aggregate({
       where: {
-        tenantId,
-        OR: [
-          { endDate: { gte: now, lte: ninetyDaysFromNow } },
-          { expirationDate: { gte: now, lte: ninetyDaysFromNow } },
-        ],
-        status: { in: ['COMPLETED', 'ACTIVE', 'PROCESSING'] },
-        isDeleted: false,
+        ...portfolio,
+        ...renewalWindow,
+        totalValue: { not: null },
       },
       _sum: { totalValue: true },
     }),
   ]);
 
   // Transform expiring contracts with computed fields
-  const renewals = expiringContracts.map(contract => {
-    const expiryDate = contract.endDate || contract.expirationDate;
-    const daysUntil = expiryDate
-      ? Math.ceil((expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-      : null;
+  const renewals = expiringContracts.flatMap(contract => {
+    const expiryDate = contract.expirationDate ?? contract.endDate;
+    if (!expiryDate) return [];
+    const daysUntil = Math.ceil((expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 
-    return {
+    return [{
       id: contract.id,
       contractTitle: contract.contractTitle || contract.fileName,
       supplierName: contract.supplierName,
       clientName: contract.clientName,
-      expiryDate: expiryDate?.toISOString() || null,
+      expiryDate: expiryDate.toISOString(),
       daysUntil,
       totalValue: contract.totalValue ? Number(contract.totalValue) : null,
       currency: contract.currency,
@@ -169,11 +166,11 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
       status: contract.status,
       paymentTerms: contract.paymentTerms,
       paymentFrequency: contract.paymentFrequency,
-      urgency: daysUntil !== null && daysUntil <= 0 ? 'expired' :
-               daysUntil !== null && daysUntil <= 14 ? 'critical' :
-               daysUntil !== null && daysUntil <= 30 ? 'urgent' :
-               daysUntil !== null && daysUntil <= 60 ? 'high' : 'medium',
-    };
+      urgency: (daysUntil < 0 ? 'expired' :
+               daysUntil <= 14 ? 'critical' :
+               daysUntil <= 30 ? 'urgent' :
+               daysUntil <= 60 ? 'high' : 'medium') as 'expired' | 'critical' | 'urgent' | 'high' | 'medium',
+    }];
   });
 
   // Sort by urgency
@@ -185,9 +182,9 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
   // Metrics
   const metrics = {
     renewals: {
-      totalExpiring90d: renewals.length,
-      expiring30d: renewals.filter(r => r.daysUntil !== null && r.daysUntil <= 30 && r.daysUntil > 0).length,
-      expired: renewals.filter(r => r.daysUntil !== null && r.daysUntil <= 0).length,
+      totalExpiring90d: renewals.filter(r => r.daysUntil >= 0 && r.daysUntil <= 90).length,
+      expiring30d: renewals.filter(r => r.daysUntil >= 0 && r.daysUntil <= 30).length,
+      expired: renewals.filter(r => r.daysUntil < 0).length,
       totalValueAtRisk: totalValueAtRisk._sum.totalValue ? Number(totalValueAtRisk._sum.totalValue) : 0,
     },
     obligations: {

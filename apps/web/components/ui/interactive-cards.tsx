@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import type { HTMLMotionProps } from 'framer-motion';
 import { Check, ChevronRight, MoreHorizontal, Star, Bookmark, ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { formatAmountWithCurrency } from '@/lib/utils/formatters';
 
 // ============================================
 // Hover Card
@@ -548,7 +549,7 @@ export function PricingCard({
         
         <div className="mt-4 flex items-baseline justify-center gap-1">
           <span className="text-4xl font-bold text-slate-900 dark:text-white">
-            {typeof price === 'number' ? `$${price}` : price}
+            {typeof price === 'number' ? formatAmountWithCurrency(price) : price}
           </span>
           {typeof price === 'number' && (
             <span className="text-slate-500 dark:text-slate-400">{period}</span>

@@ -44,7 +44,7 @@ import {
   Eye,
   Trash2,
   RefreshCw,
-  DollarSign,
+
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -179,17 +179,6 @@ export function CommandPalette({ contractId, onClose }: CommandPaletteProps) {
       action: () => router.push('/ai/compare'),
     },
     
-    // Navigation - Analysis
-    {
-      id: 'nav-rate-cards',
-      label: 'Go to Rate Cards',
-      description: 'View rate card analysis',
-      icon: DollarSign,
-      category: 'navigation',
-      shortcut: 'g p',
-      keywords: ['rate', 'cards', 'pricing', 'costs'],
-      action: () => router.push('/rate-cards'),
-    },
     {
       id: 'nav-risk',
       label: 'Go to Risk Analysis',

@@ -11,6 +11,7 @@
 import OpenAI from "openai";
 import type { MetadataFieldType } from "@/lib/services/metadata-schema.service";
 import { createOpenAIClient, hasAIClientConfig } from '@/lib/openai-client';
+import { analysisLanguageInstructions } from '@repo/utils';
 
 // Local type aliases
 type FieldType = MetadataFieldType;
@@ -396,6 +397,7 @@ export class FieldValueValidator {
           {
             role: "system",
             content: `You are a contract validation expert. Analyze the extracted field values against the original contract text and identify any issues.
+${analysisLanguageInstructions({ contractText })}
 
 For each issue found, provide:
 - fieldKey: The field with the issue

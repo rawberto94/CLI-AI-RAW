@@ -3,6 +3,8 @@
  * Converts rates from various periods and currencies to daily CHF
  */
 
+import { formatRateMoney } from '@/lib/rate-cards/format'
+
 export type RatePeriod = 'hourly' | 'daily' | 'monthly' | 'annual'
 export type Currency = 'CHF' | 'USD' | 'EUR' | 'GBP' | 'INR'
 
@@ -143,7 +145,8 @@ export class RateNormalizer {
   }
 
   /**
-   * Format CHF amount for display
+   * Format a daily-CHF normalized amount. Prefixes CHF only when the
+   * value was converted into CHF; never invents USD.
    */
   static formatCHF(amount: number, options?: {
     showCurrency?: boolean
@@ -153,20 +156,11 @@ export class RateNormalizer {
     const {
       showCurrency = true,
       decimals = 2,
-      compact = false
     } = options ?? {}
 
-    // Format number with thousand separators
-    const formatted = new Intl.NumberFormat('de-CH', {
-      minimumFractionDigits: decimals,
-      maximumFractionDigits: decimals
-    }).format(amount)
-
-    if (compact) {
-      return showCurrency ? `CHF ${formatted}` : formatted
-    }
-
-    return showCurrency ? `CHF ${formatted}` : formatted
+    return formatRateMoney(amount, showCurrency ? 'CHF' : undefined, {
+      maximumFractionDigits: decimals,
+    })
   }
 
   /**
@@ -185,12 +179,6 @@ export class RateNormalizer {
     period: RatePeriod,
     currency: Currency
   ): string {
-    const currencySymbol = RateNormalizer.getCurrencySymbol(currency)
-    const formatted = new Intl.NumberFormat('en-US', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    }).format(rate)
-
     const periodLabel = {
       hourly: '/hr',
       daily: '/day',
@@ -198,21 +186,7 @@ export class RateNormalizer {
       annual: '/yr'
     }[period]
 
-    return `${currencySymbol}${formatted}${periodLabel}`
-  }
-
-  /**
-   * Get currency symbol
-   */
-  private static getCurrencySymbol(currency: Currency): string {
-    const symbols: Record<Currency, string> = {
-      CHF: 'CHF ',
-      USD: '$',
-      EUR: '€',
-      GBP: '£',
-      INR: '₹'
-    }
-    return symbols[currency] ?? currency
+    return `${formatRateMoney(rate, currency, { maximumFractionDigits: 2 })}${periodLabel}`
   }
 
   /**

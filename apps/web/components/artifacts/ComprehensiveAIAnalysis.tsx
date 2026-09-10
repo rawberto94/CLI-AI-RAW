@@ -8,7 +8,10 @@ import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
-import { useDemoMode } from '@/hooks/useDemoMode'
+
+import { FindingSourceLink } from '@/components/contracts/FindingSourceLink'
+import { normalizeRiskFindings } from '@/lib/contracts/risk-findings'
+import { normalizeExtractedClauses } from '@/lib/contracts/extracted-clauses'
 import {
   Brain,
   FileText,
@@ -43,8 +46,6 @@ import {
   Info,
   XCircle,
   Bookmark,
-  Download,
-  Share2,
   MessageSquare,
   ExternalLink,
   Search,
@@ -63,6 +64,7 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible'
 import { toast } from 'sonner'
+import { formatAmountWithCurrency } from '@/lib/utils/formatters'
 
 // ============ TYPES ============
 
@@ -512,7 +514,6 @@ export function ComprehensiveAIAnalysis({
   onRequestAnalysis,
   documentText
 }: ComprehensiveAIAnalysisProps) {
-  const isDemo = useDemoMode()
   const [activeView, setActiveView] = useState<'overview' | 'detailed' | 'discovered'>('overview')
   const [isRunningDeepAnalysis, setIsRunningDeepAnalysis] = useState(false)
   const [deepAnalysisResult, setDeepAnalysisResult] = useState<IntelligentAnalysisResult | null>(null)
@@ -616,14 +617,15 @@ export function ComprehensiveAIAnalysis({
     const items: InsightCardProps[] = []
     
     // Risk insights
-    const riskFactors = data.risk?.riskFactors || data.risk?.factors || []
-    riskFactors.slice(0, 2).forEach((risk: any) => {
-      if (risk.severity === 'high' || risk.severity === 'critical') {
+    const riskFactors = normalizeRiskFindings(data.risk)
+    riskFactors.slice(0, 2).forEach((risk) => {
+      const severity = (risk.severity || '').toLowerCase()
+      if (severity === 'high' || severity === 'critical') {
         items.push({
           type: 'risk',
-          title: risk.category || 'Risk Identified',
-          description: risk.description || risk.factor || 'A significant risk factor was identified',
-          priority: risk.severity === 'critical' ? 'high' : 'medium'
+          title: risk.title || 'Risk Identified',
+          description: risk.description || 'A significant risk factor was identified',
+          priority: severity === 'critical' ? 'high' : 'medium'
         })
       }
     })
@@ -669,17 +671,16 @@ export function ComprehensiveAIAnalysis({
     riskScore: data.risk?.riskScore || data.risk?.overallScore || null,
     complianceScore: data.compliance?.score || data.compliance?.complianceScore || null,
     totalValue: data.financial?.totalValue || data.financial?.tcv || null,
-    clauseCount: data.clauses?.clauses?.length || data.clauses?.keyClauses?.length || 0,
+    clauseCount: normalizeExtractedClauses(data.clauses).length,
     obligationCount: data.obligations?.obligations?.length || 0,
-    riskCount: (data.risk?.riskFactors || data.risk?.factors || []).filter((r: any) => 
-      r.severity === 'high' || r.severity === 'critical'
-    ).length
+    riskCount: normalizeRiskFindings(data.risk).filter((r) => {
+      const severity = (r.severity || '').toLowerCase()
+      return severity === 'high' || severity === 'critical'
+    }).length
   }), [data])
 
   // Full clause list for the Key Clauses section (preview shows first 6)
-  const allClauses = useMemo(() => (
-    data.clauses?.clauses || data.clauses?.keyClauses || []
-  ), [data])
+  const allClauses = useMemo(() => normalizeExtractedClauses(data.clauses), [data])
 
   const handleRequestAnalysis = useCallback((section: string) => {
     if (onRequestAnalysis) {
@@ -711,18 +712,6 @@ export function ComprehensiveAIAnalysis({
         </div>
         
         <div className="flex items-center gap-2">
-          {!isDemo && (
-            <Button variant="outline" size="sm" className="gap-2">
-              <Download className="h-4 w-4" />
-              Export
-            </Button>
-          )}
-          {!isDemo && (
-            <Button variant="outline" size="sm" className="gap-2">
-              <Share2 className="h-4 w-4" />
-              Share
-            </Button>
-          )}
           {documentText && (
             <Button 
               size="sm" 
@@ -835,8 +824,8 @@ export function ComprehensiveAIAnalysis({
                   <span className="text-xs font-medium text-slate-500">Total Value</span>
                 </div>
                 <p className="text-2xl font-bold text-slate-800">
-                  {stats.totalValue !== null 
-                    ? `$${(stats.totalValue / 1000).toFixed(0)}K` 
+                  {stats.totalValue !== null
+                    ? formatAmountWithCurrency(stats.totalValue, data.financial?.currency)
                     : '--'}
                 </p>
                 <p className="text-xs text-slate-500 mt-1">
@@ -1263,6 +1252,13 @@ export function ComprehensiveAIAnalysis({
                       {risk.sourceClause && (
                         <div className="p-2 bg-white/50 rounded text-xs text-slate-500 mb-2 italic">
                           &quot;{risk.sourceClause.slice(0, 150)}...&quot;
+                          <div className="mt-1 not-italic">
+                            <FindingSourceLink
+                              contractId={contractId}
+                              snippet={risk.sourceClause}
+                              heading={risk.title}
+                            />
+                          </div>
                         </div>
                       )}
                       <div className="flex items-start gap-1.5 text-xs text-violet-600 bg-violet-50 p-2 rounded">
@@ -1495,44 +1491,48 @@ export function ComprehensiveAIAnalysis({
               </div>
               
               {/* Risk Factors */}
-              {(data.risk.riskFactors || data.risk.factors || []).length > 0 && (
+              {normalizeRiskFindings(data.risk).length > 0 && (
                 <div>
                   <h4 className="text-sm font-medium text-slate-700 mb-3">Risk Factors</h4>
                   <div className="space-y-2">
-                    {(data.risk.riskFactors || data.risk.factors || []).map((factor: any, i: number) => (
+                    {normalizeRiskFindings(data.risk).map((factor, i) => (
                       <div 
-                        key={`${factor.category || factor.type || 'risk'}-${factor.severity}-${i}`}
+                        key={`${factor.heading || factor.title}-${factor.severity}-${i}`}
                         className={cn(
                           "p-3 rounded-lg border",
-                          factor.severity === 'critical' && "bg-rose-50 border-rose-200",
-                          factor.severity === 'high' && "bg-amber-50 border-amber-200",
-                          factor.severity === 'medium' && "bg-yellow-50 border-yellow-200",
-                          factor.severity === 'low' && "bg-slate-50 border-slate-200"
+                          (factor.severity || '').toLowerCase() === 'critical' && "bg-rose-50 border-rose-200",
+                          (factor.severity || '').toLowerCase() === 'high' && "bg-amber-50 border-amber-200",
+                          (factor.severity || '').toLowerCase() === 'medium' && "bg-yellow-50 border-yellow-200",
+                          (factor.severity || '').toLowerCase() === 'low' && "bg-slate-50 border-slate-200"
                         )}
                       >
                         <div className="flex items-center justify-between mb-1">
                           <span className="font-medium text-slate-800 text-sm">
-                            {factor.category || factor.type || 'Risk'}
+                            {factor.title}
                           </span>
+                          {factor.severity && (
                           <Badge 
                             variant="outline"
                             className={cn(
                               "text-[10px]",
-                              factor.severity === 'critical' && "border-rose-300 text-rose-600",
-                              factor.severity === 'high' && "border-amber-300 text-amber-600",
-                              factor.severity === 'medium' && "border-yellow-300 text-yellow-600",
-                              factor.severity === 'low' && "border-slate-300 text-slate-500"
+                              (factor.severity || '').toLowerCase() === 'critical' && "border-rose-300 text-rose-600",
+                              (factor.severity || '').toLowerCase() === 'high' && "border-amber-300 text-amber-600",
+                              (factor.severity || '').toLowerCase() === 'medium' && "border-yellow-300 text-yellow-600",
+                              (factor.severity || '').toLowerCase() === 'low' && "border-slate-300 text-slate-500"
                             )}
                           >
                             {factor.severity}
                           </Badge>
+                          )}
                         </div>
-                        <p className="text-sm text-slate-600">{factor.description || factor.factor}</p>
-                        {factor.mitigation && (
-                          <div className="mt-2 p-2 bg-white/50 rounded text-xs text-slate-500 flex items-start gap-1.5">
-                            <Lightbulb className="h-3 w-3 text-amber-500 mt-0.5 shrink-0" />
-                            <span>{factor.mitigation}</span>
-                          </div>
+                        <p className="text-sm text-slate-600">{factor.description}</p>
+                        {factor.snippet && (
+                          <FindingSourceLink
+                            className="mt-2"
+                            contractId={contractId}
+                            snippet={factor.snippet}
+                            heading={factor.heading || factor.title}
+                          />
                         )}
                       </div>
                     ))}
@@ -1640,14 +1640,14 @@ export function ComprehensiveAIAnalysis({
         >
           {data.clauses ? (
             <div className="space-y-3">
-              {(showAllClauses ? allClauses : allClauses.slice(0, 6)).map((clause: any, i: number) => (
+              {(showAllClauses ? allClauses : allClauses.slice(0, 6)).map((clause, i) => (
                 <div 
-                  key={clause.id || clause.title || `clause-${i}`}
+                  key={`${clause.title}-${i}`}
                   className="p-4 bg-white border border-slate-200 rounded-lg hover:border-indigo-200 transition-colors"
                 >
                   <div className="flex items-center justify-between mb-2">
                     <h4 className="font-medium text-slate-800">
-                      {clause.title || clause.name || `Clause ${i + 1}`}
+                      {clause.title}
                     </h4>
                     {clause.importance && (
                       <Badge 
@@ -1664,13 +1664,20 @@ export function ComprehensiveAIAnalysis({
                     )}
                   </div>
                   <p className="text-sm text-slate-600 line-clamp-2">
-                    {clause.content || clause.text || clause.description}
+                    {clause.summary || clause.fullText}
                   </p>
-                  {clause.type && (
+                  {clause.section && (
                     <Badge variant="secondary" className="mt-2 text-xs">
-                      {clause.type}
+                      {clause.section}
                     </Badge>
                   )}
+                  <FindingSourceLink
+                    className="mt-2"
+                    contractId={contractId}
+                    snippet={clause.snippet}
+                    heading={clause.section || clause.title}
+                    page={clause.page}
+                  />
                 </div>
               ))}
               
@@ -1715,7 +1722,7 @@ export function ComprehensiveAIAnalysis({
                   <div className="p-4 bg-violet-50 border border-violet-200 rounded-lg">
                     <p className="text-xs text-violet-600 mb-1">Total Value</p>
                     <p className="text-xl font-bold text-violet-700">
-                      ${(data.financial.totalValue / 1000).toFixed(0)}K
+                      {formatAmountWithCurrency(data.financial.totalValue, data.financial.currency)}
                     </p>
                   </div>
                 )}
@@ -1754,7 +1761,7 @@ export function ComprehensiveAIAnalysis({
                         {data.financial.rateCards.slice(0, 5).map((rate: any, i: number) => (
                           <tr key={`${rate.role || rate.item}-${rate.rate}-${rate.unit || 'hr'}`} className="border-b border-slate-100">
                             <td className="px-3 py-2 text-slate-700">{rate.role || rate.item}</td>
-                            <td className="px-3 py-2 text-right font-medium">${rate.rate}</td>
+                            <td className="px-3 py-2 text-right font-medium">{formatAmountWithCurrency(rate.rate, rate.currency || data.financial?.currency)}</td>
                             <td className="px-3 py-2 text-slate-500">{rate.unit || 'hr'}</td>
                           </tr>
                         ))}
@@ -2080,7 +2087,7 @@ export function ComprehensiveAIAnalysis({
                   <div>
                     <p className="text-sm font-medium text-slate-800">Term End Date</p>
                     <p className="text-sm text-slate-500">
-                      {new Date(data.renewal.currentTermEnd).toLocaleDateString('en-US', {
+                      {new Date(data.renewal.currentTermEnd).toLocaleDateString('de-CH', {
                         weekday: 'long',
                         year: 'numeric',
                         month: 'long',

@@ -4,6 +4,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { TrendingDown, DollarSign, Target, Lightbulb, AlertTriangle } from 'lucide-react';
+import { formatRateMoney } from '@/lib/rate-cards/format'
 
 // ============================================================================
 // Types
@@ -46,12 +47,7 @@ interface SavingsAnalysisSectionProps {
 // ============================================================================
 
 function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(value);
+  return formatRateMoney(value);
 }
 
 function formatPercent(value: number): string {

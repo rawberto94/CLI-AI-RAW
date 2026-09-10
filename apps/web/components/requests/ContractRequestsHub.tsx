@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { useTranslations } from 'next-intl';
+import { formatAmountWithCurrency } from '@/lib/utils/formatters';
 
 interface ContractRequest {
   id: string;
@@ -25,6 +26,7 @@ interface ContractRequest {
   department: string | null;
   counterparty_name: string | null;
   estimated_value: number | null;
+  currency?: string | null;
   assigned_to: string | null;
   sla_deadline: string | null;
   created_at: string;
@@ -197,7 +199,7 @@ export default function ContractRequestsHub() {
                       <span>{req.request_type.replace(/_/g, ' ')}</span>
                       {req.counterparty_name && <span>• {req.counterparty_name}</span>}
                       {req.department && <span>• {req.department}</span>}
-                      {req.estimated_value && <span>• ${Number(req.estimated_value).toLocaleString()}</span>}
+                      {req.estimated_value && <span>• {formatAmountWithCurrency(req.estimated_value, req.currency)}</span>}
                     </div>
                     {req.sla_deadline && (
                       <div className={cn('flex items-center gap-1 mt-1 text-xs', isOverdue(req.sla_deadline) && req.status !== 'COMPLETED' ? 'text-red-500' : 'text-muted-foreground')}>

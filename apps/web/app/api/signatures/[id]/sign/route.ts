@@ -353,7 +353,7 @@ export async function POST(
               <div style="background: white; border-left: 4px solid #10b981; padding: 16px; margin: 16px 0; border-radius: 4px;">
                 <strong style="color: #1f2937;">${contractTitle}</strong>
                 <p style="color: #6b7280; margin: 8px 0 0 0; font-size: 14px;">
-                  Signed on ${new Date().toLocaleDateString('en-US', { dateStyle: 'long' })}
+                  Signed on ${new Date().toLocaleDateString('de-CH', { dateStyle: 'long' })}
                 </p>
               </div>
               <p style="color: #6b7280; font-size: 14px;">This is your confirmation receipt. Please keep it for your records.</p>

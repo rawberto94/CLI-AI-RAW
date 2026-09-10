@@ -367,7 +367,7 @@ async function getContractStats(tenantId: string): Promise<ChatActionResult> {
 • Draft: ${statusMap['draft'] || 0}
 • Archived: ${statusMap['archived'] || 0}
 
-**Total Portfolio Value:** $${totalValue.toLocaleString()}
+**Total Portfolio Value:** ${Number(totalValue).toLocaleString('de-CH')}
 
 Want more detailed analytics? Check the Analytics dashboard for trends, insights, and reports.`,
       data: { url: '/analytics' }

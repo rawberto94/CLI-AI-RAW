@@ -30,8 +30,6 @@ import {
   FileText,
   DollarSign,
   MoreHorizontal,
-  Link2,
-  Unlink,
   Edit3,
   Trash2,
   Eye,
@@ -61,6 +59,7 @@ import {
 } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
+import { formatAmountWithCurrency } from '@/lib/utils/formatters';
 
 // ============================================================================
 // TYPES
@@ -677,7 +676,7 @@ export function RelationshipGraph({
                 <Badge variant="secondary">{stats.totalNodes} contracts</Badge>
                 <Badge variant="secondary">{stats.maxDepth} levels</Badge>
                 {stats.totalValue > 0 && (
-                  <Badge variant="secondary">${(stats.totalValue / 1000000).toFixed(1)}M value</Badge>
+                  <Badge variant="secondary">{formatAmountWithCurrency(stats.totalValue)} value</Badge>
                 )}
               </div>
             )}
@@ -824,7 +823,9 @@ export function RelationshipGraph({
                     <div className="flex justify-between">
                       <span className="text-gray-500">Value:</span>
                       <span className="font-medium">
-                        {selectedNode.currency || '$'}
+                        {selectedNode.currency && selectedNode.currency !== 'XXX'
+                          ? `${selectedNode.currency} `
+                          : ''}
                         {(selectedNode.value / 1000).toFixed(1)}k
                       </span>
                     </div>
@@ -883,15 +884,6 @@ export function RelationshipGraph({
                       <DropdownMenuItem onClick={() => setShowAmendmentDialog(true)}>
                         <Plus className="h-4 w-4 mr-2" />
                         Add Amendment
-                      </DropdownMenuItem>
-                      <DropdownMenuItem>
-                        <Link2 className="h-4 w-4 mr-2" />
-                        Link Contract
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem className="text-red-600">
-                        <Unlink className="h-4 w-4 mr-2" />
-                        Unlink
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>

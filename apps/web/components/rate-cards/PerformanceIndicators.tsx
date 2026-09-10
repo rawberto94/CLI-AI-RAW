@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertCircle, Award, Handshake, PiggyBank } from 'lucide-react';
+import { formatRateMoney } from '@/lib/rate-cards/format';
 
 interface PerformanceMetrics {
   percentAboveMarket: number;
@@ -35,14 +36,7 @@ export function PerformanceIndicators() {
     }
   };
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(value ?? 0);
-  };
+  const formatCurrency = (value: number) => formatRateMoney(value ?? 0);
 
   const formatPercentage = (value: number) => {
     return `${(value ?? 0).toFixed(1)}%`;

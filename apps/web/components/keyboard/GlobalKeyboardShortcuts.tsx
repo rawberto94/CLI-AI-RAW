@@ -82,15 +82,6 @@ export function GlobalKeyboardShortcuts({ children }: { children: React.ReactNod
       audiences: ['operator'],
     },
     {
-      key: 'r',
-      ctrl: true,
-      shift: true,
-      description: 'Go to rate cards',
-      action: () => router.push('/rate-cards'),
-      category: 'Navigation',
-      audiences: ['commercial'],
-    },
-    {
       key: 'a',
       ctrl: true,
       shift: true,

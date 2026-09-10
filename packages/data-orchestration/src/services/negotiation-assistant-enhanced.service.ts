@@ -1,4 +1,5 @@
 import { prisma } from '../lib/prisma';
+import { formatMoneyText } from '@repo/utils';
 
 
 export interface EnhancedTalkingPoint {
@@ -76,8 +77,8 @@ export class NegotiationAssistantEnhancedService {
       
       points.push({
         point: 'Market Analysis Shows Significant Rate Optimization Opportunity',
-        supportingData: `Current rate of $${rateCard.dailyRateUSD} is at the ${benchmark.percentileRank}th percentile. Market median is $${benchmark.median} based on ${benchmark.cohortSize} comparable rates.`,
-        impact: `Aligning to market median would save $${dailySavings.toFixed(2)}/day or $${annualSavings.toLocaleString()}/year.`,
+        supportingData: `Current rate of ${formatMoneyText(Number(rateCard.dailyRateUSD), rateCard.currency)} is at the ${benchmark.percentileRank}th percentile. Market median is ${formatMoneyText(Number(benchmark.median), rateCard.currency)} based on ${benchmark.cohortSize} comparable rates.`,
+        impact: `Aligning to market median would save ${formatMoneyText(Number(dailySavings), rateCard.currency)}/day or ${formatMoneyText(Number(annualSavings), rateCard.currency)}/year.`,
         priority: dailySavings > 100 ? 1 : 2,
         category: 'market',
         confidence: benchmark.cohortSize >= 10 ? 90 : 70,
@@ -114,8 +115,8 @@ export class NegotiationAssistantEnhancedService {
       
       points.push({
         point: 'Significant Volume Commitment Justifies Preferential Pricing',
-        supportingData: `Committed volume of ${rateCard.volumeCommitted} days annually represents $${annualValue.toLocaleString()} in guaranteed revenue.`,
-        impact: `Volume-based pricing at $${targetRate}/day maintains substantial annual contract value while aligning to market rates.`,
+        supportingData: `Committed volume of ${rateCard.volumeCommitted} days annually represents ${formatMoneyText(Number(annualValue), rateCard.currency)} in guaranteed revenue.`,
+        impact: `Volume-based pricing at ${formatMoneyText(Number(targetRate), rateCard.currency)}/day maintains substantial annual contract value while aligning to market rates.`,
         priority: rateCard.volumeCommitted > 200 ? 1 : 2,
         category: 'volume',
         confidence: 95,
@@ -129,8 +130,8 @@ export class NegotiationAssistantEnhancedService {
       
       points.push({
         point: 'Multiple Competitive Alternatives Available',
-        supportingData: `${alternatives.length} qualified suppliers offer similar services at lower rates. Top alternatives: ${topAlts.map(a => `${a.supplierName} ($${a.dailyRate})`).join(', ')}.`,
-        impact: `Best alternative offers ${bestAlt.savingsPercent.toFixed(1)}% savings ($${bestAlt.savingsAmount}/day). Switching would save $${(bestAlt.savingsAmount * 220).toLocaleString()}/year.`,
+        supportingData: `${alternatives.length} qualified suppliers offer similar services at lower rates. Top alternatives: ${topAlts.map(a => `${a.supplierName} (${formatMoneyText(Number(a.dailyRate), rateCard.currency)})`).join(', ')}.`,
+        impact: `Best alternative offers ${bestAlt.savingsPercent.toFixed(1)}% savings (${formatMoneyText(Number(bestAlt.savingsAmount), rateCard.currency)}/day). Switching would save ${formatMoneyText(Number(bestAlt.savingsAmount) * 220, rateCard.currency)}/year.`,
         priority: bestAlt.savingsAmount > 100 ? 1 : 3,
         category: 'competition',
         confidence: 85,
@@ -139,7 +140,7 @@ export class NegotiationAssistantEnhancedService {
       if (alternatives.length >= 3) {
         points.push({
           point: 'Strong Competitive Market Provides Negotiation Leverage',
-          supportingData: `${alternatives.length} alternative suppliers demonstrate active, competitive market with rates ranging from $${alternatives[alternatives.length - 1].dailyRate} to $${alternatives[0].dailyRate}.`,
+          supportingData: `${alternatives.length} alternative suppliers demonstrate active, competitive market with rates ranging from ${formatMoneyText(Number(alternatives[alternatives.length - 1].dailyRate), rateCard.currency)} to ${formatMoneyText(Number(alternatives[0].dailyRate), rateCard.currency)}.`,
           impact: 'Competitive market conditions support rate reduction requests and provide fallback options.',
           priority: 3,
           category: 'competition',
@@ -153,8 +154,8 @@ export class NegotiationAssistantEnhancedService {
       const geoOpp = geoOpportunities[0];
       points.push({
         point: 'Geographic Rate Arbitrage Opportunity Identified',
-        supportingData: `Similar roles in ${geoOpp.targetCountry} average $${geoOpp.targetAverageRate}/day vs $${geoOpp.currentAverageRate}/day in ${geoOpp.sourceCountry}.`,
-        impact: `Geographic flexibility could save ${geoOpp.savingsPercentage}% or $${Number(geoOpp.annualSavingsPotential).toLocaleString()}/year.`,
+        supportingData: `Similar roles in ${geoOpp.targetCountry} average ${formatMoneyText(Number(geoOpp.targetAverageRate))}/day vs ${formatMoneyText(Number(geoOpp.currentAverageRate))}/day in ${geoOpp.sourceCountry}.`,
+        impact: `Geographic flexibility could save ${geoOpp.savingsPercentage}% or ${formatMoneyText(Number(geoOpp.annualSavingsPotential))}/year.`,
         priority: 4,
         category: 'geography',
         confidence: 75,

@@ -86,10 +86,11 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
         }
 
         const systemPrompt = `You are an expert contract drafting AI assistant. Generate precise, legally sound contract text based on the user's request.
+Match the user's language. If they write German, French, or Italian, draft in that language. Keep defined terms and party names verbatim.
 
 Rules:
 - Write directly usable contract language (no markdown headers, no explanations)
-- Use "shall" for obligations, "may" for permissions
+- Use "shall" for obligations, "may" for permissions in English drafts; in German use "hat ... zu" / "kann", in French "doit" / "peut", in Italian "deve" / "può"
 - Use defined terms consistently (capitalize them)
 - Be concise but thorough
 - Match the style and tone of the existing document context

@@ -112,6 +112,8 @@ import {
 import { cn, generateUUID } from '@/lib/utils';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
+import { useDisplayCurrency } from '@/hooks/useDisplayCurrency';
+import { formatDisplayTotal } from '@/lib/utils/formatters';
 
 interface FilterState {
   suppliers: string[];
@@ -237,6 +239,7 @@ const RECOMMENDATION_TYPE_ICONS: Record<string, typeof Target> = {
 };
 
 export default function AIReportBuilderPage() {
+  const displayCurrency = useDisplayCurrency();
   const [filters, setFilters] = useState<FilterState>({
     suppliers: [],
     categories: [],
@@ -632,29 +635,9 @@ export default function AIReportBuilderPage() {
   const activeFilterCount = Object.values(filters).flat().length;
   
   // Format currency
-  const formatCurrency = (value: number) => {
-    if (value >= 1000000) {
-      return `$${(value / 1000000).toFixed(1)}M`;
-    }
-    if (value >= 1000) {
-      return `$${(value / 1000).toFixed(0)}K`;
-    }
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(value);
-  };
+  const formatCurrency = (value: number) => formatDisplayTotal(value, displayCurrency);
 
-  const formatFullCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(value);
-  };
+  const formatFullCurrency = (value: number) => formatDisplayTotal(value, displayCurrency);
 
   // Calculate category percentages for visual bar
   const getCategoryPercentage = (value: number) => {

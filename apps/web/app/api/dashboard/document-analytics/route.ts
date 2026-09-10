@@ -31,7 +31,7 @@ function getDateRanges(period: string): DateRange[] {
         ranges.push({
           start: date,
           end,
-          label: date.toLocaleDateString('en-US', { weekday: 'short' }),
+          label: date.toLocaleDateString('de-CH', { weekday: 'short' }),
         });
       }
       break;
@@ -61,7 +61,7 @@ function getDateRanges(period: string): DateRange[] {
         ranges.push({
           start,
           end,
-          label: start.toLocaleDateString('en-US', { month: 'short' }),
+          label: start.toLocaleDateString('de-CH', { month: 'short' }),
         });
       }
       break;
@@ -75,7 +75,7 @@ function getDateRanges(period: string): DateRange[] {
         ranges.push({
           start,
           end,
-          label: start.toLocaleDateString('en-US', { month: 'short' }),
+          label: start.toLocaleDateString('de-CH', { month: 'short' }),
         });
       }
       break;
@@ -89,7 +89,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
   const { searchParams } = new URL(request.url);
   const period = searchParams.get('period') || 'year';
 
-  const cacheKey = `dashboard:document-analytics:${tenantId}:${period}`;
+  const cacheKey = `dashboard:document-analytics:${tenantId}:${period}:v2`;
   const cached = await getCached(cacheKey);
   if (cached) return createSuccessResponse(ctx, cached);
 
@@ -97,7 +97,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
 
   // Get all contracts with their dates and classification
   const contracts = await prisma.contract.findMany({
-    where: { tenantId },
+    where: { tenantId, isDeleted: false },
     select: {
       id: true,
       uploadedAt: true,
@@ -155,9 +155,9 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
     let docType = (contract as any).documentClassification;
     if (!docType || docType === 'unknown') {
       const metadata = contract.aiMetadata as Record<string, any> | null;
-      docType = metadata?.document_classification || 'contract';
+      docType = metadata?.document_classification || 'unknown';
     }
-    const normalizedDocType = docType?.toLowerCase().replace(/\s+/g, '_') || 'contract';
+    const normalizedDocType = docType?.toLowerCase().replace(/\s+/g, '_') || 'unknown';
 
     // Count document types
     if (normalizedDocType in trend.documentTypes) {
@@ -169,7 +169,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
     // Count contracts vs non-contracts
     if (nonContractTypes.includes(normalizedDocType)) {
       trend.nonContracts++;
-    } else {
+    } else if (normalizedDocType !== 'unknown') {
       trend.contracts++;
     }
 
@@ -218,8 +218,9 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
   const totalDocuments = contracts.length;
   const totalContracts = contracts.filter(c => {
     const docType = (c as any).documentClassification || 
-      (c.aiMetadata as Record<string, any>)?.document_classification || 'contract';
-    return !nonContractTypes.includes(docType?.toLowerCase().replace(/\s+/g, '_'));
+      (c.aiMetadata as Record<string, any>)?.document_classification || 'unknown';
+    const normalized = docType?.toLowerCase().replace(/\s+/g, '_') || 'unknown';
+    return normalized !== 'unknown' && !nonContractTypes.includes(normalized);
   }).length;
   const totalNonContracts = totalDocuments - totalContracts;
 
@@ -259,8 +260,8 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
     topDocumentTypes: Object.entries(
       contracts.reduce((acc, c) => {
         const docType = (c as any).documentClassification || 
-          (c.aiMetadata as Record<string, any>)?.document_classification || 'contract';
-        const normalized = docType?.toLowerCase().replace(/\s+/g, '_') || 'contract';
+          (c.aiMetadata as Record<string, any>)?.document_classification || 'unknown';
+        const normalized = docType?.toLowerCase().replace(/\s+/g, '_') || 'unknown';
         acc[normalized] = (acc[normalized] || 0) + 1;
         return acc;
       }, {} as Record<string, number>)

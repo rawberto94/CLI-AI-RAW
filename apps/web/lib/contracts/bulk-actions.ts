@@ -131,8 +131,17 @@ async function bulkExport(
   return result
 }
 
+async function postBulkJson(url: string, body: Record<string, unknown>): Promise<Response> {
+  return fetch(url, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+}
+
 /**
- * Bulk tag contracts
+ * Bulk tag contracts via the tenant tag registry (not localStorage).
  */
 async function bulkTag(
   contractIds: string[],
@@ -145,27 +154,27 @@ async function bulkTag(
     errors: [],
   }
 
-  // Import dynamically to avoid circular dependencies
-  const { addTagToContract } = await import('./tags')
-
-  for (const contractId of contractIds) {
-    try {
-      tagIds.forEach(tagId => {
-        addTagToContract(contractId, tagId)
-      })
-      result.processed++
-    } catch (error) {
-      result.failed++
-      result.errors?.push(`Failed to tag ${contractId}: ${error}`)
+  try {
+    const response = await postBulkJson('/api/contracts/bulk/tags', {
+      contractIds,
+      tags: tagIds,
+      mode: 'add',
+    })
+    if (!response.ok) {
+      throw new Error(`Failed to tag contracts (${response.status})`)
     }
+    result.processed = contractIds.length
+  } catch (error) {
+    result.success = false
+    result.failed = contractIds.length
+    result.errors = [error instanceof Error ? error.message : 'Failed to tag contracts']
   }
 
-  result.success = result.failed === 0
   return result
 }
 
 /**
- * Bulk archive/unarchive contracts
+ * Bulk archive/unarchive contracts by status, not a client-only tag.
  */
 async function bulkArchive(
   contractIds: string[],
@@ -178,29 +187,25 @@ async function bulkArchive(
     errors: [],
   }
 
-  const { addTagToContract, removeTagFromContract } = await import('./tags')
-  const archiveTagId = 'archived'
-
-  for (const contractId of contractIds) {
-    try {
-      if (archive) {
-        addTagToContract(contractId, archiveTagId)
-      } else {
-        removeTagFromContract(contractId, archiveTagId)
-      }
-      result.processed++
-    } catch (error) {
-      result.failed++
-      result.errors?.push(`Failed to ${archive ? 'archive' : 'unarchive'} ${contractId}: ${error}`)
+  try {
+    const response = await postBulkJson('/api/contracts/bulk', archive
+      ? { operation: 'archive', contractIds }
+      : { operation: 'status', contractIds, status: 'ACTIVE', newStatus: 'ACTIVE' })
+    if (!response.ok) {
+      throw new Error(`Failed to ${archive ? 'archive' : 'unarchive'} contracts (${response.status})`)
     }
+    result.processed = contractIds.length
+  } catch (error) {
+    result.success = false
+    result.failed = contractIds.length
+    result.errors = [error instanceof Error ? error.message : 'Failed to update archive status']
   }
 
-  result.success = result.failed === 0
   return result
 }
 
 /**
- * Bulk mark as reviewed
+ * Bulk mark as reviewed via the tenant tag registry.
  */
 async function bulkMarkReviewed(contractIds: string[]): Promise<BulkActionResult> {
   const result: BulkActionResult = {
@@ -210,20 +215,22 @@ async function bulkMarkReviewed(contractIds: string[]): Promise<BulkActionResult
     errors: [],
   }
 
-  const { addTagToContract } = await import('./tags')
-  const reviewedTagId = 'approved'
-
-  for (const contractId of contractIds) {
-    try {
-      addTagToContract(contractId, reviewedTagId)
-      result.processed++
-    } catch (error) {
-      result.failed++
-      result.errors?.push(`Failed to mark ${contractId} as reviewed: ${error}`)
+  try {
+    const response = await postBulkJson('/api/contracts/bulk/tags', {
+      contractIds,
+      tags: ['reviewed'],
+      mode: 'add',
+    })
+    if (!response.ok) {
+      throw new Error(`Failed to mark contracts reviewed (${response.status})`)
     }
+    result.processed = contractIds.length
+  } catch (error) {
+    result.success = false
+    result.failed = contractIds.length
+    result.errors = [error instanceof Error ? error.message : 'Failed to mark contracts reviewed']
   }
 
-  result.success = result.failed === 0
   return result
 }
 

@@ -23,6 +23,7 @@ import {
   Zap,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import Link from 'next/link';
 
 // ============================================
 // Types
@@ -486,9 +487,9 @@ export function NotificationCenter({
               {/* Footer */}
               {notifications.length > 0 && (
                 <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-700">
-                  <button className="w-full text-center text-sm text-violet-500 hover:text-violet-600 font-medium">
+                  <Link href="/notifications" className="block w-full text-center text-sm text-violet-500 hover:text-violet-600 font-medium">
                     View all notifications
-                  </button>
+                  </Link>
                 </div>
               )}
             </motion.div>

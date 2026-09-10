@@ -164,6 +164,19 @@ describe('Validation Schemas', () => {
         expect(result.success).toBe(true);
       });
     });
+
+    it('does not invent USD when currency is omitted', () => {
+      const result = contractCreateSchema.safeParse({
+        title: 'Test',
+        client: 'Client',
+        supplier: 'Supplier',
+        contractType: 'msa',
+      });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.currency).toBeUndefined();
+      }
+    });
   });
 
   describe('rateCardCreateSchema', () => {
@@ -212,6 +225,19 @@ describe('Validation Schemas', () => {
         roles: [],
       });
       expect(result.success).toBe(false);
+    });
+
+    it('does not invent USD when currency is omitted', () => {
+      const result = rateCardCreateSchema.safeParse({
+        name: 'Test Rate Card',
+        supplierName: 'Supplier',
+        clientName: 'Client',
+        roles: [{ role: 'Dev', dailyRate: 100 }],
+      });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.currency).toBeUndefined();
+      }
     });
   });
 

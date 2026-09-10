@@ -23,6 +23,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import Link from "next/link";
+import { formatAmountWithCurrency } from "@/lib/utils/formatters";
 import { sanitizeHtml } from '@/lib/security/sanitize';
 
 // Mock search results data
@@ -105,7 +106,7 @@ const searchData = {
   ],
   quickFilters: [
     { name: "Active Contracts", count: 892, active: false },
-    { name: "High Value (>$1M)", count: 234, active: false },
+    { name: "High Value (>1M)", count: 234, active: false },
     { name: "Expiring Soon", count: 45, active: false },
     { name: "High Risk", count: 23, active: false },
     { name: "MSA Agreements", count: 156, active: false },
@@ -151,10 +152,7 @@ export default function SearchClient() {
               Advanced Search
             </Button>
           </Link>
-          <Button variant="outline" size="sm">
-            <Download className="w-4 h-4 mr-2" />
-            Export Results
-          </Button>
+
         </div>
       </div>
 
@@ -224,22 +222,7 @@ export default function SearchClient() {
         </CardContent>
       </Card>
 
-      {/* Quick Filters */}
-      <div className="flex flex-wrap gap-3">
-        {searchData.quickFilters.map((filter, index) => (
-          <Button
-            key={index}
-            variant={filter.active ? "default" : "outline"}
-            size="sm"
-            className="flex items-center gap-2"
-          >
-            {filter.name}
-            <Badge variant="secondary" className="ml-1">
-              {filter.count}
-            </Badge>
-          </Button>
-        ))}
-      </div>
+
 
       {/* Search Results */}
       {showResults && (
@@ -296,7 +279,7 @@ export default function SearchClient() {
                         </div>
                         <div className="flex items-center gap-2">
                           <DollarSign className="w-4 h-4" />
-                          <span>${(contract.value / 1000000).toFixed(1)}M</span>
+                          <span>{formatAmountWithCurrency(contract.value)}</span>
                         </div>
                         <div className="flex items-center gap-2">
                           <Calendar className="w-4 h-4" />
@@ -379,10 +362,6 @@ export default function SearchClient() {
                             View Contract
                           </Button>
                         </Link>
-                        <Button size="sm" variant="outline" className="w-full">
-                          <Download className="w-4 h-4 mr-2" />
-                          Download
-                        </Button>
                       </div>
                     </div>
                   </div>
@@ -391,12 +370,7 @@ export default function SearchClient() {
             ))}
           </div>
 
-          {/* Load More */}
-          <div className="text-center">
-            <Button variant="outline" size="lg">
-              Load More Results
-            </Button>
-          </div>
+
         </div>
       )}
 

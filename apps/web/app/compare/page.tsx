@@ -74,6 +74,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { formatAmountWithCurrency } from "@/lib/utils/formatters";
 
 // Types
 interface Contract {
@@ -167,12 +168,10 @@ function ComparisonBar({
   
   const formatValue = (val: number) => {
     if (format === 'currency') {
-      if (val >= 1000000) return `$${(val / 1000000).toFixed(1)}M`;
-      if (val >= 1000) return `$${(val / 1000).toFixed(0)}K`;
-      return `$${val.toFixed(0)}`;
+      return formatAmountWithCurrency(val, null);
     }
     if (format === 'percent') return `${val}%`;
-    return val.toLocaleString();
+    return val.toLocaleString('de-CH');
   };
   
   return (
@@ -264,17 +263,21 @@ function RiskGauge({ score, label, color }: { score: number; label: string; colo
 }
 
 // Utility functions
-const formatCurrency = (value: number, currency: string = "USD") => {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency,
-    maximumFractionDigits: 0,
-  }).format(value);
-};
+function sharedCurrency(contracts: Array<{ currency?: string | null }>): string | null {
+  const codes = new Set(
+    contracts
+      .map((c) => (typeof c.currency === "string" ? c.currency.trim().toUpperCase() : ""))
+      .filter((c) => c.length === 3 && c !== "XXX"),
+  );
+  return codes.size === 1 ? [...codes][0] : null;
+}
+
+const formatCurrency = (value: number, currency?: string | null) =>
+  formatAmountWithCurrency(value, currency);
 
 const _formatDate = (dateStr: string | null) => {
   if (!dateStr) return "N/A";
-  return new Date(dateStr).toLocaleDateString("en-US", {
+  return new Date(dateStr).toLocaleDateString("de-CH", {
     year: "numeric",
     month: "short",
     day: "numeric",
@@ -364,7 +367,7 @@ function ContractGroupSelector({
           </span>
           {selectedContracts.length > 0 && (
             <Badge variant="secondary">
-              {selectedContracts.length} selected • {formatCurrency(totalValue)}
+              {selectedContracts.length} selected • {formatCurrency(totalValue, sharedCurrency(selectedContracts))}
             </Badge>
           )}
         </CardTitle>
@@ -454,7 +457,7 @@ function ContractGroupSelector({
                           {contract.contractTitle}
                         </p>
                         <p className="text-xs text-gray-500 truncate">
-                          {contract.supplierName} • {formatCurrency(contract.totalValue)} • {getYear(contract.effectiveDate)}
+                          {contract.supplierName} • {formatCurrency(contract.totalValue, contract.currency)} • {getYear(contract.effectiveDate)}
                         </p>
                       </div>
                       <Badge variant={contract.status === "ACTIVE" ? "default" : "secondary"} className="text-xs flex-shrink-0">
@@ -655,8 +658,8 @@ export default function ContractComparisonPage() {
     differences.push({
       field: "totalValue",
       label: "Total Contract Value",
-      value1: formatCurrency(stats1.totalValue),
-      value2: formatCurrency(stats2.totalValue),
+      value1: formatCurrency(stats1.totalValue, sharedCurrency(group1Contracts)),
+      value2: formatCurrency(stats2.totalValue, sharedCurrency(group2Contracts)),
       analysis: valueDiff !== 0 ? `${Math.abs(valuePct)}% ${valueDiff > 0 ? "higher" : "lower"}` : "Equal",
       advantage: valueDiff < 0 ? "group1" : valueDiff > 0 ? "group2" : "neutral",
     });
@@ -667,8 +670,8 @@ export default function ContractComparisonPage() {
     differences.push({
       field: "avgValue",
       label: "Average Contract Value",
-      value1: formatCurrency(stats1.avgValue),
-      value2: formatCurrency(stats2.avgValue),
+      value1: formatCurrency(stats1.avgValue, sharedCurrency(group1Contracts)),
+      value2: formatCurrency(stats2.avgValue, sharedCurrency(group2Contracts)),
       analysis: avgDiff !== 0 ? `${Math.abs(avgPct)}% ${avgDiff > 0 ? "higher" : "lower"}` : "Equal",
       advantage: avgDiff < 0 ? "group1" : avgDiff > 0 ? "group2" : "neutral",
     });
@@ -693,7 +696,7 @@ export default function ContractComparisonPage() {
 
     // Key insights
     if (Math.abs(valueDiff) > 500000) {
-      keyInsights.push(`💰 Significant value difference of ${formatCurrency(Math.abs(valueDiff))} between groups`);
+      keyInsights.push(`💰 Significant value difference of ${formatCurrency(Math.abs(valueDiff), sharedCurrency([...group1Contracts, ...group2Contracts]))} between groups`);
     }
 
     if (Math.abs(avgPct) > 30) {
@@ -832,8 +835,8 @@ export default function ContractComparisonPage() {
     
     let analysis = `## Contract Group Comparison Analysis\n\n`;
     analysis += `### Overview\n`;
-    analysis += `**${stats1.name}** includes ${stats1.count} contract(s) with a total value of ${formatCurrency(stats1.totalValue)}.\n`;
-    analysis += `**${stats2.name}** includes ${stats2.count} contract(s) with a total value of ${formatCurrency(stats2.totalValue)}.\n\n`;
+    analysis += `**${stats1.name}** includes ${stats1.count} contract(s) with a total value of ${formatCurrency(stats1.totalValue, sharedCurrency(group1Contracts))}.\n`;
+    analysis += `**${stats2.name}** includes ${stats2.count} contract(s) with a total value of ${formatCurrency(stats2.totalValue, sharedCurrency(group2Contracts))}.\n\n`;
     
     if (Math.abs(percentDiff) > 20) {
       analysis += `### Key Finding\n`;
@@ -915,9 +918,9 @@ export default function ContractComparisonPage() {
                 </Button>
               )}
               {comparison && (
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="sm" onClick={() => window.print()}>
                   <Download className="h-4 w-4 mr-2" />
-                  Export PDF
+                  Print
                 </Button>
               )}
             </div>
@@ -1068,7 +1071,7 @@ export default function ContractComparisonPage() {
                     </div>
                     <div>
                       <p className="text-xs text-violet-600 font-medium">{comparison.group1.name}</p>
-                      <p className="text-xl font-bold text-gray-900">{formatCurrency(comparison.group1.totalValue)}</p>
+                      <p className="text-xl font-bold text-gray-900">{formatCurrency(comparison.group1.totalValue, sharedCurrency(comparison.group1.contracts))}</p>
                     </div>
                   </div>
                 </CardContent>
@@ -1082,7 +1085,7 @@ export default function ContractComparisonPage() {
                     </div>
                     <div>
                       <p className="text-xs text-violet-600 font-medium">{comparison.group2.name}</p>
-                      <p className="text-xl font-bold text-gray-900">{formatCurrency(comparison.group2.totalValue)}</p>
+                      <p className="text-xl font-bold text-gray-900">{formatCurrency(comparison.group2.totalValue, sharedCurrency(comparison.group2.contracts))}</p>
                     </div>
                   </div>
                 </CardContent>
@@ -1268,11 +1271,11 @@ export default function ContractComparisonPage() {
                         <div className="grid grid-cols-2 gap-4">
                           <div className="p-3 bg-violet-50 rounded-lg">
                             <p className="text-xs text-violet-600 mb-1">Total Value</p>
-                            <p className="text-lg font-bold text-gray-900">{formatCurrency(comparison.group1.totalValue)}</p>
+                            <p className="text-lg font-bold text-gray-900">{formatCurrency(comparison.group1.totalValue, sharedCurrency(comparison.group1.contracts))}</p>
                           </div>
                           <div className="p-3 bg-violet-50 rounded-lg">
                             <p className="text-xs text-violet-600 mb-1">Avg Contract</p>
-                            <p className="text-lg font-bold text-gray-900">{formatCurrency(comparison.group1.avgValue)}</p>
+                            <p className="text-lg font-bold text-gray-900">{formatCurrency(comparison.group1.avgValue, sharedCurrency(comparison.group1.contracts))}</p>
                           </div>
                         </div>
                         <div className="space-y-2">
@@ -1299,11 +1302,11 @@ export default function ContractComparisonPage() {
                         <div className="grid grid-cols-2 gap-4">
                           <div className="p-3 bg-violet-50 rounded-lg">
                             <p className="text-xs text-violet-600 mb-1">Total Value</p>
-                            <p className="text-lg font-bold text-gray-900">{formatCurrency(comparison.group2.totalValue)}</p>
+                            <p className="text-lg font-bold text-gray-900">{formatCurrency(comparison.group2.totalValue, sharedCurrency(comparison.group2.contracts))}</p>
                           </div>
                           <div className="p-3 bg-violet-50 rounded-lg">
                             <p className="text-xs text-violet-600 mb-1">Avg Contract</p>
-                            <p className="text-lg font-bold text-gray-900">{formatCurrency(comparison.group2.avgValue)}</p>
+                            <p className="text-lg font-bold text-gray-900">{formatCurrency(comparison.group2.avgValue, sharedCurrency(comparison.group2.contracts))}</p>
                           </div>
                         </div>
                         <div className="space-y-2">
@@ -1410,7 +1413,7 @@ export default function ContractComparisonPage() {
                                   <p className="text-xs text-gray-500">{c.supplierName}</p>
                                 </div>
                                 <div className="text-right ml-2">
-                                  <p className="text-sm font-semibold text-gray-900">{formatCurrency(c.totalValue)}</p>
+                                  <p className="text-sm font-semibold text-gray-900">{formatCurrency(c.totalValue, c.currency)}</p>
                                   <Badge variant={c.status === "ACTIVE" ? "default" : "secondary"} className="px-3 py-1">
                                     {c.status}
                                   </Badge>
@@ -1437,7 +1440,7 @@ export default function ContractComparisonPage() {
                                   <p className="text-xs text-gray-500">{c.supplierName}</p>
                                 </div>
                                 <div className="text-right ml-2">
-                                  <p className="text-sm font-semibold text-gray-900">{formatCurrency(c.totalValue)}</p>
+                                  <p className="text-sm font-semibold text-gray-900">{formatCurrency(c.totalValue, c.currency)}</p>
                                   <Badge variant={c.status === "ACTIVE" ? "default" : "secondary"} className="px-3 py-1">
                                     {c.status}
                                   </Badge>

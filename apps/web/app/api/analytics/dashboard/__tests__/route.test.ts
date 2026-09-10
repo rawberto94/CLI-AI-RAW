@@ -77,13 +77,13 @@ describe('GET /api/analytics/dashboard', () => {
       .mockResolvedValueOnce(4)    // previousActiveContracts
       .mockResolvedValueOnce(2)    // pendingApprovals
       .mockResolvedValueOnce(1);   // expiringContracts
-    mockContractAggregate
-      .mockResolvedValueOnce({ _sum: { totalValue: 1000000 }, _avg: { totalValue: 100000 } })
-      .mockResolvedValueOnce({ _sum: { totalValue: 800000 } });
-    mockContractGroupBy.mockResolvedValue([
-      { status: 'COMPLETED', _count: { id: 5 } },
-      { status: 'ACTIVE', _count: { id: 3 } },
-    ]);
+    mockContractGroupBy
+      .mockResolvedValueOnce([{ currency: 'CHF', _sum: { totalValue: 1000000 } }])
+      .mockResolvedValueOnce([{ currency: 'CHF', _sum: { totalValue: 800000 } }])
+      .mockResolvedValue([
+        { status: 'COMPLETED', _count: { id: 5 } },
+        { status: 'ACTIVE', _count: { id: 3 } },
+      ]);
 
     const request = createAuthenticatedRequest('http://localhost:3000/api/analytics/dashboard');
     const response = await GET(request);
@@ -131,5 +131,47 @@ describe('GET /api/analytics/dashboard', () => {
     expect(data.meta).toBeDefined();
     expect(data.meta.requestId).toBeDefined();
     expect(data.meta.timestamp).toBeDefined();
+  });
+
+  it('scopes total contract and value queries to the tenant portfolio', async () => {
+    const request = createAuthenticatedRequest('http://localhost:3000/api/analytics/dashboard');
+    await GET(request);
+
+    const countWheres = mockContractCount.mock.calls.map((call) => call[0]?.where);
+    const groupByWheres = mockContractGroupBy.mock.calls.map((call) => call[0]?.where);
+
+    for (const where of [...countWheres, ...groupByWheres]) {
+      expect(where.tenantId).toBe('test-tenant');
+      expect(where.isDeleted).toBe(false);
+    }
+
+    const portfolioTotals = countWheres.filter(
+      (where) => Array.isArray(where.status?.in) && where.status.in.includes('ACTIVE') && where.status.in.includes('COMPLETED'),
+    );
+    expect(portfolioTotals.length).toBeGreaterThan(0);
+    expect(countWheres.some((where) => !where.tenantId)).toBe(false);
+  });
+
+  it('clamps period-over-period change when the previous period is tiny', async () => {
+    mockContractCount
+      .mockResolvedValueOnce(1001) // totalContracts
+      .mockResolvedValueOnce(1)    // previousTotalContracts
+      .mockResolvedValueOnce(8)
+      .mockResolvedValueOnce(1)
+      .mockResolvedValueOnce(0)
+      .mockResolvedValueOnce(0);
+    mockContractGroupBy
+      .mockResolvedValueOnce([{ currency: 'CHF', _sum: { totalValue: 1000000 } }])
+      .mockResolvedValueOnce([{ currency: 'CHF', _sum: { totalValue: 1 } }])
+      .mockResolvedValue([]);
+
+    const request = createAuthenticatedRequest('http://localhost:3000/api/analytics/dashboard');
+    const response = await GET(request);
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.data.metrics.trends.contractsChange).toBe(100);
+    expect(data.data.metrics.trends.valueChange).toBe(100);
+    expect(Math.abs(data.data.metrics.trends.contractsChange)).toBeLessThanOrEqual(100);
   });
 });

@@ -13,26 +13,22 @@ import {
   Zap,
   BarChart3,
   PieChart,
-  ArrowRight,
   ArrowUpRight,
   ArrowDownRight,
   RefreshCw,
   Filter,
-  Download,
-  Settings,
   Lightbulb,
   Clock,
   Building2,
   FileText,
-  ChevronRight,
-  Play,
-  Pause,
   Info,
   AlertCircle,
 } from 'lucide-react';
 import { useDataMode } from '@/contexts/DataModeContext';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
+import { useDisplayCurrency } from '@/hooks/useDisplayCurrency';
+import { formatAmountWithCurrency, formatDisplayTotal } from '@/lib/utils/formatters';
 
 // ============================================================================
 // Types
@@ -200,7 +196,7 @@ const ForecastChart: React.FC<{ data: ForecastData[] }> = ({ data }) => {
                 animate={{ height: `${(d.renewalValue / maxValue) * 100}%` }}
                 transition={{ delay: idx * 0.05, duration: 0.5 }}
                 className="w-full bg-violet-500 rounded-t"
-                title={`Renewals: $${d.renewalValue.toLocaleString()}`}
+                title={`Renewals: ${formatAmountWithCurrency(d.renewalValue, null)}`}
               />
             )}
             {/* New Contract Bar */}
@@ -210,7 +206,7 @@ const ForecastChart: React.FC<{ data: ForecastData[] }> = ({ data }) => {
                 animate={{ height: `${(d.newContractValue / maxValue) * 100}%` }}
                 transition={{ delay: idx * 0.05 + 0.1, duration: 0.5 }}
                 className="w-full bg-green-500"
-                title={`New: $${d.newContractValue.toLocaleString()}`}
+                title={`New: ${formatAmountWithCurrency(d.newContractValue, null)}`}
               />
             )}
             {/* Termination Bar */}
@@ -220,7 +216,7 @@ const ForecastChart: React.FC<{ data: ForecastData[] }> = ({ data }) => {
                 animate={{ height: `${(d.terminationValue / maxValue) * 100}%` }}
                 transition={{ delay: idx * 0.05 + 0.2, duration: 0.5 }}
                 className="w-full bg-red-400 rounded-b"
-                title={`Terminations: $${d.terminationValue.toLocaleString()}`}
+                title={`Terminations: ${formatAmountWithCurrency(d.terminationValue, null)}`}
               />
             )}
           </div>
@@ -277,7 +273,7 @@ const OpportunityCard: React.FC<OpportunityCardProps> = ({ opportunity }) => {
           <div className="flex items-center gap-4 mt-3 text-sm">
             <div className="flex items-center gap-1 text-green-600 font-medium">
               <DollarSign className="w-4 h-4" />
-              ${opportunity.potentialSavings.toLocaleString()}
+              {formatAmountWithCurrency(opportunity.potentialSavings, null)}
             </div>
             <div className={`flex items-center gap-1 ${effortColors[opportunity.effort]}`}>
               <Target className="w-4 h-4" />
@@ -300,9 +296,7 @@ const OpportunityCard: React.FC<OpportunityCardProps> = ({ opportunity }) => {
             )}
           </div>
         </div>
-        <button className="p-2 text-slate-400 hover:text-violet-500 hover:bg-violet-50 rounded-lg transition-colors">
-          <ArrowRight className="w-5 h-5" />
-        </button>
+
       </div>
     </div>
   );
@@ -348,11 +342,11 @@ const ScenarioCard: React.FC<ScenarioCardProps> = ({ scenario, isSelected, onSel
       <div className="grid grid-cols-2 gap-4 mb-3">
         <div className="p-2 bg-slate-50 rounded-lg">
           <div className="text-xs text-slate-500">Projected Cost</div>
-          <div className="text-lg font-bold text-slate-900">${(scenario.projectedCost / 1000000).toFixed(2)}M</div>
+          <div className="text-lg font-bold text-slate-900">{formatAmountWithCurrency(scenario.projectedCost, null)}</div>
         </div>
         <div className="p-2 bg-green-50 rounded-lg">
           <div className="text-xs text-green-600">Potential Savings</div>
-          <div className="text-lg font-bold text-green-600">${(scenario.projectedSavings / 1000).toFixed(0)}K</div>
+          <div className="text-lg font-bold text-green-600">{formatAmountWithCurrency(scenario.projectedSavings, null)}</div>
         </div>
       </div>
 
@@ -379,6 +373,7 @@ const ScenarioCard: React.FC<ScenarioCardProps> = ({ scenario, isSelected, onSel
 export const ForecastingDashboard: React.FC = () => {
   const { useRealData } = useDataMode();
   const { toast } = useToast();
+  const displayCurrency = useDisplayCurrency();
   
   const [selectedScenario, setSelectedScenario] = useState<string>('s1');
   const [timeRange, setTimeRange] = useState<'6m' | '12m' | '24m'>('12m');
@@ -458,14 +453,7 @@ export const ForecastingDashboard: React.FC = () => {
               <option value="12m">Next 12 Months</option>
               <option value="24m">Next 24 Months</option>
             </select>
-            <button className="px-3 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors font-medium flex items-center gap-2">
-              <Download className="w-4 h-4" />
-              Export
-            </button>
-            <button className="px-4 py-2 bg-violet-500 text-white rounded-lg hover:bg-violet-600 transition-colors font-medium flex items-center gap-2">
-              <Play className="w-4 h-4" />
-              Run Simulation
-            </button>
+
           </div>
         </div>
       </div>
@@ -478,7 +466,7 @@ export const ForecastingDashboard: React.FC = () => {
               <DollarSign className="w-5 h-5 text-violet-600" />
             </div>
             <div>
-              <div className="text-2xl font-bold text-slate-900">${(stats.projectedSpend / 1000000).toFixed(2)}M</div>
+              <div className="text-2xl font-bold text-slate-900">{formatDisplayTotal(stats.projectedSpend, displayCurrency)}</div>
               <div className="text-sm text-slate-500">Projected Spend</div>
             </div>
           </div>
@@ -506,7 +494,7 @@ export const ForecastingDashboard: React.FC = () => {
               <Zap className="w-5 h-5 text-green-600" />
             </div>
             <div>
-              <div className="text-2xl font-bold text-green-600">${(stats.totalSavings / 1000).toFixed(0)}K</div>
+              <div className="text-2xl font-bold text-green-600">{formatDisplayTotal(stats.totalSavings, displayCurrency)}</div>
               <div className="text-sm text-slate-500">Potential Savings</div>
             </div>
           </div>
@@ -566,9 +554,6 @@ export const ForecastingDashboard: React.FC = () => {
         <div className="bg-white rounded-xl border border-slate-200 p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-slate-900">Scenarios</h3>
-            <button className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded">
-              <Settings className="w-4 h-4" />
-            </button>
           </div>
           <div className="space-y-3">
             {mockScenarios.map(scenario => (
@@ -590,10 +575,7 @@ export const ForecastingDashboard: React.FC = () => {
             <h3 className="text-lg font-semibold text-slate-900">Discovered Opportunities</h3>
             <p className="text-sm text-slate-500">AI-identified savings and optimization opportunities</p>
           </div>
-          <button className="text-sm text-violet-500 hover:text-violet-600 font-medium flex items-center gap-1">
-            View All
-            <ChevronRight className="w-4 h-4" />
-          </button>
+
         </div>
         <div className="grid grid-cols-2 gap-4">
           {mockOpportunities.map(opportunity => (
@@ -632,10 +614,10 @@ export const ForecastingDashboard: React.FC = () => {
                     </div>
                   </td>
                   <td className="text-right py-3 px-4 text-slate-700">
-                    ${supplier.currentSpend.toLocaleString()}
+                    {formatAmountWithCurrency(supplier.currentSpend, null)}
                   </td>
                   <td className="text-right py-3 px-4 font-medium text-slate-900">
-                    ${supplier.projectedSpend.toLocaleString()}
+                    {formatAmountWithCurrency(supplier.projectedSpend, null)}
                   </td>
                   <td className="text-right py-3 px-4">
                     <span className={`flex items-center justify-end gap-1 ${

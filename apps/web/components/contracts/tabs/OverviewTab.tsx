@@ -13,12 +13,11 @@ import {
   Share2,
   Edit,
   Trash2,
-  Copy,
-  ExternalLink
+  Copy
 } from 'lucide-react'
 import { fadeIn, staggerContainer } from '@/lib/contracts/animations'
 import { cn } from '@/lib/utils'
-import { formatCurrency, formatDate } from '@/lib/utils/formatters'
+import { formatAmountWithCurrency, formatDate } from '@/lib/utils/formatters'
 
 export interface ContractMetadata {
   id: string
@@ -162,7 +161,7 @@ export function OverviewTab({
         <MetricCard
           icon={DollarSign}
           label="Contract Value"
-          value={formatCurrency(contract.value, contract.currency)}
+          value={formatAmountWithCurrency(contract.value, contract.currency)}
           iconColor="text-green-600"
           bgColor="bg-green-50"
         />
@@ -315,9 +314,7 @@ function DocumentLink({ name, size }: DocumentLinkProps) {
           <p className="text-xs text-gray-500">{size}</p>
         </div>
       </div>
-      <button className="opacity-0 group-hover:opacity-100 transition-opacity">
-        <ExternalLink className="w-4 h-4 text-gray-400 hover:text-gray-600" />
-      </button>
+
     </div>
   )
 }

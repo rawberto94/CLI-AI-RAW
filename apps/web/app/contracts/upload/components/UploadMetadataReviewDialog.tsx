@@ -70,6 +70,8 @@ function getReasonLabel(field: UploadMetadataReviewField): string {
   switch (field.reason) {
     case 'title-review':
       return 'Review suggested title';
+    case 'document-number-review':
+      return 'Public contract ID';
     case 'low-confidence':
       return 'Low-confidence extraction';
     default:
@@ -189,6 +191,7 @@ export function UploadMetadataReviewDialog({
 
     try {
       const metadata: Record<string, unknown> = {
+        document_number: draft.document_number.trim(),
         document_title: draft.document_title.trim(),
         document_classification: draft.document_classification,
       };
@@ -286,6 +289,7 @@ export function UploadMetadataReviewDialog({
               {reviewFields.map((field) => {
                 const confidenceLabel = formatConfidence(field.confidence);
                 const isTitleField = field.key === 'document_title';
+                const isDocumentNumberField = field.key === 'document_number';
                 const isClassificationField = field.key === 'document_classification';
                 const isContractTypeField = field.key === 'contractType';
                 const inputId = `upload-metadata-review-${field.key}`;
@@ -319,6 +323,9 @@ export function UploadMetadataReviewDialog({
                       {isTitleField && (
                         <span className="text-xs text-slate-500">Change it now if you want a cleaner title in the app.</span>
                       )}
+                      {isDocumentNumberField && (
+                        <span className="text-xs text-slate-500">Change it now if you want a contract ID instead of the file name.</span>
+                      )}
                     </div>
 
                     {isClassificationField ? (
@@ -346,7 +353,13 @@ export function UploadMetadataReviewDialog({
                         value={draft[field.key]}
                         onChange={(event) => updateDraft(field.key, event.target.value)}
                         className="mt-3 bg-white"
-                        placeholder={isContractTypeField ? 'e.g. MSA, NDA, SOW' : undefined}
+                        placeholder={
+                          isContractTypeField
+                            ? 'e.g. MSA, NDA, SOW'
+                            : isDocumentNumberField
+                              ? 'e.g. MSA-2026-0142'
+                              : undefined
+                        }
                       />
                     )}
 
@@ -386,7 +399,7 @@ export function UploadMetadataReviewDialog({
         </div>
 
         <div className="flex items-center justify-between gap-3 border-t border-slate-200 bg-slate-50 px-6 py-4">
-          <div className="text-xs text-slate-500">Prompt appears only when the title looks generic or metadata is missing / low confidence.</div>
+          <div className="text-xs text-slate-500">Prompt appears when the title or document number looks generic, or metadata is missing / low confidence.</div>
           <div className="flex items-center gap-2">
             <Button variant="ghost" onClick={onSkip} disabled={loading || saving}>
               Skip

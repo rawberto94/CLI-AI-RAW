@@ -8,9 +8,18 @@
  * - Milestone tables
  */
 
+import { detectCurrencyFromText, parseMonetaryAmount, UNKNOWN_CURRENCY } from '@repo/utils';
 import { createLogger } from '../utils/logger';
 
 const logger = createLogger('table-extraction');
+
+function detectTableCurrency(table: Table, ...cells: string[]): string {
+  for (const part of [...table.headers, ...cells]) {
+    const detected = detectCurrencyFromText(part);
+    if (detected) return detected;
+  }
+  return UNKNOWN_CURRENCY;
+}
 
 export interface Table {
   id: string;
@@ -264,17 +273,30 @@ export class TableExtractionService {
     const headerText = headers.join(' ').toLowerCase();
 
     // Rate card indicators
-    if (headerText.includes('rate') || headerText.includes('role') || headerText.includes('level')) {
+    if (
+      headerText.includes('rate') || headerText.includes('role') || headerText.includes('level') ||
+      headerText.includes('rolle') || headerText.includes('satz') || headerText.includes('honorar') ||
+      headerText.includes('tagesansatz') || headerText.includes('stundensatz') ||
+      headerText.includes('tarif') || headerText.includes('fonction')
+    ) {
       return 'rate_card';
     }
 
     // Payment schedule indicators
-    if (headerText.includes('milestone') || headerText.includes('payment') || headerText.includes('due')) {
+    if (
+      headerText.includes('milestone') || headerText.includes('payment') || headerText.includes('due') ||
+      headerText.includes('meilenstein') || headerText.includes('zahlung') || headerText.includes('fälligkeit') ||
+      headerText.includes('échéance') || headerText.includes('paiement')
+    ) {
       return 'payment_schedule';
     }
 
     // Cost breakdown indicators
-    if (headerText.includes('cost') || headerText.includes('category') || headerText.includes('total')) {
+    if (
+      headerText.includes('cost') || headerText.includes('category') || headerText.includes('total') ||
+      headerText.includes('kosten') || headerText.includes('kategorie') || headerText.includes('betrag') ||
+      headerText.includes('coût') || headerText.includes('montant')
+    ) {
       return 'cost_breakdown';
     }
 
@@ -286,7 +308,9 @@ export class TableExtractionService {
    */
   private looksLikeRateCard(table: Table): boolean {
     const headerText = table.headers.join(' ').toLowerCase();
-    return headerText.includes('rate') || headerText.includes('role') || headerText.includes('hour');
+    return headerText.includes('rate') || headerText.includes('role') || headerText.includes('hour')
+      || headerText.includes('rolle') || headerText.includes('honorar') || headerText.includes('tagesansatz')
+      || headerText.includes('stundensatz') || headerText.includes('tarif');
   }
 
   /**
@@ -294,7 +318,8 @@ export class TableExtractionService {
    */
   private looksLikePaymentSchedule(table: Table): boolean {
     const headerText = table.headers.join(' ').toLowerCase();
-    return headerText.includes('milestone') || headerText.includes('payment') || headerText.includes('due');
+    return headerText.includes('milestone') || headerText.includes('payment') || headerText.includes('due')
+      || headerText.includes('meilenstein') || headerText.includes('zahlung') || headerText.includes('fälligkeit');
   }
 
   /**
@@ -302,7 +327,8 @@ export class TableExtractionService {
    */
   private looksLikeCostBreakdown(table: Table): boolean {
     const headerText = table.headers.join(' ').toLowerCase();
-    return headerText.includes('cost') || headerText.includes('category') || headerText.includes('total');
+    return headerText.includes('cost') || headerText.includes('category') || headerText.includes('total')
+      || headerText.includes('kosten') || headerText.includes('kategorie') || headerText.includes('betrag');
   }
 
   /**
@@ -312,11 +338,11 @@ export class TableExtractionService {
     const rateCards: RateCard[] = [];
 
     // Find column indices
-    const roleIndex = this.findColumnIndex(table.headers, ['role', 'position', 'title']);
-    const levelIndex = this.findColumnIndex(table.headers, ['level', 'grade', 'seniority']);
-    const rateIndex = this.findColumnIndex(table.headers, ['rate', 'price', 'cost']);
-    const unitIndex = this.findColumnIndex(table.headers, ['unit', 'per', 'basis']);
-    const locationIndex = this.findColumnIndex(table.headers, ['location', 'region', 'site']);
+    const roleIndex = this.findColumnIndex(table.headers, ['role', 'position', 'title', 'rolle', 'funktion', 'fonction', 'ruolo']);
+    const levelIndex = this.findColumnIndex(table.headers, ['level', 'grade', 'seniority', 'stufe', 'niveau', 'livello']);
+    const rateIndex = this.findColumnIndex(table.headers, ['rate', 'price', 'cost', 'satz', 'honorar', 'tagesansatz', 'stundensatz', 'tarif', 'taux']);
+    const unitIndex = this.findColumnIndex(table.headers, ['unit', 'per', 'basis', 'einheit', 'unité', 'unità']);
+    const locationIndex = this.findColumnIndex(table.headers, ['location', 'region', 'site', 'standort', 'ort', 'lieu']);
 
     if (roleIndex === -1 || rateIndex === -1) {
       logger.warn('Could not find required columns for rate card');
@@ -329,16 +355,14 @@ export class TableExtractionService {
         const rateStr = row[rateIndex] || '';
         
         // Extract numeric rate
-        const rateMatch = rateStr.match(/[\d,]+/);
-        if (!rateMatch) continue;
-        
-        const rate = parseFloat(rateMatch[0].replace(/,/g, ''));
+        const rate = parseMonetaryAmount(rateStr);
+        if (rate == null) continue;
 
         const rateCard: RateCard = {
           role,
           rate,
-          unit: unitIndex !== -1 ? row[unitIndex] : 'hour',
-          currency: 'USD' // Default, could be extracted from rate string
+          unit: unitIndex !== -1 ? row[unitIndex] : this.inferDefaultRateUnit(table.headers),
+          currency: detectTableCurrency(table, rateStr, role),
         };
 
         if (levelIndex !== -1 && row[levelIndex]) {
@@ -364,9 +388,9 @@ export class TableExtractionService {
   private parsePaymentScheduleTable(table: Table): PaymentSchedule[] {
     const schedules: PaymentSchedule[] = [];
 
-    const milestoneIndex = this.findColumnIndex(table.headers, ['milestone', 'phase', 'deliverable']);
-    const amountIndex = this.findColumnIndex(table.headers, ['amount', 'payment', 'value']);
-    const dateIndex = this.findColumnIndex(table.headers, ['date', 'due', 'deadline']);
+    const milestoneIndex = this.findColumnIndex(table.headers, ['milestone', 'phase', 'deliverable', 'meilenstein', 'jalon']);
+    const amountIndex = this.findColumnIndex(table.headers, ['amount', 'payment', 'value', 'betrag', 'zahlung', 'montant']);
+    const dateIndex = this.findColumnIndex(table.headers, ['date', 'due', 'deadline', 'fälligkeit', 'datum', 'échéance']);
 
     if (milestoneIndex === -1 || amountIndex === -1) {
       logger.warn('Could not find required columns for payment schedule');
@@ -378,15 +402,13 @@ export class TableExtractionService {
         const milestone = row[milestoneIndex] || '';
         const amountStr = row[amountIndex] || '';
         
-        const amountMatch = amountStr.match(/[\d,]+/);
-        if (!amountMatch) continue;
-        
-        const amount = parseFloat(amountMatch[0].replace(/,/g, ''));
+        const amount = parseMonetaryAmount(amountStr);
+        if (amount == null) continue;
 
         const schedule: PaymentSchedule = {
           milestone,
           amount,
-          currency: 'USD'
+          currency: detectTableCurrency(table, amountStr, milestone),
         };
 
         if (dateIndex !== -1 && row[dateIndex]) {
@@ -408,9 +430,9 @@ export class TableExtractionService {
   private parseCostBreakdownTable(table: Table): CostBreakdown[] {
     const breakdowns: CostBreakdown[] = [];
 
-    const categoryIndex = this.findColumnIndex(table.headers, ['category', 'item', 'description']);
-    const totalIndex = this.findColumnIndex(table.headers, ['total', 'amount', 'cost']);
-    const quantityIndex = this.findColumnIndex(table.headers, ['quantity', 'qty', 'units']);
+    const categoryIndex = this.findColumnIndex(table.headers, ['category', 'item', 'description', 'kategorie', 'bezeichnung', 'catégorie']);
+    const totalIndex = this.findColumnIndex(table.headers, ['total', 'amount', 'cost', 'betrag', 'kosten', 'montant']);
+    const quantityIndex = this.findColumnIndex(table.headers, ['quantity', 'qty', 'units', 'menge', 'anzahl', 'quantité']);
 
     if (categoryIndex === -1 || totalIndex === -1) {
       logger.warn('Could not find required columns for cost breakdown');
@@ -422,15 +444,13 @@ export class TableExtractionService {
         const category = row[categoryIndex] || '';
         const totalStr = row[totalIndex] || '';
         
-        const totalMatch = totalStr.match(/[\d,]+/);
-        if (!totalMatch) continue;
-        
-        const total = parseFloat(totalMatch[0].replace(/,/g, ''));
+        const total = parseMonetaryAmount(totalStr);
+        if (total == null) continue;
 
         const breakdown: CostBreakdown = {
           category,
           total,
-          currency: 'USD'
+          currency: detectTableCurrency(table, totalStr, category),
         };
 
         if (quantityIndex !== -1 && row[quantityIndex]) {
@@ -452,6 +472,13 @@ export class TableExtractionService {
   /**
    * Find column index by possible names
    */
+  private inferDefaultRateUnit(headers: string[]): string {
+    const headerText = headers.join(' ').toLowerCase();
+    if (/tagessatz|tagesansatz|\btag\b|day|jour/.test(headerText)) return 'day';
+    if (/stundensatz|hour|heure|stunde/.test(headerText)) return 'hour';
+    return 'hour';
+  }
+
   private findColumnIndex(headers: string[], possibleNames: string[]): number {
     for (let i = 0; i < headers.length; i++) {
       const header = headers[i].toLowerCase();

@@ -7,6 +7,7 @@
 
 import { prisma } from '../lib/prisma';
 import { RateCardCluster } from './rate-card-clustering.service';
+import { formatMoneyText } from '@repo/utils';
 
 
 export interface GeographicArbitrageOpportunity {
@@ -207,7 +208,7 @@ export class GeographicArbitrageService {
       if (opp.savingsPercentage >= minSavingsPercentage && opp.feasibility !== 'LOW') {
         recommendations.push(
           `Consider shifting ${opp.affectedRoles} roles from ${opp.sourceGeography.country} to ${opp.targetGeography.country} ` +
-            `for ${opp.savingsPercentage.toFixed(1)}% savings ($${Math.round(opp.annualSavingsPotential).toLocaleString()}/year)`
+            `for ${opp.savingsPercentage.toFixed(1)}% savings (${formatMoneyText(Math.round(opp.annualSavingsPotential))}/year)`
         );
       }
     }

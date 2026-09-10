@@ -755,16 +755,15 @@ Date: _______________
       month: 'long',
       day: 'numeric',
     };
-    return date.toLocaleDateString('en-US', options);
+    return date.toLocaleDateString('de-CH', options);
   }
 
   private formatNumber(value: number, varName: string): string {
     const lowerName = varName.toLowerCase();
     
     if (lowerName.includes('amount') || lowerName.includes('value') || lowerName.includes('price')) {
-      return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'USD',
+      return new Intl.NumberFormat('de-CH', {
+        maximumFractionDigits: 2,
       }).format(value);
     }
     
@@ -772,7 +771,7 @@ Date: _______________
       return `${value}%`;
     }
     
-    return new Intl.NumberFormat('en-US').format(value);
+    return new Intl.NumberFormat('de-CH').format(value);
   }
 
   private escapeXml(str: string): string {

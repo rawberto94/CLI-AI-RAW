@@ -12,13 +12,13 @@ import { getCached, setCached } from '@/lib/cache';
 export const GET = withAuthApiHandler(async (request: NextRequest, ctx: AuthenticatedApiContext) => {
   const tenantId = ctx.tenantId;
 
-  const cacheKey = `dashboard:document-stats:${tenantId}`;
+  const cacheKey = `dashboard:document-stats:${tenantId}:v2`;
   const cached = await getCached(cacheKey);
   if (cached) return createSuccessResponse(ctx, cached);
 
   // Get all contracts with their classification and signature status
   const contracts = await prisma.contract.findMany({
-    where: { tenantId },
+    where: { tenantId, isDeleted: false },
     select: {
       id: true,
       documentClassification: true,
@@ -56,7 +56,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
 
     if (!docType || docType === 'unknown') {
       const metadata = contract.aiMetadata as Record<string, any> | null;
-      docType = metadata?.document_classification || 'contract';
+      docType = metadata?.document_classification || 'unknown';
     }
 
     if (!sigStatus || sigStatus === 'unknown') {
@@ -64,7 +64,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
       sigStatus = metadata?.signature_status || 'unknown';
     }
 
-    const normalizedDocType = docType?.toLowerCase().replace(/\s+/g, '_') || 'contract';
+    const normalizedDocType = docType?.toLowerCase().replace(/\s+/g, '_') || 'unknown';
     const normalizedSigStatus = sigStatus?.toLowerCase().replace(/\s+/g, '_') || 'unknown';
 
     if (normalizedDocType in documentTypes) {

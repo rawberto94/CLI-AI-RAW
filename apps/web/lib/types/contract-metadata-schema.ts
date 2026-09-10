@@ -5,6 +5,8 @@
  * These fields are designed for AI extraction with confidence gating and user verification.
  */
 
+import { isFieldRequired } from '@/lib/contracts/metadata-requirements';
+
 // ============ ENUMS ============
 
 export type PaymentType = 
@@ -178,7 +180,7 @@ export interface ContractMetadataSchema {
   reminder_enabled: boolean;
   
   /** Days before end date to trigger reminder */
-  reminder_days_before_end: number;
+  reminder_days_before_end?: number | null;
   
   /** Notice period with original wording and unit */
   notice_period: string;
@@ -243,8 +245,8 @@ export const CONTRACT_METADATA_FIELDS: MetadataFieldDefinition[] = [
     label: 'Document Number',
     type: 'string',
     required: false,
-    editable: false,
-    system_generated: true,
+    editable: true,
+    system_generated: false,
     unique: true,
     ui_attention: 'none',
     section: 'identification',
@@ -475,7 +477,7 @@ export const CONTRACT_METADATA_FIELDS: MetadataFieldDefinition[] = [
     key: 'reminder_days_before_end',
     label: 'Reminder Lead Time (Days)',
     type: 'integer',
-    required: true,
+    required: false,
     editable: true,
     ui_attention: 'warning',
     section: 'reminders',
@@ -535,27 +537,27 @@ export function getDefaultContractMetadata(): Partial<ContractMetadataSchema> {
   return {
     document_number: '',
     document_title: '',
-    document_classification: 'contract',
-    document_classification_confidence: 1.0,
+    document_classification: 'unknown',
+    document_classification_confidence: undefined,
     document_classification_warning: undefined,
     contract_short_description: '',
     jurisdiction: '',
-    contract_language: 'en',
+    contract_language: '',
     external_parties: [],
-    tcv_amount: 0,
+    tcv_amount: undefined,
     tcv_text: '',
-    payment_type: 'none',
-    billing_frequency_type: 'none',
-    periodicity: 'none',
-    currency: 'USD',
+    payment_type: undefined,
+    billing_frequency_type: undefined,
+    periodicity: undefined,
+    currency: '',
     signature_date: null,
     signature_status: 'unknown',
     signature_required_flag: false,
     start_date: '',
     end_date: null,
     termination_date: null,
-    reminder_enabled: true,
-    reminder_days_before_end: 60,
+    reminder_enabled: false,
+    reminder_days_before_end: undefined,
     notice_period: '',
     created_by_user_id: '',
     contract_owner_user_ids: [],
@@ -571,7 +573,7 @@ export function getFieldsBySection(section: MetadataFieldDefinition['section']):
     .sort((a, b) => a.displayOrder - b.displayOrder);
 }
 
-function isEmptyMetadataFieldValue(value: unknown): boolean {
+export function isEmptyMetadataFieldValue(value: unknown): boolean {
   return (
     value === undefined
     || value === null
@@ -601,8 +603,9 @@ function fieldNeedsAttentionByRule(
       return false;
     }
     case 'currency':
-    case 'reminder_days_before_end':
       return field.required && isEmptyMetadataFieldValue(value);
+    case 'reminder_days_before_end':
+      return metadata.reminder_enabled === true && isEmptyMetadataFieldValue(value);
     default:
       if (field.ui_attention !== 'none' && field.required) {
         return isEmptyMetadataFieldValue(value);
@@ -611,25 +614,49 @@ function fieldNeedsAttentionByRule(
   }
 }
 
-export function getFieldsNeedingAttention(metadata: Partial<ContractMetadataSchema>): MetadataFieldDefinition[] {
-  return CONTRACT_METADATA_FIELDS.filter(field => {
-    // Ownership fields are configured in settings, not extracted from documents.
-    if (field.section === 'ownership') return false;
+/**
+ * Whether a metadata field should show a review flag.
+ * `ui_attention` is only a severity hint — filled, type-exempt, and mid-confidence
+ * values must not generate warnings.
+ */
+export function fieldNeedsAttention(
+  field: MetadataFieldDefinition,
+  metadata: Partial<ContractMetadataSchema>,
+  options?: { contractType?: string | null },
+): boolean {
+  if (field.section === 'ownership') return false;
 
-    const confidence = metadata._field_confidence?.[field.key];
-    if (confidence && confidence.value < 0.8) return true;
-    if (confidence?.needsVerification) return true;
+  const value = metadata[field.key];
+  const empty = isEmptyMetadataFieldValue(value);
+  const requiredForType = field.required && isFieldRequired(field.key, options?.contractType ?? null);
 
-    if (field.ui_attention !== 'none') {
-      return fieldNeedsAttentionByRule(field, metadata);
+  if (fieldNeedsAttentionByRule(field, metadata)) {
+    if (empty && field.required && !requiredForType) {
+      if (
+        field.key !== 'document_classification_warning'
+        && field.key !== 'signature_required_flag'
+        && field.key !== 'signature_status'
+      ) {
+        return false;
+      }
     }
+    return true;
+  }
 
-    if (field.required && isEmptyMetadataFieldValue(metadata[field.key])) {
-      return true;
-    }
+  if (requiredForType && empty) return true;
 
-    return false;
-  });
+  const confidence = metadata._field_confidence?.[field.key];
+  if (typeof confidence?.value === 'number' && confidence.value < 0.5) return true;
+  if (confidence?.needsVerification && empty) return true;
+
+  return false;
+}
+
+export function getFieldsNeedingAttention(
+  metadata: Partial<ContractMetadataSchema>,
+  options?: { contractType?: string | null },
+): MetadataFieldDefinition[] {
+  return CONTRACT_METADATA_FIELDS.filter((field) => fieldNeedsAttention(field, metadata, options));
 }
 
 export function formatPaymentType(type: PaymentType): string {

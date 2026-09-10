@@ -557,7 +557,7 @@ export class ScheduledReportsService {
             savingsIdentified: 2100000,
           },
           spendByMonth: Array.from({ length: 12 }, (_, i) => ({
-            month: new Date(2025, i, 1).toLocaleDateString('en-US', { month: 'short' }),
+            month: new Date(2025, i, 1).toLocaleDateString('de-CH', { month: 'short' }),
             actual: Math.random() * 3000000 + 2000000,
             budget: 3000000,
           })),

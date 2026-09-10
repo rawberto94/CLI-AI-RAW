@@ -27,6 +27,8 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import { useDisplayCurrency } from '@/hooks/useDisplayCurrency';
+import { formatDisplayTotal } from '@/lib/utils/formatters';
 
 // Framer Motion typing workaround
 const MotionDiv = motion.div as unknown as React.ComponentType<
@@ -307,6 +309,7 @@ export function ApprovalHistory({
   showFilters = true,
   className,
 }: ApprovalHistoryProps) {
+  const displayCurrency = useDisplayCurrency();
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'approved' | 'rejected' | 'escalated' | 'delegated'>('all');
@@ -355,7 +358,7 @@ export function ApprovalHistory({
 
   // Group by date
   const groupedByDate = filteredHistory.reduce((acc, entry) => {
-    const date = new Date(entry.timestamp).toLocaleDateString('en-US', {
+    const date = new Date(entry.timestamp).toLocaleDateString('de-CH', {
       weekday: 'long',
       month: 'short',
       day: 'numeric',
@@ -430,7 +433,7 @@ export function ApprovalHistory({
               <div className="text-xs text-amber-600 font-medium">Escalated</div>
             </div>
             <div className="p-4 bg-gradient-to-br from-violet-50 to-purple-50 rounded-xl border border-indigo-200">
-              <div className="text-2xl font-bold text-violet-600">${(stats.totalValue / 1000000).toFixed(1)}M</div>
+              <div className="text-2xl font-bold text-violet-600">{formatDisplayTotal(stats.totalValue, displayCurrency)}</div>
               <div className="text-xs text-violet-600 font-medium">Total Value</div>
             </div>
           </div>
@@ -482,6 +485,26 @@ export function ApprovalHistory({
             </select>
 
             <button 
+              type="button"
+              onClick={() => {
+                const csv = [
+                  ['Time', 'Contract', 'Action', 'Actor', 'Role', 'Comment'].join(','),
+                  ...filteredHistory.map(entry => [
+                    entry.timestamp,
+                    `"${(entry.contractName || '').replace(/"/g, '""')}"`,
+                    entry.action,
+                    `"${(entry.actor.name || '').replace(/"/g, '""')}"`,
+                    entry.actor.role || '',
+                    `"${(entry.comment || '').replace(/"/g, '""')}"`,
+                  ].join(',')),
+                ].join('\n');
+                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = `approval-history-${new Date().toISOString().slice(0, 10)}.csv`;
+                link.click();
+                URL.revokeObjectURL(link.href);
+              }}
               className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-violet-500/50"
               aria-label="Download history as CSV"
               title="Download history"

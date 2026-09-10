@@ -4,6 +4,7 @@
  */
 
 import { Prisma, PrismaClient } from '@prisma/client';
+import { resolvePersistCurrency } from '@repo/utils';
 
 const prisma = new PrismaClient();
 
@@ -31,7 +32,7 @@ export class AmendmentService {
        VALUES (gen_random_uuid()::text, ${input.tenantId}, ${input.originalContractId}, ${amendmentNumber},
       ${input.title}, ${input.description || null}, ${input.amendmentType || 'MODIFICATION'},
       'DRAFT', ${JSON.stringify(input.changesSummary || [])}, ${input.effectiveDate || null},
-      ${input.financialImpact || null}, ${input.currency || 'USD'},
+      ${input.financialImpact || null}, ${resolvePersistCurrency(input.currency)},
       ${input.requiresReSignature ?? true}, ${input.initiatedBy}) RETURNING *`;
     return (result as any[])[0];
   }

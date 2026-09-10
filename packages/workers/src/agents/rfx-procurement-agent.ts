@@ -20,6 +20,7 @@ import { logger } from '../utils/logger';
 import { prisma } from '../lib/prisma';
 import { tryCreateOpenAIClient } from '../lib/openai';
 import { v4 as uuidv4 } from 'uuid';
+import { analysisLanguageInstructions, formatMoneyText, resolvePersistCurrency } from '@repo/utils';
 
 // ============================================================================
 // TYPES
@@ -281,7 +282,7 @@ export class RFxProcurementAgent extends BaseAgent {
       category: category as string,
       contractType: contractType as string,
       estimatedValue: estimatedValue as number,
-      currency: 'USD',
+      currency: resolvePersistCurrency(data.currency as string | undefined),
       responseDeadline: new Date(responseDeadline as string),
       requirements: allRequirements,
       evaluationCriteria,
@@ -306,7 +307,10 @@ export class RFxProcurementAgent extends BaseAgent {
     category?: string,
     contractType?: string
   ): Promise<RFxRequirement[]> {
-    const prompt = `Generate comprehensive RFx requirements for:
+    const prompt = `${analysisLanguageInstructions({ contractText: `${title}\n${description}` })}
+Keep requirement text in the same language as the title and description.
+
+Generate comprehensive RFx requirements for:
 Title: ${title}
 Description: ${description}
 Category: ${category || 'General'}
@@ -603,8 +607,8 @@ ${rankings.map(r => `- ${r.vendor}: Score ${r.score.toFixed(2)}, Rank #${r.rank}
 Price Analysis:
 - Lowest: ${priceAnalysis.lowest}
 - Highest: ${priceAnalysis.highest}
-- Average: $${priceAnalysis.average.toFixed(2)}
-- Spread: $${priceAnalysis.spread.toFixed(2)}
+- Average: ${formatMoneyText(priceAnalysis.average)}
+- Spread: ${formatMoneyText(priceAnalysis.spread)}
 
 Vendor Details:
 ${responses.map(r => `- ${r.vendorName}: ${r.strengths?.join(', ') || 'N/A'}`).join('\n')}
@@ -702,8 +706,8 @@ ${comparison.rankings.map(r => `${r.rank}. ${r.vendor}: ${r.score.toFixed(2)} po
 
 Price Analysis:
 - Lowest bidder: ${comparison.priceAnalysis.lowest}
-- Average bid: $${comparison.priceAnalysis.average.toFixed(2)}
-- Price spread: $${comparison.priceAnalysis.spread.toFixed(2)}
+- Average bid: ${formatMoneyText(comparison.priceAnalysis.average)}
+- Price spread: ${formatMoneyText(comparison.priceAnalysis.spread)}
 
 Justification: ${comparison.recommendation.justification}
 
@@ -728,12 +732,13 @@ Generate a formal 2-3 paragraph award justification suitable for procurement rec
     data: Record<string, unknown>
   ): Promise<{ success: boolean; data?: unknown; error?: string }> {
     const { vendorName, currentBid, targetPrice, rfxRequirements } = data;
+    const currency = typeof data.currency === 'string' ? data.currency : undefined;
 
     const prompt = `As a negotiation expert, provide strategy for this procurement negotiation:
 
 Vendor: ${vendorName}
-Current Bid: $${Number(currentBid).toFixed(2)}
-Target Price: $${Number(targetPrice).toFixed(2)}
+Current Bid: ${formatMoneyText(Number(currentBid), currency)}
+Target Price: ${formatMoneyText(Number(targetPrice), currency)}
 Gap: ${((1 - Number(targetPrice) / Number(currentBid)) * 100).toFixed(1)}%
 
 Requirements:

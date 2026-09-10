@@ -18,7 +18,6 @@ import {
   Save,
   Play,
   Pause,
-  Copy,
   ArrowRight,
   Mail,
   Bell,
@@ -292,10 +291,6 @@ function StepCard({
                   <DropdownMenuItem onClick={() => setIsEditing(true)}>
                     <Edit2 className="w-4 h-4 mr-2" />
                     Edit Step
-                  </DropdownMenuItem>
-                  <DropdownMenuItem>
-                    <Copy className="w-4 h-4 mr-2" />
-                    Duplicate
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={onDelete} className="text-red-600">

@@ -30,6 +30,7 @@ import { getTaxonomyCategories, getCategoryDetails, suggestCategoryForContract, 
 import { findMasterAgreements, getContractHierarchy } from '@/lib/ai/chat/contract-hierarchy';
 import { getOpenAIResponse } from '@/lib/ai/chat/response-builder';
 import { hasAIClientConfig } from '@/lib/openai-client';
+import { formatMoneyText } from '@repo/utils';
 
 export const POST = withAuthApiHandler(async (request, ctx) => {
   const tenantId = ctx.tenantId;
@@ -193,7 +194,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
 
       additionalContext += `\n\n**📊 YOUR CONTRACT PORTFOLIO SUMMARY:**`;
       additionalContext += `\n- Total Contracts: ${contractSummary._count.id}`;
-      additionalContext += `\n- Portfolio Value: $${Number(contractSummary._sum.totalValue || 0).toLocaleString()}`;
+      additionalContext += `\n- Portfolio Value: ${formatMoneyText(Number(contractSummary._sum.totalValue || 0))}`;
       additionalContext += `\n- Contracts Expiring in 90 Days: ${expiringCount}`;
       
       // Add helpful suggestions based on what user might want
@@ -236,7 +237,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
         additionalContext += `\n\n**📄 CURRENT CONTRACT INTELLIGENCE:**\n`;
         additionalContext += `• **Name:** ${intel.contract.title}\n`;
         additionalContext += `• **Supplier:** ${intel.contract.supplier || 'Not specified'}\n`;
-        additionalContext += `• **Value:** $${intel.contract.value.toLocaleString()}\n`;
+        additionalContext += `• **Value:** ${formatMoneyText(intel.contract.value)}\n`;
         additionalContext += `• **Status:** ${intel.contract.status}\n`;
         if (intel.contract.daysUntilExpiry !== null) {
           const urgencyEmoji = intel.contract.daysUntilExpiry <= 30 ? '🔴' : intel.contract.daysUntilExpiry <= 90 ? '🟠' : '🟢';
@@ -285,7 +286,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
         if (intel.rates && intel.rates.length > 0) {
           additionalContext += `\n**💰 Rate Card (${intel.rates.length} roles):**\n`;
           intel.rates.slice(0, 5).forEach((rate: { role?: string; title?: string; rate?: number; hourlyRate?: number; amount?: number }) => {
-            additionalContext += `- ${rate.role || rate.title}: $${rate.rate || rate.hourlyRate || rate.amount}/hr\n`;
+            additionalContext += `- ${rate.role || rate.title}: ${formatMoneyText(Number(rate.rate || rate.hourlyRate || rate.amount))}/hr\n`;
           });
         }
 
@@ -353,7 +354,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
           contractPreviews = searchResults.map(formatContractForPreview);
           additionalContext += `\n\n**🔍 Contracts matching "${searchTerm}":**\n`;
           searchResults.forEach((c, i) => {
-            additionalContext += `${i + 1}. [${c.title}](/contracts/${c.id}) - ${c.supplier || 'Unknown'}, $${c.value.toLocaleString()}, ${c.status}\n`;
+            additionalContext += `${i + 1}. [${c.title}](/contracts/${c.id}) - ${c.supplier || 'Unknown'}, ${formatMoneyText(c.value)}, ${c.status}\n`;
           });
         }
       }
@@ -400,7 +401,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
         
         additionalContext += `\n\n**📄 Analyzing: [${contractTitle}](/contracts/${targetContract.id})**\n`;
         additionalContext += `- Supplier: ${targetContract.supplierName || 'Not specified'}\n`;
-        additionalContext += `- Value: $${Number(targetContract.totalValue || 0).toLocaleString()}\n`;
+        additionalContext += `- Value: ${formatMoneyText(Number(targetContract.totalValue || 0))}\n`;
         additionalContext += `- Status: ${targetContract.status}\n`;
         
         // Now perform RAG search scoped to this contract
@@ -456,25 +457,25 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
         contracts = await listContractsBySupplier(intent.entities.supplierName, tenantId);
         contractPreviews = contracts.map(formatContractForPreview);
         additionalContext = `\n\n**Contracts with ${intent.entities.supplierName}:**\n${contracts.map(c => 
-          `- [${c.contractTitle}](/contracts/${c.id}) - Status: ${c.status}, Value: $${Number(c.totalValue || 0).toLocaleString()}, Expires: ${c.expirationDate ? new Date(c.expirationDate).toLocaleDateString() : 'N/A'}`
+          `- [${c.contractTitle}](/contracts/${c.id}) - Status: ${c.status}, Value: ${formatMoneyText(Number(c.totalValue || 0))}, Expires: ${c.expirationDate ? new Date(c.expirationDate).toLocaleDateString() : 'N/A'}`
         ).join('\n') || 'No contracts found.'}`;
       } else if (intent.action === 'list_expiring') {
         contracts = await listExpiringContracts(intent.entities.daysUntilExpiry || 30, tenantId, intent.entities.supplierName);
         contractPreviews = contracts.map(formatContractForPreview);
         additionalContext = `\n\n**Contracts Expiring in ${intent.entities.daysUntilExpiry || 30} Days:**\n${contracts.map(c => 
-          `- [${c.contractTitle}](/contracts/${c.id}) - Expires: ${c.expirationDate ? new Date(c.expirationDate).toLocaleDateString() : 'N/A'}, Supplier: ${c.supplierName}, Value: $${Number(c.totalValue || 0).toLocaleString()}`
+          `- [${c.contractTitle}](/contracts/${c.id}) - Expires: ${c.expirationDate ? new Date(c.expirationDate).toLocaleDateString() : 'N/A'}, Supplier: ${c.supplierName}, Value: ${formatMoneyText(Number(c.totalValue || 0))}`
         ).join('\n') || 'No expiring contracts found.'}`;
       } else if (intent.action === 'list_by_status' && intent.entities.status) {
         contracts = await listContractsByStatus(intent.entities.status, tenantId);
         contractPreviews = contracts.map(formatContractForPreview);
         additionalContext = `\n\n**${intent.entities.status} Contracts:**\n${contracts.map(c => 
-          `- [${c.contractTitle}](/contracts/${c.id}) - Supplier: ${c.supplierName}, Value: $${Number(c.totalValue || 0).toLocaleString()}`
+          `- [${c.contractTitle}](/contracts/${c.id}) - Supplier: ${c.supplierName}, Value: ${formatMoneyText(Number(c.totalValue || 0))}`
         ).join('\n') || 'No contracts found.'}`;
       } else if (intent.action === 'list_by_value') {
         contracts = await listHighValueContracts(intent.entities.valueThreshold || 100000, tenantId);
         contractPreviews = contracts.map(formatContractForPreview);
-        additionalContext = `\n\n**High Value Contracts (>$${(intent.entities.valueThreshold || 100000).toLocaleString()}):**\n${contracts.map(c => 
-          `- [${c.contractTitle}](/contracts/${c.id}) - Supplier: ${c.supplierName}, Value: $${Number(c.totalValue || 0).toLocaleString()}`
+        additionalContext = `\n\n**High Value Contracts (>${formatMoneyText(intent.entities.valueThreshold || 100000)}):**\n${contracts.map(c => 
+          `- [${c.contractTitle}](/contracts/${c.id}) - Supplier: ${c.supplierName}, Value: ${formatMoneyText(Number(c.totalValue || 0))}`
         ).join('\n') || 'No high-value contracts found.'}`;
       } else if (intent.action === 'list_by_signature' && intent.entities.signatureStatus) {
         // Query contracts by signature status from metadata
@@ -511,7 +512,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
           unknown: 'Unknown Document Types' };
         const label = typeLabels[intent.entities.documentType] || intent.entities.documentType;
         additionalContext = `\n\n**📄 ${label}:**\n${contracts.map(c => 
-          `- [${c.contractTitle}](/contracts/${c.id}) - Supplier: ${c.supplierName}, Status: ${c.status}, Type: ${c.documentClassification || 'contract'}`
+          `- [${c.contractTitle}](/contracts/${c.id}) - Supplier: ${c.supplierName}, Status: ${c.status}, Type: ${c.documentClassification || 'unknown'}`
         ).join('\n') || `No ${label.toLowerCase()} found.`}`;
       } else if (intent.action === 'list_non_contracts') {
         // Query documents that are flagged as non-contracts
@@ -581,7 +582,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
       } else if (intent.action === 'summarize' && intent.entities.supplierName) {
         const summary = await getSupplierSummary(intent.entities.supplierName, tenantId);
         if (summary) {
-          additionalContext = `\n\n**Supplier Summary for ${summary.supplierName}:**\n- Total Contracts: ${summary.totalContracts}\n- Active Contracts: ${summary.activeContracts}\n- Total Value: $${summary.totalValue.toLocaleString()}\n- Expiring in 90 Days: ${summary.expiringIn90Days}\n- Contract Types: ${summary.contractTypes?.join(', ') || 'Various'}`;
+          additionalContext = `\n\n**Supplier Summary for ${summary.supplierName}:**\n- Total Contracts: ${summary.totalContracts}\n- Active Contracts: ${summary.activeContracts}\n- Total Value: ${formatMoneyText(summary.totalValue)}\n- Expiring in 90 Days: ${summary.expiringIn90Days}\n- Contract Types: ${summary.contractTypes?.join(', ') || 'Various'}`;
         }
       } else if (intent.action === 'deep_analysis') {
         // ADVANCED AI AGENT: Deep Analysis
@@ -607,8 +608,8 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
           additionalContext += `\n**Summary:**\n`;
           additionalContext += `- Total Contracts: ${analysis.summary.totalContracts}\n`;
           additionalContext += `- Active Contracts: ${analysis.summary.activeContracts}\n`;
-          additionalContext += `- Total Value: $${analysis.summary.totalValue.toLocaleString()}\n`;
-          additionalContext += `- Average Value: $${Math.round(analysis.summary.averageValue).toLocaleString()}\n`;
+          additionalContext += `- Total Value: ${formatMoneyText(analysis.summary.totalValue)}\n`;
+          additionalContext += `- Average Value: ${formatMoneyText(Math.round(analysis.summary.averageValue))}\n`;
           
           // Duration Analysis
           if (analysis.summary.averageDurationMonths > 0) {
@@ -623,7 +624,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
           if (categories.length > 0) {
             additionalContext += `\n**By Category:**\n`;
             categories.slice(0, 8).forEach(([cat, data]) => {
-              additionalContext += `- ${cat}: ${data.count} contracts, $${data.value.toLocaleString()}\n`;
+              additionalContext += `- ${cat}: ${data.count} contracts, ${formatMoneyText(data.value)}\n`;
             });
           }
           
@@ -657,7 +658,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
           if (analysis.contracts.length > 0) {
             additionalContext += `\n**Top Contracts by Value:**\n`;
             analysis.contracts.slice(0, 10).forEach((c, i) => {
-              additionalContext += `${i + 1}. [📄 ${c.title}](/contracts/${c.id}) - $${c.value.toLocaleString()}`;
+              additionalContext += `${i + 1}. [📄 ${c.title}](/contracts/${c.id}) - ${formatMoneyText(c.value)}`;
               if (c.durationMonths > 0) additionalContext += ` (${c.durationMonths} mo)`;
               additionalContext += `\n`;
             });
@@ -704,12 +705,10 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
             additionalContext += `| **Contract** | ${comparison.entity1.contractTitle} | ${comparison.entity2.contractTitle} |\n`;
             additionalContext += `| **Status** | ${comparison.entity1.status} | ${comparison.entity2.status} |\n`;
             
-            // Add value row
-            const formatCurrency = (val: number, curr: string = 'USD') => 
-              new Intl.NumberFormat('en-US', { style: 'currency', currency: curr, maximumFractionDigits: 0 }).format(val);
+            const formatCurrency = (val: number, curr?: string | null) => formatMoneyText(val, curr);
             
-            additionalContext += `| **Total Value** | ${formatCurrency(comparison.entity1.totalValue, comparison.entity1.currency || 'USD')} | ${formatCurrency(comparison.entity2.totalValue, comparison.entity2.currency || 'USD')} |\n`;
-            additionalContext += `| **Annual Value** | ${formatCurrency(comparison.entity1.annualValue || 0)} | ${formatCurrency(comparison.entity2.annualValue || 0)} |\n`;
+            additionalContext += `| **Total Value** | ${formatCurrency(comparison.entity1.totalValue, comparison.entity1.currency)} | ${formatCurrency(comparison.entity2.totalValue, comparison.entity2.currency)} |\n`;
+            additionalContext += `| **Annual Value** | ${comparison.entity1.annualValue ? formatCurrency(comparison.entity1.annualValue, comparison.entity1.currency) : 'N/A'} | ${comparison.entity2.annualValue ? formatCurrency(comparison.entity2.annualValue, comparison.entity2.currency) : 'N/A'} |\n`;
             additionalContext += `| **Duration** | ${comparison.entity1.durationMonths} months | ${comparison.entity2.durationMonths} months |\n`;
             additionalContext += `| **Category** | ${comparison.entity1.categoryL1 || 'N/A'} | ${comparison.entity2.categoryL1 || 'N/A'} |\n`;
             additionalContext += `| **Payment Terms** | ${comparison.entity1.paymentTerms || 'N/A'} | ${comparison.entity2.paymentTerms || 'N/A'} |\n`;
@@ -717,7 +716,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
             additionalContext += `| **Notice Period** | ${comparison.entity1.noticePeriodDays ? `${comparison.entity1.noticePeriodDays} days` : 'N/A'} | ${comparison.entity2.noticePeriodDays ? `${comparison.entity2.noticePeriodDays} days` : 'N/A'} |\n`;
             
             // Expiration dates
-            const formatDate = (d: Date | null) => d ? d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : 'N/A';
+            const formatDate = (d: Date | null) => d ? d.toLocaleDateString('de-CH', { year: 'numeric', month: 'short', day: 'numeric' }) : 'N/A';
             additionalContext += `| **Expires** | ${formatDate(comparison.entity1.expirationDate)} | ${formatDate(comparison.entity2.expirationDate)} |\n`;
             additionalContext += `\n---\n`;
             
@@ -869,9 +868,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
             });
             additionalContext += `\n`;
             
-            // Row: Total Value
-            const formatCurrency = (val: number, curr: string = 'USD') => 
-              new Intl.NumberFormat('en-US', { style: 'currency', currency: curr, maximumFractionDigits: 0 }).format(val);
+            const formatCurrency = (val: number, curr?: string | null) => formatMoneyText(val, curr);
             
             additionalContext += `| **Total Value** |`;
             groupComparison.groups.forEach(g => {
@@ -984,7 +981,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
       
       if (matchedContracts.length > 0) {
         additionalContext += `\n\n**Matching Contracts Found:**\n${matchedContracts.map(c => 
-          `- [${c.contractTitle}](/contracts/${c.id}) - Supplier: ${c.supplierName || 'Unknown'}, Status: ${c.status}, Value: $${Number(c.totalValue || 0).toLocaleString()}`
+          `- [${c.contractTitle}](/contracts/${c.id}) - Supplier: ${c.supplierName || 'Unknown'}, Status: ${c.status}, Value: ${formatMoneyText(Number(c.totalValue || 0))}`
         ).join('\n')}`;
       }
       
@@ -994,7 +991,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
           const masterAgreements = await findMasterAgreements(intent.entities.supplierName, tenantId, intent.entities.parentYear);
           if (masterAgreements.length > 0) {
             additionalContext += `\n\n**Master Agreements to link to:**\n${masterAgreements.map(m => 
-              `- [${m.contractTitle}](/contracts/${m.id}) - Status: ${m.status}, Value: $${Number(m.totalValue || 0).toLocaleString()}`
+              `- [${m.contractTitle}](/contracts/${m.id}) - Status: ${m.status}, Value: ${formatMoneyText(Number(m.totalValue || 0))}`
             ).join('\n')}`;
           }
         }
@@ -1012,7 +1009,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
           if (hierarchy.parentContract) {
             additionalContext += `\n- Parent: [${hierarchy.parentContract.contractTitle}](/contracts/${hierarchy.parentContract.id}) (${hierarchy.parentContract.status})`;
           }
-          additionalContext += `\n- Current: [${hierarchy.contractTitle}](/contracts/${hierarchy.id}) (${hierarchy.status}, Value: $${Number(hierarchy.totalValue || 0).toLocaleString()})`;
+          additionalContext += `\n- Current: [${hierarchy.contractTitle}](/contracts/${hierarchy.id}) (${hierarchy.status}, Value: ${formatMoneyText(Number(hierarchy.totalValue || 0))})`;
           if (hierarchy.childContracts && hierarchy.childContracts.length > 0) {
             additionalContext += `\n- Children (${hierarchy.childContracts.length}):\n${hierarchy.childContracts.map((c) => 
               `  - [${c.contractTitle}](/contracts/${c.id}) (${c.contractType}, ${c.status})`
@@ -1066,26 +1063,26 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
         const spendData = await getSpendAnalysis(tenantId, intent.entities.supplierName);
         additionalContext += `\n\n**Spend Analysis${intent.entities.supplierName ? ` for ${intent.entities.supplierName}` : ''}:**`;
         additionalContext += `\n- Total Contracts: ${spendData?.totalContracts || 0}`;
-        additionalContext += `\n- Total Spend: $${(spendData?.totalSpend || 0).toLocaleString()}`;
-        additionalContext += `\n- Annual Run Rate: $${(spendData?.annualSpend || 0).toLocaleString()}`;
+        additionalContext += `\n- Total Spend: ${formatMoneyText(spendData?.totalSpend || 0)}`;
+        additionalContext += `\n- Annual Run Rate: ${formatMoneyText(spendData?.annualSpend || 0)}`;
         if (spendData?.bySupplier) {
           additionalContext += `\n\nTop Suppliers by Spend:\n${spendData.bySupplier.slice(0, 10).map(([name, data]: [string, any], i: number) => 
-            `${i + 1}. ${name}: $${data.value.toLocaleString()} (${data.count} contracts)`
+            `${i + 1}. ${name}: ${formatMoneyText(data.value)} (${data.count} contracts)`
           ).join('\n')}`;
         }
         if (spendData?.byCategory && spendData.byCategory.length > 0) {
           additionalContext += `\n\nSpend by Category:\n${spendData.byCategory.slice(0, 5).map(([name, data]: [string, any]) => 
-            `- ${name}: $${data.value.toLocaleString()}`
+            `- ${name}: ${formatMoneyText(data.value)}`
           ).join('\n')}`;
         }
       } else if (intent.action === 'savings_opportunities') {
         const savingsData = await getCostSavingsOpportunities(tenantId);
         additionalContext += `\n\n**Cost Savings Opportunities:**`;
         additionalContext += `\n- Total Opportunities: ${savingsData.count}`;
-        additionalContext += `\n- Potential Savings: $${savingsData.totalPotentialSavings.toLocaleString()}`;
+        additionalContext += `\n- Potential Savings: ${formatMoneyText(savingsData.totalPotentialSavings)}`;
         if (savingsData.opportunities.length > 0) {
           additionalContext += `\n\nTop Opportunities:\n${savingsData.opportunities.slice(0, 5).map((opp: any, i: number) => 
-            `${i + 1}. ${opp.title}: $${Number(opp.potentialSavingsAmount).toLocaleString()} potential savings\n   - Category: ${opp.category} | Confidence: ${opp.confidence}\n   - Contract: ${opp.contract?.contractTitle || 'N/A'}`
+            `${i + 1}. ${opp.title}: ${formatMoneyText(Number(opp.potentialSavingsAmount))} potential savings\n   - Category: ${opp.category} | Confidence: ${opp.confidence}\n   - Contract: ${opp.contract?.contractTitle || 'N/A'}`
           ).join('\n')}`;
         }
       } else if (intent.action === 'risk_assessment') {
@@ -1122,7 +1119,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
         additionalContext += `\n- Communication Score: ${performanceData.communicationScore}%`;
         additionalContext += `\n- Value Score: ${performanceData.valueScore}%`;
         additionalContext += `\n- Active Contracts: ${performanceData.activeContracts}`;
-        additionalContext += `\n- Total Value: $${performanceData.totalValue.toLocaleString()}`;
+        additionalContext += `\n- Total Value: ${formatMoneyText(performanceData.totalValue)}`;
         additionalContext += `\n- Relationship Duration: ${performanceData.relationshipMonths} months`;
       } else if (intent.action === 'rate_comparison') {
         const rateData = await getRateComparison(tenantId, intent.entities.supplierName);
@@ -1132,7 +1129,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
           const avgVariance = rateData.rateCards.reduce((sum: number, c: { vsMarket?: number }) => sum + (c.vsMarket || 0), 0) / rateData.rateCards.length;
           additionalContext += `\n- Overall Position: ${avgVariance < 0 ? 'Below Market' : avgVariance < 10 ? 'At Market' : 'Above Market'} (${avgVariance > 0 ? '+' : ''}${avgVariance.toFixed(1)}% vs market)`;
           additionalContext += `\n\nRate Details:\n${rateData.rateCards.slice(0, 8).map((card: { roleName?: string; rate?: number; marketRate?: number; vsMarket?: number }) => 
-            `- ${card.roleName}: $${card.rate}/hr (Market: $${card.marketRate}/hr, ${(card.vsMarket || 0) > 0 ? '+' : ''}${card.vsMarket}%)`
+            `- ${card.roleName}: ${formatMoneyText(Number(card.rate))}/hr (Market: ${formatMoneyText(Number(card.marketRate))}/hr, ${(card.vsMarket || 0) > 0 ? '+' : ''}${card.vsMarket}%)`
           ).join('\n')}`;
         }
       } else if (intent.action === 'top_suppliers') {
@@ -1141,7 +1138,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
           additionalContext += `\n\n**Top Suppliers by Spend:**`;
           additionalContext += `\n- Total Suppliers: ${spendData.bySupplier.length}`;
           additionalContext += `\n\nRanking:\n${spendData.bySupplier.slice(0, 10).map(([name, data]: [string, any], i: number) => 
-            `${i + 1}. ${name}: $${data.value.toLocaleString()} (${data.count} contracts)`
+            `${i + 1}. ${name}: ${formatMoneyText(data.value)} (${data.count} contracts)`
           ).join('\n')}`;
         } else {
           additionalContext += `\n\n**Top Suppliers:** Unable to retrieve spend data.`;
@@ -1218,8 +1215,8 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
         additionalContext += `| Metric | ${intent.entities.supplierA} | ${intent.entities.supplierB} |\n`;
         additionalContext += `|--------|----------|----------|\n`;
         additionalContext += `| Total Contracts | ${statsA.count} | ${statsB.count} |\n`;
-        additionalContext += `| Total Value | $${statsA.totalValue.toLocaleString()} | $${statsB.totalValue.toLocaleString()} |\n`;
-        additionalContext += `| Average Contract Value | $${Math.round(statsA.avgValue).toLocaleString()} | $${Math.round(statsB.avgValue).toLocaleString()} |\n`;
+        additionalContext += `| Total Value | ${formatMoneyText(statsA.totalValue)} | ${formatMoneyText(statsB.totalValue)} |\n`;
+        additionalContext += `| Average Contract Value | ${formatMoneyText(Math.round(statsA.avgValue))} | ${formatMoneyText(Math.round(statsB.avgValue))} |\n`;
         additionalContext += `| Active Contracts | ${statsA.activeCount} | ${statsB.activeCount} |\n`;
         
         // Determine which is better overall
@@ -1280,10 +1277,10 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
         if (categoryContracts) {
           additionalContext += `\n\n**Contracts in ${categoryContracts.category.name}:**`;
           additionalContext += `\n- Total Contracts: ${categoryContracts.totalContracts}`;
-          additionalContext += `\n- Total Value: $${categoryContracts.totalValue.toLocaleString()}`;
+          additionalContext += `\n- Total Value: ${formatMoneyText(categoryContracts.totalValue)}`;
           if (categoryContracts.contracts.length > 0) {
             additionalContext += `\n\nContracts:\n${categoryContracts.contracts.slice(0, 10).map((c: any, i: number) => 
-              `${i + 1}. [📄 ${c.contractTitle}](/contracts/${c.id}) - ${c.supplierName} - $${Number(c.totalValue || 0).toLocaleString()}`
+              `${i + 1}. [📄 ${c.contractTitle}](/contracts/${c.id}) - ${c.supplierName} - ${formatMoneyText(Number(c.totalValue || 0))}`
             ).join('\n')}`;
           }
           context = { ...context, categoryContracts };

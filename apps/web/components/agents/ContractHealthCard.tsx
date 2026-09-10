@@ -19,6 +19,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
+import Link from 'next/link';
 
 interface ContractHealthProps {
   contractId: string;
@@ -167,8 +168,10 @@ export function ContractHealthCard({ contractId: _contractId, health, onAutoFix 
                 </motion.div>
               ))}
               {health.issues.length > 3 && (
-                <Button variant="ghost" size="sm" className="w-full h-7 text-xs">
-                  View All {health.issues.length} Issues
+                <Button variant="ghost" size="sm" className="w-full h-7 text-xs" asChild>
+                  <Link href={`/contracts/${_contractId}`}>
+                    View All {health.issues.length} Issues
+                  </Link>
                 </Button>
               )}
             </div>

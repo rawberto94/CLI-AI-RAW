@@ -12,6 +12,9 @@ import { v4 as uuidv4 } from 'uuid';
 import { tryCreateOpenAIClient } from '../lib/openai';
 import { logger } from '../utils/logger';
 
+const ANALYSIS_LANG_NOTE =
+  'Keep quoted contract text verbatim. Match the language of the source contract (German, French, or Italian when that is the document language). JSON keys stay English. Fr. and SFr. mean CHF. Do not invent USD.';
+
 // ============================================================================
 // TYPES
 // ============================================================================
@@ -391,7 +394,7 @@ Format as JSON:
       const response = await this.openai.chat.completions.create({
         model: this.coordinator.model,
         messages: [
-          { role: 'system', content: this.coordinator.systemPrompt },
+          { role: 'system', content: `${this.coordinator.systemPrompt}\n${ANALYSIS_LANG_NOTE}` },
           { role: 'user', content: prompt },
         ],
         response_format: { type: 'json_object' },
@@ -467,7 +470,7 @@ Format as JSON:
       const response = await this.openai.chat.completions.create({
         model: agent.model,
         messages: [
-          { role: 'system', content: agent.systemPrompt },
+          { role: 'system', content: `${agent.systemPrompt}\n${ANALYSIS_LANG_NOTE}` },
           { role: 'user', content: `Task: ${subtask.title}\n\n${subtask.description}` },
         ],
         max_tokens: agent.maxTokens,
@@ -539,7 +542,7 @@ Format as JSON:
       const response = await this.openai.chat.completions.create({
         model: this.coordinator.model,
         messages: [
-          { role: 'system', content: this.coordinator.systemPrompt },
+          { role: 'system', content: `${this.coordinator.systemPrompt}\n${ANALYSIS_LANG_NOTE}` },
           { role: 'user', content: synthesisPrompt },
         ],
         response_format: { type: 'json_object' },
@@ -604,7 +607,7 @@ Provide reviewed/improved output.`;
       const response = await this.openai.chat.completions.create({
         model: this.reviewer.model,
         messages: [
-          { role: 'system', content: this.reviewer.systemPrompt },
+          { role: 'system', content: `${this.reviewer.systemPrompt}\n${ANALYSIS_LANG_NOTE}` },
           { role: 'user', content: reviewPrompt },
         ],
         max_tokens: this.reviewer.maxTokens,
@@ -642,7 +645,7 @@ Format as JSON:
     const response = await this.openai.chat.completions.create({
       model: this.coordinator.model,
       messages: [
-        { role: 'system', content: this.coordinator.systemPrompt },
+        { role: 'system', content: `${this.coordinator.systemPrompt}\n${ANALYSIS_LANG_NOTE}` },
         { role: 'user', content: consensusPrompt },
       ],
       response_format: { type: 'json_object' },

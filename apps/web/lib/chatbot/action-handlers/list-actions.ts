@@ -206,7 +206,7 @@ async function listByValue(
 
   return {
     success: true,
-    message: `Found ${contracts.length} contract(s) over $${valueThreshold.toLocaleString()}`,
+    message: `Found ${contracts.length} contract(s) over ${valueThreshold.toLocaleString('de-CH')}`,
     data: { contracts, count: contracts.length, valueThreshold },
   };
 }
@@ -487,7 +487,7 @@ async function listByDocumentType(
           contractTitle: c.contractTitle,
           supplierName: c.supplierName,
           status: c.status,
-          documentType: parsed?.document_classification || (c as Record<string, unknown>).documentClassification || 'contract',
+          documentType: parsed?.document_classification || (c as Record<string, unknown>).documentClassification || 'unknown',
           hasWarning: !!parsed?.document_classification_warning,
         };
       }), 

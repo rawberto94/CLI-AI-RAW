@@ -41,6 +41,7 @@ interface RobustPDFViewerProps {
   height?: string;
   onToggle?: () => void;
   isExpanded?: boolean;
+  initialPage?: number;
 }
 
 type ViewerMode = 'loading' | 'canvas' | 'embed' | 'fallback' | 'error';
@@ -62,6 +63,7 @@ export function RobustPDFViewer({
   height = '100%',
   onToggle,
   isExpanded = true,
+  initialPage,
 }: RobustPDFViewerProps) {
   const [mode, setMode] = useState<ViewerMode>('loading');
   const [error, setError] = useState<string | null>(null);
@@ -85,6 +87,12 @@ export function RobustPDFViewer({
   const sidebarRef = useRef<HTMLDivElement>(null);
 
   const pdfUrl = `/api/contracts/${contractId}/file`;
+
+  useEffect(() => {
+    if (!initialPage || initialPage < 1) return;
+    if (totalPages > 0 && initialPage > totalPages) return;
+    setCurrentPage(initialPage);
+  }, [initialPage, totalPages]);
 
   // Minimum and maximum sidebar widths
   const MIN_SIDEBAR_WIDTH = 120;

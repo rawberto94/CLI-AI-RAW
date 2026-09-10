@@ -391,7 +391,8 @@ Return JSON array:
       const response = await openai.chat.completions.create({
         model: 'gpt-4o-mini',
         messages: [
-          { role: 'system', content: 'You are a contract relationship analyst. Identify connections between contracts accurately.' },
+          { role: 'system', content: `You are a contract relationship analyst. Identify connections between contracts accurately.
+Keep titles and quotes verbatim. JSON keys stay English. Relationship type enums stay English.` },
           { role: 'user', content: prompt },
         ],
         temperature: 0.1,

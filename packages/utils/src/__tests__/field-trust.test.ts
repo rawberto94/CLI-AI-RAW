@@ -4,6 +4,8 @@ import {
   trustFromConfidence,
   isAutoApplyConfidence,
   needsHumanReview,
+  isAutoApplyHighRisk,
+  needsHumanReviewHighRisk,
 } from '../field-trust';
 
 describe('field-trust', () => {
@@ -28,5 +30,13 @@ describe('field-trust', () => {
     expect(needsHumanReview(0.7)).toBe(true);
     expect(needsHumanReview(0.9)).toBe(false);
     expect(needsHumanReview(0.2)).toBe(false); // too low — not "review", treat as unusable
+  });
+
+  it('never auto-applies ungrounded high-risk fields', () => {
+    expect(isAutoApplyHighRisk(0.99, false)).toBe(false);
+    expect(isAutoApplyHighRisk(0.99, true)).toBe(true);
+    expect(needsHumanReviewHighRisk({ confidence: 0.9, grounded: false })).toBe(true);
+    expect(needsHumanReviewHighRisk({ confidence: 0.7, grounded: true })).toBe(true);
+    expect(needsHumanReviewHighRisk({ confidence: 0.9, grounded: true, status: 'ambiguous' })).toBe(true);
   });
 });

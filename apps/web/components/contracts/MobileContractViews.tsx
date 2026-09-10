@@ -48,6 +48,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
+import { useDisplayCurrency } from "@/hooks/useDisplayCurrency";
+import { formatDisplayTotal } from "@/lib/utils/formatters";
 import { format, parseISO, differenceInDays } from "date-fns";
 import type { EnhancedContract, ContractHealth } from "./EnhancedContractCard";
 
@@ -93,13 +95,24 @@ export interface PullToRefreshProps {
 // Helper Functions
 // ============================================================================
 
-function formatCurrency(value: number, currency: string = "USD"): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency,
+function formatCurrency(value: number, currency?: string | null): string {
+  const code = typeof currency === "string" ? currency.trim() : "";
+  if (code.length === 3 && code !== "XXX") {
+    try {
+      return new Intl.NumberFormat("de-CH", {
+        style: "currency",
+        currency: code,
+        notation: value >= 1000000 ? "compact" : "standard",
+        maximumFractionDigits: value >= 1000000 ? 1 : 0,
+      }).format(value);
+    } catch {
+      return `${code} ${value.toLocaleString("de-CH")}`;
+    }
+  }
+  return value.toLocaleString("de-CH", {
     notation: value >= 1000000 ? "compact" : "standard",
     maximumFractionDigits: value >= 1000000 ? 1 : 0,
-  }).format(value);
+  });
 }
 
 type StatusConfigType = { color: string; dotColor: string; label: string };
@@ -764,6 +777,7 @@ export const MobileStatsSummary = memo(function MobileStatsSummary({
   isExpanded = false,
   onToggle,
 }: MobileStatsSummaryProps) {
+  const displayCurrency = useDisplayCurrency();
   return (
     <motion.div
       className="bg-gradient-to-br from-gray-900 to-gray-800 text-white rounded-2xl mx-4 overflow-hidden"
@@ -818,7 +832,7 @@ export const MobileStatsSummary = memo(function MobileStatsSummary({
               <div className="bg-white/10 rounded-lg p-3">
                 <p className="text-xs text-gray-400">Total Value</p>
                 <p className="text-xl font-bold text-violet-400">
-                  {formatCurrency(stats.totalValue)}
+                  {formatDisplayTotal(stats.totalValue, displayCurrency)}
                 </p>
               </div>
             )}

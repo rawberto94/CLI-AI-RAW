@@ -56,7 +56,9 @@ function formatWorkflowValue(value: number | null | undefined, currency: string 
     return null;
   }
 
-  return `${currency || 'USD'} ${value.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+  const code = typeof currency === 'string' ? currency.trim() : '';
+  const formatted = value.toLocaleString(undefined, { maximumFractionDigits: 2 });
+  return code && code !== 'XXX' ? `${code} ${formatted}` : formatted;
 }
 
 function buildWorkflowSummaryItems(contract: DraftingSourceContract | null): CopilotWorkflowSummaryItem[] {
@@ -317,7 +319,7 @@ export default function CopilotDraftPage() {
                 supplier: draft.sourceContract.supplierName || '',
                 client: draft.sourceContract.clientName || '',
                 value: draft.sourceContract.totalValue ?? null,
-                currency: draft.sourceContract.currency || 'USD',
+                currency: draft.sourceContract.currency || '',
                 startDate: draft.sourceContract.startDate || null,
                 endDate: draft.sourceContract.endDate || null,
                 rawText: null,
@@ -395,7 +397,7 @@ export default function CopilotDraftPage() {
             supplier: contract.supplierName || '',
             client: contract.clientName || '',
             value: contract.totalValue,
-            currency: contract.currency || 'USD',
+            currency: contract.currency || '',
             startDate: contract.startDate || contract.effectiveDate || null,
             endDate: contract.endDate || contract.expirationDate || null,
             rawText: contract.rawText || null,
@@ -409,7 +411,7 @@ export default function CopilotDraftPage() {
 
           // Build pre-populated content for the editor
           const label = mode === 'renewal' ? 'RENEWAL' : 'AMENDMENT';
-          const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+          const today = new Date().toLocaleDateString('de-CH', { year: 'numeric', month: 'long', day: 'numeric' });
           const preContent = [
             `<h1>CONTRACT ${label}</h1>`,
             `<p><strong>Based on:</strong> ${contract.contractTitle || 'Original Contract'}</p>`,
@@ -417,7 +419,7 @@ export default function CopilotDraftPage() {
             contract.clientName ? `<p><strong>Client:</strong> ${contract.clientName}</p>` : '',
             `<p><strong>Date:</strong> ${today}</p>`,
             `<p><strong>Original Contract Period:</strong> ${contract.startDate ? new Date(contract.startDate).toLocaleDateString() : 'N/A'} – ${contract.endDate || contract.expirationDate ? new Date(contract.endDate || contract.expirationDate).toLocaleDateString() : 'N/A'}</p>`,
-            contract.totalValue ? `<p><strong>Original Value:</strong> ${contract.currency || 'USD'} ${Number(contract.totalValue).toLocaleString()}</p>` : '',
+            contract.totalValue ? `<p><strong>Original Value:</strong> ${contract.currency ? `${contract.currency} ` : ''}${Number(contract.totalValue).toLocaleString()}</p>` : '',
             '<hr>',
             mode === 'renewal'
               ? '<h2>Renewal Terms</h2><p>This renewal agreement extends the original contract under the following updated terms:</p><ul><li>Renewed period: [Start Date] – [End Date]</li><li>Updated pricing: [Details]</li><li>Modified clauses: [Details]</li></ul>'

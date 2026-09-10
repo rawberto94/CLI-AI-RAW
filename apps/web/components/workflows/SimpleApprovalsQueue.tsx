@@ -41,6 +41,7 @@ import {
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { formatAmountWithCurrency } from '@/lib/utils/formatters';
 
 // ============================================================================
 // Types
@@ -52,6 +53,7 @@ interface ApprovalItem {
   title: string;
   supplier: string;
   value: number;
+  currency?: string | null;
   type: 'contract' | 'amendment' | 'renewal';
   priority: 'low' | 'medium' | 'high' | 'urgent';
   status: 'pending' | 'approved' | 'rejected';
@@ -210,7 +212,7 @@ function ApprovalCard({ item, isSelected, onSelect, isMultiSelected, onMultiSele
             </span>
             <span className="flex items-center gap-1">
               <DollarSign className="w-3.5 h-3.5" />
-              {item.value.toLocaleString()}
+              {formatAmountWithCurrency(item.value, item.currency)}
             </span>
           </div>
         </div>
@@ -308,7 +310,7 @@ function DetailPanel({ item, onApprove, onReject, onProceedToSign, isProcessing 
                 <span className="text-sm text-slate-500">Contract Value</span>
               </div>
               <p className="font-semibold text-slate-900">
-                ${item.value.toLocaleString()}
+                {formatAmountWithCurrency(item.value, item.currency)}
               </p>
             </CardContent>
           </Card>

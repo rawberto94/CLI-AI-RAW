@@ -40,6 +40,9 @@ describe('Azure Document Intelligence', () => {
   afterEach(() => {
     delete process.env.AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT;
     delete process.env.AZURE_DOCUMENT_INTELLIGENCE_KEY;
+    delete process.env.AZURE_DI_METADATA_WINDOW;
+    delete process.env.AZURE_DI_METADATA_FIRST_PAGES;
+    delete process.env.AZURE_DI_METADATA_LAST_PAGES;
   });
 
   // ========================================================================
@@ -226,6 +229,52 @@ describe('Azure Document Intelligence', () => {
       expect(result.metadata.processingTimeMs).toBeGreaterThanOrEqual(0);
     });
 
+    it('treats the first row as headers when Azure omits columnHeader kinds', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 202,
+        headers: mockHeaders({
+          'operation-location': `${TEST_ENDPOINT}/documentintelligence/documentModels/prebuilt-layout/analyzeResults/op-no-header`,
+        }),
+      });
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          status: 'succeeded',
+          analyzeResult: {
+            content: 'Rate card',
+            pages: [{ pageNumber: 1, width: 8.5, height: 11, unit: 'inch', words: [], lines: [] }],
+            tables: [
+              {
+                rowCount: 3,
+                columnCount: 2,
+                cells: [
+                  { rowIndex: 0, columnIndex: 0, content: 'Role', kind: 'content', confidence: 0.9 },
+                  { rowIndex: 0, columnIndex: 1, content: 'CHF', kind: 'content', confidence: 0.9 },
+                  { rowIndex: 1, columnIndex: 0, content: 'SA', kind: 'content', confidence: 0.9 },
+                  { rowIndex: 1, columnIndex: 1, content: '1400', kind: 'content', confidence: 0.9 },
+                  { rowIndex: 2, columnIndex: 0, content: 'Dev', kind: 'content', confidence: 0.9 },
+                  { rowIndex: 2, columnIndex: 1, content: '1200', kind: 'content', confidence: 0.9 },
+                ],
+                boundingRegions: [{ pageNumber: 2 }],
+              },
+            ],
+            keyValuePairs: [],
+            paragraphs: [],
+            documents: [],
+          },
+        }),
+      });
+
+      const { analyzeLayout } = await import('../azure-document-intelligence');
+      const result = await analyzeLayout(Buffer.from('fake-pdf'));
+      expect(result.tables[0]!.headers).toEqual(['Role', 'CHF']);
+      expect(result.tables[0]!.rows).toEqual([
+        ['SA', '1400'],
+        ['Dev', '1200'],
+      ]);
+    });
+
     it('sends correct headers and URL parameters', async () => {
       mockAnalyzeSuccess();
 
@@ -240,9 +289,21 @@ describe('Azure Document Intelligence', () => {
       expect(decodedUrl).toContain('prebuilt-layout');
       expect(decodedUrl).toContain('api-version=2024-11-30');
       expect(decodedUrl).toContain('features=barcodes,formulas,keyValuePairs');
+      expect(decodedUrl).toContain('outputContentFormat=markdown');
       expect(submitOpts.headers['Ocp-Apim-Subscription-Key']).toBe(TEST_KEY);
       expect(submitOpts.headers['Content-Type']).toBe('application/octet-stream');
       expect(submitOpts.method).toBe('POST');
+    });
+
+    it('requests high-resolution OCR when asked', async () => {
+      mockAnalyzeSuccess();
+
+      const { analyzeLayout } = await import('../azure-document-intelligence');
+      await analyzeLayout(Buffer.from('fake-pdf'), { highResolution: true });
+
+      const [submitUrl] = mockFetch.mock.calls[0]!;
+      const decodedUrl = decodeURIComponent(submitUrl as string);
+      expect(decodedUrl).toContain('ocrHighResolution');
     });
 
     it('does not leak _config or apiKey in the public result', async () => {
@@ -533,6 +594,50 @@ describe('Azure Document Intelligence', () => {
   });
 
   // ========================================================================
+  // analyzeWithQueries — metadata page window
+  // ========================================================================
+  describe('analyzeWithQueries', () => {
+    it('forwards pages query parameter for metadata windowing', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 202,
+        headers: mockHeaders({
+          'operation-location': `${TEST_ENDPOINT}/documentintelligence/documentModels/prebuilt-layout/analyzeResults/op-query`,
+        }),
+      });
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          status: 'succeeded',
+          analyzeResult: {
+            content: 'Contract title',
+            pages: [{ pageNumber: 1, width: 8.5, height: 11, unit: 'inch', words: [], lines: [] }],
+            documents: [
+              {
+                docType: 'document',
+                confidence: 0.9,
+                fields: { contractTitle: { type: 'string', value: 'MSA', content: 'MSA', confidence: 0.9 } },
+              },
+            ],
+          },
+        }),
+      });
+
+      const { analyzeWithQueries } = await import('../azure-document-intelligence');
+      const result = await analyzeWithQueries(Buffer.from('fake-pdf'), ['contractTitle'], {
+        pages: '1-3,24-25',
+      });
+
+      expect(result.answers.contractTitle).toBe('MSA');
+      const [submitUrl] = mockFetch.mock.calls[0]!;
+      const decodedUrl = decodeURIComponent(submitUrl as string);
+      expect(decodedUrl).toContain('pages=1-3,24-25');
+      expect(decodedUrl).toContain('queryFields=contractTitle');
+      expect(decodedUrl).toContain('locale=de-CH');
+    });
+  });
+
+  // ========================================================================
   // Type Exports
   // ========================================================================
   describe('type exports', () => {
@@ -547,6 +652,75 @@ describe('Azure Document Intelligence', () => {
       expect(typeof mod.analyzeWithQueries).toBe('function');
       expect(typeof mod.checkDIHealth).toBe('function');
       expect(typeof mod.isDIConfigured).toBe('function');
+      expect(typeof mod.computeMetadataPageRange).toBe('function');
+      expect(typeof mod.resolveDIPollAttempts).toBe('function');
+    });
+  });
+});
+
+describe('DI metadata page-range helpers', () => {
+  afterEach(() => {
+    delete process.env.AZURE_DI_METADATA_WINDOW;
+    delete process.env.AZURE_DI_METADATA_FIRST_PAGES;
+    delete process.env.AZURE_DI_METADATA_LAST_PAGES;
+  });
+
+  describe('computeMetadataPageRange', () => {
+    it('returns undefined for short documents (window would not save pages)', async () => {
+      const { computeMetadataPageRange } = await import('../utils/di-page-range');
+      expect(computeMetadataPageRange(undefined)).toBeUndefined();
+      expect(computeMetadataPageRange(5)).toBeUndefined();
+      expect(computeMetadataPageRange(3)).toBeUndefined();
+    });
+
+    it('windows first 3 + last 2 pages when page count is >= ~8', async () => {
+      const { computeMetadataPageRange } = await import('../utils/di-page-range');
+      expect(computeMetadataPageRange(6)).toBe('1-3,5-6');
+      expect(computeMetadataPageRange(8)).toBe('1-3,7-8');
+      expect(computeMetadataPageRange(25)).toBe('1-3,24-25');
+      expect(computeMetadataPageRange(30)).toBe('1-3,29-30');
+    });
+
+    it('can be disabled via AZURE_DI_METADATA_WINDOW=off', async () => {
+      process.env.AZURE_DI_METADATA_WINDOW = 'off';
+      const { computeMetadataPageRange } = await import('../utils/di-page-range');
+      expect(computeMetadataPageRange(30)).toBeUndefined();
+    });
+
+    it('honors AZURE_DI_METADATA_FIRST_PAGES / LAST_PAGES', async () => {
+      process.env.AZURE_DI_METADATA_FIRST_PAGES = '4';
+      process.env.AZURE_DI_METADATA_LAST_PAGES = '1';
+      const { computeMetadataPageRange } = await import('../utils/di-page-range');
+      expect(computeMetadataPageRange(20)).toBe('1-4,20-20');
+    });
+
+    it('detects when a peeked page count would use the wrong window', async () => {
+      const { metadataWindowMatches } = await import('../utils/di-page-range');
+      expect(metadataWindowMatches(25, 25)).toBe(true);
+      expect(metadataWindowMatches(8, 25)).toBe(false);
+      expect(metadataWindowMatches(3, 3)).toBe(true);
+    });
+  });
+
+  describe('resolveDIPollAttempts', () => {
+    it('keeps the 120s default for small docs and raises for pageCount > 15', async () => {
+      const { resolveDIPollAttempts, DI_DEFAULT_POLL_ATTEMPTS } = await import('../utils/di-page-range');
+      expect(resolveDIPollAttempts()).toBe(DI_DEFAULT_POLL_ATTEMPTS);
+      expect(resolveDIPollAttempts(8)).toBe(120);
+      expect(resolveDIPollAttempts(15)).toBe(120);
+      expect(resolveDIPollAttempts(16)).toBe(180);
+      expect(resolveDIPollAttempts(25)).toBe(180);
+      expect(resolveDIPollAttempts(31)).toBe(240);
+      expect(resolveDIPollAttempts(25, 200)).toBe(200);
+    });
+  });
+
+  describe('peekPdfPageCount', () => {
+    it('reads /Type /Pages /Count from a PDF-like buffer', async () => {
+      const { peekPdfPageCount } = await import('../utils/di-page-range');
+      const pdf = Buffer.from('%PDF-1.4\n1 0 obj\n<< /Type /Pages /Count 25 /Kids [] >>\nendobj\n%%EOF');
+      expect(peekPdfPageCount(pdf)).toBe(25);
+      expect(peekPdfPageCount(Buffer.from('not a pdf'))).toBeUndefined();
     });
   });
 });

@@ -527,7 +527,27 @@ export default function SSOConfigManager({ className }: { className?: string }) 
                   <p className="font-mono mt-1">urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST</p>
                 </div>
               </div>
-              <Button size="sm" variant="outline">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  const xml = `<?xml version="1.0"?>
+<EntityDescriptor entityID="${spEntityId}" xmlns="urn:oasis:names:tc:SAML:2.0:metadata">
+  <SPSSODescriptor protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol">
+    <NameIDFormat>urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress</NameIDFormat>
+    <AssertionConsumerService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" Location="${acsUrl}" index="0" isDefault="true"/>
+    <SingleLogoutService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect" Location="${sloCallbackUrl}"/>
+  </SPSSODescriptor>
+</EntityDescriptor>`;
+                  const blob = new Blob([xml], { type: 'application/xml' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = 'sp-metadata.xml';
+                  a.click();
+                  URL.revokeObjectURL(url);
+                }}
+              >
                 <Download className="h-3 w-3 mr-1" /> Download SP Metadata XML
               </Button>
             </CardContent>

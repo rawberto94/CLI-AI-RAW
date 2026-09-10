@@ -79,6 +79,7 @@ export interface ExplainabilityRequest {
 // =============================================================================
 
 const EXPLAINABILITY_PROMPT = `You are an AI transparency expert. Your job is to explain how specific values were extracted from a contract.
+Keep source quotes verbatim. JSON keys stay English. Fr. and SFr. mean CHF. Do not invent USD.
 
 For each extracted field, provide:
 1. **Source Evidence**: The exact text that supports this extraction (with location if identifiable)

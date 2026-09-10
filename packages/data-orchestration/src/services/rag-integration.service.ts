@@ -9,6 +9,7 @@
 import getClient from 'clients-db';
 import { createLogger } from '../utils/logger';
 import { enrichContractForRAG } from './taxonomy-rag-integration.service';
+import { formatMoneyText } from '@repo/utils';
 
 const logger = createLogger('rag-integration-service');
 
@@ -279,7 +280,7 @@ class RagIntegrationService {
         if (data.partyB) lines.push(`Party B (Supplier): ${data.partyB}`);
         if (data.effectiveDate) lines.push(`Effective Date: ${data.effectiveDate}`);
         if (data.expirationDate) lines.push(`Expiration Date: ${data.expirationDate}`);
-        if (data.totalValue) lines.push(`Contract Value: $${Number(data.totalValue).toLocaleString()}`);
+        if (data.totalValue) lines.push(`Contract Value: ${formatMoneyText(Number(data.totalValue?.value ?? data.totalValue), data.totalValue?.currency ?? data.currency?.value ?? data.currency)}`);
         if (data.contractType) lines.push(`Contract Type: ${data.contractType}`);
         if (data.autoRenewal !== undefined) lines.push(`Auto-Renewal: ${data.autoRenewal ? 'Yes' : 'No'}`);
         if (data.paymentTerms) lines.push(`Payment Terms: ${data.paymentTerms}`);
@@ -298,7 +299,7 @@ class RagIntegrationService {
         if (Array.isArray(data.rates)) {
           lines.push('Labor Rates:');
           for (const rate of data.rates.slice(0, 15)) {
-            lines.push(`  - ${rate.role || rate.title}: $${rate.hourlyRate || rate.rate}/hr`);
+            lines.push(`  - ${rate.role || rate.title}: ${formatMoneyText(Number(rate.hourlyRate || rate.rate), rate.currency ?? data.currency?.value ?? data.currency)}/hr`);
           }
         }
         break;
@@ -410,7 +411,7 @@ class RagIntegrationService {
           lines.push('Rate Cards:');
           for (const rate of data.rateCards.slice(0, 20)) {
             const loc = rate.location ? ` (${rate.location})` : '';
-            lines.push(`  - ${rate.role}: ${rate.currency || 'USD'} ${rate.rate}/${rate.unit}${loc}`);
+            lines.push(`  - ${rate.role}: ${rate.currency ? `${rate.currency} ` : ''}${rate.rate}/${rate.unit}${loc}`);
           }
         }
         if (Array.isArray(data.rawRateTables)) {
@@ -540,7 +541,7 @@ class RagIntegrationService {
         break;
 
       case 'financial':
-        if (data.totalValue?.value) lines.push(`Total Contract Value: $${Number(data.totalValue.value).toLocaleString()}`);
+        if (data.totalValue?.value) lines.push(`Total Contract Value: ${formatMoneyText(Number(data.totalValue.value), data.totalValue.currency ?? data.currency?.value ?? data.currency)}`);
         if (data.currency?.value) lines.push(`Currency: ${data.currency.value}`);
         if (Array.isArray(data.paymentTerms)) {
           lines.push('Payment Terms:');
@@ -551,7 +552,7 @@ class RagIntegrationService {
         if (Array.isArray(data.costBreakdown)) {
           lines.push('Cost Breakdown:');
           for (const cost of data.costBreakdown.slice(0, 15)) {
-            lines.push(`  - ${cost.category}: $${Number(cost.amount).toLocaleString()} - ${cost.description || ''}`);
+            lines.push(`  - ${cost.category}: ${formatMoneyText(Number(cost.amount), cost.currency ?? data.currency?.value ?? data.currency)} - ${cost.description || ''}`);
           }
         }
         if (Array.isArray(data.financialTables)) {
@@ -560,22 +561,22 @@ class RagIntegrationService {
             if (Array.isArray(table.rows)) {
               for (const row of table.rows.slice(0, 20)) {
                 const desc = row.service || row.description || row.item || 'Item';
-                const total = row.lineTotal ? `$${Number(row.lineTotal).toLocaleString()}` : '';
+                const total = row.lineTotal ? formatMoneyText(Number(row.lineTotal), row.currency ?? table.currency ?? data.currency?.value ?? data.currency) : '';
                 lines.push(`  - ${desc}: ${total}`);
               }
             }
             if (table.grandTotal?.amount) {
-              lines.push(`  Grand Total: $${Number(table.grandTotal.amount).toLocaleString()}`);
+              lines.push(`  Grand Total: ${formatMoneyText(Number(table.grandTotal.amount), table.grandTotal.currency ?? table.currency ?? data.currency?.value ?? data.currency)}`);
             }
           }
         }
         if (Array.isArray(data.offers)) {
           for (const offer of data.offers) {
             lines.push(`\nOffer: ${offer.offerName || 'Quote'}`);
-            if (offer.totalAmount) lines.push(`  Total: $${Number(offer.totalAmount).toLocaleString()}`);
+            if (offer.totalAmount) lines.push(`  Total: ${formatMoneyText(Number(offer.totalAmount), offer.currency ?? data.currency?.value ?? data.currency)}`);
             if (Array.isArray(offer.lineItems)) {
               for (const item of offer.lineItems.slice(0, 15)) {
-                lines.push(`  - ${item.description}: $${Number(item.total).toLocaleString()}`);
+                lines.push(`  - ${item.description}: ${formatMoneyText(Number(item.total), item.currency ?? offer.currency ?? data.currency?.value ?? data.currency)}`);
               }
             }
           }
@@ -583,7 +584,7 @@ class RagIntegrationService {
         if (Array.isArray(data.yearlyBreakdown) && data.yearlyBreakdown.length > 0) {
           lines.push('Yearly Breakdown:');
           for (const yb of data.yearlyBreakdown) {
-            const amount = yb.amount ? `$${Number(yb.amount).toLocaleString()}` : '';
+            const amount = yb.amount ? formatMoneyText(Number(yb.amount), yb.currency ?? data.currency?.value ?? data.currency) : '';
             lines.push(`  - ${yb.year || yb.period || 'Year'}: ${amount}`);
           }
         }
@@ -591,7 +592,7 @@ class RagIntegrationService {
           lines.push('Payment Schedule:');
           for (const ps of data.paymentSchedule.slice(0, 10)) {
             const date = ps.dueDate || ps.date || ps.milestone || 'TBD';
-            const amount = ps.amount ? `$${Number(ps.amount).toLocaleString()}` : '';
+            const amount = ps.amount ? formatMoneyText(Number(ps.amount), ps.currency ?? data.currency?.value ?? data.currency) : '';
             lines.push(`  - ${date}: ${amount}`);
           }
         }
@@ -612,7 +613,7 @@ class RagIntegrationService {
           lines.push('Milestones:');
           for (const ms of data.milestones.slice(0, 15)) {
             const payment = ms.paymentAmount || ms.associatedPayment;
-            const paymentStr = payment ? ` - $${Number(payment).toLocaleString()}` : '';
+            const paymentStr = payment ? ` - ${formatMoneyText(Number(payment), ms.currency ?? data.currency?.value ?? data.currency)}` : '';
             lines.push(`  - ${ms.name || ms.title || 'Milestone'}: ${ms.dueDate || 'No date'}${paymentStr}`);
           }
         }

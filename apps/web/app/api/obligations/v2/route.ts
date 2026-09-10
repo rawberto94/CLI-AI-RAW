@@ -4,6 +4,7 @@ import OpenAI from 'openai';
 import { createOpenAIClient, hasAIClientConfig } from '@/lib/openai-client';
 import { aiObligationTrackerService } from 'data-orchestration/services';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
+import { analysisLanguageInstructions } from '@repo/utils';
 import {
   ObligationStatus,
   ObligationPriority,
@@ -609,6 +610,8 @@ async function extractObligationsWithAI(
   warnings: string[];
 }> {
   const prompt = `You are a legal AI assistant specialized in contract analysis. Extract all contractual obligations from the following contract text.
+${analysisLanguageInstructions({ contractText })}
+Keep sourceClause verbatim. JSON keys stay English.
 
 Contract Type: ${options.contractType || 'Unknown'}
 Our Party: ${options.parties?.us || 'Company'}
@@ -646,7 +649,8 @@ Return a JSON object with:
   const response = await openai.chat.completions.create({
     model: 'gpt-4o',
     messages: [
-      { role: 'system', content: 'You are an expert legal analyst. Return only valid JSON.' },
+      { role: 'system', content: `You are an expert legal analyst. Return only valid JSON.
+${analysisLanguageInstructions({ contractText })}` },
       { role: 'user', content: prompt }
     ],
     response_format: { type: 'json_object' },

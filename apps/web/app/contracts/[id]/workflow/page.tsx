@@ -47,6 +47,7 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
+import { formatAmountWithCurrency } from '@/lib/utils/formatters';
 
 interface ApprovalStep {
   id: string;
@@ -405,7 +406,7 @@ export default function ContractWorkflowPage() {
                 </div>
                 <div>
                   <span className="text-sm text-slate-500">Value</span>
-                  <p className="font-medium">${(contract?.totalValue || 0).toLocaleString()}</p>
+                  <p className="font-medium">{formatAmountWithCurrency(contract?.totalValue || 0)}</p>
                 </div>
                 <div>
                   <span className="text-sm text-slate-500">Status</span>

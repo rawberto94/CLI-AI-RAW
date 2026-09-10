@@ -527,10 +527,7 @@ export function ApprovalAnalyticsDashboard({ className }: ApprovalAnalyticsDashb
           <Button variant="outline" size="icon" onClick={handleRefresh} disabled={isRefreshing}>
             <RefreshCw size={16} className={cn(isRefreshing && 'animate-spin')} />
           </Button>
-          <Button variant="outline">
-            <Download size={16} className="mr-2" />
-            Export
-          </Button>
+
         </div>
       </div>
 

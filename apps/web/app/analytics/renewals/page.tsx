@@ -27,8 +27,12 @@ import {
   DollarSign
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useDisplayCurrency } from '@/hooks/useDisplayCurrency';
+import { formatAmountWithCurrency, formatDisplayTotal } from '@/lib/utils/formatters';
+import Link from 'next/link';
 
 export default function RenewalRadarPage() {
+  const displayCurrency = useDisplayCurrency();
   const [mode, setMode] = useState<DataMode>('real');
   const [timeframe, setTimeframe] = useState<string>('12months');
   const [riskLevel, setRiskLevel] = useState<string>('');
@@ -119,7 +123,7 @@ export default function RenewalRadarPage() {
   };
 
   const formatDate = (date: Date) => {
-    return new Date(date).toLocaleDateString('en-US', {
+    return new Date(date).toLocaleDateString('de-CH', {
       year: 'numeric',
       month: 'short',
       day: 'numeric'
@@ -218,11 +222,7 @@ export default function RenewalRadarPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="flex items-end">
-              <Button className="w-full">
-                Apply Filters
-              </Button>
-            </div>
+
           </div>
         </CardContent>
       </Card>
@@ -285,7 +285,7 @@ export default function RenewalRadarPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  ${(data.riskAnalysis.totalValue / 1000000).toFixed(1)}M
+                  {formatDisplayTotal(data.riskAnalysis.totalValue, displayCurrency)}
                 </div>
                 <p className="text-xs text-muted-foreground">
                   Contract value at risk
@@ -362,7 +362,7 @@ export default function RenewalRadarPage() {
                         </div>
                         <div className="text-right ml-4">
                           <div className="text-lg font-bold">
-                            ${(renewal.value / 1000000).toFixed(2)}M
+                            {formatAmountWithCurrency(renewal.value, renewal.currency)}
                           </div>
                           <div className="flex items-center gap-2 mt-1">
                             <Clock className="w-3 h-3" />
@@ -379,8 +379,8 @@ export default function RenewalRadarPage() {
                         <span className="text-sm text-muted-foreground">
                           Renewal Date: {formatDate(renewal.renewalDate)}
                         </span>
-                        <Button size="sm" variant="outline">
-                          View Details
+                        <Button size="sm" variant="outline" asChild>
+                          <Link href={`/contracts/${renewal.contractId}`}>View Details</Link>
                         </Button>
                       </div>
                     </div>
@@ -428,10 +428,7 @@ export default function RenewalRadarPage() {
                           </span>
                         </div>
                       </div>
-                      <Button size="sm" variant="outline">
-                        <CheckCircle className="w-4 h-4 mr-2" />
-                        Complete
-                      </Button>
+
                     </div>
                   );
                 })}

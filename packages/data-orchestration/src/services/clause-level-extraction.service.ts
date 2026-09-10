@@ -10,9 +10,19 @@
  * 6. Clause risk assessment
  */
 
+import { detectCurrencyFromText, parseMonetaryAmount, UNKNOWN_CURRENCY } from '@repo/utils';
 import { createLogger } from '../utils/logger';
 
 const logger = createLogger('clause-level-extraction');
+
+function moneyFromMatch(amountStr: string, source: string): { amount: number; currency: string } | null {
+  const amount = parseMonetaryAmount(amountStr);
+  if (amount == null) return null;
+  return {
+    amount,
+    currency: detectCurrencyFromText(source) || UNKNOWN_CURRENCY,
+  };
+}
 
 // ============================================================================
 // TYPES
@@ -111,10 +121,10 @@ export interface ClauseHierarchy {
 const CLAUSE_HEADER_PATTERNS = [
   // Numbered sections: 1, 1.1, 1.1.1, etc.
   /^(\d+(?:\.\d+)*)\s*[\.\:\-]?\s*([A-Z][A-Za-z\s,&]+?)(?:\.|$)/m,
-  // Article headers: ARTICLE I, Article 1, etc.
-  /^(?:ARTICLE|Article)\s+([IVXLCDM]+|\d+)[:\.\s]+(.+?)(?:\n|$)/m,
-  // Section headers: SECTION 1, Section 1.1, etc.
-  /^(?:SECTION|Section)\s+(\d+(?:\.\d+)?)[:\.\s]+(.+?)(?:\n|$)/m,
+  // Article headers: ARTICLE I, Article 1, ARTIKEL, ARTICOLO
+  /^(?:ARTICLE|Article|ARTIKEL|Artikel|ARTICOLO|Articolo)\s+([IVXLCDM]+|\d+)[:\.\s]+(.+?)(?:\n|$)/m,
+  // Section headers: SECTION 1, ABSCHNITT, SECTION
+  /^(?:SECTION|Section|ABSCHNITT|Abschnitt)\s+(\d+(?:\.\d+)?)[:\.\s]+(.+?)(?:\n|$)/m,
   // Lettered clauses: (a), (b), A., B., etc.
   /^\(([a-z]|[ivx]+)\)\s+(.+?)(?:\n|$)/m,
   // All-caps headers
@@ -127,22 +137,22 @@ const CLAUSE_TYPE_PATTERNS: Record<ClauseType, RegExp[]> = {
     /"[^"]+"\s+means/i,
   ],
   term_duration: [
-    /term|duration|period|commence|effective date|expir/i,
+    /term|duration|period|commence|effective date|expir|laufzeit|vertragsdauer|durée/i,
   ],
   payment: [
-    /payment|pay|invoice|fee|price|compensation|remuneration|billing/i,
+    /payment|pay|invoice|fee|price|compensation|remuneration|billing|vergütung|zahlung|rémunération/i,
   ],
   termination: [
-    /terminat|end|cancel|discontinu|cessation/i,
+    /terminat|end|cancel|discontinu|cessation|kündigung|résiliation|risoluzione/i,
   ],
   liability: [
-    /liabilit|liable|damage|loss|cap|limit/i,
+    /liabilit|liable|damage|loss|cap|limit|haftung|responsabilité|responsabilità/i,
   ],
   indemnification: [
     /indemnif|hold harmless|defend|third.party.claim/i,
   ],
   confidentiality: [
-    /confidential|secret|non.disclosure|nda|proprietary/i,
+    /confidential|secret|non.disclosure|nda|proprietary|vertraulich|confidentialité|riservatezza/i,
   ],
   intellectual_property: [
     /intellectual property|patent|copyright|trademark|trade secret|ip|ownership/i,
@@ -160,7 +170,7 @@ const CLAUSE_TYPE_PATTERNS: Record<ClauseType, RegExp[]> = {
     /dispute|arbitrat|mediat|litigat|resolution/i,
   ],
   governing_law: [
-    /governing law|jurisdiction|applicable law|choice of law|venue/i,
+    /governing law|jurisdiction|applicable law|choice of law|venue|anwendbares recht|droit applicable|legge applicabile/i,
   ],
   assignment: [
     /assign|transfer|delegate|successor/i,
@@ -685,15 +695,16 @@ export class ClauseLevelExtractionService {
     const fields: ClauseField[] = [];
     
     // Payment amount
-    const amountMatch = text.match(/\$\s*([\d,]+(?:\.\d{2})?)/);
-    if (amountMatch) {
+    const amountMatch = text.match(/(?:CHF|SFr\.?|Fr\.|EUR|€|USD|US\$|\$)\s*[\d''’.,]+/i);
+    const paymentMoney = amountMatch ? moneyFromMatch(amountMatch[0], amountMatch[0]) : null;
+    if (paymentMoney) {
       fields.push({
         name: 'payment_amount',
         displayName: 'Payment Amount',
-        value: { amount: parseFloat(amountMatch[1].replace(/,/g, '')), currency: 'USD' },
+        value: paymentMoney,
         valueType: 'currency',
         confidence: 0.85,
-        extractedFrom: amountMatch[0],
+        extractedFrom: amountMatch?.[0] ?? '',
       });
     }
     
@@ -781,15 +792,17 @@ export class ClauseLevelExtractionService {
     const fields: ClauseField[] = [];
     
     // Liability cap
-    const capMatch = text.match(/(?:not\s+)?exceed\s+(?:the\s+)?(?:total\s+|aggregate\s+)?(?:of\s+)?\$?\s*([\d,]+(?:\.\d{2})?)/i);
-    if (capMatch) {
+    const capMatch = text.match(/(?:not\s+)?exceed\s+(?:the\s+)?(?:total\s+|aggregate\s+)?(?:of\s+)?(?:CHF|SFr\.?|Fr\.|EUR|€|USD|\$)?\s*[\d''’.,]+/i)
+      || text.match(/(?:höchstens|begrenzt auf|haftung(?:sbeschränkung)?)\s*(?:CHF|SFr\.?|Fr\.|EUR|€)?\s*[\d''’.,]+/i);
+    const capMoney = capMatch ? moneyFromMatch(capMatch[0], capMatch[0]) : null;
+    if (capMoney) {
       fields.push({
         name: 'liability_cap',
         displayName: 'Liability Cap',
-        value: { amount: parseFloat(capMatch[1].replace(/,/g, '')), currency: 'USD' },
+        value: capMoney,
         valueType: 'currency',
         confidence: 0.85,
-        extractedFrom: capMatch[0],
+        extractedFrom: capMatch?.[0] ?? '',
       });
     }
     
@@ -864,15 +877,16 @@ export class ClauseLevelExtractionService {
     const fields: ClauseField[] = [];
     
     // Insurance amount
-    const amountMatch = text.match(/\$\s*([\d,]+(?:\.\d{2})?)\s*(?:per|each|aggregate)/i);
-    if (amountMatch) {
+    const amountMatch = text.match(/(?:CHF|SFr\.?|Fr\.|EUR|€|USD|\$)\s*[\d''’.,]+\s*(?:per|each|aggregate|je|pro)/i);
+    const insuranceMoney = amountMatch ? moneyFromMatch(amountMatch[0], amountMatch[0]) : null;
+    if (insuranceMoney) {
       fields.push({
         name: 'insurance_minimum',
         displayName: 'Minimum Insurance',
-        value: { amount: parseFloat(amountMatch[1].replace(/,/g, '')), currency: 'USD' },
+        value: insuranceMoney,
         valueType: 'currency',
         confidence: 0.85,
-        extractedFrom: amountMatch[0],
+        extractedFrom: amountMatch?.[0] ?? '',
       });
     }
     

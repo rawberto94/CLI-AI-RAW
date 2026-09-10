@@ -41,7 +41,7 @@ export const InlineEditField = memo(function InlineEditField({
   placeholder = 'Click to edit...',
   prefix,
   suffix,
-  currency = 'USD',
+  currency,
   emptyText = 'Not set',
   disabled = false,
   maxLength,
@@ -144,17 +144,25 @@ export const InlineEditField = memo(function InlineEditField({
     if (fieldType === 'currency') {
       const num = typeof value === 'number' ? value : parseFloat(value);
       if (isNaN(num)) return emptyText;
-      return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: currency,
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 2,
-      }).format(num);
+      const code = typeof currency === 'string' ? currency.trim() : '';
+      if (code.length === 3 && code !== 'XXX') {
+        try {
+          return new Intl.NumberFormat('de-CH', {
+            style: 'currency',
+            currency: code,
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 2,
+          }).format(num);
+        } catch {
+          return `${code} ${num.toLocaleString('de-CH')}`;
+        }
+      }
+      return num.toLocaleString('de-CH');
     }
 
     if (fieldType === 'date') {
       try {
-        return new Date(value.toString()).toLocaleDateString('en-US', {
+        return new Date(value.toString()).toLocaleDateString('de-CH', {
           year: 'numeric',
           month: 'short',
           day: 'numeric',

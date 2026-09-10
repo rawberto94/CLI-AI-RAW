@@ -19,7 +19,6 @@ import {
   CalendarDays,
   CalendarClock,
   Plus,
-  Edit,
   Trash2,
   MoreVertical
 } from 'lucide-react';
@@ -665,10 +664,6 @@ export const DeadlineTracker = memo(function DeadlineTracker({
                                 Mark Complete
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem>
-                                <Edit className="h-4 w-4 mr-2" />
-                                Edit
-                              </DropdownMenuItem>
                               <DropdownMenuItem 
                                 onClick={() => handleDelete(deadline.id)}
                                 className="text-red-600"

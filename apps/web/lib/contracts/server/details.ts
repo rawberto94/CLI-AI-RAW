@@ -18,6 +18,9 @@ import { applyContractChangeSideEffects } from '@/lib/contracts/server/contract-
 import type { EnterpriseMetadata } from '@/lib/contracts/server/metadata';
 
 import type { ContractApiContext } from '@/lib/contracts/server/context';
+import { describeHeaderCompliance, mapHeaderComplianceScore } from '@/lib/contracts/header-compliance';
+import { resolveDocumentClassification } from '@/lib/contracts/metadata-display';
+import { formatMoneyText } from '@repo/utils';
 
 interface ExtractedDataArtifact {
   type: string;
@@ -134,77 +137,157 @@ function mapContractStatus(status: string): string {
   }
 }
 
+type CanonicalInsightType = 'risk' | 'opportunity' | 'compliance' | 'obligation' | 'info' | 'action';
+
 function generateProcessingInsights(contractData: ContractDataForInsights) {
-  const insights: Array<{ type: string; title: string; description: string; icon: string; color: string }> = [];
+  const insights: Array<{ type: CanonicalInsightType; title: string; description: string; icon: string; color: string }> = [];
+
+  const unwrap = (value: unknown): unknown => {
+    if (value && typeof value === 'object' && 'value' in (value as Record<string, unknown>)) {
+      return (value as { value: unknown }).value;
+    }
+    return value;
+  };
+
+  const asFiniteNumber = (value: unknown): number | null => {
+    const inner = unwrap(value);
+    if (typeof inner === 'number' && Number.isFinite(inner)) return inner;
+    if (typeof inner === 'string' && inner.trim() !== '') {
+      const parsed = Number(inner);
+      if (Number.isFinite(parsed)) return parsed;
+    }
+    return null;
+  };
+
+  const asScore100 = (value: unknown): number | null => {
+    const n = asFiniteNumber(value);
+    if (n == null) return null;
+    if (n >= 0 && n <= 1) return Math.round(n * 100);
+    if (n >= 0 && n <= 100) return Math.round(n);
+    return null;
+  };
+
+  const asText = (value: unknown): string | null => {
+    const inner = unwrap(value);
+    if (typeof inner === 'string' && inner.trim()) return inner.trim();
+    return null;
+  };
 
   if (contractData.processing.completedAt && contractData.processing.startTime) {
     const duration =
       new Date(contractData.processing.completedAt).getTime() -
       new Date(contractData.processing.startTime).getTime();
     const durationSeconds = Math.round(duration / 1000);
-
-    insights.push({
-      type: 'performance',
-      title: 'Processing Performance',
-      description: `Contract processed in ${durationSeconds} seconds`,
-      icon: 'zap',
-      color: 'green',
-    });
+    if (Number.isFinite(durationSeconds) && durationSeconds > 0) {
+      insights.push({
+        type: 'info',
+        title: 'Processing time',
+        description: `This contract was processed in ${durationSeconds} seconds.`,
+        icon: 'zap',
+        color: 'green',
+      });
+    }
   }
 
-  if (contractData.extractedData?.risk) {
-    const risk = contractData.extractedData.risk;
-    insights.push({
-      type: 'risk',
-      title: `${risk.riskLevel} Risk Level`,
-      description: `Risk score: ${risk.riskScore}/100 with ${risk.riskFactors?.length || 0} identified factors`,
-      icon: 'shield',
-      color:
-        risk.riskLevel === 'LOW'
-          ? 'green'
-          : risk.riskLevel === 'MEDIUM'
-            ? 'yellow'
-            : 'red',
-    });
+  const extracted = contractData.extractedData as Record<string, unknown> | undefined;
+  const risk = (extracted?.risk ?? null) as Record<string, unknown> | null;
+  if (risk) {
+    const levelRaw = asText(risk.overallRisk) || asText(risk.riskLevel);
+    const score = asScore100(risk.riskScore);
+    const factors = Array.isArray(risk.risks)
+      ? risk.risks
+      : Array.isArray(risk.riskFactors)
+        ? risk.riskFactors
+        : [];
+    const levelLabel = levelRaw ? levelRaw.charAt(0).toUpperCase() + levelRaw.slice(1).toLowerCase() : null;
+    const parts: string[] = [];
+    if (score != null) parts.push(`Risk score ${score}/100`);
+    if (factors.length > 0) parts.push(`${factors.length} identified factor${factors.length === 1 ? '' : 's'}`);
+    if (levelLabel || parts.length > 0) {
+      insights.push({
+        type: 'risk',
+        title: levelLabel ? `${levelLabel} risk` : 'Risk findings',
+        description: parts.length > 0 ? parts.join(' · ') : `${levelLabel} risk level from this document.`,
+        icon: 'shield',
+        color:
+          (levelRaw || '').toLowerCase() === 'low'
+            ? 'green'
+            : (levelRaw || '').toLowerCase() === 'medium'
+              ? 'yellow'
+              : 'red',
+      });
+    }
   }
 
-  if (contractData.extractedData?.compliance) {
-    const compliance = contractData.extractedData.compliance;
-    const score = compliance.complianceScore ?? 0;
+  const headerCompliance = mapHeaderComplianceScore(extracted);
+  if (headerCompliance.source !== 'none') {
+    const score = headerCompliance.score ?? null;
     insights.push({
       type: 'compliance',
-      title: 'Compliance Status',
-      description: `${score}% compliant with ${compliance.regulations?.length || 0} regulations checked`,
+      title: headerCompliance.source === 'policy' ? 'Policy compliance' : 'Compliance',
+      description: describeHeaderCompliance(headerCompliance),
       icon: 'award',
       color:
-        score >= 90
-          ? 'green'
-          : score >= 70
-            ? 'yellow'
-            : 'red',
+        score == null
+          ? 'yellow'
+          : score >= 90
+            ? 'green'
+            : score >= 70
+              ? 'yellow'
+              : 'red',
     });
   }
 
-  if (contractData.extractedData?.financial) {
-    const financial = contractData.extractedData.financial;
-    insights.push({
-      type: 'financial',
-      title: 'Financial Terms',
-      description: `Total value: ${financial.currency} ${financial.totalValue?.toLocaleString()} with ${financial.paymentTerms}`,
-      icon: 'dollar-sign',
-      color: 'blue',
-    });
+  const financial = (extracted?.financial ?? null) as Record<string, unknown> | null;
+  if (financial) {
+    const totalValue = asFiniteNumber(financial.totalValue);
+    const currency = asText(financial.currency);
+    const paymentTerms = asText(financial.paymentTerms);
+    const parts: string[] = [];
+    if (totalValue != null) {
+      parts.push(currency ? `${currency} ${totalValue.toLocaleString()}` : totalValue.toLocaleString());
+    }
+    if (paymentTerms) parts.push(`Payment terms: ${paymentTerms}`);
+    if (parts.length > 0) {
+      insights.push({
+        type: 'info',
+        title: 'Financial terms',
+        description: parts.join(' · '),
+        icon: 'dollar-sign',
+        color: 'blue',
+      });
+    }
   }
 
-  if (contractData.extractedData?.clauses) {
-    const clauses = contractData.extractedData.clauses;
-    insights.push({
-      type: 'clauses',
-      title: 'Clause Analysis',
-      description: `${clauses.clauses?.length || 0} clauses extracted with ${clauses.completeness?.score || 0}% completeness`,
-      icon: 'file-text',
-      color: 'purple',
-    });
+  const clauses = (extracted?.clauses ?? null) as Record<string, unknown> | null;
+  if (clauses) {
+    const clauseList = Array.isArray(clauses.clauses) ? clauses.clauses : [];
+    const missing = Array.isArray(clauses.missingClauses) ? clauses.missingClauses : [];
+    if (clauseList.length > 0 || missing.length > 0) {
+      const parts = [`${clauseList.length} clause${clauseList.length === 1 ? '' : 's'} extracted`];
+      if (missing.length > 0) parts.push(`${missing.length} missing from this document`);
+      insights.push({
+        type: missing.length > 0 ? 'compliance' : 'info',
+        title: 'Clauses',
+        description: parts.join(' · '),
+        icon: 'file-text',
+        color: 'purple',
+      });
+    }
+  }
+
+  const obligations = (extracted?.obligations ?? null) as Record<string, unknown> | null;
+  if (obligations) {
+    const list = Array.isArray(obligations.obligations) ? obligations.obligations : [];
+    if (list.length > 0) {
+      insights.push({
+        type: 'obligation',
+        title: 'Obligations',
+        description: `${list.length} obligation${list.length === 1 ? '' : 's'} extracted from this document.`,
+        icon: 'target',
+        color: 'yellow',
+      });
+    }
   }
 
   return insights;
@@ -237,10 +320,10 @@ function transformFinancialData(financialData: FinancialDataInput | null | undef
           totalAnnualSavings: financialData.benchmarkingResults?.find(
             (result: BenchmarkResult) => result.rateCardId === rateCard.id,
           )?.totalSavingsOpportunity
-            ? `$${financialData.benchmarkingResults
+            ? formatMoneyText(financialData.benchmarkingResults
                 .find((result: BenchmarkResult) => result.rateCardId === rateCard.id)
-                ?.totalSavingsOpportunity?.toLocaleString()}`
-            : '$0',
+                ?.totalSavingsOpportunity)
+            : '—',
           averageVariance: financialData.benchmarkingResults?.find(
             (result: BenchmarkResult) => result.rateCardId === rateCard.id,
           )?.averageVariance
@@ -393,6 +476,7 @@ export async function getContractDetails(
             effectiveDate: true,
             expirationDate: true,
             totalValue: true,
+            currency: true,
             createdAt: true,
           },
           take: 50,
@@ -824,6 +908,7 @@ export async function getContractDetails(
         effectiveDate: child.effectiveDate?.toISOString(),
         expirationDate: child.expirationDate?.toISOString(),
         totalValue: child.totalValue ? Number(child.totalValue) : null,
+        currency: child.currency || null,
         createdAt: child.createdAt?.toISOString(),
       })) || [],
       parentContractId: contract.parentContractId,
@@ -836,7 +921,10 @@ export async function getContractDetails(
       signature_date: contract.signatureDate?.toISOString() || null,
       signature_status: normalizedSignatureStatus,
       signature_required_flag: normalizedSignatureRequiredFlag,
-      document_classification: contract.documentClassification || 'contract',
+      document_classification: resolveDocumentClassification(
+        contract.documentClassification,
+        enterpriseMetadata.document_classification,
+      ),
       document_classification_warning: (contract as any).documentClassificationWarning || null,
       jurisdiction: contract.jurisdiction || null,
       notice_period: contract.noticePeriodDays ? `${contract.noticePeriodDays} days` : null,
@@ -1066,7 +1154,10 @@ export async function putContractDetails(
 
     if (updates.contractTitle !== undefined) aiMetadataUpdates.document_title = updates.contractTitle || null;
     if (updates.description !== undefined) aiMetadataUpdates.contract_short_description = updates.description || null;
-    if (updates.totalValue !== undefined) aiMetadataUpdates.tcv_amount = updates.totalValue ?? null;
+    if (updates.totalValue !== undefined) {
+      aiMetadataUpdates.tcv_amount = updates.totalValue ?? null;
+      aiMetadataUpdates.tcvSource = 'human';
+    }
     if (updates.currency !== undefined) aiMetadataUpdates.currency = updates.currency || null;
     if (updates.effectiveDate !== undefined) aiMetadataUpdates.start_date = metadataDate(updates.effectiveDate);
     if (updates.startDate !== undefined) aiMetadataUpdates.start_date = metadataDate(updates.startDate);
@@ -1313,10 +1404,15 @@ export async function getContractFrontendDetails(
         risks: opportunity.risks as string[],
       }));
 
+      const savingsCurrencies = [...new Set(
+        opportunities
+          .map((opportunity) => opportunity.potentialSavingsCurrency)
+          .filter((code): code is string => Boolean(code) && code !== 'XXX'),
+      )];
       costSavings = {
         totalPotentialSavings: {
-          amount: totalSavings,
-          currency: 'USD',
+          amount: savingsCurrencies.length <= 1 ? totalSavings : null,
+          currency: savingsCurrencies.length === 1 ? savingsCurrencies[0] : '',
           percentage: 0,
         },
         opportunities: transformedOpportunities,

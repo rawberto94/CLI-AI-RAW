@@ -147,6 +147,9 @@ ${intentEntities?.questionType ? `Question type: ${intentEntities.questionType}`
 - Use markdown for structure (##, **, bullets)
 - Be honest when you lack information
 - Suggest follow-up questions
+- Match the user's language. If they write German, French, or Italian, answer in that language. If they write English, answer in English.
+- Keep quoted contract text verbatim in the original language. Do not translate quotes, party names, Fr./CHF, or dates.
+- Dates in Swiss contracts are DD.MM.YYYY. Fr. and SFr. mean CHF. Do not invent USD.
 - Cannot: approve workflows, create contracts, give legal advice, access external real-time data`;
 
     const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [

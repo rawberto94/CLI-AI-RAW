@@ -8,6 +8,8 @@ import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { toast } from 'sonner'
+import Link from 'next/link'
+import { formatAmountWithCurrency } from '@/lib/utils/formatters'
 import {
   Upload,
   Download,
@@ -112,7 +114,7 @@ export function BulkOperations() {
               {selectedCount} selected
             </Badge>
             <Badge className="text-base px-4 py-2">
-              ${selectedValue.toLocaleString()}
+              {formatAmountWithCurrency(selectedValue, null)}
             </Badge>
           </div>
         )}
@@ -216,7 +218,7 @@ export function BulkOperations() {
                   <p className="text-sm text-gray-500">{contract.supplier}</p>
                 </div>
                 <div className="text-right">
-                  <p className="font-medium">${contract.value.toLocaleString()}</p>
+                  <p className="font-medium">{formatAmountWithCurrency(contract.value, null)}</p>
                   <Badge
                     variant={
                       contract.status === 'Active' ? 'default' :
@@ -246,9 +248,11 @@ export function BulkOperations() {
             <p className="text-sm text-gray-500 mb-4">
               Drag & drop up to 50 files or click to browse
             </p>
-            <Button>
-              <Upload className="h-4 w-4 mr-2" />
-              Select Files
+            <Button asChild>
+              <Link href="/contracts/upload">
+                <Upload className="h-4 w-4 mr-2" />
+                Select Files
+              </Link>
             </Button>
           </div>
         </CardContent>

@@ -6,14 +6,12 @@ import {
   MessageSquare,
   Send,
   Reply,
-  MoreHorizontal,
   Check,
   CheckCheck,
   Trash2,
   Edit2,
   Clock,
   AtSign,
-  ThumbsUp,
   Loader2,
   X,
 } from 'lucide-react';
@@ -201,9 +199,7 @@ export function CommentThreads({ contractId, className }: CommentThreadsProps) {
                               Resolved
                             </span>
                           )}
-                          <button className="p-1 hover:bg-slate-100 rounded transition-colors">
-                            <MoreHorizontal className="w-4 h-4 text-slate-400" />
-                          </button>
+
                         </div>
                       </div>
                       
@@ -220,11 +216,6 @@ export function CommentThreads({ contractId, className }: CommentThreadsProps) {
                         >
                           <Reply className="w-3.5 h-3.5" />
                           Reply
-                        </button>
-                        
-                        <button className="flex items-center gap-1 text-xs text-slate-500 hover:text-violet-600 transition-colors">
-                          <ThumbsUp className="w-3.5 h-3.5" />
-                          {comment.likes || 0}
                         </button>
                         
                         {!comment.isResolved && (

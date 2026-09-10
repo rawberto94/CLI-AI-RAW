@@ -351,13 +351,13 @@ function formatDateRange(from?: Date, to?: Date): string {
 
 function formatValueRange(min: number, max: number): string {
   if (min > 0 && max < 1000000) {
-    return `$${(min / 1000).toFixed(0)}K - $${(max / 1000).toFixed(0)}K`;
+    return `${(min / 1000).toFixed(0)}K - ${(max / 1000).toFixed(0)}K`;
   }
   if (min > 0) {
-    return `Min $${(min / 1000).toFixed(0)}K`;
+    return `Min ${(min / 1000).toFixed(0)}K`;
   }
   if (max < 1000000) {
-    return `Max $${(max / 1000).toFixed(0)}K`;
+    return `Max ${(max / 1000).toFixed(0)}K`;
   }
   return 'Value Range';
 }

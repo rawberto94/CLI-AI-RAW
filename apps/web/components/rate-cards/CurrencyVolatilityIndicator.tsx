@@ -20,7 +20,7 @@ interface CurrencyVolatilityIndicatorProps {
 
 export function CurrencyVolatilityIndicator({
   currency,
-  baseCurrency = 'USD',
+  baseCurrency = 'CHF',
   showDetails = false,
 }: CurrencyVolatilityIndicatorProps) {
   const [volatility, setVolatility] = useState<VolatilityAlert | null>(null);

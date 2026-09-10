@@ -34,6 +34,9 @@ import {
   ArrowUpRight,
   ArrowDownRight,
 } from 'lucide-react';
+import { useDisplayCurrency } from '@/hooks/useDisplayCurrency';
+import Link from 'next/link';
+import { formatDisplayTotal } from '@/lib/utils/formatters';
 import {
   LineChart,
   Line,
@@ -272,6 +275,7 @@ export function RealTimeDashboard({
   refreshInterval = 30000,
   tenantId,
 }: RealTimeDashboardProps) {
+  const displayCurrency = useDisplayCurrency();
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [alerts, setAlerts] = useState<AnomalyAlert[]>([]);
   const [loading, setLoading] = useState(true);
@@ -423,8 +427,10 @@ export function RealTimeDashboard({
                 <CardTitle className="text-base">Active Alerts</CardTitle>
                 <Badge variant="secondary">{alerts.length}</Badge>
               </div>
-              <Button variant="ghost" size="sm">
-                View All <ChevronRight className="h-4 w-4 ml-1" />
+              <Button variant="ghost" size="sm" asChild>
+                <Link href="/notifications">
+                  View All <ChevronRight className="h-4 w-4 ml-1" />
+                </Link>
               </Button>
             </div>
           </CardHeader>
@@ -461,7 +467,7 @@ export function RealTimeDashboard({
             />
             <MetricCard
               title="Contract Value"
-              value={`$${((metrics?.contracts.totalValue || 0) / 1000000).toFixed(1)}M`}
+              value={formatDisplayTotal(metrics?.contracts.totalValue || 0, displayCurrency)}
               subtitle="Total portfolio value"
               icon={<DollarSign className="h-6 w-6" />}
               trend={{ value: 8, label: 'vs last month' }}

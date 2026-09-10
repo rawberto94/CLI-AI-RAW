@@ -12,6 +12,7 @@
  */
 
 import OpenAI from 'openai';
+import { analysisLanguageInstructions } from '@repo/utils';
 
 // Types
 export type BoostingStrategy = 
@@ -309,7 +310,10 @@ class ExtractionConfidenceBoostingService {
   ): Promise<{ evidence: EvidenceItem[] }> {
     const openai = this.getOpenAI();
 
-    const prompt = `Find evidence in this contract that supports or contradicts the extracted value.
+    const prompt = `${analysisLanguageInstructions({ contractText })}
+Keep evidence quotes verbatim.
+
+Find evidence in this contract that supports or contradicts the extracted value.
 
 EXTRACTED FIELD: ${extraction.fieldName}
 EXTRACTED VALUE: ${JSON.stringify(extraction.value)}
@@ -351,7 +355,10 @@ Return as JSON with "evidence" array.`;
   ): Promise<{ isConsistent: boolean; alternativeValues?: { value: unknown; confidence: number }[] }> {
     const openai = this.getOpenAI();
 
-    const prompt = `Cross-validate this extracted value by checking related information in the contract.
+    const prompt = `${analysisLanguageInstructions({ contractText })}
+Keep quotes verbatim. JSON keys stay English.
+
+Cross-validate this extracted value by checking related information in the contract.
 
 FIELD: ${extraction.fieldName}
 EXTRACTED VALUE: ${JSON.stringify(extraction.value)}
@@ -401,7 +408,10 @@ Return JSON with:
     const models = ['gpt-4o', 'gpt-4o-mini'];
     const selectedModels = models.slice(0, Math.min(modelCount, models.length));
 
-    const prompt = `Extract the value for this field from the contract:
+    const prompt = `${analysisLanguageInstructions({ contractText })}
+Keep extracted values verbatim. Do not invent USD.
+
+Extract the value for this field from the contract:
 
 FIELD: ${extraction.fieldName}
 

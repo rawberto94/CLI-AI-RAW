@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeletons';
 import { TrendingDown, Award, Building2, MapPin, Briefcase, Calendar } from 'lucide-react';
+import { formatRateMoney } from '@/lib/rate-cards/format';
 
 interface BestRateEntry {
   id: string;
@@ -196,9 +197,9 @@ export function BestRatesView() {
         <Card>
           <CardContent className="pt-6">
             <div className="text-2xl font-bold">
-              ${filteredRates.length > 0 
+              {formatRateMoney(filteredRates.length > 0
                 ? Math.round(filteredRates.reduce((sum, br) => sum + br.bestRate, 0) / filteredRates.length)
-                : 0}
+                : 0)}
             </div>
             <p className="text-sm text-muted-foreground">Average Best Rate</p>
           </CardContent>
@@ -249,7 +250,7 @@ export function BestRatesView() {
                   </div>
                   <div className="text-right">
                     <div className="text-3xl font-bold text-green-600">
-                      ${Math.round(bestRate.bestRate)}
+                      {formatRateMoney(Math.round(bestRate.bestRate))}
                     </div>
                     <p className="text-sm text-muted-foreground">per day</p>
                   </div>
@@ -275,11 +276,11 @@ export function BestRatesView() {
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Market Average:</span>
-                      <span className="font-medium">${Math.round(bestRate.averageRate)}/day</span>
+                      <span className="font-medium">{formatRateMoney(Math.round(bestRate.averageRate))}/day</span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Market Median:</span>
-                      <span className="font-medium">${Math.round(bestRate.medianRate)}/day</span>
+                      <span className="font-medium">{formatRateMoney(Math.round(bestRate.medianRate))}/day</span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Cohort Size:</span>
@@ -294,7 +295,7 @@ export function BestRatesView() {
                     <TrendingDown className="h-4 w-4 text-green-600" />
                     <span className="text-sm">
                       <span className="font-medium text-green-600">
-                        ${Math.round(bestRate.savingsVsAverage)}/day
+                        {formatRateMoney(Math.round(bestRate.savingsVsAverage))}/day
                       </span>
                       <span className="text-muted-foreground"> below average</span>
                     </span>
@@ -303,7 +304,7 @@ export function BestRatesView() {
                     <TrendingDown className="h-4 w-4 text-green-600" />
                     <span className="text-sm">
                       <span className="font-medium text-green-600">
-                        ${Math.round(bestRate.savingsVsMedian)}/day
+                        {formatRateMoney(Math.round(bestRate.savingsVsMedian))}/day
                       </span>
                       <span className="text-muted-foreground"> below median</span>
                     </span>

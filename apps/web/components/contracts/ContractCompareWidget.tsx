@@ -48,6 +48,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
+import { formatAmountWithCurrency } from '@/lib/utils/formatters'
 
 // ============ TYPES ============
 
@@ -58,6 +59,7 @@ export interface CompareContract {
   type?: string
   status?: string
   value?: number
+  currency?: string
 }
 
 interface ContractCompareProps {
@@ -78,14 +80,8 @@ interface ComparisonSlotProps {
 
 // ============ HELPER FUNCTIONS ============
 
-const formatCurrency = (value: number): string => {
-  return new Intl.NumberFormat('de-CH', {
-    style: 'currency',
-    currency: 'CHF',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(value)
-}
+const formatCurrency = (value: number, currency?: string): string =>
+  formatAmountWithCurrency(value, currency)
 
 // ============ SUB-COMPONENTS ============
 
@@ -129,7 +125,7 @@ function ComparisonSlot({ contract, position, onRemove, onSelect, isEmpty }: Com
               )}
               {contract?.value && (
                 <p className="text-xs text-slate-500 mt-1">
-                  {formatCurrency(contract.value)}
+                  {formatCurrency(contract.value, contract.currency)}
                 </p>
               )}
             </div>
@@ -219,7 +215,7 @@ function ContractSelector({
                     {contract.value && (
                       <>
                         <span className="text-slate-300">•</span>
-                        <span>{formatCurrency(contract.value)}</span>
+                        <span>{formatCurrency(contract.value, contract.currency)}</span>
                       </>
                     )}
                     {contract.type && (

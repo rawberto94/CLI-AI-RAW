@@ -51,7 +51,6 @@ import {
   TrendingUp,
   Users,
   XCircle,
-  Bell,
   Shield,
   Target,
   Zap,
@@ -391,7 +390,7 @@ export default function ObligationsDashboardPage() {
   // Format date
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    return date.toLocaleDateString('de-CH', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
   // Days until due
@@ -1034,16 +1033,7 @@ export default function ObligationsDashboardPage() {
                                       <AlertTriangle className="w-4 h-4 mr-2" />
                                       Mark At Risk
                                     </DropdownMenuItem>
-                                    <DropdownMenuSeparator />
-                                    {/* Set Reminder and Reassign are not wired — hide to avoid broken UI */}
-                                    {/* <DropdownMenuItem>
-                                      <Bell className="w-4 h-4 mr-2" />
-                                      Set Reminder
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem>
-                                      <Users className="w-4 h-4 mr-2" />
-                                      Reassign
-                                    </DropdownMenuItem> */}
+
                                   </DropdownMenuContent>
                                 </DropdownMenu>
                               </div>

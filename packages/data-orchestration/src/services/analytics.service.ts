@@ -4,6 +4,7 @@
  */
 
 import { prisma } from '../lib/prisma';
+import { formatMoneyText } from '@repo/utils';
 
 
 // ============================================
@@ -438,7 +439,7 @@ class AnalyticsService {
       const value = contracts.reduce((sum, c) => sum + Number(c.annualValue || c.totalValue || 0), 0);
 
       trend.push({
-        period: periodStart.toLocaleDateString('en-US', { year: 'numeric', month: 'short' }),
+        period: periodStart.toLocaleDateString('de-CH', { year: 'numeric', month: 'short' }),
         timestamp: periodStart,
         value,
         count: contracts.length,
@@ -662,7 +663,7 @@ class AnalyticsService {
       totalPotential += opp.potentialSavings;
       opportunities.push({
         type: 'rate_optimization',
-        description: `Negotiate ${opp.role} rates (currently $${opp.currentAvgRate}/hr vs market $${opp.marketRate}/hr)`,
+        description: `Negotiate ${opp.role} rates (currently ${formatMoneyText(Number(opp.currentAvgRate))}/hr vs market ${formatMoneyText(Number(opp.marketRate))}/hr)`,
         potentialSavings: opp.potentialSavings,
         contractIds: [],
         priority: opp.potentialSavings > 100000 ? 'high' : opp.potentialSavings > 50000 ? 'medium' : 'low',

@@ -629,7 +629,7 @@ function generateAnnotationText(section: DiffSection, changedLines: DiffLine[]):
 }
 
 function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString('en-US', {
+  return new Date(dateStr).toLocaleDateString('de-CH', {
     year: 'numeric',
     month: 'short',
     day: 'numeric',

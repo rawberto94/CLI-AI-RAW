@@ -300,7 +300,7 @@ export default function TemplateEditorPage() {
         { name: 'clientName', label: 'Client Name', type: 'text', required: true },
         { name: 'supplierName', label: 'Supplier Name', type: 'text', required: true },
         { name: 'totalValue', label: 'Total Value', type: 'currency', required: true },
-        { name: 'currency', label: 'Currency', type: 'text', required: true, defaultValue: 'USD' },
+        { name: 'currency', label: 'Currency', type: 'text', required: true, defaultValue: 'CHF' },
         { name: 'startDate', label: 'Start Date', type: 'date', required: true },
         { name: 'endDate', label: 'End Date', type: 'date', required: true },
       ])

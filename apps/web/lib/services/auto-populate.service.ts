@@ -73,6 +73,14 @@ export interface ReviewQueueItem {
 // Default Configuration
 // ============================================================================
 
+function tagsFromContract(tags: unknown): string[] {
+  if (!Array.isArray(tags)) return [];
+  return tags
+    .filter((tag): tag is string => typeof tag === 'string')
+    .map((tag) => tag.trim())
+    .filter(Boolean);
+}
+
 export const DEFAULT_AUTO_POPULATE_CONFIG: AutoPopulateConfig = {
   autoApproveThreshold: 0.85,
   requireReviewThreshold: 0.6,
@@ -444,13 +452,17 @@ export class AutoPopulateService {
           },
         });
       } else {
+        const contractRow = await prisma.contract.findFirst({
+          where: { id: contractId, tenantId },
+          select: { tags: true },
+        });
         await prisma.contractMetadata.create({
           data: {
             contractId,
             tenantId,
             customFields,
             systemFields: {},
-            tags: [],
+            tags: tagsFromContract(contractRow?.tags),
             lastUpdated: now,
             updatedBy: 'auto-populate',
           },

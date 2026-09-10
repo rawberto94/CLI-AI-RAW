@@ -276,7 +276,7 @@ ${summary.overview}
 ${summary.keyPoints.map(p => `- ${p}`).join('\n')}
 
 ## Financials
-- Total Value: ${summary.financials.totalValue ? `$${summary.financials.totalValue.toLocaleString()}` : 'N/A'}
+- Total Value: ${summary.financials.totalValue ? formatCurrency(summary.financials.totalValue, summary.financials.currency) : 'N/A'}
 - Payment Terms: ${summary.financials.paymentTerms || 'N/A'}
 
 ## Risk Assessment
@@ -297,13 +297,21 @@ ${summary.risks.factors.map(f => `- ${f.title} (${f.severity}): ${f.description}
     }
   }, [isOpen, summary, loading, generateSummary]);
 
-  const formatCurrency = (value: number, currency = 'USD') => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency,
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(value);
+  const formatCurrency = (value: number, currency?: string) => {
+    const code = typeof currency === 'string' ? currency.trim() : '';
+    if (code.length === 3 && code !== 'XXX') {
+      try {
+        return new Intl.NumberFormat('de-CH', {
+          style: 'currency',
+          currency: code,
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 0,
+        }).format(value);
+      } catch {
+        return `${code} ${value.toLocaleString('de-CH')}`;
+      }
+    }
+    return value.toLocaleString('de-CH');
   };
 
   return (
@@ -334,13 +342,7 @@ ${summary.risks.factors.map(f => `- ${f.title} (${f.severity}): ${f.description}
                   >
                     {copied ? <CheckCircle2 className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                   </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-white hover:bg-white/20"
-                  >
-                    <Download className="w-4 h-4" />
-                  </Button>
+
                   <Button
                     variant="ghost"
                     size="sm"

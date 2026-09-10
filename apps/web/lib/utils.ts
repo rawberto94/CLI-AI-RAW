@@ -78,6 +78,21 @@ export function humanizeUploadError(raw?: string | null): { message: string; det
   if (/corrupt|unreadable|couldn.?t be read|parse|invalid pdf|encrypted/.test(lower)) {
     return { message: "File couldn't be read — check it and retry", detail: text };
   }
+  if (/virus|security scan|threat/.test(lower)) {
+    return { message: 'File rejected by security scan', detail: text };
+  }
+  if (/quota|too many contracts|storage quota/.test(lower)) {
+    return { message: 'Upload quota reached — delete unused contracts or retry later', detail: text };
+  }
+  if (/ocr|document intelligence|azure/.test(lower)) {
+    return { message: 'Could not read the document text — retry or try a clearer PDF', detail: text };
+  }
+  if (/duplicate/.test(lower)) {
+    return { message: 'This file was already uploaded', detail: text };
+  }
+  if (text.length > 0 && text.length < 180 && !/prisma|invocation|at Object\.|node_modules/.test(text)) {
+    return { message: text, detail: text };
+  }
 
   return fallback;
 }

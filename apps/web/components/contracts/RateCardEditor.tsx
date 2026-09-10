@@ -45,7 +45,7 @@ export function RateCardEditor({
   const [newRate, setNewRate] = useState<Partial<RateEntry>>({
     role: '',
     seniorityLevel: 'Mid-Level',
-    currency: 'USD',
+    currency: 'CHF',
   });
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -156,7 +156,7 @@ export function RateCardEditor({
       setNewRate({
         role: '',
         seniorityLevel: 'Mid-Level',
-        currency: 'USD',
+        currency: 'CHF',
       });
       
       // Dispatch event to notify chatbot and other components
@@ -330,7 +330,7 @@ export function RateCardEditor({
                   <Input
                     value={newRate.currency || ''}
                     onChange={(e) => setNewRate({ ...newRate, currency: e.target.value })}
-                    placeholder="USD"
+                    placeholder="CHF"
                   />
                 </TableCell>
                 <TableCell>

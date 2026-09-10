@@ -166,7 +166,7 @@ export async function listContractsBySignatureStatus(signatureStatus: SignatureS
         ...c,
         signatureStatus: parsed?.signature_status || (c as Record<string, unknown>).signatureStatus || 'unknown',
         signatureRequiredFlag: parsed?.signature_required_flag || (c as Record<string, unknown>).signatureRequiredFlag || false,
-        documentClassification: parsed?.document_classification || (c as Record<string, unknown>).documentClassification || 'contract',
+        documentClassification: parsed?.document_classification || (c as Record<string, unknown>).documentClassification || 'unknown',
         documentClassificationWarning: parsed?.document_classification_warning || (c as Record<string, unknown>).documentClassificationWarning || null };
     });
   } catch {
@@ -227,7 +227,7 @@ export async function listContractsByDocumentType(documentType: DocumentClassifi
       }
       return {
         ...c,
-        documentClassification: parsed?.document_classification || (c as Record<string, unknown>).documentClassification || 'contract',
+        documentClassification: parsed?.document_classification || (c as Record<string, unknown>).documentClassification || 'unknown',
         documentClassificationWarning: parsed?.document_classification_warning || (c as Record<string, unknown>).documentClassificationWarning || null,
         signatureStatus: parsed?.signature_status || (c as Record<string, unknown>).signatureStatus || 'unknown',
         signatureRequiredFlag: parsed?.signature_required_flag || (c as Record<string, unknown>).signatureRequiredFlag || false };
@@ -336,7 +336,7 @@ export async function listContractsNeedingSignature(tenantId: string) {
         ...c,
         signatureStatus: parsed?.signature_status || (c as Record<string, unknown>).signatureStatus || 'unknown',
         signatureRequiredFlag: parsed?.signature_required_flag || (c as Record<string, unknown>).signatureRequiredFlag || false,
-        documentClassification: parsed?.document_classification || (c as Record<string, unknown>).documentClassification || 'contract',
+        documentClassification: parsed?.document_classification || (c as Record<string, unknown>).documentClassification || 'unknown',
         documentClassificationWarning: parsed?.document_classification_warning || (c as Record<string, unknown>).documentClassificationWarning || null };
     });
   } catch {

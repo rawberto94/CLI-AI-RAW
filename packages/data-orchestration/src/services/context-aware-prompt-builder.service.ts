@@ -11,6 +11,8 @@
  * @version 1.0.0
  */
 
+import { analysisLanguageInstructions } from '@repo/utils';
+
 // Types
 export type PromptStyle = 'concise' | 'detailed' | 'structured' | 'conversational';
 export type ExtractionMode = 'precise' | 'comprehensive' | 'fast' | 'balanced';
@@ -344,9 +346,11 @@ Return JSON with values only.`,
       optimizations.push('contract-type-instructions');
     }
 
-    // Add language instructions if non-English
+    systemPrompt += `\n\n${analysisLanguageInstructions({
+      contractText,
+      diDetectedLanguages: context.language ? [context.language] : [],
+    })}`;
     if (context.language && context.language !== 'en') {
-      systemPrompt += `\n\nThe contract is in ${context.language}. Extract values in English where appropriate, but preserve original language for proper nouns and legal terms.`;
       optimizations.push('language-aware');
     }
 

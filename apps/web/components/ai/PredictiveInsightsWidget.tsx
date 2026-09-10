@@ -29,6 +29,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { useDisplayCurrency } from '@/hooks/useDisplayCurrency';
+import { formatDisplayTotal } from '@/lib/utils/formatters';
 
 // ============================================================================
 // Types
@@ -85,12 +87,6 @@ function getTrendIcon(trend: string) {
     default:
       return <Minus className="h-3.5 w-3.5 text-slate-400" />;
   }
-}
-
-function formatCurrency(value: number) {
-  if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
-  if (value >= 1_000) return `$${(value / 1_000).toFixed(0)}K`;
-  return `$${value.toFixed(0)}`;
 }
 
 // ============================================================================
@@ -191,6 +187,7 @@ function RenewalTab({ contractId }: { contractId?: string }) {
 }
 
 function CostTab() {
+  const displayCurrency = useDisplayCurrency();
   const { data, isLoading } = useQuery<CostForecast | null>({
     queryKey: ['prediction', 'cost_forecast'],
     queryFn: async () => {
@@ -227,12 +224,12 @@ function CostTab() {
       <div className="grid grid-cols-2 gap-3">
         <div className="rounded-lg border border-slate-100 p-3">
           <p className="text-xs text-slate-500 mb-1">Current Spend</p>
-          <p className="text-xl font-bold text-slate-900">{formatCurrency(data.currentSpend)}</p>
+          <p className="text-xl font-bold text-slate-900">{formatDisplayTotal(data.currentSpend, displayCurrency)}</p>
         </div>
         <div className="rounded-lg border border-slate-100 p-3">
           <p className="text-xs text-slate-500 mb-1">Projected Spend</p>
           <div className="flex items-baseline gap-2">
-            <p className="text-xl font-bold text-slate-900">{formatCurrency(data.projectedSpend)}</p>
+            <p className="text-xl font-bold text-slate-900">{formatDisplayTotal(data.projectedSpend, displayCurrency)}</p>
             <span className={cn("text-xs font-medium", diff > 0 ? 'text-red-600' : 'text-emerald-600')}>
               {diff > 0 ? '+' : ''}{diffPct}%
             </span>
@@ -248,7 +245,7 @@ function CostTab() {
             <div key={i} className="rounded-lg border border-emerald-100 bg-emerald-50/50 p-3">
               <div className="flex items-center justify-between mb-1">
                 <span className="text-xs font-medium text-slate-900">{s.area}</span>
-                <span className="text-xs font-bold text-emerald-700">{formatCurrency(s.potentialSavings)}</span>
+                <span className="text-xs font-bold text-emerald-700">{formatDisplayTotal(s.potentialSavings, displayCurrency)}</span>
               </div>
               <p className="text-[11px] text-slate-600">{s.description}</p>
             </div>

@@ -19,6 +19,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Slider } from '@/components/ui/slider';
 import { X, Filter, Save, Calendar as CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
+import { formatRateMoney } from '@/lib/rate-cards/format';
 
 export interface RateCardFilterCriteria {
   supplier?: string;
@@ -345,7 +346,7 @@ export function RateCardFilters({ onFilterChange, onSaveFilter, matchCount }: Ra
             </div>
             {(filters.rateMin || filters.rateMax) && (
               <div className="text-sm text-muted-foreground">
-                ${filters.rateMin || 0} - ${filters.rateMax || '∞'} per day
+                {formatRateMoney(filters.rateMin || 0)} - {filters.rateMax != null ? formatRateMoney(filters.rateMax) : '∞'} per day
               </div>
             )}
           </div>

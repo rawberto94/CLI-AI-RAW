@@ -470,10 +470,7 @@ export function ContractComparison({
                 >
                   {showUnchanged ? 'Hide' : 'Show'} Unchanged
                 </Button>
-                <Button variant="outline" size="sm">
-                  <Download className="w-4 h-4 mr-1.5" />
-                  Export
-                </Button>
+
               </div>
             </div>
 
@@ -566,7 +563,13 @@ export function ContractComparison({
             <Button variant="outline" onClick={onClose}>
               Close
             </Button>
-            <Button className="bg-gradient-to-r from-violet-600 to-purple-600 text-white">
+            <Button
+              className="bg-gradient-to-r from-violet-600 to-purple-600 text-white"
+              onClick={() => {
+                const text = `Changes: ${stats.total} (${stats.added} added, ${stats.removed} removed, ${stats.modified} modified). Critical: ${stats.critical}, major: ${stats.major}.`;
+                void navigator.clipboard.writeText(text);
+              }}
+            >
               <Copy className="w-4 h-4 mr-1.5" />
               Copy Summary
             </Button>

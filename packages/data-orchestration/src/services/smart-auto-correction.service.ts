@@ -6,6 +6,7 @@
  */
 
 import { createLogger } from '../utils/logger';
+import { detectCurrencyFromText, UNKNOWN_CURRENCY } from '@repo/utils';
 
 const logger = createLogger('SmartAutoCorrectionService');
 
@@ -84,13 +85,13 @@ export interface CorrectionResult {
 
 // Built-in correction rules
 const DATE_FORMATS = [
-  { pattern: /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/, format: 'MM/DD/YYYY' },
-  { pattern: /^(\d{1,2})\/(\d{1,2})\/(\d{2})$/, format: 'MM/DD/YY' },
   { pattern: /^(\d{4})-(\d{2})-(\d{2})$/, format: 'YYYY-MM-DD' },
+  { pattern: /^(\d{1,2})\.(\d{1,2})\.(\d{4})$/, format: 'DD.MM.YYYY' },
+  { pattern: /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/, format: 'DD/MM/YYYY' },
+  { pattern: /^(\d{1,2})\/(\d{1,2})\/(\d{2})$/, format: 'DD/MM/YY' },
   { pattern: /^(\d{1,2})-(\d{1,2})-(\d{4})$/, format: 'DD-MM-YYYY' },
   { pattern: /^(\w+)\s+(\d{1,2}),?\s+(\d{4})$/, format: 'Month DD, YYYY' },
   { pattern: /^(\d{1,2})\s+(\w+)\s+(\d{4})$/, format: 'DD Month YYYY' },
-  { pattern: /^(\d{1,2})\.(\d{1,2})\.(\d{4})$/, format: 'DD.MM.YYYY' },
 ];
 
 const MONTH_NAMES: Record<string, number> = {
@@ -106,6 +107,7 @@ const MONTH_NAMES: Record<string, number> = {
   october: 10, oct: 10,
   november: 11, nov: 11,
   december: 12, dec: 12,
+  januar: 1, februar: 2, märz: 3, maerz: 3, mai: 5, juni: 6, juli: 7, oktober: 10, dezember: 12,
 };
 
 const CURRENCY_SYMBOLS: Record<string, string> = {
@@ -732,14 +734,14 @@ export class SmartAutoCorrectionService {
         let year: number, month: number, day: number;
         
         switch (format.format) {
-          case 'MM/DD/YYYY':
-            month = parseInt(match[1]);
-            day = parseInt(match[2]);
+          case 'DD/MM/YYYY':
+            day = parseInt(match[1]);
+            month = parseInt(match[2]);
             year = parseInt(match[3]);
             break;
-          case 'MM/DD/YY':
-            month = parseInt(match[1]);
-            day = parseInt(match[2]);
+          case 'DD/MM/YY':
+            day = parseInt(match[1]);
+            month = parseInt(match[2]);
             year = 2000 + parseInt(match[3]);
             break;
           case 'YYYY-MM-DD':
@@ -823,14 +825,7 @@ export class SmartAutoCorrectionService {
    * Normalize currency value
    */
   private normalizeCurrency(value: string): { formatted: string; numeric: number; confidence: number } {
-    // Extract currency symbol
-    let currency = 'USD';
-    for (const [symbol, code] of Object.entries(CURRENCY_SYMBOLS)) {
-      if (value.includes(symbol)) {
-        currency = code;
-        break;
-      }
-    }
+    const currency = detectCurrencyFromText(value) || UNKNOWN_CURRENCY;
     
     // Extract numeric value
     const numericStr = value.replace(/[^0-9.,]/g, '');
@@ -849,13 +844,18 @@ export class SmartAutoCorrectionService {
       return { formatted: value, numeric: 0, confidence: 0.5 };
     }
     
-    // Format with proper symbol
-    const formatted = new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: currency,
-    }).format(numericValue);
-    
-    return { formatted, numeric: numericValue, confidence: 0.95 };
+    let formatted: string;
+    try {
+      if (currency !== UNKNOWN_CURRENCY) {
+        formatted = new Intl.NumberFormat('de-CH', { style: 'currency', currency }).format(numericValue);
+      } else {
+        formatted = numericValue.toLocaleString('de-CH');
+      }
+    } catch {
+      formatted = numericValue.toLocaleString('de-CH');
+    }
+
+    return { formatted, numeric: numericValue, confidence: currency === UNKNOWN_CURRENCY ? 0.6 : 0.95 };
   }
   
   /**

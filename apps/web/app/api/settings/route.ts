@@ -10,10 +10,11 @@ import { prisma } from '@/lib/prisma';
 // Default settings structure
 const DEFAULT_SETTINGS = {
   system: {
-    timezone: 'America/New_York',
+    timezone: 'Europe/Zurich',
     language: 'en',
-    dateFormat: 'MM/DD/YYYY',
-    currency: 'USD',
+    dateFormat: 'DD.MM.YYYY',
+    currency: 'CHF',
+    ourOrganization: '',
     theme: 'system',
   },
   notifications: {
@@ -201,6 +202,9 @@ function mergeUserPreferences(
     system: {
       ...system,
       theme: preferences.theme || DEFAULT_SETTINGS.system.theme,
+      // Tenant display currency / org name win over per-user overlay.
+      currency: settings.system.currency,
+      ourOrganization: settings.system.ourOrganization || system.ourOrganization || '',
     },
     display,
     notifications,
@@ -357,8 +361,49 @@ export const PUT = withAuthApiHandler(async (request, ctx) => {
         },
       });
 
+      if (section === 'system' && ctx.tenantId && (typeof updates.ourOrganization === 'string' || typeof updates.currency === 'string')) {
+        const existingTenantSettings = await prisma.tenantSettings.findFirst({
+          where: { tenantId: ctx.tenantId },
+          select: { id: true, customFields: true },
+        });
+        const currentFields = existingTenantSettings?.customFields && typeof existingTenantSettings.customFields === 'object'
+          ? existingTenantSettings.customFields as Record<string, unknown>
+          : {};
+        const currentSystem = currentFields.system && typeof currentFields.system === 'object'
+          ? currentFields.system as Record<string, unknown>
+          : {};
+        const tenantSystem = { ...currentSystem };
+        if (typeof updates.ourOrganization === 'string') tenantSystem.ourOrganization = updates.ourOrganization
+        if (typeof updates.currency === 'string') tenantSystem.currency = updates.currency
+        const nextFields = {
+          ...currentFields,
+          ...(typeof updates.ourOrganization === 'string' ? { ourOrganization: updates.ourOrganization } : {}),
+          system: tenantSystem,
+        };
+        if (existingTenantSettings) {
+          await prisma.tenantSettings.update({
+            where: { id: existingTenantSettings.id },
+            data: { customFields: nextFields as any },
+          });
+        } else {
+          await prisma.tenantSettings.create({
+            data: { tenantId: ctx.tenantId, customFields: nextFields as any },
+          });
+        }
+      }
+
+      let tenantBase = { ...DEFAULT_SETTINGS } as SettingsPayload
+      if (ctx.tenantId) {
+        const tenantRow = await prisma.tenantSettings.findFirst({
+          where: { tenantId: ctx.tenantId },
+          select: { customFields: true },
+        })
+        if (tenantRow?.customFields && typeof tenantRow.customFields === 'object') {
+          tenantBase = deepMerge(DEFAULT_SETTINGS, tenantRow.customFields as Record<string, unknown>) as SettingsPayload
+        }
+      }
       const settings = mergeUserPreferences(
-        { ...DEFAULT_SETTINGS },
+        tenantBase,
         {
           theme: nextTheme,
           notifications: nextNotifications,

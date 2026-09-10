@@ -7,14 +7,26 @@ type Job<T = any> = { id?: string; name: string; data: T; attemptsMade: number; 
 import clientsDb from 'clients-db';
 const getClient = typeof clientsDb === 'function' ? clientsDb : (clientsDb as any).default;
 import {
+  applyExtractionValidation,
   assessSignatureEvidence,
   buildPersistedContractTextFields,
   CONTRACT_DI_QUERY_IDENTIFIERS,
   type ContractFieldEvidence,
+  EXTRACTION_PIPELINE_VERSION,
+  flattenGroundedValue,
   normalizeDIQueryAnswers,
   type NormalizedContractFieldEvidence,
+  parseIsoDate,
+  parseMonetaryAmount,
+  resolveAnalysisLanguage,
   resolveLocalStoragePath,
+  resolveTcvWinner,
+  toDILocale,
   validateDIQueryAnswers,
+  ocrLanguageInstructions,
+  isHumanTcvLocked,
+  pickOurOrganization,
+  prefixPages,
 } from '@repo/utils';
 import {
   CircuitBreaker,
@@ -51,7 +63,6 @@ import {
   getRelevantArtifacts,
   isArtifactApplicable,
   getEnhancedPromptHints,
-  getContractTypeInsights,
   getSmartSuggestions,
   getMissingMandatoryFields,
   getTabPriorityOrder,
@@ -77,7 +88,7 @@ import {
 } from './ocr-llm-enhancement';
 
 import { getTraceContextFromJobData } from './observability/trace';
-import { buildProcessingPlan } from './workflow/planner';
+import { buildProcessingPlan, resolvePolicyPackIdForPlan } from './workflow/planner';
 import { ensureProcessingJob, setProcessingPlan } from './workflow/processing-job';
 import { logAIUsage } from './utils/ai-usage-logger';
 
@@ -86,8 +97,10 @@ import {
   DEFAULT_ARTIFACT_TYPES as SHARED_ARTIFACT_TYPES,
   buildArtifactPrompt,
   getSystemPrompt,
+  resolveAnalysisLanguage,
   getFallbackTemplate,
-  truncateTextForType,
+  packTextForType,
+  documentInsightsFromOverview,
   estimateTokenCost as sharedEstimateTokenCost,
   safeParseJSON as sharedSafeParseJSON,
   ArtifactCostTracker,
@@ -114,6 +127,11 @@ import type {
 } from './azure-document-intelligence';
 import { ArtifactQualityValidator, selfCritiqueArtifact } from './utils/artifact-quality-validator';
 import { WorkerCache } from './worker-cache';
+import {
+  computeMetadataPageRange,
+  peekPdfPageCount,
+  resolveDIPollAttempts,
+} from './utils/di-page-range';
 
 // ============================================================================
 // Structured OCR Result — preserves DI structured data alongside flat text
@@ -186,6 +204,42 @@ function makeNonDIResult(text: string, source: StructuredOCRResult['source']): S
     confidence: 0,
     isDISource: false,
   };
+}
+
+async function persistSlimDiSnapshot(
+  tenantId: string,
+  contractId: string,
+  ocrResult: StructuredOCRResult,
+): Promise<string | null> {
+  if (!ocrResult.isDISource) return null;
+  try {
+    const slim = {
+      content: (ocrResult.text || '').slice(0, 2_000_000),
+      pages: ocrResult.pages.slice(0, 200).map((p) => ({
+        pageNumber: p.pageNumber,
+        text: (p.text || '').slice(0, 40_000),
+        width: p.width,
+        height: p.height,
+      })),
+      languages: ocrResult.detectedLanguages,
+      tables: ocrResult.tables.slice(0, 80),
+      keyValuePairs: ocrResult.keyValuePairs.slice(0, 200),
+      confidence: ocrResult.confidence,
+      source: ocrResult.source,
+      pageCount: ocrResult.pages.length,
+      at: new Date().toISOString(),
+      pipelineVersion: EXTRACTION_PIPELINE_VERSION,
+    };
+    const key = `ocr/${tenantId}/${contractId}.di.json.gz`;
+    const abs = resolveLocalStoragePath(key);
+    await fs.mkdir(path.dirname(abs), { recursive: true });
+    const { gzipSync } = await import('zlib');
+    await fs.writeFile(abs, gzipSync(Buffer.from(JSON.stringify(slim))));
+    return key;
+  } catch (error) {
+    logger.warn({ error: (error as Error).message, contractId }, 'Failed to persist slim DI snapshot');
+    return null;
+  }
 }
 
 /** Compute aggregate confidence from DI page word-level data */
@@ -352,7 +406,7 @@ const WORKER_CONFIG = {
   },
   // AI Extraction Enhancement
   ai: {
-    temperature: 0.1,                      // Lower temperature for more accurate extraction
+    temperature: 0,
     maxRetries: 3,                         // Increased retries for reliability
     enableContextWindow: true,             // Use full context for better understanding
     enablePartyNameValidation: true,       // Validate extracted party names
@@ -527,11 +581,13 @@ function extractFinancialIndicators(text: string): FinancialIndicators {
   
   // Currency detection
   const currencyPatterns = [
-    { pattern: /\$[\d,]+(?:\.\d{2})?/g, currency: 'USD' },
+    { pattern: /(?:CHF|SFr\.?|Fr\.)\s*[\d''',]+(?:\.\d{2})?/gi, currency: 'CHF' },
+    { pattern: /[\d''',]+(?:\.\d{2})?\s*(?:CHF|SFr\.?)/gi, currency: 'CHF' },
     { pattern: /€[\d,]+(?:\.\d{2})?/g, currency: 'EUR' },
     { pattern: /£[\d,]+(?:\.\d{2})?/g, currency: 'GBP' },
     { pattern: /USD\s*[\d,]+(?:\.\d{2})?/gi, currency: 'USD' },
     { pattern: /EUR\s*[\d,]+(?:\.\d{2})?/gi, currency: 'EUR' },
+    { pattern: /\$[\d,]+(?:\.\d{2})?/g, currency: 'USD' },
   ];
   
   const currencies = new Set<string>();
@@ -1121,11 +1177,98 @@ function generateOCRCacheKey(filePath: string, fileSize: number, contentHash?: s
   return `ocr:${fileName}:${fileSize}`;
 }
 
+async function resolveDocumentPageCount(
+  fileBuffer: Buffer,
+  filePath: string,
+): Promise<number | undefined> {
+  const peeked = peekPdfPageCount(fileBuffer);
+  if (peeked) return peeked;
+  if (!filePath.toLowerCase().endsWith('.pdf')) return undefined;
+  try {
+    const pdfParse = pdfParseModule || (await import('pdf-parse')).default;
+    const data = await pdfParse(fileBuffer);
+    if (typeof data?.numpages === 'number' && data.numpages > 0) return data.numpages;
+  } catch {
+    // Fall through — sequential metadata pass will use layout page count.
+  }
+  return undefined;
+}
+
+function applyDIQueryAnswers(
+  structuredResult: StructuredOCRResult,
+  answers: Record<string, string>,
+): void {
+  const validAnswers = Object.entries(answers).filter(([, v]) => typeof v === 'string' && v.trim().length > 0);
+  if (validAnswers.length === 0) return;
+  const rawQueryAnswers = Object.fromEntries(validAnswers);
+  const validation = validateDIQueryAnswers(rawQueryAnswers, structuredResult.text);
+  const fieldValidations = Object.fromEntries(
+    validation.flags.map((flag) => [flag.field, { issue: flag.issue, confidencePenalty: flag.confidencePenalty }])
+  );
+  const normalized = normalizeDIQueryAnswers(validation.answers, {
+    confidence: 0.82,
+    source: 'azure-di-query',
+    fieldValidations,
+  });
+  for (const [key, value] of Object.entries(validation.answers)) {
+    structuredResult.keyValuePairs.push({ key, value, confidence: 0.8 } as any);
+  }
+  structuredResult.queryAnswers = validation.answers;
+  structuredResult.fieldEvidence = normalized.evidence;
+  structuredResult.fieldMetadata = normalized.metadata;
+  const answerBlock = Object.entries(validation.answers).map(([k, v]) => `${k}: ${v}`).join('\n');
+  structuredResult.text += `\n\n--- DI QUERY FIELD ANSWERS ---\n${answerBlock}`;
+  logger.info({ answerCount: Object.keys(validation.answers).length, evidenceCount: normalized.evidence.length, flags: validation.flags.length }, 'DI analyzeWithQueries enrichment added');
+}
+
+async function runMetadataDIPasses(
+  fileBuffer: Buffer,
+  opts: {
+    pages?: string;
+    estimatedPageCount?: number;
+    runContract: boolean;
+    runQueries: boolean;
+    locale?: string;
+  },
+): Promise<{ contract?: ContractExtractionResult; answers?: Record<string, string> }> {
+  try {
+    const { analyzeContract, analyzeWithQueries } = await import('./azure-document-intelligence');
+    const diOpts = { pages: opts.pages, estimatedPageCount: opts.estimatedPageCount, locale: opts.locale };
+    const contractPromise = opts.runContract
+      ? analyzeContract(fileBuffer, diOpts)
+          .then((r) => r.contract)
+          .catch((err: Error) => {
+            logger.warn({ error: err.message, pages: opts.pages }, 'DI prebuilt-contract metadata pass failed, continuing without');
+            return undefined;
+          })
+      : Promise.resolve(undefined);
+    const queryPromise = opts.runQueries
+      ? analyzeWithQueries(fileBuffer, CONTRACT_DI_QUERY_IDENTIFIERS, diOpts)
+          .then((r) => r.answers)
+          .catch((err: Error) => {
+            logger.warn({ error: err.message, pages: opts.pages }, 'DI analyzeWithQueries enrichment failed, continuing without');
+            return undefined;
+          })
+      : Promise.resolve(undefined);
+    const [contract, answers] = await Promise.all([contractPromise, queryPromise]);
+    return { contract, answers };
+  } catch (err) {
+    logger.warn({ error: (err as Error).message, pages: opts.pages }, 'DI metadata passes failed, continuing without');
+    return {};
+  }
+}
+
 /**
  * Perform OCR extraction on a file with circuit breaker protection and caching.
  * Returns StructuredOCRResult preserving DI structured data when available.
  */
-async function performOCR(filePath: string, ocrMode: string, fileSize?: number, onProgress?: (pct: number) => void, contentHash?: string): Promise<StructuredOCRResult> {
+type PerformOcrOptions = {
+  locale?: string;
+  highResolution?: boolean;
+  scanType?: 'native' | 'scanned' | 'mixed';
+};
+
+async function performOCR(filePath: string, ocrMode: string, fileSize?: number, onProgress?: (pct: number) => void, contentHash?: string, ocrOpts?: PerformOcrOptions): Promise<StructuredOCRResult> {
   logger.info({ filePath, ocrMode }, 'Performing OCR extraction');
   
   // Check distributed cache first
@@ -1146,7 +1289,18 @@ async function performOCR(filePath: string, ocrMode: string, fileSize?: number, 
           tables: di.tables as DITable[],
           keyValuePairs: di.keyValuePairs as DIKeyValuePair[],
           paragraphs: di.paragraphs as DIParagraph[],
-          pages: [],
+          pages: Array.isArray(di.pages)
+            ? di.pages.map((p, i) => ({
+                pageNumber: p.pageNumber || i + 1,
+                width: 0,
+                height: 0,
+                unit: 'inch',
+                text: p.text || '',
+                words: [],
+                lines: [],
+                selectionMarks: [],
+              }))
+            : [],
           confidence: di.confidence,
           styles: (di.styles as DIStyle[]) || [],
           handwrittenText: (di.handwrittenText as string[]) || [],
@@ -1184,13 +1338,49 @@ async function performOCR(filePath: string, ocrMode: string, fileSize?: number, 
           logger.info({ estimatedPages, pageRange, DI_MAX_PAGES }, 'Large document detected — limiting DI to page range for cost savings');
         }
 
+        const fileBuffer = await fs.readFile(filePath);
+        const documentPageCount = await resolveDocumentPageCount(fileBuffer, filePath);
+        const pagesForPoll = pageRange
+          ? Math.min(documentPageCount || estimatedPages || DI_MAX_PAGES, DI_MAX_PAGES)
+          : (documentPageCount || estimatedPages || undefined);
+        const layoutPollAttempts = resolveDIPollAttempts(pagesForPoll);
+        const metadataPages = computeMetadataPageRange(documentPageCount);
+        const queryEnabled = process.env.AZURE_DI_QUERY_ENRICHMENT !== 'false';
+        const contractMetadataEnabled = ocrMode === 'azure-di-layout';
+        const diCallOpts = {
+          estimatedPageCount: pagesForPoll,
+          maxPollAttempts: layoutPollAttempts,
+          locale: ocrOpts?.locale,
+        };
+        const layoutOpts = {
+          ...diCallOpts,
+          extractKeyValuePairs: true,
+          outputFormat: 'markdown' as const,
+          highResolution: ocrOpts?.highResolution === true,
+        };
+
+        // Metadata DI (query + prebuilt-contract) is a head+tail window, not a
+        // second full-document analyze. Start it in parallel with layout when
+        // we already know the page count so last-N pages are addressable.
+        const metadataPromise = documentPageCount && (queryEnabled || contractMetadataEnabled)
+          ? runMetadataDIPasses(fileBuffer, {
+              pages: metadataPages,
+              estimatedPageCount: metadataPages ? undefined : documentPageCount,
+              runContract: contractMetadataEnabled,
+              runQueries: queryEnabled,
+              locale: ocrOpts?.locale,
+            })
+          : null;
+        if (metadataPromise) {
+          logger.info({ metadataPages: metadataPages ?? 'full', documentPageCount, layoutPollAttempts }, 'DI metadata window started in parallel with layout');
+        }
+
         const structuredResult = await getAzureCircuitBreaker().execute(() =>
           retry(async (): Promise<StructuredOCRResult> => {
             const { analyzeLayout, analyzeContract, analyzeInvoice } = await import('./azure-document-intelligence');
-            const fileBuffer = await fs.readFile(filePath);
 
             if (ocrMode === 'azure-di-contract') {
-              const { analysis, contract } = await analyzeContract(fileBuffer);
+              const { analysis, contract } = await analyzeContract(fileBuffer, diCallOpts);
               // Build rich text with structured appendices
               const parts = [analysis.content];
               if (contract.parties.length > 0) {
@@ -1221,7 +1411,7 @@ async function performOCR(filePath: string, ocrMode: string, fileSize?: number, 
                 isDISource: true,
               };
             } else if (ocrMode === 'azure-di-invoice') {
-              const { analysis, invoice } = await analyzeInvoice(fileBuffer);
+              const { analysis, invoice } = await analyzeInvoice(fileBuffer, diCallOpts);
               const parts = [analysis.content, '\n--- INVOICE DATA ---'];
               if (invoice.vendorName) parts.push(`Vendor: ${invoice.vendorName}`);
               if (invoice.invoiceId) parts.push(`Invoice #: ${invoice.invoiceId}`);
@@ -1255,8 +1445,11 @@ async function performOCR(filePath: string, ocrMode: string, fileSize?: number, 
                 isDISource: true,
               };
             } else {
-              // azure-di-layout
-              const result = await analyzeLayout(fileBuffer, { extractKeyValuePairs: true, pages: pageRange });
+              // azure-di-layout — full document (or AZURE_DI_MAX_PAGES cap)
+              const result = await analyzeLayout(fileBuffer, {
+                ...layoutOpts,
+                pages: pageRange,
+              });
               // Tables & KV pairs are passed via structured diTables/diKeyValuePairs in prompts —
               // skip flat-text duplication to save tokens. Only append for RAG indexing summary.
               const parts = [result.content];
@@ -1291,43 +1484,47 @@ async function performOCR(filePath: string, ocrMode: string, fileSize?: number, 
           })
         );
 
-        // ── analyzeWithQueries enrichment: extract key contract answers via DI query fields ──
-        if (
-          structuredResult.isDISource &&
-          process.env.AZURE_DI_QUERY_ENRICHMENT !== 'false' &&
-          structuredResult.confidence > 0.4
-        ) {
+        // ── Metadata DI: query fields + prebuilt-contract on first 3 + last 2 pages ──
+        if (structuredResult.isDISource && structuredResult.confidence > 0.4 && (queryEnabled || contractMetadataEnabled)) {
           try {
-            const { analyzeWithQueries } = await import('./azure-document-intelligence');
-            const fileBuffer = await fs.readFile(filePath);
-            const { answers } = await analyzeWithQueries(fileBuffer, CONTRACT_DI_QUERY_IDENTIFIERS);
-            const validAnswers = Object.entries(answers).filter(([, v]) => v && v.trim().length > 0);
-            if (validAnswers.length > 0) {
-              const rawQueryAnswers = Object.fromEntries(validAnswers);
-              const validation = validateDIQueryAnswers(rawQueryAnswers, structuredResult.text);
-              const fieldValidations = Object.fromEntries(
-                validation.flags.map((flag) => [flag.field, { issue: flag.issue, confidencePenalty: flag.confidencePenalty }])
+            const actualPages = structuredResult.pages.length || documentPageCount;
+            const actualWindow = computeMetadataPageRange(actualPages);
+            const peekedWindow = computeMetadataPageRange(documentPageCount);
+            const windowMismatch = Boolean(metadataPromise && peekedWindow !== actualWindow);
+            if (windowMismatch) {
+              logger.warn(
+                { peekedPages: documentPageCount, actualPages, peekedWindow: peekedWindow ?? 'full', actualWindow: actualWindow ?? 'full' },
+                'DI metadata window from PDF peek disagreed with layout page count — re-running on the layout window',
               );
-              const normalized = normalizeDIQueryAnswers(validation.answers, {
-                confidence: 0.82,
-                source: 'azure-di-query',
-                fieldValidations,
-              });
-              // Merge answers into keyValuePairs for downstream artifact generation
-              for (const [key, value] of Object.entries(validation.answers)) {
-                structuredResult.keyValuePairs.push({ key, value, confidence: 0.8 } as any);
-              }
-              structuredResult.queryAnswers = validation.answers;
-              structuredResult.fieldEvidence = normalized.evidence;
-              structuredResult.fieldMetadata = normalized.metadata;
-              // Append answers to the text for RAG indexing
-              const answerBlock = Object.entries(validation.answers).map(([k, v]) => `${k}: ${v}`).join('\n');
-              structuredResult.text += `\n\n--- DI QUERY FIELD ANSWERS ---\n${answerBlock}`;
-              logger.info({ answerCount: Object.keys(validation.answers).length, evidenceCount: normalized.evidence.length, flags: validation.flags.length }, 'DI analyzeWithQueries enrichment added');
+              metadataPromise?.catch(() => undefined);
+            }
+            const meta = !windowMismatch && metadataPromise
+              ? await metadataPromise
+              : await runMetadataDIPasses(fileBuffer, {
+                  pages: actualWindow,
+                  estimatedPageCount: actualWindow ? 5 : actualPages,
+                  locale: ocrOpts?.locale || toDILocale(resolveAnalysisLanguage({
+                    contractText: structuredResult.text,
+                    diDetectedLanguages: structuredResult.detectedLanguages,
+                  })),
+                  runContract: contractMetadataEnabled && !structuredResult.contractFields,
+                  runQueries: queryEnabled,
+                });
+            if (meta.contract && !structuredResult.contractFields) {
+              structuredResult.contractFields = meta.contract;
+              logger.info(
+                { parties: meta.contract.parties.length, confidence: meta.contract.confidence, pages: metadataPages ?? computeMetadataPageRange(actualPages) ?? 'full' },
+                'DI prebuilt-contract metadata pass added',
+              );
+            }
+            if (meta.answers) {
+              applyDIQueryAnswers(structuredResult, meta.answers);
             }
           } catch (queryErr) {
             logger.warn({ error: (queryErr as Error).message }, 'DI analyzeWithQueries enrichment failed, continuing without');
           }
+        } else if (metadataPromise) {
+          metadataPromise.catch(() => undefined);
         }
 
         // Cache the text and structured DI data for fast retrieval
@@ -1348,6 +1545,7 @@ async function performOCR(filePath: string, ocrMode: string, fileSize?: number, 
             barcodes: structuredResult.barcodes.map(b => ({ kind: b.kind, value: b.value, confidence: b.confidence })),
             formulas: structuredResult.formulas.map(f => ({ kind: f.kind, value: f.value, confidence: f.confidence })),
             pageInfo: structuredResult.pageInfo,
+            pages: structuredResult.pages.map((p) => ({ pageNumber: p.pageNumber, text: p.text || '' })),
             queryAnswers: structuredResult.queryAnswers,
             fieldEvidence: structuredResult.fieldEvidence,
             fieldMetadata: structuredResult.fieldMetadata,
@@ -1438,7 +1636,7 @@ async function performOCR(filePath: string, ocrMode: string, fileSize?: number, 
         );
       } else if (mode === 'azure-ch') {
         result = await getAzureCircuitBreaker().execute(() => 
-          retry(() => performAzureSwitzerlandOCR(filePath), {
+          retry(() => performAzureSwitzerlandOCR(filePath, ocrOpts), {
             maxAttempts: 3,
             initialDelay: 1000,
             maxDelay: 10000,
@@ -1507,7 +1705,7 @@ async function extractTextFallback(filePath: string): Promise<string> {
  * are available (richer output: text + tables + key-value pairs + structure).
  * Falls back to legacy Computer Vision Read API v3.2 otherwise.
  */
-async function performAzureSwitzerlandOCR(filePath: string): Promise<string> {
+async function performAzureSwitzerlandOCR(filePath: string, ocrOpts?: PerformOcrOptions): Promise<string> {
   try {
     const fileBuffer = await fs.readFile(filePath);
     const ext = filePath.toLowerCase().split('.').pop() || '';
@@ -1526,7 +1724,12 @@ async function performAzureSwitzerlandOCR(filePath: string): Promise<string> {
     if (diEndpoint && diKey && getAzureCircuitBreaker().getState() !== getCircuitState().OPEN) {
       try {
         const { analyzeLayout } = await import('./azure-document-intelligence');
-        const result = await analyzeLayout(fileBuffer, { extractKeyValuePairs: true });
+        const result = await analyzeLayout(fileBuffer, {
+          extractKeyValuePairs: true,
+          outputFormat: 'markdown',
+          locale: ocrOpts?.locale,
+          highResolution: ocrOpts?.highResolution === true,
+        });
 
         // Build rich text output with tables rendered as markdown
         const parts: string[] = [];
@@ -1725,7 +1928,7 @@ async function performMistralOCR(filePath: string): Promise<string> {
           },
         ],
         maxTokens: 4000,
-        temperature: 0.3, // Lower temperature for faster, more deterministic responses
+        temperature: 0,
       });
       
       const rawContent = chatResponse.choices?.[0]?.message?.content;
@@ -1878,6 +2081,7 @@ async function performGPT4OCR(filePath: string): Promise<string> {
                 {
                   type: 'text',
                   text: `Extract ALL text from this scanned PDF document with high accuracy.
+${ocrLanguageInstructions()}
 Preserve the exact structure, formatting, and layout.
 Include:
 - All headings and subheadings
@@ -1900,7 +2104,7 @@ Return the extracted text in clean markdown format.`,
             },
           ],
           max_tokens: 8192,
-          temperature: 0.1,
+          temperature: 0,
         });
         
         const visionText = response.choices[0]?.message?.content || '';
@@ -1928,7 +2132,9 @@ Return the extracted text in clean markdown format.`,
         messages: [
           {
             role: 'system',
-            content: 'You are a document processing expert. Clean and structure the following extracted PDF text. Fix OCR errors, format as clean markdown, and preserve the document structure.'
+            content: `You are a document processing expert. Clean and structure the following extracted PDF text. Fix OCR errors, format as clean markdown, and preserve the document structure.
+${ocrLanguageInstructions({ contractText: textToProcess })}
+Do not translate. Do not "correct" German/French/Italian legal terms into English. Keep umlauts and Fr./SFr.`
           },
           {
             role: 'user',
@@ -1936,7 +2142,7 @@ Return the extracted text in clean markdown format.`,
           }
         ],
         max_tokens: 4096,
-        temperature: 0.2
+        temperature: 0
       });
       
       const enhancedText = response.choices[0]?.message?.content || rawText;
@@ -1988,6 +2194,7 @@ Return the extracted text in clean markdown format.`,
               {
                 type: 'text',
                 text: `Extract ALL text from this document image with high accuracy.
+${ocrLanguageInstructions()}
 Preserve the exact structure, formatting, and layout.
 Include:
 - All headings and subheadings
@@ -2010,7 +2217,7 @@ Return the extracted text in clean markdown format.`,
           },
         ],
         max_tokens: 8192, // Increased for longer documents
-        temperature: 0.1, // Lower temperature for more accurate extraction
+        temperature: 0,
       });
       
       const extractedText = response.choices[0]?.message?.content || '';
@@ -2159,6 +2366,8 @@ export async function processOCRArtifactJob(
     
     // Get ocrMode from job data (user selection) or use preclassification
     let ocrMode: string = job.data.ocrMode || 'auto';
+    let textSample = '';
+    let hintedScanType: 'native' | 'scanned' | 'mixed' = 'native';
 
     // Auto-select: run quick preclassification to pick the optimal DI model
     if (ocrMode === 'auto') {
@@ -2180,7 +2389,6 @@ export async function processOCRArtifactJob(
           // If feedback didn't pick a model, use preclassification
           if (ocrMode === 'auto') {
             // Read a small text sample for preclassification (use pdf-parse for PDFs)
-            let textSample = '';
             const ext = localFilePath.toLowerCase().split('.').pop() || '';
             if (['pdf'].includes(ext)) {
               try {
@@ -2223,9 +2431,25 @@ export async function processOCRArtifactJob(
       }
     }
 
+    if (!textSample && localFilePath.toLowerCase().endsWith('.pdf')) {
+      try {
+        const buf = await fs.readFile(localFilePath);
+        const pdfParse = pdfParseModule || (await import('pdf-parse')).default;
+        const parsed = await pdfParse(buf, { max: 3 });
+        textSample = (parsed.text || '').slice(0, 3000);
+      } catch { /* ignore */ }
+    }
+    if (textSample.length < 50) hintedScanType = 'scanned';
+    const hintedLang = resolveAnalysisLanguage({ contractText: textSample });
+    const hintedLocale = toDILocale(hintedLang);
+
     let ocrResult = await performOCR(localFilePath, ocrMode, localFileSize, async (pct) => {
       try { await job.updateProgress(pct); } catch { /* best-effort */ }
-    }, fileContentHash);
+    }, fileContentHash, {
+      locale: hintedLocale,
+      highResolution: hintedScanType === 'scanned',
+      scanType: hintedScanType,
+    });
     let rawExtractedText = ocrResult.text;
     
     // ============ OCR ENHANCEMENT PIPELINE ============
@@ -2472,10 +2696,20 @@ export async function processOCRArtifactJob(
 
         // Persist DI confidence and structured metadata when available
         if (ocrResult.isDISource) {
+          const existingRow = await prisma.contract.findUnique({
+            where: { id: contractId },
+            select: { aiMetadata: true },
+          });
+          const existingAi =
+            existingRow?.aiMetadata && typeof existingRow.aiMetadata === 'object' && !Array.isArray(existingRow.aiMetadata)
+              ? (existingRow.aiMetadata as Record<string, unknown>)
+              : {};
           ocrUpdateData.aiMetadata = {
+            ...existingAi,
             ocrStructuredMeta: {
               source: ocrResult.source,
               confidence: ocrResult.confidence,
+              needsReview: ocrResult.confidence < 0.7 || hintedScanType === 'scanned',
               tableCount: ocrResult.tables.length,
               kvPairCount: ocrResult.keyValuePairs.length,
               paragraphCount: ocrResult.paragraphs.length,
@@ -2500,6 +2734,24 @@ export async function processOCRArtifactJob(
             diHandwritingDetected: ocrResult.handwrittenText.length > 0,
             diHandwrittenSpans: ocrResult.handwrittenText.slice(0, 50),
             diDetectedLanguages: ocrResult.detectedLanguages,
+            diPages: ocrResult.pages.slice(0, 200).map((p) => ({
+              pageNumber: p.pageNumber,
+              text: (p.text || '').slice(0, 20_000),
+            })),
+            documentLanguage: resolveAnalysisLanguage({
+              contractText: extractedText,
+              diDetectedLanguages: ocrResult.detectedLanguages,
+            }),
+            diLocales: ocrResult.detectedLanguages,
+            diLocale: toDILocale(resolveAnalysisLanguage({
+              contractText: extractedText,
+              diDetectedLanguages: ocrResult.detectedLanguages,
+            })),
+            scanType: ocrResult.confidence < 0.75
+              ? (hintedScanType === 'scanned' ? 'scanned' : 'mixed')
+              : hintedScanType,
+            pipelineVersion: EXTRACTION_PIPELINE_VERSION,
+            rawOcrKey: await persistSlimDiSnapshot(tenantId, contractId, ocrResult),
           };
         }
 
@@ -2825,7 +3077,12 @@ export async function processOCRArtifactJob(
             // Quality is low — try self-critique if this is our first attempt
             if (attempt === 1 && maxRegenerations > 0) {
               try {
-                const critique = await selfCritiqueArtifact(artifactType, artifactResult, extractedText);
+                const critique = await selfCritiqueArtifact(artifactType, artifactResult, extractedText, {
+                  analysisLanguage: resolveAnalysisLanguage({
+                    contractText: extractedText,
+                    diDetectedLanguages: ocrResult.detectedLanguages,
+                  }),
+                });
                 if (critique.shouldRegenerate) {
                   jobLogger.warn({
                     artifactType,
@@ -2997,29 +3254,18 @@ export async function processOCRArtifactJob(
     }));
 
     const generatedArtifacts = generatedArtifactResults.filter(Boolean);
-    
-    // ============ ENHANCEMENT: Add industry insights and smart suggestions ============
-    // Enrich OVERVIEW artifact with contract type insights
+
+    // Type-profile checklists stay on artifactSummary, never on OVERVIEW as
+    // if they were extracted from this PDF (typical duration, industry boilerplate).
     const overviewIdx = generatedArtifacts.findIndex((a: any) => a.type === 'OVERVIEW');
+    let typeChecklist: { category: string; suggestion: string; priority: string }[] = [];
     if (overviewIdx !== -1) {
       const overviewArtifact = generatedArtifacts[overviewIdx] as any;
       if (overviewArtifact?.data && !overviewArtifact.data.error) {
-        const insights = getContractTypeInsights(detectedContractType);
-        overviewArtifact.data.industryInsights = {
-          typicalDuration: insights.typicalDuration,
-          commonIssues: insights.commonIssues,
-          negotiationFocus: insights.negotiationFocus,
-          industryBenchmarks: insights.industryBenchmarks,
-        };
-        
-        // Generate smart suggestions based on extracted data
-        const suggestions = getSmartSuggestions(detectedContractType, overviewArtifact.data);
-        overviewArtifact.data.smartSuggestions = suggestions;
-        
-        jobLogger.info({ 
-          insightsAdded: true,
-          suggestionsCount: suggestions.length,
-        }, 'Added industry insights and smart suggestions to OVERVIEW');
+        typeChecklist = getSmartSuggestions(detectedContractType, overviewArtifact.data);
+        if (overviewArtifact.data.industryInsights) {
+          delete overviewArtifact.data.industryInsights;
+        }
       }
     }
     
@@ -3043,6 +3289,24 @@ export async function processOCRArtifactJob(
     });
     
     const artifactDataArray = [...generatedArtifacts, ...notApplicableArtifactData];
+    const analysisLocale = resolveAnalysisLanguage({
+      contractText: extractedText,
+      diDetectedLanguages: ocrResult.detectedLanguages,
+    });
+    const packedForGrounding = ocrResult.pages?.length
+      ? prefixPages(ocrResult.pages.map((p) => ({ pageNumber: p.pageNumber, text: p.text || '' })))
+      : extractedText;
+    const artifactsByType: Record<string, Record<string, any>> = {};
+    for (const artifact of artifactDataArray) {
+      if (artifact?.type && artifact?.data && typeof artifact.data === 'object') {
+        artifactsByType[artifact.type] = artifact.data;
+      }
+    }
+    const extractionValidation = applyExtractionValidation(artifactsByType, extractedText, {
+      locale: analysisLocale,
+      packedText: packedForGrounding || extractedText,
+      ocrConfidence: ocrResult.confidence,
+    });
     
     // Verify contract still exists before attempting artifact upsert (handles deleted-while-processing edge case)
     const contractStillExists = await prisma.contract.findUnique({ where: { id: contractId }, select: { id: true } });
@@ -3082,21 +3346,23 @@ export async function processOCRArtifactJob(
         const overviewData = overviewArtifact.data as any;
         const contractUpdate: Record<string, any> = {};
         
-        // Helper to unwrap values (AI may return { value: X, source: '...' } or just X)
-        const unwrap = (val: any) => val?.value !== undefined ? val.value : val;
+        // Helper to unwrap values (AI may return { value: X, source: '...' }, GroundedField, or just X)
+        const unwrap = (val: any) => flattenGroundedValue(val?.value !== undefined && val?.source !== undefined ? val : flattenGroundedValue(val));
         const unwrapNumber = (val: any): number | null => {
           const unwrapped = unwrap(val);
-          if (typeof unwrapped === 'number') return unwrapped;
+          if (typeof unwrapped === 'number') return unwrapped > 0 ? unwrapped : null;
           if (typeof unwrapped === 'string') {
-            const cleaned = unwrapped.replace(/[$€£¥,]/g, '').trim();
-            const parsed = parseFloat(cleaned);
-            return isNaN(parsed) ? null : parsed;
+            const parsed = parseMonetaryAmount(unwrapped, { locale: analysisLocale });
+            return parsed != null && parsed > 0 ? parsed : null;
           }
           return null;
         };
         const unwrapDate = (val: any): Date | null => {
           const unwrapped = unwrap(val);
           if (!unwrapped) return null;
+          if (unwrapped instanceof Date && !isNaN(unwrapped.getTime())) return unwrapped;
+          const iso = parseIsoDate(String(unwrapped), { locale: analysisLocale });
+          if (iso) return new Date(`${iso}T00:00:00Z`);
           try {
             const d = new Date(unwrapped);
             return isNaN(d.getTime()) ? null : d;
@@ -3118,7 +3384,12 @@ export async function processOCRArtifactJob(
             aiSuggestedType: unwrap(overviewData.contractType),
             needsHumanReview: contractTypeDetection.confidence < 0.6,
             detectedAt: new Date().toISOString(),
-          }
+          },
+          groundedFields: extractionValidation.groundedFields,
+          ungroundedPaths: extractionValidation.ungroundedPaths.slice(0, 40),
+          requiresHumanReview: extractionValidation.requiresHumanReview || existingAiMeta.ocrStructuredMeta?.needsReview === true,
+          documentLanguage: analysisLocale,
+          pipelineVersion: EXTRACTION_PIPELINE_VERSION,
         };
         
         // Extract parties - handle various structures
@@ -3152,12 +3423,20 @@ export async function processOCRArtifactJob(
         }
         
         // Extract total value - handle wrapped values and strings
-        const totalValue = unwrapNumber(overviewData.totalValue);
-        if (totalValue && totalValue > 0) {
-          contractUpdate.totalValue = totalValue;
+        const overviewTcv = resolveTcvWinner({
+          contractType: detectedContractType,
+          diQueryAnswers: ocrResult.queryAnswers || {},
+          contractText: extractedText,
+          overviewTotal: unwrapNumber(overviewData.totalValue),
+          overviewCurrency: typeof unwrap(overviewData.currency) === 'string' ? unwrap(overviewData.currency) : null,
+          invoiceTotal: ocrResult.invoiceFields?.invoiceTotal ?? null,
+          invoiceCurrency: ocrResult.invoiceFields?.currency ?? null,
+        });
+        if (overviewTcv.value != null && !isHumanTcvLocked(contract.aiMetadata)) {
+          contractUpdate.totalValue = overviewTcv.value;
         }
-        const currency = unwrap(overviewData.currency);
-        if (currency && typeof currency === 'string') {
+        const currency = overviewTcv.currency || unwrap(overviewData.currency);
+        if (currency && typeof currency === 'string' && !isHumanTcvLocked(contract.aiMetadata)) {
           contractUpdate.currency = currency;
         }
         
@@ -3173,12 +3452,12 @@ export async function processOCRArtifactJob(
             if (!kdDate) continue;
             
             if (!effectiveDate) {
-              if (eventName.includes('effective') || eventName.includes('commencement') || eventName.includes('start date')) {
+              if (eventName.includes('effective') || eventName.includes('commencement') || eventName.includes('start date') || eventName.includes('inkraft') || eventName.includes('gültig ab')) {
                 effectiveDate = kdDate;
               }
             }
             if (!expirationDate) {
-              if (eventName.includes('expir') || eventName.includes('term end') || eventName.includes('end date') || eventName.includes('termination date')) {
+              if (eventName.includes('expir') || eventName.includes('term end') || eventName.includes('end date') || eventName.includes('termination date') || eventName.includes('auslauf') || eventName.includes('gültig bis')) {
                 expirationDate = kdDate;
               }
             }
@@ -3292,6 +3571,22 @@ export async function processOCRArtifactJob(
             keyDatesCount: Array.isArray(overviewData.keyDates) ? overviewData.keyDates.length : 0,
           }, 'Applied OVERVIEW data to contract record (transactional)');
         }
+      } else {
+        const existingAiMeta: any = contract.aiMetadata || {};
+        await tx.contract.updateMany({
+          where: { id: contractId, tenantId },
+          data: {
+            aiMetadata: {
+              ...existingAiMeta,
+              groundedFields: extractionValidation.groundedFields,
+              ungroundedPaths: extractionValidation.ungroundedPaths.slice(0, 40),
+              requiresHumanReview: extractionValidation.requiresHumanReview,
+              documentLanguage: analysisLocale,
+              pipelineVersion: EXTRACTION_PIPELINE_VERSION,
+            },
+            updatedAt: new Date(),
+          },
+        });
       }
       
       return { count: artifactDataArray.length };
@@ -3327,10 +3622,9 @@ export async function processOCRArtifactJob(
         const event = (unwrapFn(kd.event) || '').toLowerCase();
         const dateVal = unwrapFn(kd.date);
         if (!dateVal || typeof dateVal !== 'string') continue;
-        // Validate it looks like a date string
-        const parsed = new Date(dateVal);
-        if (isNaN(parsed.getTime())) continue;
-        if (keywords.some(kw => event.includes(kw))) return dateVal;
+        const parsed = parseIsoDate(dateVal) || (!isNaN(new Date(dateVal).getTime()) ? dateVal : null);
+        if (!parsed) continue;
+        if (keywords.some(kw => event.includes(kw))) return parsed;
       }
       return null;
     };
@@ -3428,10 +3722,27 @@ export async function processOCRArtifactJob(
     })();
     const resolvedSignatureRequiredFlag = resolvedSignatureStatus === 'unsigned' || resolvedSignatureStatus === 'partially_signed';
 
+    const tcvWinner = resolveTcvWinner({
+      contractType: detectedContractType,
+      diQueryAnswers: ocrResult.queryAnswers || {},
+      contractText: extractedText,
+      financialTotal: typeof unwrapVal(financialData.totalValue) === 'number' ? unwrapVal(financialData.totalValue) : null,
+      financialCurrency: typeof unwrapVal(financialData.currency) === 'string' ? unwrapVal(financialData.currency) : null,
+      overviewTotal: typeof unwrapVal(overviewArtifactData.totalValue) === 'number' ? unwrapVal(overviewArtifactData.totalValue) : null,
+      overviewCurrency: typeof unwrapVal(overviewArtifactData.currency) === 'string' ? unwrapVal(overviewArtifactData.currency) : null,
+      invoiceTotal: ocrResult.invoiceFields?.invoiceTotal ?? null,
+      invoiceCurrency: ocrResult.invoiceFields?.currency ?? null,
+    });
+
+    const existingAiMetadata = (contract.aiMetadata && typeof contract.aiMetadata === 'object' && !Array.isArray(contract.aiMetadata))
+      ? contract.aiMetadata as Record<string, unknown>
+      : {};
+    const humanTcvLocked = isHumanTcvLocked(existingAiMetadata);
+
     // Build enterprise metadata schema
     const enterpriseMetadata = {
       // Document identification
-      document_number: unwrapVal(overviewArtifactData.documentNumber) || contractId,
+      document_number: unwrapVal(overviewArtifactData.documentNumber) || '',
       document_title: unwrapVal(overviewArtifactData.contractTitle) || 
         (unwrapVal(overviewArtifactData.summary) || '').split('.')[0]?.substring(0, 100) || '',
       contract_short_description: unwrapVal(overviewArtifactData.summary) || '',
@@ -3441,23 +3752,19 @@ export async function processOCRArtifactJob(
       external_parties: externalParties,
       
       // Financial - handle wrapped values
-      tcv_amount: (() => {
-        const val = unwrapVal(overviewArtifactData.totalValue) || unwrapVal(financialData.totalValue);
-        if (typeof val === 'number') return val;
-        if (typeof val === 'string') {
-          const cleaned = val.replace(/[$€£¥,]/g, '').trim();
-          const parsed = parseFloat(cleaned);
-          return isNaN(parsed) ? null : parsed;
-        }
-        return null;
+      tcv_amount: humanTcvLocked ? (existingAiMetadata.tcv_amount ?? tcvWinner.value) : tcvWinner.value,
+      tcvSource: humanTcvLocked ? 'human' : tcvWinner.source,
+      tcv_text: unwrapVal(financialData.totalValueText) || (() => {
+        if (tcvWinner.value == null) return '';
+        const currency = tcvWinner.currency || '';
+        return `${currency ? `${currency} ` : ''}${tcvWinner.value.toLocaleString('de-CH')}`.trim();
       })(),
-      tcv_text: unwrapVal(financialData.totalValueText) || 
-        (unwrapVal(overviewArtifactData.totalValue) ? 
-          `$${Number(unwrapVal(overviewArtifactData.totalValue) || 0).toLocaleString()}` : ''),
       payment_type: paymentType,
       billing_frequency_type: billingFrequency,
       periodicity: billingFrequency || '',
-      currency: unwrapVal(overviewArtifactData.currency) || unwrapVal(financialData.currency) || null,
+      currency: humanTcvLocked
+        ? (existingAiMetadata.currency ?? tcvWinner.currency ?? null)
+        : (tcvWinner.currency || unwrapVal(overviewArtifactData.currency) || unwrapVal(financialData.currency) || ocrResult.fieldMetadata?.currency || null),
       
       // Dates - with keyDates fallback (use latest signing date, not first)
       execution_date: unwrapVal(overviewArtifactData.executionDate) || 
@@ -3594,8 +3901,10 @@ export async function processOCRArtifactJob(
       }
 
       // Parse total value as Decimal-compatible number
-      const totalValueParsed = (enterpriseMetadata.tcv_amount != null && enterpriseMetadata.tcv_amount > 0) 
-        ? enterpriseMetadata.tcv_amount : null;
+      const totalValueParsed = humanTcvLocked
+        ? null
+        : ((enterpriseMetadata.tcv_amount != null && enterpriseMetadata.tcv_amount > 0)
+          ? enterpriseMetadata.tcv_amount : null);
 
       // Extract client/supplier names from parties
       const clientParty = externalParties.find((p: any) => 
@@ -3870,11 +4179,13 @@ export async function processOCRArtifactJob(
                   break;
                 }
                 case 'totalValue': {
+                  if (isHumanTcvLocked(contract.aiMetadata)) break;
                   const n = gapUnwrapNumber(filled.value);
                   if (n && n > 0) gapFilledContractUpdate.totalValue = n;
                   break;
                 }
                 case 'currency': {
+                  if (isHumanTcvLocked(contract.aiMetadata)) break;
                   const v = gapUnwrap(filled.value);
                   if (v && typeof v === 'string') gapFilledContractUpdate.currency = v;
                   break;
@@ -3984,11 +4295,19 @@ export async function processOCRArtifactJob(
         ? Math.min(100, Math.max(0, riskData.riskScore))
         : (riskData.overallRisk === 'high' ? 75 : riskData.overallRisk === 'medium' ? 50 : 25);
 
+      const contractTags = Array.isArray(contract.tags)
+        ? (contract.tags as unknown[])
+            .filter((tag): tag is string => typeof tag === 'string')
+            .map((tag) => tag.trim())
+            .filter(Boolean)
+        : [];
+
       await prisma.contractMetadata.upsert({
         where: { contractId },
         create: {
           contractId,
           tenantId,
+          tags: contractTags,
           updatedBy: 'ocr-artifact-worker',
           dataQualityScore,
           riskScore,
@@ -3996,9 +4315,9 @@ export async function processOCRArtifactJob(
           lastAiAnalysis: new Date(),
           aiAnalysisVersion: 'ocr-artifact-v2',
           aiSummary: overviewData.summary || null,
-          aiKeyInsights: overviewData.smartSuggestions || [],
+          aiKeyInsights: documentInsightsFromOverview(overviewData),
           aiRiskFactors: riskData.risks || riskData.riskFactors || [],
-          aiRecommendations: overviewData.smartSuggestions?.filter((s: any) => s.priority === 'high') || [],
+          aiRecommendations: Array.isArray(overviewData.recommendations) ? overviewData.recommendations : [],
           searchKeywords: overviewData.keyTerms || [],
           artifactSummary: {
             tabPriorityOrder: tabOrder,
@@ -4009,7 +4328,8 @@ export async function processOCRArtifactJob(
             missingMandatoryFields: missingFields,
             contractType: detectedContractType,
             contractTypeConfidence: contractTypeDetection.confidence,
-            industryInsights: overviewData.industryInsights || null,
+            typeChecklist,
+            typeBenchmarksSource: 'contract_type_profile',
           },
           systemFields: {
             extractionVersion: '2.0',
@@ -4024,9 +4344,9 @@ export async function processOCRArtifactJob(
           lastAiAnalysis: new Date(),
           aiAnalysisVersion: 'ocr-artifact-v2',
           aiSummary: overviewData.summary || undefined,
-          aiKeyInsights: overviewData.smartSuggestions || [],
+          aiKeyInsights: documentInsightsFromOverview(overviewData),
           aiRiskFactors: riskData.risks || riskData.riskFactors || [],
-          aiRecommendations: overviewData.smartSuggestions?.filter((s: any) => s.priority === 'high') || [],
+          aiRecommendations: Array.isArray(overviewData.recommendations) ? overviewData.recommendations : [],
           searchKeywords: overviewData.keyTerms || [],
           artifactSummary: {
             tabPriorityOrder: tabOrder,
@@ -4037,7 +4357,8 @@ export async function processOCRArtifactJob(
             missingMandatoryFields: missingFields,
             contractType: detectedContractType,
             contractTypeConfidence: contractTypeDetection.confidence,
-            industryInsights: overviewData.industryInsights || null,
+            typeChecklist,
+            typeBenchmarksSource: 'contract_type_profile',
           },
           updatedBy: 'ocr-artifact-worker',
         },
@@ -4055,7 +4376,12 @@ export async function processOCRArtifactJob(
     }
 
     // 5.5 Deterministic downstream plan (persisted for debugging/ops)
-    const { plan, inputs } = buildProcessingPlan({ extractedText });
+    const policyPackId = await resolvePolicyPackIdForPlan({
+      prisma,
+      tenantId,
+      contractPolicyPackId: (contract as { policyPackId?: string | null }).policyPackId ?? null,
+    });
+    const { plan, inputs } = buildProcessingPlan({ extractedText, policyPackId });
     await setProcessingPlan({ tenantId, contractId, plan, inputs });
 
     // 6. Auto-queue RAG indexing for semantic search
@@ -4154,6 +4480,7 @@ export async function processOCRArtifactJob(
           {
             contractId,
             tenantId,
+            packId: policyPackId || undefined,
             triggeredBy: 'pipeline',
             traceId: trace.traceId,
           },
@@ -4332,7 +4659,7 @@ async function callMistralForArtifact(
             { role: 'system', content: systemPrompt },
             { role: 'user', content: prompt }
           ],
-          temperature: 0.2,
+          temperature: 0,
           maxTokens: 8192,
           responseFormat: { type: 'json_object' },
         }),
@@ -4412,7 +4739,7 @@ async function callOpenAIForArtifact(
           { role: 'user', content: prompt }
         ],
         max_tokens: currentModel === 'gpt-4o-mini' ? 4096 : 8192,
-        temperature: 0.2,
+        temperature: 0,
         response_format: { type: 'json_object' }
       }, { signal: AbortSignal.timeout(90_000) });
 
@@ -4498,9 +4825,53 @@ async function generateArtifactWithAI(
     const profile = getContractProfile(contractType);
     
     // Build prompt context from contract profile for the shared module
+    let ourOrganization: string | undefined;
+    let ourOrganizationAliases: string[] | undefined;
+    const tenantIdForOrg = typeof contract?.tenantId === 'string' ? contract.tenantId : undefined;
+    if (tenantIdForOrg) {
+      try {
+        const tenant = await prisma.tenant.findUnique({
+          where: { id: tenantIdForOrg },
+          select: { name: true },
+        });
+        const settings = await prisma.tenantSettings.findFirst({
+          where: { tenantId: tenantIdForOrg },
+          select: { customFields: true },
+        });
+        const custom = settings?.customFields && typeof settings.customFields === 'object'
+          ? settings.customFields as Record<string, unknown>
+          : {};
+        const picked = pickOurOrganization({
+          settings: custom,
+          tenantName: tenant?.name
+            || (typeof contract?.tenant?.name === 'string' ? contract.tenant.name : undefined)
+            || (typeof contract?.tenantName === 'string' ? contract.tenantName : undefined),
+        });
+        if (picked) {
+          ourOrganization = picked.name;
+          ourOrganizationAliases = picked.aliases;
+        }
+      } catch {
+        // optional baseline
+      }
+    }
+    if (!ourOrganization) {
+      const picked = pickOurOrganization({
+        tenantName: typeof contract?.tenant?.name === 'string'
+          ? contract.tenant.name
+          : typeof contract?.tenantName === 'string'
+            ? contract.tenantName
+            : undefined,
+      });
+      ourOrganization = picked?.name;
+      ourOrganizationAliases = picked?.aliases;
+    }
+
     const promptCtx: PromptContext = {
       contractText,
       contractType: contractType,
+      ourOrganization,
+      ourOrganizationAliases,
       contractTypeDisplayName: profile.displayName,
       contractTypeHints: detectedContractType ? profile.extractionHints : undefined,
       expectedSections: detectedContractType ? profile.expectedSections : undefined,
@@ -4573,9 +4944,15 @@ async function generateArtifactWithAI(
       if (ocrResult.detectedLanguages.length > 0) {
         promptCtx.diDetectedLanguages = ocrResult.detectedLanguages;
       }
+      if (ocrResult.pages.length > 0) {
+        promptCtx.diPages = ocrResult.pages.map((p) => ({
+          pageNumber: p.pageNumber,
+          text: p.text || '',
+        }));
+      }
       // Inject document structure from paragraph roles
       const structuredParagraphs = ocrResult.paragraphs
-        .filter(p => p.role && ['title', 'sectionHeading'].includes(p.role))
+        .filter(p => p.role && ['title', 'sectionHeading', 'pageHeader', 'pageFooter', 'pageNumber'].includes(p.role))
         .map(p => ({ content: p.content.slice(0, 200), role: p.role! }));
       if (structuredParagraphs.length > 0) {
         promptCtx.diDocumentStructure = structuredParagraphs;
@@ -4599,8 +4976,14 @@ async function generateArtifactWithAI(
       return getFallbackArtifact(type, contractText, contract);
     }
 
-    const truncatedText = truncateTextForType(contractText, type);
-    const systemPrompt = getSystemPrompt();
+    const packed = packTextForType(contractText, type, promptCtx.diDocumentStructure, promptCtx.diPages);
+    const truncatedText = packed.text;
+    const systemPrompt = getSystemPrompt({
+      ...(promptCtx.ourOrganization
+        ? { ourOrganization: promptCtx.ourOrganization, aliases: promptCtx.ourOrganizationAliases }
+        : {}),
+      analysisLanguage: resolveAnalysisLanguage(promptCtx),
+    });
     let usedProvider = 'none';
     let artifactData: Record<string, any> | null = null;
 
@@ -4651,12 +5034,16 @@ async function generateArtifactWithAI(
       model: usedProvider,
       aiGenerated: true,
       textAnalyzed: truncatedText.length,
+      originalChars: contractText.length,
+      packedChars: truncatedText.length,
+      omittedSections: packed.omitted.slice(0, 12),
       tokensUsed: tokenUsage.tokensUsed || 0,
       promptTokens: tokenUsage.promptTokens || 0,
       completionTokens: tokenUsage.completionTokens || 0,
       estimatedCost: sharedEstimateTokenCost(usedProvider, tokenUsage.promptTokens || 0, tokenUsage.completionTokens || 0),
       promptVersion: PROMPT_VERSION,
       antiHallucinationEnabled: true,
+      analysisLanguage: resolveAnalysisLanguage(promptCtx),
     };
 
     logger.info({ type, provider: usedProvider, tokensUsed: tokenUsage.tokensUsed || 0 }, 'Successfully generated artifact with AI');
@@ -4710,7 +5097,7 @@ function getFallbackArtifact(type: string, contractText: string, contract: any):
     if (contract.expirationDate) base.currentTermEnd = contract.expirationDate.toISOString();
   }
   
-  return base;
+  return { ...base, _fallback: true };
 }
 
 /**

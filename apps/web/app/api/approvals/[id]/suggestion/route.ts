@@ -16,6 +16,7 @@ import {
   createErrorResponse,
 } from '@/lib/api-middleware';
 import { logger } from '@/lib/logger';
+import { formatMoneyText } from '@repo/utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -131,7 +132,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
         factors.push({
           id: String(factorId++),
           label: 'Low Contract Value',
-          description: `Contract value of $${contractValue.toLocaleString()} is within typical low-risk range.`,
+          description: `Contract value of ${formatMoneyText(contractValue)} is within typical low-risk range.`,
           type: 'positive',
           weight: 70,
           category: 'financial',
@@ -141,7 +142,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
         factors.push({
           id: String(factorId++),
           label: 'High Contract Value',
-          description: `Contract value of $${contractValue.toLocaleString()} exceeds standard threshold — additional scrutiny recommended.`,
+          description: `Contract value of ${formatMoneyText(contractValue)} exceeds standard threshold — additional scrutiny recommended.`,
           type: 'warning',
           weight: -45,
           category: 'financial',
@@ -151,7 +152,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
         factors.push({
           id: String(factorId++),
           label: 'Contract Value Within Range',
-          description: `Contract value of $${contractValue.toLocaleString()} is within normal approval range.`,
+          description: `Contract value of ${formatMoneyText(contractValue)} is within normal approval range.`,
           type: 'positive',
           weight: 60,
           category: 'financial',
@@ -306,7 +307,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
       if (hasAIClientConfig()) {
         const openai = createOpenAIClient();
         const prompt = `You are an approval advisor for contracts. Given this context, provide 2-3 short recommended actions (one sentence each):
-Contract: "${contractName}" worth $${contractValue.toLocaleString()} from ${supplierName}.
+Contract: "${contractName}" worth ${formatMoneyText(contractValue)} from ${supplierName}.
 Workflow status: ${completedSteps}/${totalSteps} steps done.
 AI suggestion: ${suggestion} (confidence: ${normalizedScore}%).
 Key factors: ${factors.map(f => `[${f.type}] ${f.label}`).join(', ')}.

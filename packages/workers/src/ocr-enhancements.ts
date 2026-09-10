@@ -529,11 +529,11 @@ function levenshteinDistance(a: string, b: string): number {
 const DATE_PATTERNS = [
   // ISO format
   { regex: /\b(\d{4})-(\d{1,2})-(\d{1,2})\b/g, format: 'YYYY-MM-DD' },
-  // US format
-  { regex: /\b(\d{1,2})\/(\d{1,2})\/(\d{4})\b/g, format: 'MM/DD/YYYY' },
-  { regex: /\b(\d{1,2})\/(\d{1,2})\/(\d{2})\b/g, format: 'MM/DD/YY' },
-  // European format
+  // Swiss/European dotted
   { regex: /\b(\d{1,2})\.(\d{1,2})\.(\d{4})\b/g, format: 'DD.MM.YYYY' },
+  // Slash dates: Swiss default is DD/MM, not US MM/DD
+  { regex: /\b(\d{1,2})\/(\d{1,2})\/(\d{4})\b/g, format: 'DD/MM/YYYY' },
+  { regex: /\b(\d{1,2})\/(\d{1,2})\/(\d{2})\b/g, format: 'DD/MM/YY' },
   // Written format
   { regex: /\b(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{1,2}),?\s+(\d{4})\b/gi, format: 'Month DD, YYYY' },
   { regex: /\b(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{4})\b/gi, format: 'DD Month YYYY' },
@@ -551,8 +551,8 @@ const AMOUNT_PATTERNS = [
   { regex: /€\s*([\d,]+(?:\.\d{2})?)|(\d[\d,]+(?:\.\d{2})?)\s*(?:EUR|euros?)/gi, currency: 'EUR' },
   // GBP formats
   { regex: /£\s*([\d,]+(?:\.\d{2})?)|(\d[\d,]+(?:\.\d{2})?)\s*(?:GBP|pounds?)/gi, currency: 'GBP' },
-  // CHF formats
-  { regex: /CHF\s*([\d',]+(?:\.\d{2})?)|(\d[\d',]+(?:\.\d{2})?)\s*CHF/gi, currency: 'CHF' },
+  // CHF / Swiss franc formats (CHF, Fr., SFr.)
+  { regex: /(?:CHF|SFr\.?|Fr\.)\s*([\d''',]+(?:\.\d{2})?)|(\d[\d''',]+(?:\.\d{2})?)\s*(?:CHF|SFr\.?)/gi, currency: 'CHF' },
   // Generic amount with currency code
   { regex: /\b([A-Z]{3})\s*([\d,]+(?:\.\d{2})?)\b/g, currency: 'GENERIC' },
   // Written amounts
@@ -655,6 +655,7 @@ function parseDateString(dateStr: string, format: string): { year: number; month
     january: 1, february: 2, march: 3, april: 4, may: 5, june: 6,
     july: 7, august: 8, september: 9, october: 10, november: 11, december: 12,
     jan: 1, feb: 2, mar: 3, apr: 4, jun: 6, jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12,
+    januar: 1, februar: 2, märz: 3, maerz: 3, mai: 5, juni: 6, juli: 7, oktober: 10, dezember: 12,
   };
   
   try {
@@ -665,18 +666,18 @@ function parseDateString(dateStr: string, format: string): { year: number; month
       }
     }
     
-    if (format === 'MM/DD/YYYY') {
+    if (format === 'DD/MM/YYYY') {
       const match = dateStr.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
       if (match && match[1] && match[2] && match[3]) {
-        return { year: parseInt(match[3], 10), month: parseInt(match[1], 10), day: parseInt(match[2], 10) };
+        return { year: parseInt(match[3], 10), month: parseInt(match[2], 10), day: parseInt(match[1], 10) };
       }
     }
     
-    if (format === 'MM/DD/YY') {
+    if (format === 'DD/MM/YY') {
       const match = dateStr.match(/(\d{1,2})\/(\d{1,2})\/(\d{2})/);
       if (match && match[1] && match[2] && match[3]) {
         const year = parseInt(match[3], 10);
-        return { year: year < 50 ? 2000 + year : 1900 + year, month: parseInt(match[1], 10), day: parseInt(match[2], 10) };
+        return { year: year < 50 ? 2000 + year : 1900 + year, month: parseInt(match[2], 10), day: parseInt(match[1], 10) };
       }
     }
     

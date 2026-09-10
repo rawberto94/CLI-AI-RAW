@@ -48,9 +48,11 @@ export default function AdminNotFound() {
           <p className="text-sm text-muted-foreground mb-3">
             Looking for something specific?
           </p>
-          <Button variant="ghost" size="sm" className="gap-2">
-            <Search className="h-4 w-4" />
-            Press ⌘K to search
+          <Button variant="ghost" size="sm" className="gap-2" asChild>
+            <Link href="/search">
+              <Search className="h-4 w-4" />
+              Search
+            </Link>
           </Button>
         </div>
       </motion.div>

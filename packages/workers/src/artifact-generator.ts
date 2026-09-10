@@ -7,7 +7,14 @@ type Job<T = any> = { id?: string; name: string; data: T; attemptsMade: number; 
 import clientsDb from 'clients-db';
 const getClient = typeof clientsDb === 'function' ? clientsDb : (clientsDb as any).default;
 import type { ArtifactType } from 'clients-db';
-import { FIELD_TRUST_THRESHOLDS } from '@repo/utils';
+import {
+  applyExtractionValidation,
+  EXTRACTION_PIPELINE_VERSION,
+  FIELD_TRUST_THRESHOLDS,
+  pickOurOrganization,
+  prefixPages,
+  resolveTcvWinner,
+} from '@repo/utils';
 import {
   getQueueService,
   JOB_NAMES,
@@ -24,7 +31,7 @@ import { getTraceContextFromJobData } from './observability/trace';
 import { CircuitBreaker } from './utils/circuit-breaker';
 import { hashJson } from './utils/hash';
 import { ensureProcessingJob, updateStep } from './workflow/processing-job';
-import { buildProcessingPlan } from './workflow/planner';
+import { buildProcessingPlan, resolvePolicyPackIdForPlan } from './workflow/planner';
 import { getWorkerConcurrency, getWorkerLimiter } from './config/worker-runtime';
 import { ArtifactQualityValidator } from './utils/artifact-quality-validator';
 import { AdaptiveRetryStrategy, chunkTextForModel } from './utils/adaptive-retry-strategy';
@@ -43,8 +50,10 @@ import {
   DEFAULT_ARTIFACT_GROUPS,
   buildArtifactPrompt,
   buildGroupedPrompt,
+  packGroupedContractText,
   splitGroupedResponse,
   getSystemPrompt,
+  resolveAnalysisLanguage,
   getFallbackTemplate,
   safeParseJSON as sharedSafeParseJSON,
   estimateTokenCost,
@@ -54,6 +63,8 @@ import {
   type ArtifactTypeConfig as SharedArtifactTypeConfig,
   type PromptContext,
   type ArtifactGroup,
+  type PackedGroupText,
+  documentInsightsFromOverview,
 } from './utils/artifact-prompts';
 import { TokenAwarePool, estimateTokens } from './utils/token-pool';
 
@@ -374,7 +385,15 @@ export async function generateArtifactsJob(
 
     // Build the prompt context once per contract (DI structured data + type hints)
     const promptCtx = buildArtifactPromptContext(contractText, detectedContractType, contract);
-    const systemPrompt = getSystemPrompt();
+    const ourOrg = await resolveOurOrganization(tenantId);
+    if (ourOrg) {
+      promptCtx.ourOrganization = ourOrg.name;
+      promptCtx.ourOrganizationAliases = ourOrg.aliases;
+    }
+    const systemPrompt = getSystemPrompt({
+      ...(ourOrg ? { ourOrganization: ourOrg.name, aliases: ourOrg.aliases } : {}),
+      analysisLanguage: resolveAnalysisLanguage(promptCtx),
+    });
 
     // Group applicable artifact types into the predefined model-aware groups.
     // This replaces the 14 individual LLM calls with 3–4 grouped calls that send
@@ -417,37 +436,53 @@ export async function generateArtifactsJob(
         });
       }
 
+      const packed = packGroupedContractText(group, promptCtx);
+      const groupedPrompt = buildGroupedPrompt(group, promptCtx, packed.text);
+
       logger.info({
         contractId,
         group: group.name,
         types: group.types,
         model: group.model,
+        originalChars: packed.originalChars,
+        packedChars: packed.packedChars,
+        omitted: packed.omitted.slice(0, 12),
+        tableCount: packed.tableCount,
         traceId: trace.traceId,
       }, `Generating ${group.name} artifact group`);
 
-      const groupedPrompt = buildGroupedPrompt(group, promptCtx);
       const estimatedTokens = estimateTokens(systemPrompt + (groupedPrompt || '')) + 2000;
 
       return pool.execute(estimatedTokens, async () => {
         const result = await adaptiveRetry.executeWithRetry(
           async (model) => {
-            const data = await generateGroupData(group, promptCtx, contractId, tenantId, model.name);
+            const data = await generateGroupData(
+              group,
+              promptCtx,
+              contractId,
+              tenantId,
+              model.name,
+              packed,
+              groupedPrompt,
+            );
             return { data, model: model.name };
           },
           `Generate ${group.name} group`,
           group.model
         );
-        return { group, modelUsed: result.model, groupResult: result.data };
+        return { group, modelUsed: result.model, groupResult: result.data, pack: packed };
       });
     }));
 
     // Process each group result and save individual artifacts
+    const analysisPacks: Array<PackedGroupText & { group: string }> = [];
     for (let i = 0; i < groupResults.length; i++) {
       const group = groupTasks[i].group;
       const groupResult = groupResults[i];
 
       if (groupResult.status === 'fulfilled') {
-        const { modelUsed, groupResult: dataMap } = groupResult.value;
+        const { modelUsed, groupResult: dataMap, pack } = groupResult.value;
+        if (pack) analysisPacks.push({ group: group.name, ...pack });
 
         for (const type of group.types) {
           const config = artifactTypes.find(a => a.type === type)?.config;
@@ -628,6 +663,15 @@ export async function generateArtifactsJob(
       await job.updateProgress(progressBase + Math.round((completedWeight / totalWeight) * 80));
     }
 
+    const extractionValidation = (promptCtx as PromptContext & {
+      _extractionValidation?: ReturnType<typeof applyExtractionValidation>;
+    })._extractionValidation;
+    await persistAnalysisPack(contractId, tenantId, analysisPacks, resolveAnalysisLanguage(promptCtx), {
+      groundedFields: extractionValidation?.groundedFields,
+      ungroundedPaths: extractionValidation?.ungroundedPaths,
+      requiresHumanReview: extractionValidation?.requiresHumanReview,
+    });
+
     // Determine final status
     const hasPartialSuccess = failedArtifacts.length > 0 && artifactIds.length > 0;
     const hasCompleteFailure = artifactIds.length === 0;
@@ -745,9 +789,9 @@ export async function generateArtifactsJob(
           lastAiAnalysis: new Date(),
           aiAnalysisVersion: 'artifact-generator-v1',
           aiSummary: overviewData.summary || null,
-          aiKeyInsights: overviewData.smartSuggestions || [],
+          aiKeyInsights: documentInsightsFromOverview(overviewData),
           aiRiskFactors: riskData.risks || riskData.riskFactors || [],
-          aiRecommendations: overviewData.smartSuggestions?.filter((s: any) => s.priority === 'high') || [],
+          aiRecommendations: Array.isArray(overviewData.recommendations) ? overviewData.recommendations : [],
           searchKeywords: overviewData.keyTerms || [],
           artifactSummary: {
             tabPriorityOrder: tabOrder,
@@ -758,7 +802,7 @@ export async function generateArtifactsJob(
             missingMandatoryFields: missingFields,
             contractType: detectedContractType,
             contractTypeConfidence: contract.classificationConf || 0,
-            industryInsights: overviewData.industryInsights || null,
+            typeBenchmarksSource: 'contract_type_profile',
           },
           systemFields: {
             extractionVersion: '2.0',
@@ -773,9 +817,9 @@ export async function generateArtifactsJob(
           lastAiAnalysis: new Date(),
           aiAnalysisVersion: 'artifact-generator-v1',
           aiSummary: overviewData.summary || undefined,
-          aiKeyInsights: overviewData.smartSuggestions || [],
+          aiKeyInsights: documentInsightsFromOverview(overviewData),
           aiRiskFactors: riskData.risks || riskData.riskFactors || [],
-          aiRecommendations: overviewData.smartSuggestions?.filter((s: any) => s.priority === 'high') || [],
+          aiRecommendations: Array.isArray(overviewData.recommendations) ? overviewData.recommendations : [],
           searchKeywords: overviewData.keyTerms || [],
           artifactSummary: {
             tabPriorityOrder: tabOrder,
@@ -786,7 +830,7 @@ export async function generateArtifactsJob(
             missingMandatoryFields: missingFields,
             contractType: detectedContractType,
             contractTypeConfidence: contract.classificationConf || 0,
-            industryInsights: overviewData.industryInsights || null,
+            typeBenchmarksSource: 'contract_type_profile',
           },
           updatedBy: 'artifact-generator-worker',
         },
@@ -823,7 +867,12 @@ export async function generateArtifactsJob(
     }
 
     // 5.5 Deterministic downstream plan
-    const { plan } = buildProcessingPlan({ extractedText: contractText });
+    const policyPackId = await resolvePolicyPackIdForPlan({
+      prisma,
+      tenantId,
+      contractPolicyPackId: (contract as { policyPackId?: string | null }).policyPackId ?? null,
+    });
+    const { plan } = buildProcessingPlan({ extractedText: contractText, policyPackId });
 
     // 6. Auto-queue downstream processing jobs
     const queueService = getQueueService();
@@ -892,6 +941,7 @@ export async function generateArtifactsJob(
             {
               contractId,
               tenantId,
+              packId: policyPackId || undefined,
               triggeredBy: 'pipeline',
               traceId: trace.traceId,
             },
@@ -1090,6 +1140,21 @@ async function createOrUpdateArtifact(args: {
  * Build the shared PromptContext once per contract. This includes contract-type
  * hints and any Azure Document Intelligence structured data attached to the contract.
  */
+async function resolveOurOrganization(tenantId: string): Promise<{ name: string; aliases: string[] } | null> {
+  try {
+    const [tenant, settings] = await Promise.all([
+      prisma.tenant.findUnique({ where: { id: tenantId }, select: { name: true } }),
+      prisma.tenantSettings.findFirst({ where: { tenantId }, select: { customFields: true } }),
+    ]);
+    const custom = settings?.customFields && typeof settings.customFields === 'object'
+      ? settings.customFields as Record<string, unknown>
+      : {};
+    return pickOurOrganization({ settings: custom, tenantName: tenant?.name });
+  } catch {
+    return null;
+  }
+}
+
 function buildArtifactPromptContext(
   contractText: string,
   contractType?: string,
@@ -1148,7 +1213,7 @@ function buildArtifactPromptContext(
     ...(Array.isArray(diParagraphs) && diParagraphs.length > 0
       ? {
           diDocumentStructure: diParagraphs
-            .filter((p: any) => p.role && ['title', 'sectionHeading'].includes(p.role))
+            .filter((p: any) => p.role && ['title', 'sectionHeading', 'pageHeader', 'pageFooter', 'pageNumber'].includes(p.role))
             .map((p: any) => ({ content: (p.content || '').slice(0, 200), role: p.role })),
         }
       : {}),
@@ -1165,7 +1230,60 @@ function buildArtifactPromptContext(
     ...(Array.isArray(diSelectionMarks) && diSelectionMarks.length > 0 ? { diSelectionMarks } : {}),
     ...(Array.isArray(diBarcodes) && diBarcodes.length > 0 ? { diBarcodes } : {}),
     ...(Array.isArray(diFormulas) && diFormulas.length > 0 ? { diFormulas } : {}),
+    ...(aiMetadata?.diQueryAnswers && typeof aiMetadata.diQueryAnswers === 'object'
+      ? { diQueryAnswers: aiMetadata.diQueryAnswers as Record<string, string> }
+      : {}),
+    ...(Array.isArray(aiMetadata?.diPages) && aiMetadata.diPages.length > 0
+      ? { diPages: aiMetadata.diPages as Array<{ pageNumber: number; text: string }> }
+      : {}),
   };
+}
+
+/**
+ * Prefer Document Intelligence / explicit TCV over LLM-invented 0 or missing totals.
+ */
+function applyTcvWinnerToGroup(
+  groupResult: Record<string, any>,
+  promptCtx: PromptContext,
+): void {
+  const financial = groupResult.FINANCIAL;
+  const overview = groupResult.OVERVIEW;
+  const winner = resolveTcvWinner({
+    contractType: promptCtx.contractType,
+    diQueryAnswers: promptCtx.diQueryAnswers || null,
+    contractText: promptCtx.contractText,
+    financialTotal: typeof financial?.totalValue === 'number' ? financial.totalValue : null,
+    financialCurrency: typeof financial?.currency === 'string' ? financial.currency : null,
+    overviewTotal: typeof overview?.totalValue === 'number' ? overview.totalValue : null,
+    overviewCurrency: typeof overview?.currency === 'string' ? overview.currency : null,
+    invoiceTotal: promptCtx.diInvoiceFields?.invoiceTotal ?? null,
+    invoiceCurrency: promptCtx.diInvoiceFields?.currency ?? null,
+  });
+
+  const apply = (data: Record<string, any> | undefined) => {
+    if (!data || typeof data !== 'object') return;
+    if (winner.value != null) {
+      data.totalValue = winner.value;
+      if (winner.currency) data.currency = winner.currency;
+      data.tcvProvenance = { source: winner.source, quote: winner.quote, label: winner.label };
+    } else if (data.totalValue === 0) {
+      data.totalValue = null;
+    }
+  };
+
+  apply(financial);
+  apply(overview);
+
+  const analysisLanguage = resolveAnalysisLanguage(promptCtx);
+  if (overview && typeof overview === 'object' && !overview.language) {
+    overview.language = analysisLanguage === 'de'
+      ? 'German'
+      : analysisLanguage === 'fr'
+        ? 'French'
+        : analysisLanguage === 'it'
+          ? 'Italian'
+          : 'English';
+  }
 }
 
 /**
@@ -1177,7 +1295,9 @@ async function generateGroupData(
   promptCtx: PromptContext,
   contractId: string,
   tenantId: string,
-  modelName: string
+  modelName: string,
+  packed?: PackedGroupText,
+  groupedPromptOverride?: string | null,
 ): Promise<Record<string, any>> {
   const openai = await getOpenAIClient(modelName);
   if (!openai) {
@@ -1185,14 +1305,28 @@ async function generateGroupData(
     throw new Error('OpenAI client not configured');
   }
 
-  const groupedPrompt = buildGroupedPrompt(group, promptCtx);
+  const packedText = packed ?? packGroupedContractText(group, promptCtx);
+  const groupedPrompt = groupedPromptOverride ?? buildGroupedPrompt(group, promptCtx, packedText.text);
   if (!groupedPrompt) {
     throw new Error(`No prompts built for group ${group.name}`);
   }
 
-  const systemPrompt = getSystemPrompt();
+  const systemPrompt = getSystemPrompt({
+    ...(promptCtx.ourOrganization
+      ? { ourOrganization: promptCtx.ourOrganization, aliases: promptCtx.ourOrganizationAliases }
+      : {}),
+    analysisLanguage: resolveAnalysisLanguage(promptCtx),
+  });
 
-  logger.info({ group: group.name, contractId, model: modelName, textLength: promptCtx.contractText.length }, 'Calling OpenAI for artifact group');
+  logger.info({
+    group: group.name,
+    contractId,
+    model: modelName,
+    originalChars: packedText.originalChars,
+    packedChars: packedText.packedChars,
+    omitted: packedText.omitted.slice(0, 12),
+    tableCount: packedText.tableCount,
+  }, 'Calling OpenAI for artifact group');
 
   const response = await openaiBreaker.execute(() =>
     openai.chat.completions.create({
@@ -1202,7 +1336,8 @@ async function generateGroupData(
         { role: 'user', content: groupedPrompt },
       ],
       max_tokens: 16384,
-      temperature: 0.1,
+      temperature: 0,
+      top_p: 1,
       response_format: { type: 'json_object' },
     })
   ) as { choices: Array<{ message: { content: string | null } }>; usage?: { prompt_tokens?: number; completion_tokens?: number } };
@@ -1234,6 +1369,23 @@ async function generateGroupData(
   }).catch(() => {}); // fire-and-forget
 
   const groupResult = splitGroupedResponse(group, parsed);
+  applyTcvWinnerToGroup(groupResult, promptCtx);
+  const packedSource = promptCtx.diPages?.length
+    ? prefixPages(promptCtx.diPages)
+    : promptCtx.contractText;
+  const validation = applyExtractionValidation(groupResult, promptCtx.contractText, {
+    locale: resolveAnalysisLanguage(promptCtx),
+    packedText: packedText.text || packedSource,
+    ocrConfidence: promptCtx.diConfidence ?? null,
+  });
+  const ctxExtra = promptCtx as PromptContext & { _extractionValidation?: typeof validation };
+  if (ctxExtra._extractionValidation) {
+    validation.groundedFields = { ...ctxExtra._extractionValidation.groundedFields, ...validation.groundedFields };
+    validation.ungroundedPaths = [...ctxExtra._extractionValidation.ungroundedPaths, ...validation.ungroundedPaths];
+    validation.requiresHumanReview =
+      ctxExtra._extractionValidation.requiresHumanReview || validation.requiresHumanReview;
+  }
+  ctxExtra._extractionValidation = validation;
 
   for (const type of group.types) {
     const data = groupResult[type];
@@ -1249,6 +1401,13 @@ async function generateGroupData(
         completionTokens,
         estimatedCost: cost,
         group: group.name,
+        originalChars: packedText.originalChars,
+        packedChars: packedText.packedChars,
+        omittedSections: packedText.omitted.slice(0, 12),
+        tableCount: packedText.tableCount,
+        analysisLanguage: resolveAnalysisLanguage(promptCtx),
+        pipelineVersion: EXTRACTION_PIPELINE_VERSION,
+        ungroundedPaths: validation.ungroundedPaths.filter((p) => p.startsWith(`${type}.`) || p === type).slice(0, 20),
       };
     }
   }
@@ -1263,6 +1422,81 @@ async function generateGroupData(
  */
 function getFallbackArtifactData(type: string, contractId: string): Record<string, any> {
   return getFallbackTemplate(type);
+}
+
+function asAiMetadataRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+async function persistAnalysisPack(
+  contractId: string,
+  tenantId: string,
+  packs: Array<PackedGroupText & { group: string }>,
+  analysisLanguage?: string,
+  extra?: {
+    groundedFields?: Record<string, unknown>;
+    ungroundedPaths?: string[];
+    requiresHumanReview?: boolean;
+  },
+): Promise<void> {
+  if (packs.length === 0) return;
+  try {
+    const existing = await prisma.contract.findUnique({
+      where: { id: contractId },
+      select: { aiMetadata: true },
+    });
+    const existingAi = asAiMetadataRecord(existing?.aiMetadata);
+    const omitted = [...new Set(packs.flatMap((p) => p.omitted))];
+    const kept = [...new Set(packs.flatMap((p) => p.kept))];
+    await prisma.contract.updateMany({
+      where: { id: contractId, tenantId },
+      data: {
+        aiMetadata: {
+          ...existingAi,
+          analysisPack: {
+            originalChars: packs[0]?.originalChars ?? 0,
+            packedChars: Math.max(...packs.map((p) => p.packedChars), 0),
+            kept: kept.slice(0, 24),
+            omitted: omitted.slice(0, 24),
+            tableCount: packs.reduce((sum, p) => sum + (p.tableCount || 0), 0),
+            groups: packs.map((p) => ({
+              name: p.group,
+              packedChars: p.packedChars,
+              omitted: p.omitted.slice(0, 12),
+              kept: p.kept.slice(0, 12),
+              tableCount: p.tableCount,
+            })),
+            analysisLanguage: analysisLanguage || null,
+            bilingualWarning: packs.map((p) => p.bilingualWarning).find(Boolean) || null,
+            pipelineVersion: EXTRACTION_PIPELINE_VERSION,
+            at: new Date().toISOString(),
+          },
+          ...(extra?.groundedFields ? { groundedFields: extra.groundedFields } : {}),
+          ...(extra?.ungroundedPaths ? { ungroundedPaths: extra.ungroundedPaths.slice(0, 40) } : {}),
+          ...(typeof extra?.requiresHumanReview === 'boolean'
+            ? { requiresHumanReview: extra.requiresHumanReview }
+            : {}),
+          pipelineVersion: EXTRACTION_PIPELINE_VERSION,
+        },
+      },
+    });
+    logger.info(
+      {
+        contractId,
+        originalChars: packs[0]?.originalChars,
+        packedChars: Math.max(...packs.map((p) => p.packedChars), 0),
+        omitted: omitted.slice(0, 12),
+      },
+      'Persisted analysis packing stats',
+    );
+  } catch (error) {
+    logger.warn(
+      { contractId, error: error instanceof Error ? error.message : String(error) },
+      'Failed to persist analysis packing stats',
+    );
+  }
 }
 
 /**

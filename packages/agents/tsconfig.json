@@ -14,6 +14,8 @@
     "paths": {
       "@repo/data-orchestration": ["../data-orchestration/src"],
       "@repo/data-orchestration/*": ["../data-orchestration/src/*"],
+      "@repo/utils": ["../utils/src"],
+      "@repo/utils/*": ["../utils/src/*"],
       "utils": ["../utils/src"],
       "utils/*": ["../utils/src/*"],
       "schemas": ["../schemas/src"],

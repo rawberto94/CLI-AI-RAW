@@ -233,7 +233,7 @@ const formatTimeAgo = (date: Date): string => {
   if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
   if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)}d ago`;
 
-  return date.toLocaleDateString('en-US', {
+  return date.toLocaleDateString('de-CH', {
     month: 'short',
     day: 'numeric',
     year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined,
@@ -249,7 +249,7 @@ const formatDate = (date: Date): string => {
   if (activityDate.getTime() === today.getTime()) return 'Today';
   if (activityDate.getTime() === yesterday.getTime()) return 'Yesterday';
 
-  return date.toLocaleDateString('en-US', {
+  return date.toLocaleDateString('de-CH', {
     weekday: 'long',
     month: 'long',
     day: 'numeric',

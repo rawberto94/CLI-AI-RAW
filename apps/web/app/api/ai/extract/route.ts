@@ -20,6 +20,7 @@ import {
   type AuthenticatedApiContext,
 } from '@/lib/api-middleware';
 import { logger } from '@/lib/logger';
+import { analysisLanguageInstructions } from '@repo/utils';
 
 const openai = createOpenAIClient();
 
@@ -68,12 +69,14 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
         {
           role: 'system',
           content: `You are a contract analysis expert. Extract structured data from the contract text.
+Never invent amounts or currencies. If a value is not stated in the text, use null — do not default to USD or 0.
+${analysisLanguageInstructions({ contractText: truncatedText })}
 Return JSON with these fields (include only those found):
 {
   "parties": [{ "name": "", "role": "buyer|seller|contractor|client|...", "address": "" }],
   "effectiveDate": "YYYY-MM-DD or null",
   "expirationDate": "YYYY-MM-DD or null",
-  "totalValue": { "amount": 0, "currency": "USD" },
+  "totalValue": { "amount": null, "currency": null },
   "paymentTerms": "",
   "governingLaw": "",
   "terminationClauses": [""],

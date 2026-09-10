@@ -7,6 +7,7 @@
  */
 
 import { PrismaClient } from '@prisma/client';
+import { formatMoneyText } from '@repo/utils';
 
 export interface SupplierTrend {
   period: string;
@@ -537,7 +538,7 @@ export class SupplierTrendAnalyzerService {
     }
     
     if (totalImpact > 0) {
-      summary += `. Estimated annual impact: $${totalImpact.toLocaleString()}`;
+      summary += `. Estimated annual impact: ${formatMoneyText(totalImpact)}`;
     }
 
     return summary;

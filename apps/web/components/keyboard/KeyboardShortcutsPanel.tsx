@@ -69,7 +69,7 @@ const DEFAULT_SHORTCUTS: KeyboardShortcut[] = [
   { id: 'go-home', keys: ['G', 'H'], description: 'Go to Dashboard', category: 'navigation' },
   { id: 'go-contracts', keys: ['G', 'C'], description: 'Go to Contracts', category: 'navigation' },
   { id: 'go-upload', keys: ['G', 'U'], description: 'Go to Upload', category: 'navigation' },
-  { id: 'go-rate-cards', keys: ['G', 'R'], description: 'Go to Rate Cards', category: 'navigation' },
+
   { id: 'go-settings', keys: ['G', 'S'], description: 'Go to Settings', category: 'navigation' },
   { id: 'open-search', keys: ['⌘', 'K'], description: 'Open Command Palette', category: 'navigation' },
   { id: 'focus-sidebar', keys: ['['], description: 'Focus Sidebar', category: 'navigation' },

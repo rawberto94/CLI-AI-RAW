@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
+import { resolvePersistCurrency } from '@/lib/fx';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,7 +30,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
         department: body.department || null,
         contractTypes: body.contractTypes || [],
         maxValue: body.maxValue || null,
-        currency: body.currency || 'USD',
+        currency: resolvePersistCurrency(body.currency),
         requiresCounterSign: body.requiresCounterSign ?? false,
         counterSignRole: body.counterSignRole || null,
         canDelegate: body.canDelegate ?? true,

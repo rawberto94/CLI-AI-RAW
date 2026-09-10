@@ -23,6 +23,7 @@ import {
   Save
 } from 'lucide-react';
 import { SaveComparisonDialog } from './SaveComparisonDialog';
+import { formatRateMoney } from '@/lib/rate-cards/format';
 
 interface RateCardEntry {
   id: string;
@@ -119,7 +120,7 @@ export function RateComparisonView({
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
+    return new Date(dateString).toLocaleDateString('de-CH', {
       year: 'numeric',
       month: 'short',
       day: 'numeric'
@@ -196,7 +197,7 @@ export function RateComparisonView({
             <div className="text-center">
               <p className="text-sm text-muted-foreground">Lowest Rate</p>
               <p className="text-2xl font-bold text-green-600">
-                ${lowestRate.toLocaleString()}
+                {formatRateMoney(lowestRate)}
               </p>
               <p className="text-xs text-muted-foreground mt-1">USD per day</p>
             </div>
@@ -207,7 +208,7 @@ export function RateComparisonView({
             <div className="text-center">
               <p className="text-sm text-muted-foreground">Highest Rate</p>
               <p className="text-2xl font-bold text-red-600">
-                ${highestRate.toLocaleString()}
+                {formatRateMoney(highestRate)}
               </p>
               <p className="text-xs text-muted-foreground mt-1">USD per day</p>
             </div>
@@ -293,13 +294,8 @@ export function RateComparisonView({
                     <td key={rc.id} className="p-3">
                       <div>
                         <p className="font-semibold text-lg">
-                          ${rc.dailyRate.toLocaleString()} {rc.currency}
+                          {formatRateMoney(rc.dailyRate, rc.currency)}
                         </p>
-                        {rc.currency !== 'USD' && (
-                          <p className="text-sm text-muted-foreground">
-                            ${rc.dailyRateUSD.toLocaleString()} USD
-                          </p>
-                        )}
                       </div>
                     </td>
                   ))}
@@ -334,7 +330,7 @@ export function RateComparisonView({
                           <span className="text-green-600 font-semibold">-</span>
                         ) : (
                           <span className="text-red-600 font-semibold">
-                            ${savings.toLocaleString()}
+                            {formatRateMoney(savings)}
                           </span>
                         )}
                       </td>

@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, getApiContext} from '@/lib/api-middleware';
+import { resolvePersistCurrency } from '@/lib/fx';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,7 +38,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
     const countResult = await prisma.$queryRaw`SELECT COUNT(*)::int + 1 as next_number FROM amendments WHERE tenant_id = ${ctx.tenantId} AND original_contract_id = ${body.originalContractId}`;
 
     const result = await prisma.$queryRaw`INSERT INTO amendments (id, tenant_id, original_contract_id, amendment_number, title, description, amendment_type, status, changes_summary, effective_date, financial_impact, currency, requires_re_signature, initiated_by)
-       VALUES (gen_random_uuid()::text, ${ctx.tenantId}, ${body.originalContractId}, ${(countResult as any[])[0]?.next_number || 1}, ${body.title}, ${body.description || null}, ${body.amendmentType || 'MODIFICATION'}, 'DRAFT', ${JSON.stringify(body.changesSummary || [])}, ${body.effectiveDate || null}, ${body.financialImpact || null}, ${body.currency || 'USD'}, ${body.requiresReSignature ?? true}, ${ctx.userId}) RETURNING *`;
+       VALUES (gen_random_uuid()::text, ${ctx.tenantId}, ${body.originalContractId}, ${(countResult as any[])[0]?.next_number || 1}, ${body.title}, ${body.description || null}, ${body.amendmentType || 'MODIFICATION'}, 'DRAFT', ${JSON.stringify(body.changesSummary || [])}, ${body.effectiveDate || null}, ${body.financialImpact || null}, ${resolvePersistCurrency(body.currency)}, ${body.requiresReSignature ?? true}, ${ctx.userId}) RETURNING *`;
 
     return createSuccessResponse(ctx, { amendment: (result as any[])[0] });
   } catch (error: unknown) {

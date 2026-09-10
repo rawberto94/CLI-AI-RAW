@@ -83,6 +83,9 @@ import { ScrollToTopButton } from "@/components/fab";
 import { BulkTagDialog } from "@/components/contracts/BulkTagDialog";
 import { BulkAccessDialog } from "@/components/contracts/BulkAccessDialog";
 import { cn } from "@/lib/utils";
+import { useDisplayCurrency } from "@/hooks/useDisplayCurrency";
+import { summarizeConvertedCurrency } from "@/lib/utils/formatters";
+import { clampTrendPercent } from "@/lib/utils/percent";
 
 // Extracted sub-components
 import { AnimatedCounter } from "@/components/contracts/AnimatedCounter";
@@ -167,6 +170,7 @@ export default function ContractsPage() {
 
   // UI toggle state (not part of filter logic)
   const isDemo = useDemoMode();
+  const displayCurrency = useDisplayCurrency();
 
   // View mode: 'compact' for table-like rows, 'cards' for detailed cards
   const [viewMode, setViewMode] = useState<'compact' | 'cards'>(() => {
@@ -639,12 +643,18 @@ export default function ContractsPage() {
         processingCount: dbStats.overview.byStatus?.processing || 0,
         pendingReview: dbStats.overview.pending,
         recentlyAdded: dbStats.timeline.recentlyUploaded,
+        converted: dbStats.financial.converted,
+        unconvertedValueCount: dbStats.financial.unconvertedValueCount,
         trendData,
       };
     }
     
     // Fallback: Calculate from client-side contracts (may be paginated/incomplete)
-    const totalValue = contracts.reduce((sum, c) => sum + (c.value || 0), 0);
+    const convertedSum = summarizeConvertedCurrency(
+      contracts.map((c) => ({ amount: c.value || 0, currency: c.currency })),
+      displayCurrency,
+    );
+    const totalValue = convertedSum.total;
     const expiringSoon = contracts.filter(c => {
       if (!c.expirationDate) return false;
       const daysUntil = Math.ceil((new Date(c.expirationDate).getTime() - now) / (1000 * 60 * 60 * 24));
@@ -667,9 +677,12 @@ export default function ContractsPage() {
       const twoMonthsAgo = new Date(now - 60 * 24 * 60 * 60 * 1000);
       return created >= twoMonthsAgo && created < monthAgo;
     }).length;
-    const monthlyChange = previousMonth > 0 
-      ? Math.round(((thisMonth - previousMonth) / previousMonth) * 100 * 10) / 10 
-      : thisMonth > 0 ? 100 : 0;
+    const monthlyChange = clampTrendPercent(
+      previousMonth > 0
+        ? ((thisMonth - previousMonth) / previousMonth) * 100
+        : thisMonth > 0 ? 100 : 0,
+      previousMonth,
+    );
     
     return {
       totalContracts: contractsData?.total ?? contracts.length,
@@ -690,10 +703,12 @@ export default function ContractsPage() {
         if (!c.createdAt) return false;
         return new Date(c.createdAt).getTime() > now - 7 * 24 * 60 * 60 * 1000;
       }).length,
+      converted: convertedSum.convertedCount > 0,
+      unconvertedValueCount: convertedSum.skippedCount,
       trendData,
     };
      
-  }, [contracts, contractsData?.total, dbStats, trendData]);
+  }, [contracts, contractsData?.total, dbStats, displayCurrency, trendData]);
 
   // Convert Contract to EnhancedContract for enhanced cards
   const enhancedContracts = useMemo(() => {

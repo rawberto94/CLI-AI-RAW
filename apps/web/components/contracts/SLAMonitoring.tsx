@@ -241,10 +241,7 @@ export function SLAMonitoring({ contractId, className }: SLAMonitoringProps) {
               <RefreshCw className={cn("h-4 w-4 mr-1", loading && "animate-spin")} />
               Refresh
             </Button>
-            <Button variant="outline" size="sm">
-              <Settings className="h-4 w-4 mr-1" />
-              Configure
-            </Button>
+
           </div>
         </div>
 
@@ -320,10 +317,7 @@ export function SLAMonitoring({ contractId, className }: SLAMonitoringProps) {
             <p className="text-sm text-muted-foreground mb-4">
               Set up metrics to monitor service level compliance
             </p>
-            <Button variant="outline" size="sm">
-              <Settings className="h-4 w-4 mr-1" />
-              Configure SLAs
-            </Button>
+
           </div>
         ) : (
           <div className="space-y-4">

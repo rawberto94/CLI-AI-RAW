@@ -5,6 +5,7 @@
 
 import React, { memo } from 'react';
 import type { FinancialData } from '@/types/artifacts';
+import { formatAmountWithCurrency } from '@/lib/utils/formatters';
 
 interface FinancialRendererProps {
   data: FinancialData;
@@ -20,7 +21,7 @@ export const FinancialRenderer = memo(function FinancialRenderer({ data }: Finan
           <div className="p-6 bg-gradient-to-br from-violet-50 to-violet-50 dark:from-violet-950/50 dark:to-violet-950/50 rounded-xl border-2 border-green-200 dark:border-green-800 shadow-sm">
             <p className="text-sm text-green-700 dark:text-green-300 mb-2 font-semibold">Total Contract Value</p>
             <p className="text-3xl font-bold text-green-900 dark:text-green-100">
-              ${finData.totalValue.toLocaleString()}
+              {formatAmountWithCurrency(finData.totalValue, finData.currency)}
             </p>
           </div>
         )}
@@ -54,7 +55,7 @@ export const FinancialRenderer = memo(function FinancialRenderer({ data }: Finan
               <div key={i} className="p-5 bg-white dark:bg-gray-800 rounded-xl border-2 shadow-sm flex justify-between items-center hover:shadow-md transition-shadow">
                 <span className="font-semibold text-base text-gray-900 dark:text-gray-100">{payment.milestone}</span>
                 <span className="text-green-600 dark:text-green-400 font-bold text-lg">
-                  ${payment.amount.toLocaleString()}
+                  {formatAmountWithCurrency(payment.amount, payment.currency || finData.currency)}
                 </span>
               </div>
             ))}
@@ -69,7 +70,7 @@ export const FinancialRenderer = memo(function FinancialRenderer({ data }: Finan
             {finData.rateCards.map((card, i) => (
               <div key={i} className="p-5 bg-white dark:bg-gray-800 rounded-xl border-2 shadow-sm flex justify-between hover:shadow-md transition-shadow">
                 <span className="font-semibold text-base text-gray-900 dark:text-gray-100">{card.role || card.title}</span>
-                <span className="text-green-600 dark:text-green-400 font-bold text-lg">${card.rate}/hr</span>
+                <span className="text-green-600 dark:text-green-400 font-bold text-lg">{formatAmountWithCurrency(card.rate, card.currency || finData.currency)}/hr</span>
               </div>
             ))}
           </div>

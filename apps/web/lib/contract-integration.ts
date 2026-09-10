@@ -37,6 +37,35 @@ export async function initializeContractMetadata(
   metadata: Record<string, unknown>
 ) {
   const { prisma } = await import('@/lib/prisma');
+  const { resolveDocumentNumber } = await import('@/lib/contracts/document-number');
+
+  const fileName = (metadata.fileName as string) || '';
+  const documentNumber = resolveDocumentNumber({
+    extracted: (metadata.documentNumber as string) || (metadata.document_number as string) || null,
+    fileName,
+    contractId,
+  });
+
+  const existing = await prisma.contract.findUnique({
+    where: { id: contractId },
+    select: { tags: true, aiMetadata: true },
+  });
+
+  const existingAiMetadata =
+    existing?.aiMetadata && typeof existing.aiMetadata === 'object' && !Array.isArray(existing.aiMetadata)
+      ? (existing.aiMetadata as Record<string, unknown>)
+      : {};
+
+  const existingTags = Array.isArray(existing?.tags)
+    ? (existing.tags as unknown[]).filter((tag): tag is string => typeof tag === 'string')
+    : [];
+
+  const incomingTags = Array.isArray(metadata.tags)
+    ? (metadata.tags as unknown[]).filter((tag): tag is string => typeof tag === 'string')
+    : undefined;
+
+  // Never clobber existing tags with an implicit/empty [].
+  const shouldWriteTags = incomingTags !== undefined && !(incomingTags.length === 0 && existingTags.length > 0);
 
   const contract = await prisma.contract.update({
     where: { id: contractId },
@@ -44,8 +73,30 @@ export async function initializeContractMetadata(
       contractType: (metadata.contractType as string) || null,
       clientName: (metadata.clientName as string) || null,
       supplierName: (metadata.supplierName as string) || null,
+      ...(shouldWriteTags ? { tags: incomingTags } : {}),
+      aiMetadata: {
+        ...existingAiMetadata,
+        document_number: documentNumber,
+        document_title: (metadata.contractTitle as string) || fileName || existingAiMetadata.document_title,
+        ...(shouldWriteTags ? { tags: incomingTags } : {}),
+      },
     },
   });
 
-  return { success: true, contractId: contract.id };
+  await prisma.contractMetadata.upsert({
+    where: { contractId },
+    create: {
+      contractId,
+      tenantId,
+      tags: existingTags,
+      customFields: {},
+      systemFields: { document_number: documentNumber },
+      updatedBy: (metadata.uploadedBy as string) || 'system',
+    },
+    update: {
+      lastUpdated: new Date(),
+    },
+  });
+
+  return { success: true, contractId: contract.id, documentNumber };
 }

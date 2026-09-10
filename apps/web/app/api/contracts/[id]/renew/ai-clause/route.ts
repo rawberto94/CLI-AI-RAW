@@ -82,6 +82,7 @@ export const POST = withContractApiHandler(async (request: NextRequest, ctx) => 
       model: getAIModel(),
       schema: GeneratedClauseSchema,
       prompt: `You are an expert contract attorney specializing in enterprise procurement.
+Keep the generated clause in the same language as the current content. Do not translate party names. JSON keys stay English.
 
 ${actionPrompts[input.action]}
 

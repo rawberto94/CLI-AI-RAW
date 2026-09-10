@@ -12,6 +12,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { AlertTriangle, TrendingUp, Download } from 'lucide-react';
+import { formatRateMoney } from '@/lib/rate-cards/format';
 
 interface ComparisonEntry {
   entryId: string;
@@ -164,7 +165,7 @@ export function BulkBaselineComparison() {
             <div className="bg-white rounded-lg shadow p-6">
               <p className="text-sm text-gray-500 mb-1">Total Savings Opportunity</p>
               <p className="text-3xl font-bold text-green-600">
-                ${results.totalSavingsOpportunity.toLocaleString()}
+                {formatRateMoney(results.totalSavingsOpportunity)}
               </p>
             </div>
           </div>
@@ -202,7 +203,7 @@ export function BulkBaselineComparison() {
                         {entry.resourceType}
                       </TableCell>
                       <TableCell>{entry.lineOfService}</TableCell>
-                      <TableCell>${entry.actualRate.toLocaleString()}</TableCell>
+                      <TableCell>{formatRateMoney(entry.actualRate)}</TableCell>
                       <TableCell>
                         <div className="space-y-1">
                           {entry.comparisons.slice(0, 2).map((comp, idx) => (
@@ -225,7 +226,7 @@ export function BulkBaselineComparison() {
                       </TableCell>
                       <TableCell>
                         <span className="text-green-600 font-semibold">
-                          ${entry.maxSavings.toLocaleString()}
+                          {formatRateMoney(entry.maxSavings)}
                         </span>
                       </TableCell>
                       <TableCell>

@@ -143,18 +143,25 @@ export async function getExchangeRate(
  */
 export function formatCurrency(
   amount: number,
-  currency: string = 'USD',
-  locale: string = 'en-US'
+  currency?: string,
+  locale: string = 'de-CH'
 ): string {
+  const code = typeof currency === 'string' ? currency.trim().toUpperCase() : '';
+  if (!code || code === 'XXX') {
+    return new Intl.NumberFormat(locale, {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    }).format(amount);
+  }
   try {
     return new Intl.NumberFormat(locale, {
       style: 'currency',
-      currency: currency.toUpperCase(),
+      currency: code,
       minimumFractionDigits: 0,
       maximumFractionDigits: 2,
     }).format(amount);
   } catch {
-    return `${currency} ${amount.toFixed(2)}`;
+    return `${code} ${amount.toFixed(2)}`;
   }
 }
 

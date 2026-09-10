@@ -383,7 +383,7 @@ export const createContractSchema = z.object({
   title: z.string().min(1).max(500),
   vendorName: z.string().min(1).max(200).optional(),
   value: z.number().positive().optional(),
-  currency: z.string().length(3).default('USD'),
+  currency: z.string().length(3).optional(),
   startDate: z.string().datetime().optional(),
   endDate: z.string().datetime().optional(),
   status: z.enum(['DRAFT', 'PENDING', 'ACTIVE', 'EXPIRED', 'TERMINATED']).default('DRAFT'),
@@ -407,7 +407,7 @@ export const createRateCardSchema = z.object({
     level: z.string().optional(),
     location: z.string().optional(),
     hourlyRate: z.number().positive(),
-    currency: z.string().length(3).default('USD'),
+    currency: z.string().length(3).optional(),
   })).min(1),
 });
 

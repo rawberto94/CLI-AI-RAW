@@ -22,6 +22,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress as _Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent as _TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { formatAmountWithCurrency } from '@/lib/utils/formatters';
 
 interface Opportunity {
   id: string;
@@ -104,7 +105,7 @@ export function OpportunitiesDashboard({ opportunities, onAccept, onDismiss }: O
           </div>
           <div className="text-right">
             <div className="text-2xl font-bold text-green-600">
-              ${totalValue.toLocaleString()}
+              {formatAmountWithCurrency(totalValue, null)}
             </div>
             <div className="text-xs text-gray-500">Total Potential Value</div>
           </div>
@@ -175,7 +176,7 @@ export function OpportunitiesDashboard({ opportunities, onAccept, onDismiss }: O
                         </div>
                         <div className="text-right flex-shrink-0">
                           <div className="text-lg font-bold text-green-600">
-                            ${opp.potentialValue.toLocaleString()}
+                            {formatAmountWithCurrency(opp.potentialValue, null)}
                           </div>
                           <div className="text-xs text-gray-500">potential value</div>
                         </div>

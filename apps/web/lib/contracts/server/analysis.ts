@@ -157,7 +157,7 @@ Structure your response as JSON with the following format:
           parties: [],
           financials: {
             totalValue: contract.totalValue ? Number(contract.totalValue) : null,
-            currency: contract.currency || 'USD',
+            currency: contract.currency || null,
             paymentTerms: null,
             penalties: null,
           },
@@ -168,7 +168,7 @@ Structure your response as JSON with the following format:
             noticePeriod: null,
           },
           risks: {
-            level: 'medium',
+            level: 'unknown',
             factors: [],
           },
           obligations: [],
@@ -188,7 +188,7 @@ Structure your response as JSON with the following format:
         })),
         financials: {
           totalValue: contract.totalValue ? Number(contract.totalValue) : null,
-          currency: contract.currency || 'USD',
+          currency: contract.currency || null,
           paymentTerms: null,
           penalties: null,
         },
@@ -199,7 +199,7 @@ Structure your response as JSON with the following format:
           noticePeriod: null,
         },
         risks: {
-          level: 'medium',
+          level: 'unknown',
           factors: [],
         },
         obligations: [],

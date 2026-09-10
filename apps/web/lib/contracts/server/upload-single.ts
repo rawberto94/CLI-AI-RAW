@@ -5,7 +5,7 @@ import { Readable } from 'stream';
 
 import type { Prisma } from '@prisma/client';
 import { nanoid } from 'nanoid';
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { ZodError } from 'zod';
 
 import {
@@ -483,14 +483,23 @@ export async function postContractUpload(
     const scanResult = await scanBuffer(buffer, file.name);
     if (!scanResult.clean) {
       logger.warn(`Virus scan failed for ${file.name}`, { threats: scanResult.threats, tenantId });
-      return NextResponse.json(
-        { error: 'File rejected by security scan', threats: scanResult.threats },
-        { status: 422 },
+      return createErrorResponse(
+        context,
+        'SECURITY_REJECTED',
+        'File rejected by security scan',
+        422,
+        {
+          details: scanResult.threats?.length
+            ? `Threats: ${scanResult.threats.join(', ')}`
+            : 'The file did not pass the virus scan.',
+          retryable: false,
+        },
       );
     }
 
     const contentHash = generateContentHash(buffer);
     const skipDuplicateCheck = request.headers.get('x-skip-duplicate-check') === 'true';
+    const registerAsVersion = request.headers.get('x-register-as-version') === 'true';
     const enableDuplicateDetection = process.env.DISABLE_DUPLICATE_DETECTION !== 'true';
 
     if (enableDuplicateDetection && !skipDuplicateCheck) {
@@ -503,26 +512,43 @@ export async function postContractUpload(
             tenantId,
             checksum: contentHash,
             isDeleted: false,
-            status: { notIn: ['FAILED', 'DELETED'] },
+            status: { notIn: ['FAILED', 'DELETED', 'CANCELLED'] },
             createdAt: { gte: sevenDaysAgo },
           },
           select: { id: true, status: true, fileName: true, createdAt: true },
         });
 
         if (existingContract) {
-          let registeredVersion: Awaited<ReturnType<typeof registerDuplicateUploadAsVersion>> | null = null;
-          try {
-            registeredVersion = await registerDuplicateUploadAsVersion({
+          if (registerAsVersion) {
+            let registeredVersion: Awaited<ReturnType<typeof registerDuplicateUploadAsVersion>> | null = null;
+            try {
+              registeredVersion = await registerDuplicateUploadAsVersion({
+                contractId: existingContract.id,
+                tenantId,
+                uploadedBy: context.userId,
+                fileName: file.name,
+                fileSize: file.size,
+                mimeType: file.type || 'application/octet-stream',
+                checksum: contentHash,
+              });
+            } catch (versionError) {
+              logger.error('[ContractUpload] Failed to register duplicate upload as version:', versionError);
+            }
+
+            return createSuccessResponse(context, {
               contractId: existingContract.id,
-              tenantId,
-              uploadedBy: context.userId,
               fileName: file.name,
               fileSize: file.size,
-              mimeType: file.type || 'application/octet-stream',
-              checksum: contentHash,
+              mimeType: file.type,
+              status: existingContract.status,
+              message: registeredVersion
+                ? `This file was added as version ${registeredVersion.versionNumber}.`
+                : 'This file was uploaded recently. Open the existing contract.',
+              isDuplicate: true,
+              registeredAsVersion: Boolean(registeredVersion),
+              version: registeredVersion,
+              versionNumber: registeredVersion?.versionNumber,
             });
-          } catch (versionError) {
-            logger.error('[ContractUpload] Failed to register duplicate upload as version:', versionError);
           }
 
           return createSuccessResponse(context, {
@@ -531,13 +557,10 @@ export async function postContractUpload(
             fileSize: file.size,
             mimeType: file.type,
             status: existingContract.status,
-            message: registeredVersion
-              ? `This duplicate upload was registered as version ${registeredVersion.versionNumber}.`
-              : 'This file was uploaded recently (within 7 days). You can view the existing contract.',
+            message: 'This file was already uploaded. Open the existing contract, upload as a new analysis, or add it as a version.',
             isDuplicate: true,
-            registeredAsVersion: Boolean(registeredVersion),
-            version: registeredVersion,
-            versionNumber: registeredVersion?.versionNumber,
+            registeredAsVersion: false,
+            requiresDuplicateAction: true,
           });
         }
       } catch (error) {
@@ -771,6 +794,7 @@ export async function postContractUpload(
         supplierName: metadata.supplierName,
         totalValue: metadata.totalValue ? Number(metadata.totalValue) : undefined,
         currency: metadata.currency,
+        uploadedBy: context.userId,
       }).catch((error) => logger.error('[ContractUpload] Metadata initialization error:', error));
     } catch (error) {
       logger.error('[ContractUpload] Metadata init import error:', error);

@@ -18,6 +18,7 @@ import {
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { formatAmountWithCurrency } from '@/lib/utils/formatters';
 
 interface ArchivedContract {
   id: string;
@@ -114,7 +115,7 @@ export default function ArchiveClient() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Total Value</p>
-                  <p className="text-2xl font-bold">${(contracts.reduce((s, c) => s + (c.totalValue || 0), 0) / 1000).toFixed(0)}k</p>
+                  <p className="text-2xl font-bold">{formatAmountWithCurrency(contracts.reduce((s, c) => s + (c.totalValue || 0), 0))}</p>
                 </div>
                 <FileText className="h-8 w-8 text-muted-foreground/30" />
               </div>
@@ -179,7 +180,7 @@ export default function ArchiveClient() {
                       <p className="text-xs text-muted-foreground mt-0.5">
                         {contract.counterpartyName && <><Building2 className="h-3 w-3 inline mr-1" />{contract.counterpartyName} · </>}
                         Archived {new Date(contract.updatedAt).toLocaleDateString()}
-                        {contract.totalValue && <> · ${(contract.totalValue / 1000).toFixed(0)}k</>}
+                        {contract.totalValue && <> · {formatAmountWithCurrency(contract.totalValue)}</>}
                       </p>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">

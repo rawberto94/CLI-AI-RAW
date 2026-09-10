@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { useBaselineTracking, type TrackingData } from '@/hooks/use-rate-card-queries';
 import { DataFreshnessIndicator } from '@/components/shared/DataFreshnessIndicator';
+import { formatRateMoney } from '@/lib/rate-cards/format';
 
 export function BaselineTrackingDashboard() {
   const { 
@@ -126,7 +127,7 @@ export function BaselineTrackingDashboard() {
             <TrendingUp className="h-5 w-5 text-orange-500" />
           </div>
           <p className="text-3xl font-bold text-orange-600">
-            ${Math.round(summary.totalSavingsIdentified).toLocaleString()}
+            {formatRateMoney(Math.round(summary.totalSavingsIdentified))}
           </p>
           <p className="text-xs text-gray-500 mt-1">
             {summary.ratesExceedingBaseline} rates above baseline
@@ -139,7 +140,7 @@ export function BaselineTrackingDashboard() {
             <DollarSign className="h-5 w-5 text-green-500" />
           </div>
           <p className="text-3xl font-bold text-green-600">
-            ${Math.round(summary.totalSavingsRealized).toLocaleString()}
+            {formatRateMoney(Math.round(summary.totalSavingsRealized))}
           </p>
           <p className="text-xs text-gray-500 mt-1">
             {summary.totalSavingsRealized > 0
@@ -163,7 +164,7 @@ export function BaselineTrackingDashboard() {
               </Badge>
               <p className="text-2xl font-bold">{type.count}</p>
               <p className="text-xs text-gray-500 mt-1">
-                Avg: ${Math.round(type.avgRate).toLocaleString()}
+                Avg: {formatRateMoney(Math.round(type.avgRate))}
               </p>
             </div>
           ))}
@@ -206,7 +207,7 @@ export function BaselineTrackingDashboard() {
                     {violation.resourceType}
                   </TableCell>
                   <TableCell>{violation.lineOfService}</TableCell>
-                  <TableCell>${violation.actualRate.toLocaleString()}</TableCell>
+                  <TableCell>{formatRateMoney(violation.actualRate)}</TableCell>
                   <TableCell>
                     <div className="space-y-1">
                       {violation.comparisons.slice(0, 2).map((comp: any, idx: number) => (
@@ -221,7 +222,7 @@ export function BaselineTrackingDashboard() {
                   </TableCell>
                   <TableCell>
                     <span className="text-green-600 font-semibold">
-                      ${violation.maxSavings.toLocaleString()}
+                      {formatRateMoney(violation.maxSavings)}
                     </span>
                   </TableCell>
                   <TableCell>
@@ -290,11 +291,11 @@ export function BaselineTrackingDashboard() {
                       Number(comp.variance) > 0 ? 'text-red-600' : 'text-green-600'
                     }`}>
                       {Number(comp.variance) > 0 ? '+' : ''}
-                      ${Math.abs(Number(comp.variance)).toLocaleString()}
+                      {formatRateMoney(Math.abs(Number(comp.variance)))}
                     </p>
                     {Number(comp.potentialSavings) > 0 && (
                       <p className="text-xs text-green-600 mt-1">
-                        Save ${Number(comp.potentialSavings).toLocaleString()}
+                        Save {formatRateMoney(Number(comp.potentialSavings))}
                       </p>
                     )}
                   </div>

@@ -72,7 +72,10 @@ export class ClauseRepository extends AbstractRepository<
     }
   ): Promise<Clause[]> {
     const conditions: Prisma.Sql[] = [
-      Prisma.sql`to_tsvector('english', "text") @@ plainto_tsquery('english', ${query})`,
+      Prisma.sql`(
+        to_tsvector('english', "text") @@ plainto_tsquery('english', ${query})
+        OR to_tsvector('simple', "text") @@ plainto_tsquery('simple', ${query})
+      )`,
     ];
 
     if (options?.contractId) {
@@ -89,7 +92,10 @@ export class ClauseRepository extends AbstractRepository<
       SELECT *
       FROM "Clause"
       WHERE ${whereClause}
-      ORDER BY ts_rank(to_tsvector('english', "text"), plainto_tsquery('english', ${query})) DESC
+      ORDER BY GREATEST(
+        ts_rank(to_tsvector('english', "text"), plainto_tsquery('english', ${query})),
+        ts_rank(to_tsvector('simple', "text"), plainto_tsquery('simple', ${query}))
+      ) DESC
       LIMIT ${limit}
     `;
 

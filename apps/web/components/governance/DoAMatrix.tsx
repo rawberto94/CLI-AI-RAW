@@ -12,6 +12,7 @@ import { Shield, Plus, DollarSign, Users, CheckCircle2, AlertTriangle, Trash2, F
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { EmptyState } from '@/components/shared/EmptyState';
+import { useDisplayCurrency } from '@/hooks/useDisplayCurrency';
 
 interface DoAEntry {
   id: string; name: string; role: string; department: string | null;
@@ -20,10 +21,11 @@ interface DoAEntry {
 }
 
 export default function DoAMatrix() {
+  const displayCurrency = useDisplayCurrency();
   const [entries, setEntries] = useState<DoAEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
-  const [form, setForm] = useState({ name: '', role: '', department: '', maxValue: '', currency: 'USD', requiresCounterSign: false, canDelegate: true });
+  const [form, setForm] = useState({ name: '', role: '', department: '', maxValue: '', currency: displayCurrency, requiresCounterSign: false, canDelegate: true });
 
   const fetchEntries = useCallback(async () => {
     try {
@@ -43,7 +45,7 @@ export default function DoAMatrix() {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...form, maxValue: form.maxValue ? parseFloat(form.maxValue) : null }),
       });
-      if ((await res.json()).success) { toast.success('Entry added'); setShowAdd(false); setForm({ name: '', role: '', department: '', maxValue: '', currency: 'USD', requiresCounterSign: false, canDelegate: true }); fetchEntries(); }
+      if ((await res.json()).success) { toast.success('Entry added'); setShowAdd(false); setForm({ name: '', role: '', department: '', maxValue: '', currency: displayCurrency, requiresCounterSign: false, canDelegate: true }); fetchEntries(); }
     } catch { toast.error('Failed to add entry'); }
   };
 

@@ -11,6 +11,7 @@
  */
 
 import { createLogger } from '../utils/logger';
+import { detectCurrencyFromText, UNKNOWN_CURRENCY } from '@repo/utils';
 
 const logger = createLogger('advanced-extraction-intelligence');
 
@@ -813,23 +814,12 @@ export class AdvancedExtractionIntelligenceService {
   }
 
   private parseCurrencyValue(value: string): { amount: number; currency: string } | null {
-    const currencyMatch = value.match(/([€$£¥]|USD|EUR|GBP|CAD|AUD)/);
-    const amountMatch = value.match(/[\d,]+(?:\.\d{2})?/);
+    const amountMatch = value.match(/[\d'’.,]+(?:\.\d{2})?/);
     
     if (amountMatch) {
-      const amount = parseFloat(amountMatch[0].replace(/,/g, ''));
-      let currency = 'USD';
-      
-      if (currencyMatch) {
-        const symbol = currencyMatch[1];
-        if (symbol === '€' || symbol === 'EUR') currency = 'EUR';
-        else if (symbol === '£' || symbol === 'GBP') currency = 'GBP';
-        else if (symbol === '¥') currency = 'JPY';
-        else if (symbol === 'CAD') currency = 'CAD';
-        else if (symbol === 'AUD') currency = 'AUD';
-      }
-      
-      return { amount, currency };
+      const amount = parseFloat(amountMatch[0].replace(/['’]/g, '').replace(/,/g, ''));
+      if (!Number.isFinite(amount)) return null;
+      return { amount, currency: detectCurrencyFromText(value) || UNKNOWN_CURRENCY };
     }
     
     return null;

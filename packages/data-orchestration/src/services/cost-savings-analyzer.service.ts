@@ -101,7 +101,7 @@ export class CostSavingsAnalyzerService {
 
       // Calculate totals
       const totalSavings = opportunities.reduce((sum, opp) => sum + opp.potentialSavings.amount, 0);
-      const currency = unwrap(artifacts.financial?.currency) || 'USD';
+      const currency = unwrap(artifacts.financial?.currency) || '';
 
       // Categorize opportunities
       const quickWins = opportunities.filter(
@@ -162,7 +162,7 @@ export class CostSavingsAnalyzerService {
         description: 'Current rates appear above market average. Benchmarking against industry standards could yield significant savings.',
         potentialSavings: {
           amount: potentialSavings,
-          currency: financial?.currency || 'USD',
+          currency: financial?.currency || '',
           percentage: 8,
           timeframe: 'annual'
         },
@@ -194,7 +194,7 @@ export class CostSavingsAnalyzerService {
           description: 'Consider offshore/nearshore resources for suitable work to reduce costs by 30-40%.',
           potentialSavings: {
             amount: financial.totalValue * 0.25,
-            currency: financial?.currency || 'USD',
+            currency: financial?.currency || '',
             percentage: 25,
             timeframe: 'annual'
           },

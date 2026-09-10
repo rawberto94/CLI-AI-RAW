@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { OpportunitiesDashboard } from '@/components/agents/OpportunitiesDashboard';
+import { formatAmountWithCurrency } from '@/lib/utils/formatters';
 
 interface DashboardStats {
   totalEvents: number;
@@ -54,13 +55,13 @@ const fetchOpportunities = async () => {
 export default function AIInsightsDashboard() {
   const [activeTab, setActiveTab] = useState('overview');
 
-  const { data: stats, isLoading: statsLoading } = useQuery({
+  const { data: stats, isLoading: statsLoading, refetch: refetchStats } = useQuery({
     queryKey: ['agent-stats'],
     queryFn: fetchAgentStats,
     refetchInterval: 30000, // Refresh every 30 seconds
   });
 
-  const { data: opportunitiesData, isLoading: opportunitiesLoading } = useQuery({
+  const { data: opportunitiesData, isLoading: opportunitiesLoading, refetch: refetchOpportunities } = useQuery({
     queryKey: ['opportunities'],
     queryFn: fetchOpportunities,
     refetchInterval: 60000, // Refresh every minute
@@ -108,7 +109,14 @@ export default function AIInsightsDashboard() {
               Real-time insights and recommendations from 9 autonomous AI agents
             </p>
           </div>
-          <Button variant="outline" size="sm">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              void refetchStats();
+              void refetchOpportunities();
+            }}
+          >
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh Data
           </Button>
@@ -150,7 +158,7 @@ export default function AIInsightsDashboard() {
                       Potential Savings
                     </p>
                     <p className="text-3xl font-bold text-slate-900 dark:text-white">
-                      {statsLoading ? '...' : `$${(stats?.totalOpportunityValue || 0).toLocaleString()}`}
+                      {statsLoading ? '...' : formatAmountWithCurrency(stats?.totalOpportunityValue || 0)}
                     </p>
                   </div>
                   <div className="p-3 rounded-xl bg-green-100 dark:bg-green-900/50">

@@ -3,10 +3,11 @@ import { prisma } from '@/lib/prisma';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 import { analyticsService } from 'data-orchestration/services';
 import { getCached, setCached } from '@/lib/cache';
+import { expirationOrEndDateFilter, portfolioWhere } from '@/lib/contracts/server/portfolio';
 
 // Helper to get month string
 function getMonthString(date: Date): string {
-  return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+  return date.toLocaleDateString('de-CH', { month: 'short', year: 'numeric' });
 }
 
 // Generate forecast data from contracts
@@ -22,13 +23,8 @@ async function generateForecastData(tenantId: string, months: number) {
   }> = [];
   let cumulative = 0;
 
-  // Get all active contracts
   const contracts = await prisma.contract.findMany({
-    where: {
-      tenantId,
-      isDeleted: false,
-      status: { notIn: ['DRAFT', 'CANCELLED', 'EXPIRED', 'DELETED'] },
-    },
+    where: portfolioWhere(tenantId),
     select: {
       id: true,
       totalValue: true,
@@ -89,7 +85,7 @@ async function generateForecastData(tenantId: string, months: number) {
 // Generate scenarios based on portfolio
 async function generateScenarios(tenantId: string, currentValue: number) {
   const contracts = await prisma.contract.findMany({
-    where: { tenantId, isDeleted: false },
+    where: portfolioWhere(tenantId),
     select: { totalValue: true, supplierName: true, status: true },
     orderBy: { totalValue: 'desc' },
     take: 10,
@@ -147,14 +143,14 @@ async function discoverOpportunities(tenantId: string) {
   }> = [];
 
   // Find expiring contracts
+  const now = new Date();
   const expiringContracts = await prisma.contract.findMany({
     where: {
-      tenantId,
-      isDeleted: false,
-      expirationDate: {
-        gte: new Date(),
-        lte: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000), // Next 90 days
-      },
+      ...portfolioWhere(tenantId),
+      ...expirationOrEndDateFilter({
+        gte: now,
+        lte: new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000),
+      }),
     },
     select: { id: true, contractTitle: true, supplierName: true, totalValue: true, expirationDate: true },
     orderBy: { totalValue: 'desc' },
@@ -178,7 +174,7 @@ async function discoverOpportunities(tenantId: string) {
   // Find consolidation opportunities (same supplier, multiple contracts)
   const supplierContracts = await prisma.contract.groupBy({
     by: ['supplierName'],
-    where: { tenantId, isDeleted: false, supplierName: { not: null } },
+    where: { ...portfolioWhere(tenantId), supplierName: { not: null } },
     _count: { id: true },
     _sum: { totalValue: true },
     having: { id: { _count: { gt: 1 } } },
@@ -219,13 +215,12 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
   const timeRange = searchParams.get('timeRange') || '12m';
   const months = timeRange === '6m' ? 6 : timeRange === '24m' ? 24 : 12;
 
-  const cacheKey = `analytics:forecasting:${tenantId}:${timeRange}`;
+  const cacheKey = `analytics:forecasting:${tenantId}:${timeRange}:v2`;
   const cached = await getCached(cacheKey);
   if (cached) return createSuccessResponse(ctx, cached);
 
-  // Get current portfolio value
   const contracts = await prisma.contract.findMany({
-    where: { tenantId, isDeleted: false },
+    where: portfolioWhere(tenantId),
     select: {
       id: true,
       totalValue: true,

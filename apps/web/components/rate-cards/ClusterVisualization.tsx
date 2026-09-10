@@ -21,6 +21,7 @@ import {
   ChevronUp,
   Building2,
 } from 'lucide-react';
+import { formatRateMoney } from '@/lib/rate-cards/format';
 
 interface ClusterCharacteristics {
   avgRate: number;
@@ -144,9 +145,9 @@ export function ClusterVisualization({
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              ${Math.round(
+              {formatRateMoney(Math.round(
                 clusters.reduce((sum, c) => sum + parseFloat(c.consolidationSavings.toString()), 0)
-              ).toLocaleString()}
+              ))}
             </div>
             <p className="text-xs text-gray-500 mt-1">Annual</p>
           </CardContent>
@@ -194,7 +195,7 @@ export function ClusterVisualization({
                       {consolidation && (
                         <Badge variant="outline" className="bg-green-50">
                           <TrendingDown className="w-3 h-3 mr-1" />
-                          ${Math.round(consolidation.annualSavings).toLocaleString()}/yr
+                          {formatRateMoney(Math.round(consolidation.annualSavings))}/yr
                         </Badge>
                       )}
                     </div>
@@ -216,14 +217,13 @@ export function ClusterVisualization({
                   <div>
                     <div className="text-xs text-gray-500">Avg Rate</div>
                     <div className="text-sm font-semibold">
-                      ${Math.round(parseFloat(cluster.avgRate.toString()))}/day
+                      {formatRateMoney(Math.round(parseFloat(cluster.avgRate.toString())))}/day
                     </div>
                   </div>
                   <div>
                     <div className="text-xs text-gray-500">Rate Range</div>
                     <div className="text-sm font-semibold">
-                      ${Math.round(parseFloat(cluster.minRate.toString()))} - $
-                      {Math.round(parseFloat(cluster.maxRate.toString()))}
+                      {formatRateMoney(Math.round(parseFloat(cluster.minRate.toString())))} - {formatRateMoney(Math.round(parseFloat(cluster.maxRate.toString())))}
                     </div>
                   </div>
                   <div>
@@ -268,7 +268,7 @@ export function ClusterVisualization({
                           <div>
                             <div className="text-xs text-gray-500">Annual Savings</div>
                             <div className="text-lg font-bold text-green-600">
-                              ${Math.round(consolidation.annualSavings).toLocaleString()}
+                              {formatRateMoney(Math.round(consolidation.annualSavings))}
                             </div>
                           </div>
                           <div>
@@ -316,7 +316,7 @@ export function ClusterVisualization({
                               </div>
                               <div className="text-right">
                                 <div className="text-sm font-bold text-green-600">
-                                  ${Math.round((opp as any).annualSavings || 0).toLocaleString()}
+                                  {formatRateMoney(Math.round((opp as any).annualSavings || 0))}
                                 </div>
                                 <Badge className={getRiskColor(opp.riskLevel)} variant="outline">
                                   {opp.riskLevel}

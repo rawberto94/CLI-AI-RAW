@@ -11,6 +11,7 @@
 
 import { NextRequest } from 'next/server';
 import { getAIModel } from '@/lib/ai/ai-sdk-provider';
+import { analysisLanguageInstructions } from '@repo/utils';
 import { generateObject } from 'ai';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
@@ -90,12 +91,14 @@ export const POST = withContractApiHandler(async (request: NextRequest, ctx) => 
       model: getAIModel(),
       schema: RecommendationSchema,
       prompt: `You are an expert contract manager. Recommend whether to extend, renew, or renegotiate this contract.
+${analysisLanguageInstructions({ contractText: `${contract.contractTitle || ''} ${contract.supplierName || ''}` })}
+JSON keys stay English. Keep titles and party names verbatim.
 
 Contract: "${contract.contractTitle}"
 Type: ${contract.contractType || 'General'}
 Supplier: ${contract.supplierName || 'Unknown'}
 Client: ${contract.clientName || 'Unknown'}
-Value: ${contract.currency || 'USD'} ${contract.totalValue ?? 'N/A'}
+Value: ${contract.currency ? `${contract.currency} ` : ''}${contract.totalValue ?? 'N/A'}
 Effective: ${contract.effectiveDate ? new Date(contract.effectiveDate).toISOString().split('T')[0] : 'N/A'}
 Expiration: ${contract.expirationDate ? new Date(contract.expirationDate).toISOString().split('T')[0] : 'N/A'}
 Days remaining: ${daysRemaining ?? 'N/A'}

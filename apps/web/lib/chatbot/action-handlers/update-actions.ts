@@ -462,10 +462,10 @@ export async function handleUpdateActions(
   // Format values for display
   const formatValue = (val: unknown): string => {
     if (val instanceof Date) {
-      return val.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+      return val.toLocaleDateString('de-CH', { year: 'numeric', month: 'long', day: 'numeric' });
     }
     if (typeof val === 'number') {
-      return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val);
+      return new Intl.NumberFormat('de-CH', { maximumFractionDigits: 2 }).format(val);
     }
     if (val === null || val === undefined) {
       return '(not set)';

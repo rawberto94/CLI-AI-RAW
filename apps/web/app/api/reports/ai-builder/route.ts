@@ -6,6 +6,7 @@ import type { Contract, ContractStatus, Prisma } from '@prisma/client';
 import { getErrorMessage } from '@/lib/types/common';
 import { withAuthApiHandler, createSuccessResponse, getApiContext} from '@/lib/api-middleware';
 import { analyticsService } from 'data-orchestration/services';
+import { formatMoneyText } from '@repo/utils';
 
 let _openai: OpenAI | null = null;
 function getOpenAI(): OpenAI {
@@ -702,7 +703,7 @@ async function generateRecommendations(
       type: 'risk',
       priority: 'high',
       title: 'High-Value Contracts at Risk',
-      description: `${riskMetrics.highValueAtRisk} high-value contract(s) (>$100K) are expiring within 90 days. Prioritize renewal negotiations.`,
+      description: `${riskMetrics.highValueAtRisk} high-value contract(s) (>${formatMoneyText(100000)}) are expiring within 90 days. Prioritize renewal negotiations.`,
       potentialImpact: `Protect significant contract value and supplier relationships`,
       affectedContracts: contracts.filter(c => c.daysUntilExpiry !== null && c.daysUntilExpiry > 0 && c.daysUntilExpiry <= 90 && c.value > 100000).slice(0, 5).map(c => c.title),
     });
@@ -728,7 +729,7 @@ async function generateRecommendations(
       type: 'cost',
       priority: 'medium',
       title: 'Volume Discount Opportunity',
-      description: `${highValueContracts.length} contracts exceed $200K. Consider consolidating for volume discounts.`,
+      description: `${highValueContracts.length} contracts exceed ${formatMoneyText(200000)}. Consider consolidating for volume discounts.`,
       potentialImpact: 'Potential 5-15% savings through consolidated negotiations',
       affectedContracts: highValueContracts.slice(0, 5).map(c => c.title),
     });
@@ -775,7 +776,7 @@ async function generateAISummary(analysis: DeepAnalysisResult): Promise<string> 
   }
   
   const topSuppliers = analysis.bySupplier.slice(0, 5)
-    .map(s => `${s.name}: $${s.totalValue.toLocaleString()} (${s.contractCount} contracts, Risk: ${s.riskScore}%)`)
+    .map(s => `${s.name}: ${formatMoneyText(s.totalValue)} (${s.contractCount} contracts, Risk: ${s.riskScore}%)`)
     .join('\n');
   
   const criticalRecs = analysis.recommendations
@@ -788,8 +789,8 @@ async function generateAISummary(analysis: DeepAnalysisResult): Promise<string> 
 **PORTFOLIO OVERVIEW:**
 - Total Contracts: ${analysis.summary.totalContracts}
 - Active Contracts: ${analysis.summary.activeContracts}
-- Total Value: $${analysis.summary.totalValue.toLocaleString()}
-- Average Contract Value: $${Math.round(analysis.summary.averageValue).toLocaleString()}
+- Total Value: ${formatMoneyText(analysis.summary.totalValue)}
+- Average Contract Value: ${formatMoneyText(Math.round(analysis.summary.averageValue))}
 - Portfolio Health Score: ${analysis.summary.healthScore}/100
 - Compliance Score: ${analysis.summary.complianceScore}/100
 - Risk Score: ${analysis.summary.riskScore}/100 (higher = more risk)
@@ -800,7 +801,7 @@ async function generateAISummary(analysis: DeepAnalysisResult): Promise<string> 
 
 **BY CATEGORY:**
 ${Object.entries(analysis.byCategory).slice(0, 8).map(([cat, data]) => 
-  `- ${cat}: ${data.count} contracts, $${data.value.toLocaleString()}, Avg ${data.avgDuration}mo`
+  `- ${cat}: ${data.count} contracts, ${formatMoneyText(data.value)}, Avg ${data.avgDuration}mo`
 ).join('\n')}
 
 **BY STATUS:**
@@ -813,7 +814,7 @@ ${topSuppliers}
 - Expiring in 30 days: ${analysis.riskAnalysis.expiringIn30Days} 🔴
 - Expiring in 90 days: ${analysis.riskAnalysis.expiringIn90Days} 🟠
 - Auto-renewal enabled: ${analysis.riskAnalysis.autoRenewalCount}
-- High-value at risk (>$100K): ${analysis.riskAnalysis.highValueAtRisk}
+- High-value at risk (>${formatMoneyText(100000)}): ${analysis.riskAnalysis.highValueAtRisk}
 - Overdue contracts: ${analysis.riskAnalysis.overdueContracts}
 - Missing critical data: ${analysis.riskAnalysis.missingCriticalData}
 - Supplier concentration risk: ${analysis.riskAnalysis.concentrationRisk}%
@@ -828,7 +829,7 @@ ${criticalRecs || 'No critical items identified'}
 
 **TOP CONTRACTS:**
 ${analysis.contracts.slice(0, 8).map((c, i) => 
-  `${i + 1}. [${c.title}](/contracts/${c.id}) - ${c.supplierName} - $${c.value.toLocaleString()} - ${c.riskLevel} risk`
+  `${i + 1}. [${c.title}](/contracts/${c.id}) - ${c.supplierName} - ${formatMoneyText(c.value)} - ${c.riskLevel} risk`
 ).join('\n')}
 
 Please provide a structured executive summary with:
@@ -860,7 +861,7 @@ Format with markdown (bold headers, bullets). Include contract links using the f
 
 **Health Score: ${analysis.summary.healthScore}/100** | **Risk Score: ${analysis.summary.riskScore}/100**
 
-Your portfolio contains **${analysis.summary.totalContracts} contracts** worth **$${analysis.summary.totalValue.toLocaleString()}**.
+Your portfolio contains **${analysis.summary.totalContracts} contracts** worth **${formatMoneyText(analysis.summary.totalValue)}**.
 
 ### ⚠️ Immediate Attention Required
 - ${analysis.riskAnalysis.expiringIn30Days} contracts expiring in 30 days
@@ -868,7 +869,7 @@ Your portfolio contains **${analysis.summary.totalContracts} contracts** worth *
 - ${analysis.riskAnalysis.missingCriticalData} contracts missing critical data
 
 ### 📊 Key Insights
-- Average contract value: $${Math.round(analysis.summary.averageValue).toLocaleString()}
+- Average contract value: ${formatMoneyText(Math.round(analysis.summary.averageValue))}
 - Top supplier concentration: ${analysis.riskAnalysis.concentrationRisk}%
 - Renewal rate: ${analysis.trends.renewalRate}%
 

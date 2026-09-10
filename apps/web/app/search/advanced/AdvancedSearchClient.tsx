@@ -163,14 +163,11 @@ export default function AdvancedSearchClient() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <Button variant="outline" size="sm">
-            <Save className="w-4 h-4 mr-2" />
-            Save Search
-          </Button>
-          <Button variant="outline" size="sm">
-            <Download className="w-4 h-4 mr-2" />
-            Export Results
-          </Button>
+          <Link href="/search">
+            <Button variant="outline" size="sm">
+              Back to Search
+            </Button>
+          </Link>
         </div>
       </div>
 

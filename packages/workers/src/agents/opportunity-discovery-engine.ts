@@ -14,6 +14,7 @@ import type {
 } from './types';
 import { logger } from '../utils/logger';
 import { prisma } from '../lib/prisma';
+import { formatMoneyText } from '@repo/utils';
 
 export class OpportunityDiscoveryEngine extends BaseAgent {
   name = 'opportunity-discovery-engine';
@@ -115,11 +116,11 @@ export class OpportunityDiscoveryEngine extends BaseAgent {
       confidence: 0.80,
       reasoning: this.formatReasoning([
         `Discovered ${opportunities.length} opportunities`,
-        `Total Potential Value: $${totalValue.toLocaleString()}`,
+        `Total Potential Value: ${formatMoneyText(totalValue)}`,
         '',
         'Top 3 Opportunities:',
         ...opportunities.slice(0, 3).map(o => 
-          `  ${o.type.toUpperCase()}: ${o.title} ($${o.potentialValue.toLocaleString()})`
+          `  ${o.type.toUpperCase()}: ${o.title} (${formatMoneyText(o.potentialValue)})`
         ),
       ]),
       metadata: {
@@ -277,7 +278,7 @@ export class OpportunityDiscoveryEngine extends BaseAgent {
           id: `renegotiation-${contract.id}-${Date.now()}`,
           type: 'renegotiation',
           title: `Renegotiate ${contract.title} - ${priceDiffPercent.toFixed(0)}% above market`,
-          description: `Current rate ($${contract.rate}) is ${priceDiffPercent.toFixed(0)}% above market benchmark ($${marketRate.averageRate}). Similar contracts in your region average $${marketRate.medianRate}.`,
+          description: `Current rate (${formatMoneyText(contract.rate, contract.currency)}) is ${priceDiffPercent.toFixed(0)}% above market benchmark (${formatMoneyText(marketRate.averageRate)}). Similar contracts in your region average ${formatMoneyText(marketRate.medianRate)}.`,
           potentialValue: potentialSavings,
           confidence: 0.85,
           effort: 'low',

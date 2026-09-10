@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Slider } from '@/components/ui/slider';
 import { cn } from '@/lib/utils';
+import { formatRateMoney } from '@/lib/rate-cards/format';
 import {
   Plus,
   Trash2,
@@ -131,7 +132,7 @@ export function ScenarioModeling({
                 {scenario.name}
               </p>
               <p className="text-lg font-bold text-violet-600">
-                ${(savings.totalSavingsPerYear / 1000).toFixed(0)}K/yr
+                {formatRateMoney(savings.totalSavingsPerYear)}/yr
               </p>
             </button>
           );
@@ -250,15 +251,15 @@ export function ScenarioModeling({
                   <>
                     <div className="p-3 rounded-lg bg-violet-50">
                       <p className="text-xs text-violet-600 mb-1">New Rate</p>
-                      <p className="text-xl font-bold text-violet-700">${savings.newRate.toFixed(0)}</p>
+                      <p className="text-xl font-bold text-violet-700">{formatRateMoney(savings.newRate)}</p>
                     </div>
                     <div className="p-3 rounded-lg bg-violet-50">
                       <p className="text-xs text-violet-600 mb-1">Annual Savings</p>
-                      <p className="text-xl font-bold text-violet-700">${(savings.totalSavingsPerYear / 1000).toFixed(0)}K</p>
+                      <p className="text-xl font-bold text-violet-700">{formatRateMoney(savings.totalSavingsPerYear)}</p>
                     </div>
                     <div className="p-3 rounded-lg bg-violet-50">
                       <p className="text-xs text-violet-600 mb-1">Total Savings</p>
-                      <p className="text-xl font-bold text-violet-700">${(savings.totalSavings / 1000).toFixed(0)}K</p>
+                      <p className="text-xl font-bold text-violet-700">{formatRateMoney(savings.totalSavings)}</p>
                     </div>
                     <div className="p-3 rounded-lg bg-amber-50">
                       <p className="text-xs text-amber-600 mb-1">Savings %</p>

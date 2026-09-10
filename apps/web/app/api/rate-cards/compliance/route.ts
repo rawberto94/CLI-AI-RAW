@@ -72,7 +72,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
                   baselineRate: match.rate,
                   variance: Math.round(variance * 100) / 100,
                   severity: Math.abs(variance) > 25 ? 'HIGH' : 'MEDIUM',
-                  currency: contract.currency || 'USD',
+                  currency: contract.currency || '',
                 });
               }
             }

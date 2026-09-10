@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { formatRateMoney } from '@/lib/rate-cards/format'
 
 interface Opportunity {
   id: string;
@@ -136,14 +137,7 @@ export function OpportunitiesList() {
     return colors[category] || 'bg-gray-100 text-gray-800';
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
+  const formatCurrency = (value: number) => formatRateMoney(value);
 
   if (loading && opportunities.length === 0) {
     return <div className="p-8 text-center">Loading opportunities...</div>;

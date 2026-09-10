@@ -14,7 +14,7 @@ const DEFAULT_TAG_COLOR = '#8B5CF6';
 
 export function normalizeTagName(input: unknown): string {
   if (typeof input !== 'string') return '';
-  return input.trim().toLowerCase();
+  return input.trim().toLowerCase().replace(/\s+/g, '-');
 }
 
 export function normalizeTagArray(input: unknown): string[] {

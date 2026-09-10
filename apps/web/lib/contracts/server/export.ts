@@ -28,6 +28,14 @@ interface ExportArtifact {
   updatedAt: Date;
 }
 
+function formatExportMoney(value: unknown, currency?: string | null): string {
+  if (value == null || value === '') return 'N/A';
+  const amount = Number(value);
+  if (!Number.isFinite(amount) || amount === 0) return 'N/A';
+  const code = typeof currency === 'string' ? currency.trim() : '';
+  return code ? `${code} ${amount.toLocaleString()}` : amount.toLocaleString();
+}
+
 interface ExportClause {
   id: string;
   content?: string;
@@ -98,7 +106,7 @@ function generateXLSX(contract: ContractExportData): Buffer {
     ['Supplier', contract.supplierName || 'N/A'],
     [''],
     ['Financial'],
-    ['Total Value', contract.totalValue ? `${contract.currency || 'USD'} ${Number(contract.totalValue).toLocaleString()}` : 'N/A'],
+    ['Total Value', formatExportMoney(contract.totalValue, contract.currency)],
     ['Currency', contract.currency || 'N/A'],
     [''],
     ['Dates'],
@@ -141,7 +149,7 @@ function generateXLSX(contract: ContractExportData): Buffer {
 async function generateDOCX(contract: ContractExportData): Promise<Buffer> {
   const formatDate = (date: Date | null | undefined) => date ? new Date(date).toLocaleDateString() : 'N/A';
   const formatValue = (value: number | null | undefined, currency?: string | null) => (
-    value ? `${currency || 'USD'} ${Number(value).toLocaleString()}` : 'N/A'
+    formatExportMoney(value, currency)
   );
 
   const makeRow = (label: string, value: string) => new TableRow({
@@ -249,7 +257,7 @@ function formatRisks(data: string | RiskItem[] | Record<string, unknown> | unkno
 function generatePDFContent(contract: ContractExportData): string {
   const formatDate = (date: Date | null | undefined) => date ? new Date(date).toLocaleDateString() : 'N/A';
   const formatValue = (value: number | null | undefined, currency?: string | null) => (
-    value ? `${currency || 'USD'} ${Number(value).toLocaleString()}` : 'N/A'
+    formatExportMoney(value, currency)
   );
 
   const artifacts = contract.artifacts || [];
@@ -331,7 +339,7 @@ function generatePDFContent(contract: ContractExportData): string {
       <span class="value">${formatValue(contract.totalValue, contract.currency)}</span>
 
       <span class="label">Currency:</span>
-      <span class="value">${contract.currency || 'USD'}</span>
+      <span class="value">${contract.currency || 'N/A'}</span>
     </div>
   </div>
 

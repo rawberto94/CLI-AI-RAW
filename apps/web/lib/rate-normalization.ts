@@ -64,6 +64,7 @@ export class RateNormalizationService {
       'USD': 1.0,
       'EUR': 1.08,
       'GBP': 1.27,
+      'CHF': 1.12,
       'CAD': 0.74,
       'AUD': 0.66,
       'INR': 0.012,
@@ -231,8 +232,7 @@ export class RateNormalizationService {
     if (unit === 'weekly') confidence *= 0.8;
     if (unit === 'annual' || unit === 'per_user_annual') confidence *= 0.9;
 
-    // Reduce confidence for non-USD currencies
-    if (currency.toUpperCase() !== 'USD') confidence *= 0.95;
+    if (!this.currencyRates[currency.toUpperCase()]) confidence *= 0.9;
 
     // Reduce confidence for non-standard roles
     if (!this.roleStandardization.has(role.toLowerCase().trim())) {
@@ -330,7 +330,7 @@ export function convertRate(
   rate: number, 
   fromUnit: RateUnit, 
   toUnit: RateUnit, 
-  currency: string = 'USD'
+  currency: string = 'XXX'
 ): number {
   const input: RateInput = {
     role: 'temp',

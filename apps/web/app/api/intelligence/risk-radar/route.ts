@@ -10,6 +10,7 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, type AuthenticatedApiContext } from '@/lib/api-middleware';
 import { logger } from '@/lib/logger';
+import { formatMoneyText } from '@repo/utils';
 
 interface RiskItem {
   id: string;
@@ -122,7 +123,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
           factors: [
             `${daysToExpiry} days until expiration`,
             ...(contract.autoRenewalEnabled ? ['Auto-renewal is enabled'] : ['No auto-renewal — manual action needed']),
-            ...(contract.totalValue ? [`Contract value: $${Number(contract.totalValue).toLocaleString()}`] : []),
+            ...(contract.totalValue ? [`Contract value: ${formatMoneyText(Number(contract.totalValue))}`] : []),
           ],
         });
       }
@@ -163,11 +164,11 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
           severity: totalVal > 500000 ? 'high' : 'medium',
           score: Math.min(95, Math.round(totalVal / 10000)),
           trend: 'stable',
-          description: `High-value contract ($${totalVal.toLocaleString()}) with ${healthScore !== null ? `low health score (${healthScore})` : 'unassessed health'}.`,
+          description: `High-value contract (${formatMoneyText(totalVal)}) with ${healthScore !== null ? `low health score (${healthScore})` : 'unassessed health'}.`,
           detectedAt: now.toISOString(),
           recommendedAction: 'Prioritize health assessment and compliance review for this high-value contract',
           factors: [
-            `Total value: $${totalVal.toLocaleString()}`,
+            `Total value: ${formatMoneyText(totalVal)}`,
             healthScore !== null ? `Health score: ${healthScore}/100` : 'Health not yet assessed',
             ...(contract.contractType ? [`Type: ${contract.contractType}`] : []),
           ],

@@ -16,6 +16,7 @@ import { BaseAgent } from './base-agent';
 import type { AgentInput, AgentOutput } from './types';
 import { logger } from '../utils/logger';
 import { prisma } from '../lib/prisma';
+import { formatMoneyText, resolvePersistCurrency } from '@repo/utils';
 
 // ============================================================================
 // TYPES
@@ -303,7 +304,7 @@ export class RFxDetectionAgent extends BaseAgent {
       potentialSavings: {
         amount: potentialSavingsAmount,
         percentage: Math.round(savingsPercent),
-        currency: 'USD',
+        currency: resolvePersistCurrency(contract.currency),
       },
       reasoning: `Similar contracts are priced ${Math.round(savingsPercent)}% lower on average. ` +
                 `Based on ${similarContracts.length} comparable contracts in your portfolio.`,
@@ -361,7 +362,7 @@ export class RFxDetectionAgent extends BaseAgent {
       confidence: hasCriticalIssues ? 0.9 : belowPerformanceThreshold ? 0.85 : 0.75,
       recommendedType: 'RFP',
       urgency: hasCriticalIssues ? 'critical' : 'high',
-      potentialSavings: { amount: 0, percentage: 0, currency: 'USD' },
+      potentialSavings: { amount: 0, percentage: 0, currency: resolvePersistCurrency(contract.currency) },
       reasoning: reasonParts.join(' '),
       suggestedTimeline: this.calculateTimeline(60),
       metadata: {
@@ -413,7 +414,7 @@ export class RFxDetectionAgent extends BaseAgent {
       potentialSavings: {
         amount: potentialSavings,
         percentage: consolidationSavingsPercent,
-        currency: 'USD',
+        currency: resolvePersistCurrency(contract.currency),
       },
       reasoning: `You have ${sameSupplierContracts.length + 1} separate contracts with ${contract.supplierName}. ` +
                 `Consolidating into a master agreement could yield ${consolidationSavingsPercent}% savings ` +
@@ -460,7 +461,7 @@ export class RFxDetectionAgent extends BaseAgent {
       return {
         amount: annualValue * 0.12, // 12% default savings estimate
         percentage: 12,
-        currency: 'USD',
+        currency: resolvePersistCurrency(contract.currency),
         similarCount: 0,
         avgSimilarSavings: 12,
       };
@@ -481,7 +482,7 @@ export class RFxDetectionAgent extends BaseAgent {
     return {
       amount: (annualValue * avgSavingsPercent) / 100,
       percentage: Math.round(avgSavingsPercent),
-      currency: 'USD',
+      currency: resolvePersistCurrency(contract.currency),
       similarCount: similarRFx.length,
       avgSimilarSavings: Math.round(avgSavingsPercent),
     };
@@ -646,7 +647,7 @@ export class RFxDetectionAgent extends BaseAgent {
 
     return `Found ${opportunities.length} RFx opportunities ` +
            `(${critical} critical, ${high} high priority). ` +
-           `Total potential savings: $${(totalSavings / 1000000).toFixed(1)}M.`;
+           `Total potential savings: ${formatMoneyText(totalSavings)}.`;
   }
 
   private generateActions(opportunities: RFxOpportunity[], tenantId: string): any[] {
@@ -667,7 +668,7 @@ export class RFxDetectionAgent extends BaseAgent {
           recommendedType: topOpportunity.recommendedType,
           potentialSavings: topOpportunity.potentialSavings,
         },
-        estimatedImpact: `$${(topOpportunity.potentialSavings.amount / 1000).toFixed(0)}K potential savings`,
+        estimatedImpact: `${formatMoneyText(topOpportunity.potentialSavings.amount, topOpportunity.potentialSavings.currency)} potential savings`,
       });
     }
 

@@ -31,6 +31,7 @@ import {
   IntelligentPromptRouter,
 } from './intelligent-prompt-router.service';
 import { cacheAdaptor } from '../dal/cache.adaptor';
+import { analysisLanguageInstructions, detectCurrencyFromText, formatMoneyText, ourOrganizationPromptBlock, parseMonetaryAmount, UNKNOWN_CURRENCY } from '@repo/utils';
 
 const logger = createLogger('ai-artifact-generator-service');
 
@@ -117,6 +118,7 @@ export interface GenerationOptions {
   userId?: string;
   previousArtifacts?: Map<ArtifactType, any>;
   enrichedContext?: any;
+  ourOrganization?: { name: string; aliases?: string[] } | null;
 }
 
 export interface GenerationResult {
@@ -462,10 +464,13 @@ export class AIArtifactGeneratorService {
           artifactType,
           options.enrichedContext
         );
-        const { systemPrompt, userPrompt } = artifactPromptTemplatesService.buildPrompt(
+        const built = artifactPromptTemplatesService.buildPrompt(
           template,
           contractText
         );
+        const orgBlock = ourOrganizationPromptBlock(options.ourOrganization);
+        const systemPrompt = orgBlock ? `${built.systemPrompt}\n${orgBlock}` : built.systemPrompt;
+        const userPrompt = built.userPrompt;
 
         const response = await openai.chat.completions.create({
           model: 'gpt-4o-mini',
@@ -1081,7 +1086,7 @@ export class AIArtifactGeneratorService {
           summary.push(`Parties: ${artifact.parties.map((p: any) => p.name).join(', ')}`);
         }
         if (artifact.totalValue?.value) {
-          summary.push(`Total Value: $${artifact.totalValue.value.toLocaleString()}`);
+          summary.push(`Total Value: ${formatMoneyText(Number(artifact.totalValue.value), artifact.totalValue.currency ?? artifact.currency?.value ?? artifact.currency)}`);
         }
         if (artifact.effectiveDate?.value) {
           summary.push(`Effective: ${artifact.effectiveDate.value}`);
@@ -1477,13 +1482,13 @@ export class AIArtifactGeneratorService {
   }
 
   private extractAmounts(text: string): { total?: number; breakdown: any[] } {
-    const amountPattern = /\$\s*(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)/g;
+    const amountPattern = /(?:CHF|SFr\.?|Fr\.|EUR|€|USD|US\$|\$)\s*[\d''’.,]+/gi;
     const amounts: number[] = [];
     let match;
 
     while ((match = amountPattern.exec(text)) !== null) {
-      const amount = parseFloat(match[1].replace(/,/g, ''));
-      amounts.push(amount);
+      const amount = parseMonetaryAmount(match[0]);
+      if (amount != null) amounts.push(amount);
     }
 
     return {
@@ -1584,14 +1589,18 @@ export class AIArtifactGeneratorService {
 
   private extractRatePatterns(text: string): any[] {
     const rates: any[] = [];
-    const ratePattern = /\$(\d+(?:,\d{3})*(?:\.\d{2})?)\s*(?:per|\/)\s*(hour|day|month|year)/gi;
+    const ratePattern = /(?:CHF|SFr\.?|Fr\.|EUR|€|USD|\$)?\s*[\d''’.,]+\s*(?:per|\/)\s*(hour|hr|day|tag|stunde|month|year|jour)/gi;
     let match;
 
     while ((match = ratePattern.exec(text)) !== null) {
+      const amount = parseMonetaryAmount(match[0]);
+      if (amount == null) continue;
+      const periodRaw = (match[1] || 'hour').toLowerCase();
+      const period = /tag|day|jour/.test(periodRaw) ? 'day' : /stunde|hour|hr/.test(periodRaw) ? 'hour' : periodRaw;
       rates.push({
-        amount: parseFloat(match[1].replace(/,/g, '')),
-        period: match[2],
-        currency: 'USD',
+        amount,
+        period,
+        currency: detectCurrencyFromText(match[0]) || UNKNOWN_CURRENCY,
       });
     }
 
@@ -1758,8 +1767,14 @@ export class AIArtifactGeneratorService {
     return `${prompts[artifactType]}\n\nContract text:\n${contractText.substring(0, 10000)}`;
   }
 
-  private getSystemPrompt(artifactType: ArtifactType): string {
-    return `You are an expert contract analyst specializing in ${artifactType.toLowerCase()} analysis. Provide accurate, detailed analysis in valid JSON format. Include a certainty score (0-1) in your response to indicate confidence in the extraction.`;
+  private getSystemPrompt(
+    artifactType: ArtifactType,
+    contractText?: string,
+    ourOrganization?: { name: string; aliases?: string[] } | null,
+  ): string {
+    return `You are an expert contract analyst specializing in ${artifactType.toLowerCase()} analysis. Provide accurate, detailed analysis in valid JSON format. Include a certainty score (0-1) in your response to indicate confidence in the extraction.
+${ourOrganizationPromptBlock(ourOrganization)}
+${analysisLanguageInstructions({ contractText })}`;
   }
 
   private sleep(ms: number): Promise<void> {

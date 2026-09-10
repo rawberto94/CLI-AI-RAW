@@ -2,6 +2,9 @@
 
 import { useCallback, useMemo } from 'react'
 import type { DocumentClassification } from '@/lib/types/contract-metadata-schema'
+import { mapHeaderComplianceScore, normalizePercentScore } from '@/lib/contracts/header-compliance'
+import { normalizeRiskFindings } from '@/lib/contracts/risk-findings'
+import { hasTcvDrift, isHumanTcvLocked, resolveTcvWinner, type TcvWinner } from '@repo/utils'
 import {
   enrichCommercialFieldsFromArtifacts,
   resolveDocumentTitle,
@@ -31,8 +34,12 @@ interface ContractMetadata {
   end_date: string
   termination_date: string
   reminder_enabled: boolean
-  reminder_days_before_end: number
+  reminder_days_before_end: number | null
   notice_period: string
+  tcvProvenance?: TcvWinner | null
+  tcvDrift?: { extracted: number; saved: number } | null
+  _groundedFields?: Record<string, { sourceQuote?: string | null; pageNumbers?: number[]; confidence?: number; grounded?: boolean; status?: string }> | null
+  scanType?: string | null
 }
 
 interface ContractData {
@@ -214,18 +221,18 @@ export function useContractMetadata(contract: ContractData | null) {
         external_parties: [],
         tcv_amount: null,
         tcv_text: '',
-        payment_type: 'none',
-        billing_frequency_type: 'none',
-        periodicity: 'none',
-        currency: 'CHF',
+        payment_type: '',
+        billing_frequency_type: '',
+        periodicity: '',
+        currency: '',
         signature_date: '',
         signature_status: 'unknown' as const,
         signature_required_flag: false,
         start_date: '',
         end_date: '',
         termination_date: '',
-        reminder_enabled: true,
-        reminder_days_before_end: 60,
+        reminder_enabled: false,
+        reminder_days_before_end: null,
         notice_period: ''
       }
     }
@@ -261,6 +268,32 @@ export function useContractMetadata(contract: ContractData | null) {
       financialData as Record<string, unknown> | undefined,
     )
 
+    const aiMeta = ((contract as { aiMetadata?: Record<string, unknown> }).aiMetadata
+      || (contract as { metadata?: Record<string, unknown> }).metadata
+      || {}) as Record<string, unknown>
+    const diQueryAnswers = (aiMeta.diQueryAnswers && typeof aiMeta.diQueryAnswers === 'object')
+      ? aiMeta.diQueryAnswers as Record<string, string>
+      : null
+    const invoiceFields = aiMeta.diInvoiceFields && typeof aiMeta.diInvoiceFields === 'object'
+      ? aiMeta.diInvoiceFields as { invoiceTotal?: number; currency?: string }
+      : null
+    const tcvWinner = resolveTcvWinner({
+      contractType: (contract as { contractType?: string }).contractType || unwrapValue(overviewData?.contractType),
+      diQueryAnswers,
+      contractText: (contract as { rawText?: string }).rawText || null,
+      financialTotal: extractNumericValue(financialData?.totalValue ?? financialData?.total_value),
+      financialCurrency: unwrapValue(financialData?.currency),
+      overviewTotal: extractNumericValue(overviewData?.totalValue ?? overviewData?.total_value ?? overviewData?.contractValue),
+      overviewCurrency: unwrapValue(overviewData?.currency),
+      invoiceTotal: invoiceFields?.invoiceTotal ?? null,
+      invoiceCurrency: invoiceFields?.currency ?? null,
+    })
+    const savedTcv = extractNumericValue(contract.tcv_amount ?? contract.totalValue ?? null)
+    const humanTcvLocked = isHumanTcvLocked(aiMeta)
+    const tcvDrift = !humanTcvLocked && savedTcv != null && tcvWinner.value != null && hasTcvDrift(savedTcv, tcvWinner.value)
+      ? { extracted: tcvWinner.value, saved: savedTcv }
+      : null
+
     return {
       // Identification
       document_number: contract.document_number || contract.id || '',
@@ -277,7 +310,7 @@ export function useContractMetadata(contract: ContractData | null) {
       contract_type: (contract as any).contractType || unwrapValue(overviewData?.contractType) || unwrapValue(overviewData?.type) || unwrapValue(overviewData?.contract_type) || '',
       jurisdiction: String(commercialBase.jurisdiction || ''),
       contract_language: contract.contract_language || unwrapValue(overviewData?.language) || unwrapValue(overviewData?.contract_language) || '',
-      document_classification: contract.document_classification || unwrapValue(overviewData?.documentClassification) || 'contract' as DocumentClassification,
+      document_classification: contract.document_classification || unwrapValue(overviewData?.documentClassification) || 'unknown' as DocumentClassification,
       document_classification_warning: contract.document_classification_warning || unwrapValue(overviewData?.documentClassificationWarning),
       
       // Parties
@@ -287,20 +320,32 @@ export function useContractMetadata(contract: ContractData | null) {
       tcv_amount: extractNumericValue(
         contract.tcv_amount ?? 
         contract.totalValue ?? 
-        overviewData?.totalValue ?? 
-        financialData?.totalValue ?? 
-        overviewData?.total_value ?? 
-        financialData?.total_value ??
-        overviewData?.contractValue ??
+        tcvWinner.value ??
         null
       ),
-      tcv_text: contract.tcv_text || 
+      tcv_text: contract.tcv_text ||
+        tcvWinner.quote ||
         unwrapValue(financialData?.description) || 
         unwrapValue(overviewData?.summary) || '',
-      payment_type: String(commercialBase.payment_type || 'none'),
-      billing_frequency_type: String(commercialBase.billing_frequency_type || 'none'),
-      periodicity: String(commercialBase.periodicity || 'none'),
-      currency: contract.currency || 
+      tcvProvenance: humanTcvLocked
+        ? {
+            value: savedTcv,
+            currency: typeof contract.currency === 'string' ? contract.currency : tcvWinner.currency,
+            source: 'canonical',
+            quote: null,
+            label: 'Saved by you',
+          } satisfies TcvWinner
+        : tcvWinner.source === 'none' ? null : tcvWinner,
+      tcvDrift,
+      _groundedFields: (aiMeta.groundedFields && typeof aiMeta.groundedFields === 'object'
+        ? aiMeta.groundedFields
+        : null) as Record<string, { sourceQuote?: string | null; pageNumbers?: number[]; confidence?: number; grounded?: boolean; status?: string }> | null,
+      scanType: typeof aiMeta.scanType === 'string' ? aiMeta.scanType : null,
+      payment_type: String(commercialBase.payment_type || ''),
+      billing_frequency_type: String(commercialBase.billing_frequency_type || ''),
+      periodicity: String(commercialBase.periodicity || ''),
+      currency: contract.currency ||
+        tcvWinner.currency ||
         unwrapValue(financialData?.currency) || 
         unwrapValue(overviewData?.currency) || '',
       
@@ -339,8 +384,8 @@ export function useContractMetadata(contract: ContractData | null) {
       ),
       
       // Reminders & Notices
-      reminder_enabled: contract.reminder_enabled ?? true,
-      reminder_days_before_end: contract.reminder_days_before_end ?? 60,
+      reminder_enabled: contract.reminder_enabled ?? false,
+      reminder_days_before_end: contract.reminder_days_before_end ?? null,
       notice_period: String(commercialBase.notice_period || ''),
     }
   }, [contract, overviewData, financialData, buildExternalParties, formatDateStr, extractNumericValue, unwrapValue])
@@ -348,59 +393,47 @@ export function useContractMetadata(contract: ContractData | null) {
   // Derived state calculations
   const riskInfo = useMemo(() => {
     const riskData = contract?.extractedData?.risk
-    const score = riskData?.riskScore || riskData?.overallScore
+    const rawScore = riskData?.riskScore ?? riskData?.overallScore
+    const score = normalizePercentScore(rawScore)
     const level = riskData?.riskLevel || riskData?.overallRisk
     
-    // If no risk data at all (no artifact), mark as not-assessed rather than fabricating 'medium'
-    const hasRiskData = riskData && !riskData?._meta?.fallback && !riskData?.error
+    const hasRiskData = Boolean(riskData && !riskData?._meta?.fallback && !riskData?.error)
     
-    let riskLevel: 'low' | 'medium' | 'high'
-    if (level) {
-      riskLevel = level.toLowerCase() as 'low' | 'medium' | 'high'
-    } else if (score !== undefined && score !== null) {
+    let riskLevel: 'low' | 'medium' | 'high' | 'unknown'
+    if (!hasRiskData && !level && score == null) {
+      riskLevel = 'unknown'
+    } else if (level) {
+      const normalized = String(level).toLowerCase()
+      riskLevel = normalized === 'low' || normalized === 'medium' || normalized === 'high'
+        ? normalized
+        : 'unknown'
+    } else if (score != null) {
       riskLevel = score < 30 ? 'low' : score < 60 ? 'medium' : 'high'
     } else {
-      // No risk data — default to 'low' (neutral) rather than alarming 'medium'
-      riskLevel = hasRiskData ? 'medium' : 'low'
+      riskLevel = 'unknown'
     }
     
-    const riskScore = score ?? (hasRiskData ? (riskLevel === 'low' ? 25 : riskLevel === 'medium' ? 50 : 75) : 0)
-    const risks = riskData?.risks || []
+    const riskScore = score ?? undefined
+    const normalized = normalizeRiskFindings(riskData)
+    const risks = normalized.map((item) => ({
+      title: item.title,
+      description: item.description,
+      severity: item.severity,
+      sourceClause: item.snippet || undefined,
+      source: item.snippet || undefined,
+    }))
     
-    // Extract risk factors as string array for display
-    const factors: string[] = risks.map((r: { title?: string; description?: string }) => 
-      r.title || r.description || ''
-    ).filter(Boolean)
+    const factors: string[] = risks.map((r) => r.title || r.description || '').filter(Boolean)
     
-    // Extract mitigations if available
     const mitigations: string[] = riskData?.mitigations || riskData?.recommendations || []
     
     return { riskLevel, riskScore, risks, factors, mitigations }
   }, [contract?.extractedData?.risk])
   
-  const complianceInfo = useMemo(() => {
-    const complianceData = contract?.extractedData?.compliance
-    const checks = complianceData?.checks || []
-    
-    // Extract violations from failed checks
-    const violations: string[] = checks
-      .filter((c: { status?: string; passed?: boolean }) => c.status === 'failed' || c.passed === false)
-      .map((c: { name?: string; message?: string }) => c.message || c.name || '')
-      .filter(Boolean)
-    
-    // Calculate compliance score from checks if available
-    const passedChecks = checks.filter((c: { status?: string; passed?: boolean }) => 
-      c.status === 'passed' || c.passed === true
-    ).length
-    const score = checks.length > 0 ? Math.round((passedChecks / checks.length) * 100) : undefined
-    
-    return {
-      isCompliant: complianceData?.compliant ?? (violations.length === 0),
-      checks,
-      violations,
-      score
-    }
-  }, [contract?.extractedData?.compliance])
+  const complianceInfo = useMemo(
+    () => mapHeaderComplianceScore(contract?.extractedData),
+    [contract?.extractedData],
+  )
   
   const isProcessing = useMemo(() => {
     const status = contract?.status?.toLowerCase()

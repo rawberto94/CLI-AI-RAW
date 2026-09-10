@@ -1,0 +1,164 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const {
+  mockFindFirst,
+  mockUpsert,
+  mockContractUpdate,
+  mockTransaction,
+  mockExtractMetadata,
+  mockGetSchema,
+  mockCalibrate,
+  mockRecordExtractionStart,
+  mockRecordFieldAutoApplied,
+  mockRecordExtractionComplete,
+} = vi.hoisted(() => ({
+  mockFindFirst: vi.fn(),
+  mockUpsert: vi.fn(),
+  mockContractUpdate: vi.fn(),
+  mockTransaction: vi.fn(),
+  mockExtractMetadata: vi.fn(),
+  mockGetSchema: vi.fn(),
+  mockCalibrate: vi.fn(),
+  mockRecordExtractionStart: vi.fn(),
+  mockRecordFieldAutoApplied: vi.fn(),
+  mockRecordExtractionComplete: vi.fn(),
+}));
+
+vi.mock('pino', () => ({
+  default: () => ({
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+  }),
+}));
+
+vi.mock('../workflow/processing-job', () => ({
+  ensureProcessingJob: vi.fn(),
+  updateStep: vi.fn(),
+  assertRetryableReady: vi.fn(),
+}));
+
+vi.mock('../compat/repo-utils', () => ({
+  getQueueService: vi.fn(),
+  QUEUE_NAMES: { METADATA_EXTRACTION: 'metadata-extraction' },
+}));
+
+vi.mock('@/lib/prisma', () => ({
+  prisma: {
+    contract: { findFirst: mockFindFirst },
+    $transaction: mockTransaction,
+  },
+}));
+
+vi.mock('@/lib/ai/metadata-extractor', () => ({
+  SchemaAwareMetadataExtractor: class {
+    extractMetadata = mockExtractMetadata;
+  },
+}));
+
+vi.mock('@/lib/services/metadata-schema.service', () => ({
+  MetadataSchemaService: {
+    getInstance: () => ({ getSchema: mockGetSchema }),
+  },
+}));
+
+vi.mock('@/lib/ai/extraction-analytics', () => ({
+  getExtractionAnalytics: () => ({
+    recordExtractionStart: mockRecordExtractionStart,
+    recordFieldAutoApplied: mockRecordFieldAutoApplied,
+    recordExtractionComplete: mockRecordExtractionComplete,
+    recordExtractionFailed: vi.fn(),
+  }),
+}));
+
+vi.mock('@/lib/ai/confidence-calibration', () => ({
+  getCalibrationService: () => ({
+    calibrateConfidence: mockCalibrate,
+  }),
+}));
+
+import { processMetadataExtractionJob, tagsFromContract } from '../metadata-extraction-worker';
+
+function makeJob() {
+  return {
+    id: 'job-1',
+    name: 'extract-metadata',
+    attemptsMade: 0,
+    opts: {},
+    updateProgress: vi.fn(),
+    data: {
+      contractId: 'c1',
+      tenantId: 't1',
+      forceReExtract: true,
+    },
+  };
+}
+
+describe('tagsFromContract', () => {
+  it('copies string tags and drops empty values', () => {
+    expect(tagsFromContract([' msa ', '', 'executed'])).toEqual(['msa', 'executed']);
+  });
+
+  it('returns [] only when Contract.tags has no string values', () => {
+    expect(tagsFromContract([])).toEqual([]);
+    expect(tagsFromContract(null)).toEqual([]);
+    expect(tagsFromContract([{ name: 'msa' }])).toEqual([]);
+  });
+});
+
+describe('processMetadataExtractionJob metadata create tags', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockRecordExtractionStart.mockResolvedValue(undefined);
+    mockRecordFieldAutoApplied.mockResolvedValue(undefined);
+    mockRecordExtractionComplete.mockResolvedValue(undefined);
+    mockCalibrate.mockReturnValue({ calibratedConfidence: 0.95 });
+    mockGetSchema.mockResolvedValue({ fields: [] });
+    mockExtractMetadata.mockResolvedValue({
+      extractedAt: new Date(),
+      schemaId: 's1',
+      schemaVersion: 1,
+      rawExtractions: {},
+      warnings: [],
+      results: [{
+        fieldName: 'department',
+        fieldId: 'f1',
+        fieldType: 'text',
+        value: 'Legal',
+        confidence: 0.95,
+        validationStatus: 'valid',
+        requiresHumanReview: false,
+        source: { text: 'Legal' },
+      }],
+    });
+    mockTransaction.mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) => fn({
+      contractMetadata: { upsert: mockUpsert },
+      contract: { update: mockContractUpdate },
+    }));
+    mockUpsert.mockResolvedValue({});
+  });
+
+  it('creates metadata with Contract.tags instead of []', async () => {
+    mockFindFirst.mockResolvedValue({
+      id: 'c1',
+      rawText: 'x'.repeat(200),
+      status: 'COMPLETED',
+      tags: ['msa', 'renewal'],
+      contractMetadata: null,
+    });
+
+    const result = await processMetadataExtractionJob(makeJob() as any);
+
+    expect(result.success).toBe(true);
+    expect(mockUpsert).toHaveBeenCalledWith(expect.objectContaining({
+      create: expect.objectContaining({
+        contractId: 'c1',
+        tenantId: 't1',
+        tags: ['msa', 'renewal'],
+      }),
+    }));
+    const upsertArg = mockUpsert.mock.calls[0][0];
+    expect(upsertArg.update.tags).toBeUndefined();
+  });
+});

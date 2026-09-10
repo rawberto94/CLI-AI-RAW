@@ -26,7 +26,7 @@ const confidenceField = z.object({
 
 const moneySchema = z.object({
   value: z.number(),
-  currency: z.string().default('USD'),
+  currency: z.string().length(3).optional(),
   confidence: z.number().optional(),
   source: z.string().optional(),
   isEstimated: z.boolean().optional(),

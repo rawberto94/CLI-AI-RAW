@@ -162,7 +162,7 @@ CREATE TABLE IF NOT EXISTS "rfx_events" (
     "category" TEXT,
     "contract_type" TEXT,
     "estimated_value" DOUBLE PRECISION,
-    "currency" TEXT NOT NULL DEFAULT 'USD',
+    "currency" TEXT NOT NULL DEFAULT 'XXX',
     "publish_date" TIMESTAMP(3),
     "response_deadline" TIMESTAMP(3) NOT NULL,
     "award_date" TIMESTAMP(3),

@@ -21,6 +21,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { formatAmountWithCurrency } from '@/lib/utils/formatters';
 
 // Framer Motion typing workaround
 const MotionDiv = motion.div as unknown as React.ComponentType<
@@ -491,7 +492,7 @@ export function generateMockRiskFactors(contractValue?: number): RiskFactor[] {
       id: 'value-1',
       category: 'financial',
       title: 'High Contract Value',
-      description: `Contract value of $${contractValue.toLocaleString()} exceeds standard approval threshold`,
+      description: `Contract value of ${formatAmountWithCurrency(contractValue, null)} exceeds standard approval threshold`,
       severity: contractValue > 500000 ? 'high' : 'medium',
       impact: 'Requires executive approval',
       recommendation: 'Ensure CFO review is included in approval workflow',

@@ -437,7 +437,7 @@ function generateSampleTimeline() {
     const date = new Date(now);
     date.setDate(date.getDate() - i);
     data.push({
-      date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      date: date.toLocaleDateString('de-CH', { month: 'short', day: 'numeric' }),
       completed: Math.floor(Math.random() * 5),
       created: Math.floor(Math.random() * 3),
       overdue: Math.floor(Math.random() * 2),

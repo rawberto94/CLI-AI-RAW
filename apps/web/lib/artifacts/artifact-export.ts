@@ -87,8 +87,8 @@ export function generateArtifactPDF(input: ArtifactExportInput): Uint8Array {
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
   const subtitle = contract?.fileName
-    ? `${contract.fileName} • ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`
-    : new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    ? `${contract.fileName} • ${new Date().toLocaleDateString('de-CH', { year: 'numeric', month: 'long', day: 'numeric' })}`
+    : new Date().toLocaleDateString('de-CH', { year: 'numeric', month: 'long', day: 'numeric' });
   doc.text(subtitle, margin, 23);
 
   if (tenantName) {
@@ -338,8 +338,14 @@ function renderArtifactContent(
 
 function formatMoney(val: any): string {
   if (!val) return '';
-  if (typeof val === 'number') return `$${val.toLocaleString()}`;
-  if (val.value != null) return `${val.currency || '$'}${Number(val.value).toLocaleString()}`;
+  if (typeof val === 'number') return val.toLocaleString('de-CH');
+  if (val.value != null) {
+    const amount = Number(val.value);
+    if (!Number.isFinite(amount)) return '';
+    const code = typeof val.currency === 'string' ? val.currency.trim() : '';
+    const formatted = amount.toLocaleString('de-CH');
+    return code && code !== 'XXX' ? `${code} ${formatted}` : formatted;
+  }
   return String(val);
 }
 
@@ -376,7 +382,7 @@ export async function generateArtifactDOCX(input: ArtifactExportInput): Promise<
   const subtitleParts = [
     contract?.fileName,
     contract?.contractType ? `Type: ${contract.contractType}` : null,
-    new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+    new Date().toLocaleDateString('de-CH', { year: 'numeric', month: 'long', day: 'numeric' }),
   ].filter(Boolean);
   
   children.push(

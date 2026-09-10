@@ -411,9 +411,11 @@ export function AIActivityFeed({
                     </div>
 
                     {/* Action */}
-                    {activity.status === 'needs_review' && (
-                      <Button variant="ghost" size="sm" className="flex-shrink-0">
-                        <ChevronRight className="w-4 h-4" />
+                    {activity.status === 'needs_review' && activity.contractId && (
+                      <Button variant="ghost" size="sm" className="flex-shrink-0" asChild>
+                        <Link href={`/contracts/${activity.contractId}`}>
+                          <ChevronRight className="w-4 h-4" />
+                        </Link>
                       </Button>
                     )}
                   </div>

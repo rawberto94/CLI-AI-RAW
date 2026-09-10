@@ -1,48 +1,58 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { withAuthApiHandler, createSuccessResponse, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 import { analyticsService } from 'data-orchestration/services';
 import { getCached, setCached } from '@/lib/cache';
+import { expirationOrEndDateFilter, portfolioWhere } from '@/lib/contracts/server/portfolio';
+import { resolveDisplayCurrency, sumGroupedTotalValue } from '@/lib/display-currency.server';
 
 export const GET = withAuthApiHandler(async (request: NextRequest, ctx: AuthenticatedApiContext) => {
   const tenantId = ctx.tenantId;
-  const cacheKey = `analytics:metrics:${tenantId}`;
+  if (!tenantId) {
+    return createErrorResponse(ctx, 'TENANT_REQUIRED', 'Tenant ID required', 400);
+  }
+
+  const displayCurrency = await resolveDisplayCurrency(ctx.tenantId);
+  const cacheKey = `analytics:metrics:${tenantId}:${displayCurrency}:v3`;
   const cached = await getCached(cacheKey);
   if (cached) return createSuccessResponse(ctx, cached);
 
-  // Real data from database (excluding DELETED contracts)
+  const portfolio = portfolioWhere(tenantId);
+  const now = new Date();
+  const ninetyDaysFromNow = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
+
   const [
     totalContracts,
-    valueAggregate,
+    valueByCurrency,
     suppliers,
     artifacts,
     upcomingContracts
   ] = await Promise.all([
-    prisma.contract.count({ where: { isDeleted: false } }),
-    prisma.contract.aggregate({
-      where: { isDeleted: false },
-      _sum: { totalValue: true }
+    prisma.contract.count({ where: portfolio }),
+    prisma.contract.groupBy({
+      by: ['currency'],
+      where: { ...portfolio, totalValue: { not: null } },
+      _sum: { totalValue: true },
     }),
     prisma.contract.groupBy({
       by: ['supplierName'],
-      where: { supplierName: { not: null }, isDeleted: false }
+      where: { ...portfolio, supplierName: { not: null } }
     }),
-    prisma.artifact.count(),
+    prisma.artifact.count({ where: { tenantId } }),
     prisma.contract.count({
       where: {
-        isDeleted: false,
-        endDate: {
-          gte: new Date(),
-          lte: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000) // 90 days
-        }
+        ...portfolio,
+        ...expirationOrEndDateFilter({ gte: now, lte: ninetyDaysFromNow }),
       }
     })
   ])
 
+  const totalValue = sumGroupedTotalValue(valueByCurrency, displayCurrency);
   const data = {
     totalContracts,
-    totalValue: Number(valueAggregate._sum.totalValue || 0),
-    potentialSavings: Math.round(Number(valueAggregate._sum.totalValue || 0) * 0.15), // 15% estimate
+    totalValue,
+    displayCurrency,
+    potentialSavings: Math.round(totalValue * 0.15), // 15% estimate
     activeSuppliers: suppliers.length,
     upcomingRenewals: upcomingContracts,
     artifactsProcessed: artifacts

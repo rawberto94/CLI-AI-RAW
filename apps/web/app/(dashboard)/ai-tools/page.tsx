@@ -10,6 +10,7 @@
  */
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import {
   Tabs,
   TabsContent,
@@ -231,9 +232,12 @@ function ABTestingInterface() {
             Compare AI model performance side-by-side
           </p>
         </div>
-        <button className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors">
+        <Link
+          href="/admin/ab-testing"
+          className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors"
+        >
           Create New Test
-        </button>
+        </Link>
       </div>
 
       {/* Active Tests */}

@@ -1,19 +1,17 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Building2,
   FileText,
   MessageSquare,
   Upload,
-  Download,
   Clock,
   CheckCircle2,
   AlertTriangle,
   Edit3,
   Eye,
-  Send,
   Paperclip,
   Calendar,
   Bell,
@@ -22,8 +20,6 @@ import {
   ExternalLink,
   ChevronRight,
   Search,
-  Filter,
-  MoreVertical,
   User,
   Mail,
   Phone,
@@ -32,9 +28,9 @@ import {
   TrendingUp,
   FileCheck,
   AlertCircle,
-  History,
   X,
 } from 'lucide-react';
+import { formatAmountWithCurrency } from '@/lib/utils/formatters';
 
 interface PortalContract {
   id: string;
@@ -284,11 +280,10 @@ interface SupplierPortalProps {
   contractId?: string;
 }
 
-export function SupplierPortal({ supplierId, tenantId, contractId }: SupplierPortalProps) {
+export function SupplierPortal({ supplierId, tenantId }: SupplierPortalProps) {
   const [activeTab, setActiveTab] = useState<'overview' | 'contracts' | 'documents' | 'messages' | 'tasks'>('overview');
-  const [selectedContract, setSelectedContract] = useState<string | null>(contractId || null);
-  const [newMessage, setNewMessage] = useState('');
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [isLoading, setIsLoading] = useState(!!supplierId);
   const [portalData, setPortalData] = useState<{
     supplier: typeof supplierInfo;
@@ -399,7 +394,12 @@ export function SupplierPortal({ supplierId, tenantId, contractId }: SupplierPor
             </div>
             <div className="flex items-center gap-4">
               <div className="relative">
-                <button className="p-2 text-gray-400 hover:text-gray-600 relative">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab(pendingActions > 0 ? 'tasks' : 'messages')}
+                  className="p-2 text-gray-400 hover:text-gray-600 relative"
+                  aria-label="Open pending items"
+                >
                   <Bell className="h-5 w-5" />
                   {(pendingActions + unreadMessages) > 0 && (
                     <span className="absolute top-1 right-1 h-4 w-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
@@ -495,7 +495,7 @@ export function SupplierPortal({ supplierId, tenantId, contractId }: SupplierPor
                   </div>
                   <div>
                     <p className="text-2xl font-bold text-gray-900">
-                      ${(supplierInfo.totalValue / 1000000).toFixed(1)}M
+                      {formatAmountWithCurrency(supplierInfo.totalValue, null)}
                     </p>
                     <p className="text-sm text-gray-500">Total Contract Value</p>
                   </div>
@@ -554,7 +554,11 @@ export function SupplierPortal({ supplierId, tenantId, contractId }: SupplierPor
                             <p className="text-sm text-gray-500">Due</p>
                             <p className="font-medium text-gray-900">{task.dueDate}</p>
                           </div>
-                          <button className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 text-sm">
+                          <button
+                            type="button"
+                            onClick={() => setActiveTab('tasks')}
+                            className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 text-sm"
+                          >
                             Take Action
                           </button>
                         </div>
@@ -588,7 +592,7 @@ export function SupplierPortal({ supplierId, tenantId, contractId }: SupplierPor
                           )}
                         </div>
                         <p className="text-sm text-gray-500">
-                          ${contract.value.toLocaleString()} • Expires {contract.endDate}
+                          {formatAmountWithCurrency(contract.value, null)} • Expires {contract.endDate}
                         </p>
                       </div>
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(contract.status)}`}>
@@ -651,10 +655,7 @@ export function SupplierPortal({ supplierId, tenantId, contractId }: SupplierPor
                     className="pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 text-sm"
                   />
                 </div>
-                <button className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 text-sm">
-                  <Filter className="h-4 w-4" />
-                  Filter
-                </button>
+
               </div>
             </div>
 
@@ -677,9 +678,6 @@ export function SupplierPortal({ supplierId, tenantId, contractId }: SupplierPor
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Status
                     </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -696,7 +694,7 @@ export function SupplierPortal({ supplierId, tenantId, contractId }: SupplierPor
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-600">{contract.type}</td>
                       <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                        ${contract.value.toLocaleString()}
+                        {formatAmountWithCurrency(contract.value, null)}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-600">
                         {contract.startDate} - {contract.endDate}
@@ -705,19 +703,6 @@ export function SupplierPortal({ supplierId, tenantId, contractId }: SupplierPor
                         <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(contract.status)}`}>
                           {contract.status.replace('-', ' ')}
                         </span>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <button className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100">
-                            <Eye className="h-4 w-4" />
-                          </button>
-                          <button className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100">
-                            <Download className="h-4 w-4" />
-                          </button>
-                          <button className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100">
-                            <MoreVertical className="h-4 w-4" />
-                          </button>
-                        </div>
                       </td>
                     </tr>
                   ))}
@@ -786,19 +771,16 @@ export function SupplierPortal({ supplierId, tenantId, contractId }: SupplierPor
                         </span>
                       </td>
                       <td className="px-6 py-4 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <button className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100">
-                            <Eye className="h-4 w-4" />
+                        {doc.status === 'requires-update' && (
+                          <button
+                            type="button"
+                            onClick={() => setShowUploadModal(true)}
+                            className="p-2 text-violet-600 hover:text-violet-700 rounded-lg hover:bg-violet-50"
+                            aria-label="Upload replacement"
+                          >
+                            <Upload className="h-4 w-4" />
                           </button>
-                          <button className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100">
-                            <Download className="h-4 w-4" />
-                          </button>
-                          {doc.status === 'requires-update' && (
-                            <button className="p-2 text-violet-600 hover:text-violet-700 rounded-lg hover:bg-violet-50">
-                              <Upload className="h-4 w-4" />
-                            </button>
-                          )}
-                        </div>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -843,9 +825,6 @@ export function SupplierPortal({ supplierId, tenantId, contractId }: SupplierPor
                               >
                                 <Paperclip className="h-4 w-4 text-gray-400" />
                                 <span className="text-gray-700">{attachment}</span>
-                                <button className="text-violet-600 hover:text-violet-700">
-                                  <Download className="h-4 w-4" />
-                                </button>
                               </div>
                             ))}
                           </div>
@@ -856,28 +835,7 @@ export function SupplierPortal({ supplierId, tenantId, contractId }: SupplierPor
                 ))}
               </div>
               
-              {/* Message Input */}
-              <div className="p-4 border-t border-gray-200 bg-gray-50">
-                <div className="flex items-end gap-3">
-                  <div className="flex-1">
-                    <textarea
-                      value={newMessage}
-                      onChange={(e) => setNewMessage(e.target.value)}
-                      placeholder="Type your message..."
-                      rows={3}
-                      className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 resize-none"
-                    />
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <button className="p-2 border border-gray-200 rounded-lg hover:bg-gray-100 text-gray-500">
-                      <Paperclip className="h-5 w-5" />
-                    </button>
-                    <button className="p-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700">
-                      <Send className="h-5 w-5" />
-                    </button>
-                  </div>
-                </div>
-              </div>
+
             </div>
           </div>
         )}
@@ -917,11 +875,15 @@ export function SupplierPortal({ supplierId, tenantId, contractId }: SupplierPor
                       </span>
                     </div>
                   </div>
-                  <button className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 text-sm">
-                    {task.type === 'signature' ? 'Sign Now' :
-                     task.type === 'document' ? 'Upload' :
-                     task.type === 'review' ? 'Review' : 'Complete'}
-                  </button>
+                  {task.type === 'document' && (
+                    <button
+                      type="button"
+                      onClick={() => setShowUploadModal(true)}
+                      className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 text-sm"
+                    >
+                      Upload
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
@@ -960,8 +922,12 @@ export function SupplierPortal({ supplierId, tenantId, contractId }: SupplierPor
                 <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                 <p className="text-gray-600 mb-2">Drag and drop files here, or click to browse</p>
                 <p className="text-sm text-gray-400">PDF, DOC, DOCX, XLS, XLSX up to 25MB</p>
-                <input type="file" className="hidden" />
-                <button className="mt-4 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 text-sm">
+                <input ref={fileInputRef} type="file" className="hidden" />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="mt-4 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 text-sm"
+                >
                   Select Files
                 </button>
               </div>
@@ -972,9 +938,6 @@ export function SupplierPortal({ supplierId, tenantId, contractId }: SupplierPor
                   className="px-4 py-2 border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 text-sm"
                 >
                   Cancel
-                </button>
-                <button className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 text-sm">
-                  Upload
                 </button>
               </div>
             </motion.div>

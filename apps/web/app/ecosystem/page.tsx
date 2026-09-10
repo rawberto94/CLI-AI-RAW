@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { formatCurrency } from "@/components/ui/design-system";
+import { DEFAULT_DISPLAY_CURRENCY } from "@/lib/display-currency";
+import { formatAmountWithCurrency, formatDisplayTotal } from "@/lib/utils/formatters";
 import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
@@ -34,6 +35,7 @@ interface EcosystemData {
     totalContracts: number;
     portfolioValue: number;
     annualCommitment: number;
+    displayCurrency?: string;
     byStatus: Array<{ status: string; count: number }>;
     bySpendType: Array<{ type: string; count: number }>;
     byCurrency: Array<{ currency: string; count: number }>;
@@ -99,6 +101,22 @@ interface EcosystemData {
 }
 
 const PIE_COLORS = ["#8b5cf6", "#06b6d4", "#10b981", "#f59e0b", "#ef4444", "#ec4899", "#6366f1", "#14b8a6"];
+
+function portfolioMoney(data: EcosystemData, value: number) {
+  return formatDisplayTotal(value, data.portfolio.displayCurrency || DEFAULT_DISPLAY_CURRENCY);
+}
+
+function reportedMoney(value: number) {
+  return formatAmountWithCurrency(value, null);
+}
+
+function compactAxis(value: number) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return "";
+  if (Math.abs(n) >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (Math.abs(n) >= 1_000) return `${(n / 1_000).toFixed(0)}k`;
+  return String(Math.round(n));
+}
 
 const statusColors: Record<string, string> = {
   ACTIVE: "bg-emerald-100 text-emerald-700",
@@ -252,9 +270,9 @@ function OverviewTab({ data }: { data: EcosystemData }) {
       {/* Top KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <KPICard icon={FileText} label="Contracts" value={data.portfolio.totalContracts} color="violet" />
-        <KPICard icon={DollarSign} label="Portfolio Value" value={formatCurrency(data.portfolio.portfolioValue)} color="emerald" />
-        <KPICard icon={Wallet} label="Annual Commitment" value={formatCurrency(data.portfolio.annualCommitment)} color="cyan" />
-        <KPICard icon={Package} label="Purchase Orders" value={data.spend.totalPOs} subtitle={formatCurrency(data.spend.totalPoValue)} color="amber" />
+        <KPICard icon={DollarSign} label="Portfolio Value" value={portfolioMoney(data, data.portfolio.portfolioValue)} color="emerald" />
+        <KPICard icon={Wallet} label="Annual Commitment" value={portfolioMoney(data, data.portfolio.annualCommitment)} color="cyan" />
+        <KPICard icon={Package} label="Purchase Orders" value={data.spend.totalPOs} subtitle={reportedMoney(data.spend.totalPoValue)} color="amber" />
         <KPICard icon={Link2} label="Integrations" value={`${data.integrations.connected}/${data.integrations.total}`} subtitle={data.integrations.erroring > 0 ? `${data.integrations.erroring} errors` : "All healthy"} color={data.integrations.erroring > 0 ? "red" : "emerald"} />
       </div>
 
@@ -352,8 +370,8 @@ function OverviewTab({ data }: { data: EcosystemData }) {
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                   <XAxis dataKey="month" tick={{ fontSize: 10 }} />
-                  <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
-                  <RechartsTooltip formatter={(v: number) => formatCurrency(v)} />
+                  <YAxis tick={{ fontSize: 10 }} tickFormatter={compactAxis} />
+                  <RechartsTooltip formatter={(v: number) => reportedMoney(v)} />
                   <Area type="monotone" dataKey="poSpend" stroke="#8b5cf6" fill="url(#spendGrad)" strokeWidth={2} />
                 </AreaChart>
               </ResponsiveContainer>
@@ -389,7 +407,7 @@ function OverviewTab({ data }: { data: EcosystemData }) {
                 <p className="text-xs text-slate-500">POs + Invoices this month</p>
               </div>
               <div className="text-right">
-                <p className="text-lg font-bold text-slate-700">{formatCurrency(data.spend.poValue30d + data.spend.invoiceValue30d)}</p>
+                <p className="text-lg font-bold text-slate-700">{reportedMoney(data.spend.poValue30d + data.spend.invoiceValue30d)}</p>
               </div>
             </div>
             <Link href="/renewals" className="text-xs text-violet-600 hover:text-violet-700 flex items-center gap-1">
@@ -413,8 +431,8 @@ function OverviewTab({ data }: { data: EcosystemData }) {
               <BarChart data={data.categories}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                 <XAxis dataKey="category" tick={{ fontSize: 10 }} />
-                <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
-                <RechartsTooltip formatter={(v: number) => formatCurrency(v)} />
+                <YAxis tick={{ fontSize: 10 }} tickFormatter={compactAxis} />
+                <RechartsTooltip formatter={(v: number) => portfolioMoney(data, v)} />
                 <Bar dataKey="totalValue" fill="#6366f1" radius={[4, 4, 0, 0]} name="Contract Value" />
               </BarChart>
             </ResponsiveContainer>
@@ -561,11 +579,11 @@ function SpendTab({ data }: { data: EcosystemData }) {
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
       {/* Spend KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <KPICard icon={Package} label="Purchase Orders" value={data.spend.totalPOs} subtitle={formatCurrency(data.spend.totalPoValue)} color="violet" />
-        <KPICard icon={FileText} label="Invoices" value={data.spend.totalInvoices} subtitle={formatCurrency(data.spend.totalInvoiceValue)} color="cyan" />
+        <KPICard icon={Package} label="Purchase Orders" value={data.spend.totalPOs} subtitle={reportedMoney(data.spend.totalPoValue)} color="violet" />
+        <KPICard icon={FileText} label="Invoices" value={data.spend.totalInvoices} subtitle={reportedMoney(data.spend.totalInvoiceValue)} color="cyan" />
         <KPICard icon={CheckCircle} label="Match Rate" value={`${data.spend.invoiceMatchRate}%`} color="emerald" />
         <KPICard icon={AlertTriangle} label="Open Exceptions" value={data.spend.openExceptions} color={data.spend.openExceptions > 0 ? "red" : "emerald"} />
-        <KPICard icon={TrendingUp} label="30-Day Volume" value={formatCurrency(data.spend.poValue30d)} subtitle="POs this month" color="amber" />
+        <KPICard icon={TrendingUp} label="30-Day Volume" value={reportedMoney(data.spend.poValue30d)} subtitle="POs this month" color="amber" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -607,11 +625,11 @@ function SpendTab({ data }: { data: EcosystemData }) {
             <div className="grid grid-cols-2 gap-4">
               <div className="p-3 bg-violet-50 rounded-lg">
                 <p className="text-xs text-violet-500 font-medium">Contract Value</p>
-                <p className="text-lg font-bold text-violet-700">{formatCurrency(data.portfolio.portfolioValue)}</p>
+                <p className="text-lg font-bold text-violet-700">{portfolioMoney(data, data.portfolio.portfolioValue)}</p>
               </div>
               <div className="p-3 bg-cyan-50 rounded-lg">
                 <p className="text-xs text-cyan-500 font-medium">Total PO Value</p>
-                <p className="text-lg font-bold text-cyan-700">{formatCurrency(data.spend.totalPoValue)}</p>
+                <p className="text-lg font-bold text-cyan-700">{reportedMoney(data.spend.totalPoValue)}</p>
               </div>
             </div>
             <div className="p-3 bg-slate-50 rounded-lg border">
@@ -653,8 +671,8 @@ function SpendTab({ data }: { data: EcosystemData }) {
               <LineChart data={data.monthlyTrend}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                 <XAxis dataKey="month" tick={{ fontSize: 10 }} />
-                <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
-                <RechartsTooltip formatter={(v: number) => formatCurrency(v)} />
+                <YAxis tick={{ fontSize: 10 }} tickFormatter={compactAxis} />
+                <RechartsTooltip formatter={(v: number) => reportedMoney(v)} />
                 <Line type="monotone" dataKey="poSpend" stroke="#8b5cf6" strokeWidth={2.5} dot={{ fill: "#8b5cf6", r: 3 }} name="PO Spend" />
               </LineChart>
             </ResponsiveContainer>
@@ -701,8 +719,8 @@ function SuppliersTab({ data }: { data: EcosystemData }) {
                         <td className="py-2.5 text-slate-400">{i + 1}</td>
                         <td className="py-2.5 font-medium text-slate-800">{s.name || "—"}</td>
                         <td className="py-2.5 text-right text-slate-600">{s.contractCount}</td>
-                        <td className="py-2.5 text-right font-medium text-slate-800">{formatCurrency(s.totalValue)}</td>
-                        <td className="py-2.5 text-right text-slate-600">{formatCurrency(s.annualValue)}</td>
+                        <td className="py-2.5 text-right font-medium text-slate-800">{portfolioMoney(data, s.totalValue)}</td>
+                        <td className="py-2.5 text-right text-slate-600">{portfolioMoney(data, s.annualValue)}</td>
                         <td className="py-2.5 text-right">
                           <span className="text-xs font-medium text-violet-600">
                             {data.portfolio.portfolioValue > 0 ? `${((s.totalValue / data.portfolio.portfolioValue) * 100).toFixed(1)}%` : "—"}
@@ -721,8 +739,8 @@ function SuppliersTab({ data }: { data: EcosystemData }) {
                   <BarChart data={data.topSuppliers.slice(0, 8)}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                     <XAxis dataKey="name" tick={{ fontSize: 9 }} interval={0} angle={-20} textAnchor="end" height={50} />
-                    <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
-                    <RechartsTooltip formatter={(v: number) => formatCurrency(v)} />
+                    <YAxis tick={{ fontSize: 10 }} tickFormatter={compactAxis} />
+                    <RechartsTooltip formatter={(v: number) => portfolioMoney(data, v)} />
                     <Bar dataKey="totalValue" fill="#8b5cf6" radius={[4, 4, 0, 0]} name="Total Value" />
                     <Bar dataKey="annualValue" fill="#06b6d4" radius={[4, 4, 0, 0]} name="Annual Value" />
                   </BarChart>
@@ -751,7 +769,7 @@ function SuppliersTab({ data }: { data: EcosystemData }) {
                     <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
                   ))}
                 </Pie>
-                <RechartsTooltip formatter={(v: number) => formatCurrency(v)} />
+                <RechartsTooltip formatter={(v: number) => portfolioMoney(data, v)} />
                 <Legend iconSize={8} wrapperStyle={{ fontSize: 11 }} />
               </PieChart>
             </ResponsiveContainer>

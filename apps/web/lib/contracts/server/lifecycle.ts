@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { ContractStatus } from '@prisma/client';
+import { ContractStatus, JobStatus } from '@prisma/client';
 import { z } from 'zod';
 
 import { pushAgentNotification } from '@/lib/ai/agent-notifications';
@@ -14,6 +14,7 @@ import { prisma } from '@/lib/prisma';
 import { applyContractChangeSideEffects } from '@/lib/contracts/server/contract-change-side-effects';
 
 import type { ContractApiContext } from '@/lib/contracts/server/context';
+import { computeArtifactCoverage } from '@/lib/contracts/artifact-coverage';
 
 const statusUpdateSchema = z.object({
   status: z.string().min(1, 'status is required'),
@@ -238,6 +239,7 @@ export async function getContractStatus(
           type: true,
           confidence: true,
           createdAt: true,
+          data: true,
         },
         orderBy: { createdAt: 'asc' },
       },
@@ -266,8 +268,11 @@ export async function getContractStatus(
     return createErrorResponse(context, 'NOT_FOUND', 'Contract not found', 404);
   }
 
+  const processingJob = contract.processingJobs[0] || null;
+  let processingJobError = processingJob?.error ?? null;
+  let processingJobStatus = processingJob?.status ?? null;
+
   if (contract.status === 'PROCESSING') {
-    const processingJob = contract.processingJobs[0] || null;
     const isJobActivelyRunning = processingJob?.status === 'RUNNING' && processingJob.startedAt &&
       (Date.now() - new Date(processingJob.startedAt).getTime()) < 3 * 60 * 1000;
 
@@ -278,32 +283,56 @@ export async function getContractStatus(
 
     if (isStale && !isJobActivelyRunning) {
       const newStatus = hasNoArtifacts ? 'FAILED' : 'COMPLETED';
+      const staleError = hasNoArtifacts
+        ? 'Processing stalled before any analysis was generated. The worker may be down or the document could not be read — retry.'
+        : null;
       try {
         await prisma.contract.update({
           where: { id: contract.id },
           data: { status: newStatus, updatedAt: new Date() },
         });
         (contract as any).status = newStatus;
+        if (staleError && processingJob?.id) {
+          processingJobError = processingJob.error || staleError;
+          processingJobStatus = JobStatus.FAILED;
+          await prisma.processingJob.update({
+            where: { id: processingJob.id },
+            data: { status: 'FAILED', error: processingJobError },
+          });
+        }
       } catch {
         // Non-fatal.
       }
     }
   }
 
-  const processingJob = contract.processingJobs[0] || null;
-  const artifactTypes = contract.artifacts.map((artifact) => artifact.type.toLowerCase());
+  let isApplicable: ((contractType: string, artifactType: string) => boolean) | undefined
+  try {
+    const { isArtifactApplicable } = await import('@repo/workers/contract-type-profiles')
+    isApplicable = (contractType, artifactType) =>
+      isArtifactApplicable(
+        (contractType || 'OTHER') as Parameters<typeof isArtifactApplicable>[0],
+        artifactType.toUpperCase() as Parameters<typeof isArtifactApplicable>[1],
+      )
+  } catch {
+    isApplicable = undefined
+  }
+
+  const coverage = computeArtifactCoverage({
+    contractType: contract.contractType,
+    artifacts: contract.artifacts.map((artifact) => ({ type: artifact.type, data: artifact.data })),
+    isApplicable,
+  })
+  const artifactTypes = coverage.successfulTypes
   const hasOverview = artifactTypes.includes('overview');
   const hasFinancial = artifactTypes.includes('financial');
   const hasRisk = artifactTypes.includes('risk');
   const hasCompliance = artifactTypes.includes('compliance');
   const hasClauses = artifactTypes.includes('clauses');
-  const artifactsGenerated = contract.artifacts.length;
-  // The pipeline generates 11 artifact types by default
-  // (DEFAULT_ARTIFACT_TYPES in packages/data-orchestration). Using a small
-  // floor here hid partial failures — e.g. 10 of 11 artifacts generated would
-  // still report totalArtifacts=10 and render as a full success in the UI.
-  const EXPECTED_ARTIFACT_COUNT = 11;
-  const totalArtifacts = Math.max(artifactsGenerated, EXPECTED_ARTIFACT_COUNT);
+  const artifactsGenerated = coverage.artifactsGenerated
+  const missingArtifacts = contract.status === 'FAILED' ? [] : coverage.missing
+  const missingArtifactTypes = missingArtifacts.map((item) => item.type)
+  const totalArtifacts = coverage.totalArtifacts
 
   let currentStep: ProcessingStage = 'upload';
   let progress = 0;
@@ -385,6 +414,8 @@ export async function getContractStatus(
     artifactsGenerated,
     totalArtifacts,
     artifactTypes,
+    missingArtifactTypes,
+    missingArtifacts,
     hasOverview,
     hasFinancial,
     hasRisk,
@@ -393,17 +424,17 @@ export async function getContractStatus(
     artifactTiming,
     processingJob: processingJob ? {
       id: processingJob.id,
-      status: processingJob.status,
+      status: processingJobStatus,
       queueId: processingJob.queueId,
       priority: processingJob.priority,
       retryCount: processingJob.retryCount,
       maxRetries: processingJob.maxRetries,
-      error: processingJob.error,
+      error: processingJobError,
     } : null,
     createdAt: contract.createdAt,
     updatedAt: contract.updatedAt,
     error: contract.status === 'FAILED'
-      ? (processingJob?.error || 'Processing failed')
+      ? (processingJobError || 'Processing failed')
       : null,
   });
 }

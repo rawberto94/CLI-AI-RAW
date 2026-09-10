@@ -259,6 +259,9 @@ export interface ContractStatsData {
   financial: {
     totalValue: number;
     averageValue: number;
+    displayCurrency?: string;
+    converted?: boolean;
+    unconvertedValueCount?: number;
   };
   timeline: {
     expiringThisMonth: number;

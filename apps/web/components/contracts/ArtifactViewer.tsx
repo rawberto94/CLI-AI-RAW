@@ -8,6 +8,8 @@ import {
   Calendar, Users, MapPin, Clock, TrendingUp, AlertCircle,
   Scale, Award, Target, Sparkles
 } from 'lucide-react';
+import { normalizeExtractedClauses } from '@/lib/contracts/extracted-clauses';
+import { formatAmountWithCurrency } from '@/lib/utils/formatters';
 
 // Unwrap potentially wrapped AI values
 function unwrapValue<T>(val: T | { value: T; source?: string } | undefined): T | undefined {
@@ -131,7 +133,7 @@ export function ArtifactViewer({ type, data, confidence, processingTime }: Artif
           <div>
             <p className="text-sm text-gray-600 mb-1">Total Contract Value</p>
             <p className="text-4xl font-bold text-green-700">
-              {data.totalValue?.currency || '$'} {data.totalValue?.amount?.toLocaleString() || 'N/A'}
+              {formatAmountWithCurrency(data.totalValue?.amount, data.totalValue?.currency, 'N/A')}
             </p>
             {data.totalValue?.confidence && (
               <Badge variant="outline" className="mt-2 bg-green-100 text-green-700 border-green-300">
@@ -162,7 +164,7 @@ export function ArtifactViewer({ type, data, confidence, processingTime }: Artif
                   </div>
                   <div className="text-right">
                     <div className="font-bold text-green-700">
-                      ${payment.amount?.toLocaleString()}
+                      {formatAmountWithCurrency(payment.amount, payment.currency || data.currency)}
                     </div>
                     <div className="text-sm text-gray-500">{payment.percentage}%</div>
                   </div>
@@ -211,7 +213,7 @@ export function ArtifactViewer({ type, data, confidence, processingTime }: Artif
                     </div>
                     <div className="text-right">
                       <div className="text-2xl font-bold text-violet-700">
-                        ${typeof rate.dailyRate === 'number' ? rate.dailyRate.toLocaleString() : rate.rate?.toLocaleString()}
+                        {formatAmountWithCurrency(typeof rate.dailyRate === 'number' ? rate.dailyRate : rate.rate, rate.currency || data.currency)}
                       </div>
                       <div className="text-sm text-gray-600">
                         /{rate.unit || 'day'} {rate.currency || ''}
@@ -545,42 +547,50 @@ export function ArtifactViewer({ type, data, confidence, processingTime }: Artif
     </div>
   );
 
-  const renderClauses = (data: any) => (
+  const renderClauses = (data: any) => {
+    const clauses = normalizeExtractedClauses(data);
+    return (
     <div className="space-y-4">
-      {data.clauses && data.clauses.length > 0 ? (
-        data.clauses.map((clause: any, idx: number) => (
-          <Card key={idx} className="shadow-sm hover:shadow-md transition-shadow">
+      {clauses.length > 0 ? (
+        clauses.map((clause, idx) => (
+          <Card key={`${clause.title}-${idx}`} className="shadow-sm hover:shadow-md transition-shadow">
             <CardHeader className="pb-3">
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="bg-violet-50">
-                    {clause.type}
-                  </Badge>
+                  {clause.type && (
+                    <Badge variant="outline" className="bg-violet-50">
+                      {clause.type}
+                    </Badge>
+                  )}
                   <CardTitle className="text-base">{clause.title}</CardTitle>
                 </div>
-                <Badge 
-                  variant="outline"
-                  className={
-                    clause.riskLevel === 'high' ? 'bg-red-100 text-red-700' :
-                    clause.riskLevel === 'medium' ? 'bg-yellow-100 text-yellow-700' :
-                    'bg-green-100 text-green-700'
-                  }
-                >
-                  {clause.riskLevel}
-                </Badge>
+                {clause.riskLevel && (
+                  <Badge 
+                    variant="outline"
+                    className={
+                      clause.riskLevel === 'high' ? 'bg-red-100 text-red-700' :
+                      clause.riskLevel === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+                      'bg-green-100 text-green-700'
+                    }
+                  >
+                    {clause.riskLevel}
+                  </Badge>
+                )}
               </div>
-              {clause.pageReference && (
-                <p className="text-sm text-gray-500">{clause.pageReference}</p>
+              {clause.section && (
+                <p className="text-sm text-gray-500">{clause.section}</p>
               )}
             </CardHeader>
             <CardContent className="space-y-3">
-              <div>
-                <p className="text-sm font-medium text-gray-600 mb-1">Summary:</p>
-                <p className="text-sm text-gray-700">{unwrapString(clause.summary)}</p>
-              </div>
+              {clause.summary && clause.summary !== clause.fullText && (
+                <div>
+                  <p className="text-sm font-medium text-gray-600 mb-1">Summary:</p>
+                  <p className="text-sm text-gray-700">{clause.summary}</p>
+                </div>
+              )}
               <div className="bg-gray-50 rounded-lg p-3 border">
                 <p className="text-sm font-medium text-gray-600 mb-1">Full Text:</p>
-                <p className="text-sm text-gray-700">{clause.content}</p>
+                <p className="text-sm text-gray-700">{clause.fullText || clause.summary}</p>
               </div>
             </CardContent>
           </Card>
@@ -589,7 +599,8 @@ export function ArtifactViewer({ type, data, confidence, processingTime }: Artif
         <p className="text-gray-500 text-center py-8">No clauses extracted</p>
       )}
     </div>
-  );
+    );
+  };
 
   const renderDefault = (data: any) => (
     <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-6 border border-gray-200">

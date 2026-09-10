@@ -27,6 +27,7 @@ import {
 } from 'recharts';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
+import { formatAmountWithCurrency } from '@/lib/utils/formatters';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -83,14 +84,20 @@ export function TrendChart({
   const isPositive = change >= 0;
 
   const formatValue = (val: number) => {
-    if (valuePrefix === '$') {
-      return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'USD',
-        maximumFractionDigits: 0
-      }).format(val);
+    const prefix = (valuePrefix || '').trim()
+    if (prefix === '$' || prefix === 'USD') {
+      return formatAmountWithCurrency(val, 'USD')
     }
-    return `${valuePrefix}${val.toLocaleString()}${valueSuffix}`;
+    if (prefix === 'CHF' || prefix === 'Fr.') {
+      return formatAmountWithCurrency(val, 'CHF')
+    }
+    if (/^[A-Z]{3}$/.test(prefix) && prefix !== 'XXX') {
+      return formatAmountWithCurrency(val, prefix)
+    }
+    if (!prefix) {
+      return formatAmountWithCurrency(val)
+    }
+    return `${prefix}${val.toLocaleString('de-CH')}${valueSuffix}`
   };
 
   const CustomTooltip = ({ active, payload, label }: any) => {

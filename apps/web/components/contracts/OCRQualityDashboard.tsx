@@ -190,7 +190,7 @@ const ConfidenceTrendChart: React.FC<{ data: DailyMetric[] }> = ({ data }) => {
             <XAxis 
               dataKey="date" 
               tick={{ fontSize: 12 }}
-              tickFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+              tickFormatter={(value) => new Date(value).toLocaleDateString('de-CH', { month: 'short', day: 'numeric' })}
             />
             <YAxis 
               domain={[0.5, 1]} 
@@ -248,7 +248,7 @@ const CorrectionsChart: React.FC<{ data: DailyMetric[] }> = ({ data }) => {
             <XAxis 
               dataKey="date" 
               tick={{ fontSize: 12 }}
-              tickFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+              tickFormatter={(value) => new Date(value).toLocaleDateString('de-CH', { month: 'short', day: 'numeric' })}
             />
             <YAxis tick={{ fontSize: 12 }} />
             <RechartsTooltip
@@ -587,10 +587,7 @@ export const OCRQualityDashboard: React.FC<OCRQualityDashboardProps> = ({
           <Button variant="outline" size="icon" onClick={() => setLoading(true)}>
             <RefreshCw className={cn('h-4 w-4', loading && 'animate-spin')} />
           </Button>
-          <Button variant="outline" className="gap-2">
-            <Download className="h-4 w-4" />
-            Export
-          </Button>
+
         </div>
       </div>
 

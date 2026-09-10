@@ -57,7 +57,8 @@ import {
   AlertTriangle,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { formatCurrency, formatDate } from '@/lib/design-tokens'
+import { formatDate } from '@/lib/design-tokens'
+import { formatAmountWithCurrency } from '@/lib/utils/formatters'
 import { toast } from 'sonner'
 
 // ============ TYPES ============
@@ -84,6 +85,7 @@ interface ChildContract {
   effectiveDate: string | null
   expirationDate: string | null
   totalValue: number | null
+  currency?: string | null
   createdAt: string | null
 }
 
@@ -250,7 +252,7 @@ function ContractLinkCard({
           {isChild && childContract.totalValue && (
             <span className="flex items-center gap-1 font-medium text-slate-700">
               <DollarSign className="h-3.5 w-3.5" />
-              {formatCurrency(childContract.totalValue)}
+              {formatAmountWithCurrency(childContract.totalValue, childContract.currency)}
             </span>
           )}
         </div>

@@ -84,7 +84,7 @@ export const GET = withAuthApiHandler(async (request, ctx) => {
       supplierName: e.supplierName || e.supplier?.name || 'Unknown',
       supplierTier: e.supplierTier || e.supplier?.tier || 'TIER_2',
       dailyRateUSD: Number(e.dailyRateUSD || 0),
-      currency: e.currency || 'USD',
+      currency: e.currency || '',
       country: e.country || 'Unknown',
       region: e.region || 'Unknown',
       lineOfService: e.lineOfService || 'General',

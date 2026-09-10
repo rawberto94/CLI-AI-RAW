@@ -337,8 +337,8 @@ export const AdvancedSearchFilters = memo(function AdvancedSearchFilters({
                   step={100000}
                 />
                 <div className="flex justify-between text-xs text-slate-500">
-                  <span>${(filters.valueRange[0] / 1000000).toFixed(1)}M</span>
-                  <span>${(filters.valueRange[1] / 1000000).toFixed(1)}M</span>
+                  <span>{(filters.valueRange[0] / 1000000).toFixed(1)}M</span>
+                  <span>{(filters.valueRange[1] / 1000000).toFixed(1)}M</span>
                 </div>
               </div>
 

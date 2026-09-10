@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { Prisma } from '@prisma/client';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, getApiContext} from '@/lib/api-middleware';
+import { resolvePersistCurrency } from '@/lib/fx';
 
 export const dynamic = 'force-dynamic';
 
@@ -66,13 +67,13 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
 
     if (type === 'purchase-order') {
       const result = await prisma.$queryRaw`INSERT INTO purchase_orders (id, tenant_id, po_number, contract_id, vendor_name, status, total_amount, currency, line_items, department, cost_center, budget_code, requested_by, notes)
-         VALUES (gen_random_uuid()::text, ${ctx.tenantId}, ${data.poNumber}, ${data.contractId || null}, ${data.vendorName}, 'DRAFT', ${data.totalAmount}, ${data.currency || 'USD'}, ${JSON.stringify(data.lineItems || [])}, ${data.department || null}, ${data.costCenter || null}, ${data.budgetCode || null}, ${ctx.userId}, ${data.notes || null}) RETURNING *`;
+         VALUES (gen_random_uuid()::text, ${ctx.tenantId}, ${data.poNumber}, ${data.contractId || null}, ${data.vendorName}, 'DRAFT', ${data.totalAmount}, ${resolvePersistCurrency(data.currency)}, ${JSON.stringify(data.lineItems || [])}, ${data.department || null}, ${data.costCenter || null}, ${data.budgetCode || null}, ${ctx.userId}, ${data.notes || null}) RETURNING *`;
       return createSuccessResponse(ctx, { purchaseOrder: (result as any[])[0] });
     }
 
     if (type === 'invoice') {
       const result = await prisma.$queryRaw`INSERT INTO invoices (id, tenant_id, invoice_number, po_id, contract_id, vendor_name, status, total_amount, currency, line_items, invoice_date, due_date, payment_terms, notes)
-         VALUES (gen_random_uuid()::text, ${ctx.tenantId}, ${data.invoiceNumber}, ${data.poId || null}, ${data.contractId || null}, ${data.vendorName}, 'PENDING', ${data.totalAmount}, ${data.currency || 'USD'}, ${JSON.stringify(data.lineItems || [])}, ${data.invoiceDate || null}, ${data.dueDate || null}, ${data.paymentTerms || null}, ${data.notes || null}) RETURNING *`;
+         VALUES (gen_random_uuid()::text, ${ctx.tenantId}, ${data.invoiceNumber}, ${data.poId || null}, ${data.contractId || null}, ${data.vendorName}, 'PENDING', ${data.totalAmount}, ${resolvePersistCurrency(data.currency)}, ${JSON.stringify(data.lineItems || [])}, ${data.invoiceDate || null}, ${data.dueDate || null}, ${data.paymentTerms || null}, ${data.notes || null}) RETURNING *`;
       return createSuccessResponse(ctx, { invoice: (result as any[])[0] });
     }
 

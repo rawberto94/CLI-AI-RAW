@@ -5,6 +5,8 @@
  * mandatory/optional fields, and clause categories for adaptive AI extraction.
  */
 
+import { leadTextForClassification } from './utils/smart-text-select';
+
 // ============ CONTRACT/DOCUMENT TYPES ============
 // Includes both contracts and transactional business documents
 
@@ -3790,12 +3792,10 @@ export async function detectContractTypeWithAI(text: string): Promise<{ type: Co
       'Other': ['SPONSORSHIP', 'INSURANCE', 'SUBSCRIPTION', 'OTHER']
     };
     
-    // Prepare a sample of the text (first 4000 chars for better context)
-    const textSample = text.slice(0, 4000);
-    
-    // Also analyze the beginning and specific sections for better detection
-    const titleSection = text.slice(0, 500); // Often contains the document title
-    const keywordAnalysis = detectContractTypeKeywords(text); // Get keyword hints
+    // Skip TOC / blank pages so classification sees the preamble, not the index.
+    const textSample = leadTextForClassification(text, 4000);
+    const titleSection = textSample.slice(0, 500);
+    const keywordAnalysis = detectContractTypeKeywords(text);
     
     const prompt = `You are an expert document classifier. Analyze this document and determine its precise type.
 
@@ -3840,7 +3840,7 @@ RESPOND WITH JSON:
       messages: [
         {
           role: 'system',
-          content: `You are an expert legal and business document classifier with deep knowledge of contract law, commercial documents, and business transactions. You understand the nuances between similar document types (e.g., MSA vs SOW, Purchase Order vs Sales Agreement, Amendment vs Addendum). Always consider the document's primary purpose and legal effect when classifying.`
+          content: `You are an expert legal and business document classifier with deep knowledge of contract law, commercial documents, and business transactions. You understand the nuances between similar document types (e.g., MSA vs SOW, Purchase Order vs Sales Agreement, Amendment vs Addendum). Always consider the document's primary purpose and legal effect when classifying. Keep quotes and titles verbatim. JSON keys stay English. German/French/Italian documents still map to the English type keys.`
         },
         {
           role: 'user',
@@ -3902,7 +3902,7 @@ RESPOND WITH JSON:
  */
 export function detectContractTypeKeywords(text: string): { type: ContractType; confidence: number; matchedKeywords: string[] } {
   const lowercaseText = text.toLowerCase();
-  const titleSection = text.slice(0, 500).toLowerCase(); // Title/header section
+  const titleSection = leadTextForClassification(text, 800).slice(0, 500).toLowerCase();
   const scores: { type: ContractType; score: number; matchedKeywords: string[]; titleMatch: boolean }[] = [];
 
   // Define high-value keywords that strongly indicate specific document types
@@ -4240,7 +4240,8 @@ export function getSmartSuggestions(
 }
 
 /**
- * Get contract type comparison insights
+ * Type-profile benchmarks for extraction hints only.
+ * Do not attach these to OVERVIEW / Review Findings as if they came from the PDF.
  */
 export function getContractTypeInsights(type: ContractType): {
   typicalDuration: string;

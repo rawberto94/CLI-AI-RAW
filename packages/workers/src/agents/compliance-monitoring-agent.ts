@@ -12,6 +12,7 @@ import type {
   AgentRecommendation,
 } from './types';
 import { logger } from '../utils/logger';
+import { formatMoneyText } from '@repo/utils';
 
 // --------------------------------------------------------------------------
 // Internal types
@@ -157,7 +158,7 @@ const COMPLIANCE_RULES: Array<{
         severity: 'high',
         details: has
           ? 'Indemnification / insurance clause present'
-          : `High-value contract ($${value.toLocaleString()}) without indemnification`,
+          : `High-value contract (${formatMoneyText(value, ctx.currency)}) without indemnification`,
         recommendation: has ? undefined : 'Add indemnification clause and require certificate of insurance',
       };
     },

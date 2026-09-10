@@ -145,8 +145,8 @@ export const GlobalHeader = memo(function GlobalHeader({
                 </div>
                 <span className="font-semibold dark:text-slate-100">Notifications</span>
               </div>
-              <Button variant="ghost" size="sm" className="h-6 text-xs text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300">
-                Mark all read
+              <Button variant="ghost" size="sm" className="h-6 text-xs text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300" asChild>
+                <Link href="/notifications">Inbox</Link>
               </Button>
             </DropdownMenuLabel>
             <DropdownMenuSeparator className="dark:bg-slate-700" />
@@ -216,6 +216,7 @@ export const GlobalHeader = memo(function GlobalHeader({
           size="icon" 
           className="h-9 w-9 rounded-xl hover:bg-slate-100/80 dark:hover:bg-slate-700/80 transition-colors motion-reduce:transition-none"
           aria-label="Help"
+          onClick={() => window.dispatchEvent(new Event('openKeyboardShortcuts'))}
         >
           <HelpCircle className="h-4 w-4 text-slate-600 dark:text-slate-400" aria-hidden="true" />
         </Button>

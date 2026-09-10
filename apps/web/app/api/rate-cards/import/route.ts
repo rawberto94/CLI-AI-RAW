@@ -10,6 +10,11 @@ import { getServerTenantId } from '@/lib/tenant-server';
 import { Prisma } from '@prisma/client';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 import { rateCardManagementService } from 'data-orchestration/services';
+import {
+  convertedDailyRates,
+  resolvePersistCurrency,
+  resolvePersistGeo,
+} from '@/lib/rate-cards/persist-fields';
 
 export const dynamic = 'force-dynamic';
 
@@ -95,7 +100,8 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
     const rateCardEntries = body.entries.map((entry) => {
       const avgRate = (entry.minRate + entry.maxRate) / 2;
       const dailyRate = toDailyRate(avgRate, entry.rateType);
-      // Could use for rate range: toDailyRate(entry.minRate, entry.rateType), toDailyRate(entry.maxRate, entry.rateType)
+      const currency = resolvePersistCurrency(entry.currency)
+      const converted = convertedDailyRates(dailyRate, currency)
 
       return {
         tenantId,
@@ -104,17 +110,17 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
         roleCategory: entry.skillCategory || 'Professional Services',
         seniority: mapSeniority(entry.level),
         dailyRate: dailyRate,
-        dailyRateUSD: dailyRate, // Assume USD for now, could add currency conversion
-        dailyRateCHF: dailyRate * 0.88, // Approximate conversion
-        currency: entry.currency || 'USD',
-        country: entry.region || 'NOT_SPECIFIED',
-        region: mapRegion(entry.region),
+        dailyRateUSD: converted.usd,
+        dailyRateCHF: converted.chf,
+        currency,
+        country: resolvePersistGeo(entry.region),
+        region: entry.region ? mapRegion(entry.region) : resolvePersistGeo(null),
         lineOfService: entry.skillCategory || 'Professional Services',
         supplierId: `import-${Date.now()}`,
         supplierName: source,
         supplierTier: 'TIER_2' as const,
-        supplierCountry: entry.region || 'NOT_SPECIFIED',
-        supplierRegion: mapRegion(entry.region),
+        supplierCountry: resolvePersistGeo(entry.region),
+        supplierRegion: entry.region ? mapRegion(entry.region) : resolvePersistGeo(null),
         effectiveDate: entry.effectiveDate ? new Date(entry.effectiveDate) : now,
         expiryDate: entry.expirationDate ? new Date(entry.expirationDate) : null,
         source: 'CSV_UPLOAD' as const, // Use valid RateCardSource enum value

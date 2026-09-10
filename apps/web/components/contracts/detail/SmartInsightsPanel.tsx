@@ -95,7 +95,8 @@ export const SmartInsightsPanel = memo(function SmartInsightsPanel({
       case 'opportunity': return TrendingUp;
       case 'action': return Target;
       case 'compliance': return Shield;
-      default: return Info;
+      case 'info': return Info;
+      default: return AlertTriangle;
     }
   };
 

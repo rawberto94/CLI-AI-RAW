@@ -19,7 +19,6 @@ import {
   CheckCircle2,
   Bell,
   Filter,
-  Download,
   RefreshCw,
   TrendingUp,
   Mail,
@@ -31,6 +30,7 @@ import {
 import { cn } from '@/lib/utils'
 import { useDemoMode } from '@/hooks/useDemoMode'
 import { useTranslations } from 'next-intl'
+import Link from 'next/link'
 
 interface Deadline {
   id: string
@@ -195,9 +195,11 @@ export function DeadlineDashboard({
             {t('deadlineDashboard.actions.refresh')}
           </Button>
           {!isDemo && (
-            <Button className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700">
-              <Bell className="h-4 w-4 mr-2" />
-              {t('deadlineDashboard.actions.configureAlerts')}
+            <Button asChild className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700">
+              <Link href="/settings/notifications">
+                <Bell className="h-4 w-4 mr-2" />
+                {t('deadlineDashboard.actions.configureAlerts')}
+              </Link>
             </Button>
           )}
         </div>
@@ -447,8 +449,10 @@ export function DeadlineDashboard({
                       </div>
                       
                       {!isDemo && (
-                        <Button variant="outline" size="sm" className="hover:bg-violet-50">
-                          {t('deadlineDashboard.actions.viewContract')}
+                        <Button asChild variant="outline" size="sm" className="hover:bg-violet-50">
+                          <Link href={`/contracts/${deadline.contractId}`}>
+                            {t('deadlineDashboard.actions.viewContract')}
+                          </Link>
                         </Button>
                       )}
                     </div>
@@ -474,15 +478,11 @@ export function DeadlineDashboard({
               </p>
               <div className="flex items-center gap-3">
                 {!isDemo && (
-                  <Button className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700">
-                    <Mail className="h-4 w-4 mr-2" />
-                    {t('deadlineDashboard.notifications.setupAlerts')}
-                  </Button>
-                )}
-                {!isDemo && (
-                  <Button variant="outline" className="hover:bg-white">
-                    <Download className="h-4 w-4 mr-2" />
-                    {t('deadlineDashboard.notifications.exportToCalendar')}
+                  <Button asChild className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700">
+                    <Link href="/settings/notifications">
+                      <Mail className="h-4 w-4 mr-2" />
+                      {t('deadlineDashboard.notifications.setupAlerts')}
+                    </Link>
                   </Button>
                 )}
               </div>

@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { FileEdit, Plus, ArrowRight, CheckCircle2, Clock, BarChart3 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { formatAmountWithCurrency } from '@/lib/utils/formatters';
 
 const statusColors: Record<string, string> = {
   DRAFT: 'bg-gray-100 text-gray-800',
@@ -91,7 +92,7 @@ export default function AmendmentWorkflow() {
                 <div className="flex items-center gap-2"><h3 className="font-semibold">Amendment #{a.amendment_number}: {a.title}</h3><Badge className={statusColors[a.status]}>{a.status}</Badge><Badge variant="outline">{a.amendment_type}</Badge></div>
                 <p className="text-sm text-muted-foreground mt-1">{a.description || 'No description'}</p>
                 <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
-                  {a.financial_impact && <span>Impact: ${Number(a.financial_impact).toLocaleString()}</span>}
+                  {a.financial_impact && <span>Impact: {formatAmountWithCurrency(a.financial_impact, a.currency)}</span>}
                   {a.effective_date && <span>Effective: {new Date(a.effective_date).toLocaleDateString()}</span>}
                   <span>Created: {new Date(a.created_at).toLocaleDateString()}</span>
                 </div>

@@ -12,6 +12,7 @@ import type { ParseResult } from './file-parser';
 import type { MatchResult } from './fuzzy-matcher';
 import type { ValidationResult } from './data-validator';
 import type { TransformedRate } from './data-transformer';
+import { DEFAULT_DISPLAY_CURRENCY } from '@/lib/display-currency';
 
 export interface ImportOptions {
   useAI?: boolean;
@@ -160,7 +161,7 @@ export class ImportServiceClient {
       });
 
       const transformedData = DataTransformer.transform(sheet.rows, mappingDict, {
-        baseCurrency: options.baseCurrency || 'CHF',
+        baseCurrency: options.baseCurrency || DEFAULT_DISPLAY_CURRENCY,
       });
 
       onProgress?.({

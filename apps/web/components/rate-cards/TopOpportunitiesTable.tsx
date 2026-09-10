@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, TrendingDown } from 'lucide-react';
+import { formatRateMoney } from '@/lib/rate-cards/format'
 
 interface Opportunity {
   id: string;
@@ -35,14 +36,7 @@ export function TopOpportunitiesTable({ opportunities }: TopOpportunitiesTablePr
     return 'bg-gray-100 text-gray-800';
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
+  const formatCurrency = (value: number) => formatRateMoney(value);
 
   if (opportunities.length === 0) {
     return (

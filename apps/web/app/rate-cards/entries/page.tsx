@@ -51,7 +51,7 @@ const fetchRateCards = async (filters: RateCardFilters, dataMode: string) => {
     lineOfService: entry.lineOfService || entry.serviceLine,
     country: entry.country,
     dailyRate: Number(entry.dailyRate || entry.dailyRateUSD),
-    currency: entry.currency || 'USD',
+    currency: entry.currency || '',
     isBaseline: entry.isBaseline || false,
     baselineType: entry.baselineType,
     isNegotiated: entry.isNegotiated || false,

@@ -227,6 +227,14 @@ export const PUT = withContractApiHandler(async (request: NextRequest, ctx) => {
 // Helper Functions
 // ============================================================================
 
+function tagsFromContract(tags: unknown): string[] {
+  if (!Array.isArray(tags)) return [];
+  return tags
+    .filter((tag): tag is string => typeof tag === 'string')
+    .map((tag) => tag.trim())
+    .filter(Boolean);
+}
+
 async function getTenantContract(
   contractId: string,
   tenantId: string,
@@ -292,6 +300,10 @@ async function saveExtractionResults(
         }
       });
     } else {
+      const contractRow = await prisma.contract.findFirst({
+        where: { id: contractId, tenantId: results.tenantId },
+        select: { tags: true },
+      });
       await prisma.contractMetadata.create({
         data: {
           contractId,
@@ -300,7 +312,7 @@ async function saveExtractionResults(
             _aiExtraction: extractionData,
           })),
           systemFields: {},
-          tags: [],
+          tags: tagsFromContract(contractRow?.tags),
           lastUpdated: new Date(),
           updatedBy: 'ai-extractor',
         }
@@ -351,7 +363,7 @@ async function applyMetadataToContract(
 
     const contract = await prisma.contract.findFirst({
       where: { id: contractId, tenantId },
-      select: { id: true }
+      select: { id: true, tags: true }
     });
 
     if (!contract) {
@@ -444,7 +456,7 @@ async function applyMetadataToContract(
             tenantId,
             customFields: customFields as Prisma.InputJsonValue,
             systemFields: {} as Prisma.InputJsonValue,
-            tags: [],
+            tags: tagsFromContract(contract.tags),
             lastUpdated: now,
             updatedBy: 'ai-extractor',
           }

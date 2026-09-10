@@ -40,7 +40,9 @@ import {
   UserCheck,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { formatCurrency, formatNumber, formatDate } from '@/lib/design-tokens';
+import { formatDate } from '@/lib/design-tokens';
+import { formatAmountWithCurrency, formatDisplayTotal } from '@/lib/utils/formatters';
+import { useDisplayCurrency } from '@/hooks/useDisplayCurrency';
 
 import { toast } from 'sonner';
 import { DeadlineAlertBanner, useDeadlineAlerts } from '@/components/workflows/DeadlineAlerts';
@@ -104,6 +106,7 @@ interface RecentContract {
   name: string;
   status: 'completed' | 'processing' | 'review' | 'pending';
   value: number;
+  currency?: string;
   date: string;
   riskLevel: 'low' | 'medium' | 'high';
 }
@@ -115,6 +118,7 @@ interface UpcomingExpiration {
   expiresAt: string;
   daysRemaining: number;
   value: number;
+  currency?: string;
 }
 
 // ============ DEFAULT DATA (empty states) ============
@@ -150,9 +154,10 @@ function useDashboardData() {
   const approvalsQuery = usePendingApprovals(5);
   const expirationsQuery = useContractExpirations(5);
   const healthQuery = useContractHealthScores();
+  const settingsCurrency = useDisplayCurrency();
   
   // Compute derived state from queries
-  const { metrics, chartData, recentContracts, expirations } = useMemo(() => {
+  const { metrics, chartData, recentContracts, expirations, displayCurrency } = useMemo(() => {
     const statsJson = statsQuery.data;
     const approvalsJson = approvalsQuery.data;
     const expirationsJson = expirationsQuery.data;
@@ -232,6 +237,7 @@ function useDashboardData() {
           name: c.name || c.fileName || c.contractTitle || 'Untitled',
           status: (c.status || 'pending').toLowerCase(),
           value: c.totalValue || c.value || 0,
+          currency: c.currency,
           date: c.createdAt || c.updatedAt || '',
           riskLevel: c.riskLevel || (c.riskScore > 70 ? 'high' : c.riskScore > 40 ? 'medium' : 'low'),
         }));
@@ -247,15 +253,26 @@ function useDashboardData() {
         expiresAt: e.expiryDate,
         daysRemaining: e.daysUntilExpiry || 0,
         value: e.contractValue || 0,
+        currency: e.currency,
       }));
     }
+
+    const resolvedDisplayCurrency =
+      (typeof statsJson?.data?.overview?.displayCurrency === 'string' && statsJson.data.overview.displayCurrency) ||
+      settingsCurrency;
     
-    return { metrics: computedMetrics, chartData: computedChartData, recentContracts: computedRecentContracts, expirations: computedExpirations };
-  }, [statsQuery.data, approvalsQuery.data, expirationsQuery.data, healthQuery.data]);
+    return {
+      metrics: computedMetrics,
+      chartData: computedChartData,
+      recentContracts: computedRecentContracts,
+      expirations: computedExpirations,
+      displayCurrency: resolvedDisplayCurrency,
+    };
+  }, [statsQuery.data, approvalsQuery.data, expirationsQuery.data, healthQuery.data, settingsCurrency]);
   
   const loading = statsQuery.isLoading || approvalsQuery.isLoading || expirationsQuery.isLoading;
 
-  return { metrics, chartData, recentContracts, expirations, loading };
+  return { metrics, chartData, recentContracts, expirations, loading, displayCurrency };
 }
 
 // ============ HELPER COMPONENTS ============
@@ -329,7 +346,7 @@ function StatCard({ title, value, subtitle, icon: Icon, trend, color, delay = 0 
   );
 }
 
-function ContractRow({ contract, index }: { contract: RecentContract; index: number }) {
+function ContractRow({ contract, index, displayCurrency }: { contract: RecentContract; index: number; displayCurrency: string }) {
   const statusConfig = {
     completed: { bg: 'bg-violet-100', text: 'text-violet-700', icon: CheckCircle2 },
     processing: { bg: 'bg-violet-100', text: 'text-violet-700', icon: Zap },
@@ -368,7 +385,7 @@ function ContractRow({ contract, index }: { contract: RecentContract; index: num
       
       {contract.value > 0 && (
         <span className="text-sm font-medium text-foreground tabular-nums">
-          {formatCurrency(contract.value)}
+          {formatAmountWithCurrency(contract.value, contract.currency)}
         </span>
       )}
       
@@ -377,7 +394,7 @@ function ContractRow({ contract, index }: { contract: RecentContract; index: num
   );
 }
 
-function ExpirationRow({ item, index }: { item: UpcomingExpiration; index: number }) {
+function ExpirationRow({ item, index, displayCurrency }: { item: UpcomingExpiration; index: number; displayCurrency: string }) {
   const urgencyColor = item.daysRemaining <= 7 
     ? 'text-rose-600 bg-rose-50' 
     : item.daysRemaining <= 14 
@@ -404,11 +421,11 @@ function ExpirationRow({ item, index }: { item: UpcomingExpiration; index: numbe
       </div>
       
       <span className="text-sm font-medium text-foreground tabular-nums">
-        {formatCurrency(item.value)}
+        {formatAmountWithCurrency(item.value, item.currency)}
       </span>
       
-      <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100 transition-opacity">
-        Renew
+      <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100 transition-opacity" asChild>
+        <Link href={`/contracts/${item.id}/renew`}>Renew</Link>
       </Button>
     </motion.div>
   );
@@ -424,11 +441,13 @@ interface PendingApproval {
   requestedBy: string;
   dueDate: string;
   value?: number;
+  currency?: string;
 }
 
 function PendingApprovalsWidget() {
   const [approvals, setApprovals] = useState<PendingApproval[]>([]);
   const [loading, setLoading] = useState(true);
+  const displayCurrency = useDisplayCurrency();
 
   useEffect(() => {
     const controller = new AbortController();
@@ -445,6 +464,7 @@ function PendingApprovalsWidget() {
             requestedBy: item.requestedBy?.name || 'System',
             dueDate: item.dueDate,
             value: item.value,
+            currency: item.currency,
           }));
           setApprovals(items);
         }
@@ -592,7 +612,7 @@ function PendingApprovalsWidget() {
                     
                     {approval.value && approval.value > 0 && (
                       <span className="text-sm font-semibold text-foreground tabular-nums">
-                        {formatCurrency(approval.value)}
+                        {formatAmountWithCurrency(approval.value, approval.currency)}
                       </span>
                     )}
                     
@@ -759,7 +779,7 @@ function PortfolioHealthWidget() {
 export function ProfessionalDashboard() {
   const router = useRouter();
   const { data: session } = useSession();
-  const { metrics, chartData, recentContracts, expirations, loading } = useDashboardData();
+  const { metrics, chartData, recentContracts, expirations, loading, displayCurrency } = useDashboardData();
   const [timeframe, setTimeframe] = useState<'7d' | '30d' | '90d'>('30d');
   const canManageIntegrations = session?.user?.role === 'admin' || session?.user?.role === 'owner';
   
@@ -792,6 +812,7 @@ export function ProfessionalDashboard() {
           supplier: f.supplierName,
           status: f.status === 'COMPLETED' ? 'active' : f.status === 'PROCESSING' ? 'pending' : f.status === 'ARCHIVED' ? 'expired' : 'draft',
           value: f.totalValue,
+          currency: f.currency,
           expirationDate: f.expirationDate ? new Date(f.expirationDate) : undefined,
           lastViewed: f.lastViewedAt ? new Date(f.lastViewedAt) : undefined,
           addedAt: new Date(f.createdAt || Date.now()),
@@ -824,7 +845,7 @@ export function ProfessionalDashboard() {
           name: r.contractName || r.name || 'Untitled Contract',
           supplier: r.supplierName || r.counterparty,
           value: r.contractValue || r.value || 0,
-          currency: r.currency || 'USD',
+          currency: r.currency,
           expirationDate: new Date(r.expirationDate || r.endDate),
           daysRemaining: r.daysUntilExpiry ?? r.daysRemaining ?? 0,
           autoRenewal: r.autoRenewal ?? false,
@@ -1068,7 +1089,7 @@ export function ProfessionalDashboard() {
         />
         <StatCard
           title="Total Value"
-          value={formatCurrency(metrics.totalValue)}
+          value={formatDisplayTotal(metrics.totalValue, displayCurrency)}
           icon={DollarSign}
           trend={{ value: metrics.trends.value, label: 'growth' }}
           color="green"
@@ -1294,7 +1315,7 @@ export function ProfessionalDashboard() {
             <CardContent className="p-0">
               <div className="divide-y divide-border/60">
                 {recentContracts.map((contract, i) => (
-                  <ContractRow key={contract.id} contract={contract} index={i} />
+                  <ContractRow key={contract.id} contract={contract} index={i} displayCurrency={displayCurrency} />
                 ))}
               </div>
             </CardContent>
@@ -1320,7 +1341,7 @@ export function ProfessionalDashboard() {
             <CardContent className="p-0">
               <div className="divide-y divide-border/60">
                 {expirations.map((item, i) => (
-                  <ExpirationRow key={item.id} item={item} index={i} />
+                  <ExpirationRow key={item.id} item={item} index={i} displayCurrency={displayCurrency} />
                 ))}
               </div>
             </CardContent>

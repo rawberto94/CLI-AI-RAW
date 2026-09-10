@@ -8,6 +8,8 @@ import {
   mergePersistedMetadata,
   resolveDocumentTitle,
   titleFromSummary,
+  toPersistableMetadata,
+  resolveDocumentClassification,
 } from '../metadata-display';
 
 describe('metadata-display', () => {
@@ -63,5 +65,40 @@ describe('metadata-display', () => {
 
     expect(merged.document_title).toBe('Supplier Agreement');
     expect(merged.payment_type).toBe('fixed_price');
+  });
+
+  it('strips UI-only keys and placeholder TCV zeros before save', () => {
+    const payload = toPersistableMetadata({
+      document_title: 'MSA',
+      tcv_amount: 0,
+      tcvProvenance: { source: 'heuristic' },
+      tcvDrift: { extracted: 1, saved: 0 },
+      _field_confidence: { document_title: { value: 0.9 } },
+      notice_period: '90 days',
+      currency: 'CHF',
+    });
+    expect(payload).toEqual({
+      document_title: 'MSA',
+      tcv_amount: null,
+      notice_period: '90 days',
+      notice_period_days: 90,
+      currency: 'CHF',
+    });
+  });
+
+  it('resolves document classification without inventing contract', () => {
+    expect(resolveDocumentClassification(null, undefined, '')).toBe('unknown');
+    expect(resolveDocumentClassification('', 'invoice')).toBe('invoice');
+    expect(resolveDocumentClassification('purchase_order')).toBe('purchase_order');
+  });
+
+  it('persists empty integer reminder/notice fields as null, not 0', () => {
+    const payload = toPersistableMetadata({
+      reminder_enabled: false,
+      reminder_days_before_end: '',
+      notice_period_days: undefined,
+    });
+    expect(payload.reminder_days_before_end).toBeNull();
+    expect(payload.notice_period_days).toBeNull();
   });
 });

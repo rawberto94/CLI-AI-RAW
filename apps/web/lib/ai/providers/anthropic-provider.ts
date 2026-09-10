@@ -5,6 +5,7 @@
 
 import Anthropic from '@anthropic-ai/sdk';
 import pino from 'pino';
+import { analysisLanguageInstructions } from '@repo/utils';
 
 const logger = pino({ name: 'anthropic-provider' });
 
@@ -295,6 +296,7 @@ export class AnthropicProvider {
     options?: CompletionOptions
   ): Promise<T> {
     const systemPrompt = `You are a data extraction assistant. Extract the requested information from the provided text and return it as valid JSON.
+${analysisLanguageInstructions({ contractText: text })}
 
 Schema:
 ${schema.description}
@@ -331,14 +333,15 @@ Return ONLY valid JSON matching the schema. Do not include any explanation or ma
     analysisType: 'risk' | 'summary' | 'clauses' | 'obligations' | 'full',
     options?: CompletionOptions
   ): Promise<CompletionResult> {
+    const langBlock = analysisLanguageInstructions({ contractText });
     const systemPrompts: Record<string, string> = {
-      risk: `You are a contract risk analyst. Analyze the contract for potential risks, liabilities, and unfavorable terms. Categorize risks as critical, high, medium, or low. Provide specific clause references and mitigation recommendations.`,
+      risk: `You are a contract risk analyst. Analyze the contract for potential risks, liabilities, and unfavorable terms. Categorize risks as critical, high, medium, or low. Provide specific clause references and mitigation recommendations.\n${langBlock}`,
       
-      summary: `You are a contract summarization expert. Create a concise executive summary of the contract including: parties involved, key terms, financial details, important dates, and main obligations.`,
+      summary: `You are a contract summarization expert. Create a concise executive summary of the contract including: parties involved, key terms, financial details, important dates, and main obligations.\n${langBlock}`,
       
-      clauses: `You are a legal clause analyst. Identify and categorize all significant clauses in the contract. For each clause, provide: the clause type, a summary, any unusual or concerning language, and comparison to standard market terms.`,
+      clauses: `You are a legal clause analyst. Identify and categorize all significant clauses in the contract. For each clause, provide: the clause type, a summary, any unusual or concerning language, and comparison to standard market terms.\n${langBlock}`,
       
-      obligations: `You are a contract obligation tracker. Extract all obligations, deadlines, deliverables, and commitments from the contract. Categorize by party (us/them/mutual) and by type (payment, delivery, compliance, reporting).`,
+      obligations: `You are a contract obligation tracker. Extract all obligations, deadlines, deliverables, and commitments from the contract. Categorize by party (us/them/mutual) and by type (payment, delivery, compliance, reporting).\n${langBlock}`,
       
       full: `You are a comprehensive contract analyst. Perform a thorough analysis including:
 1. Executive summary
@@ -349,7 +352,8 @@ Return ONLY valid JSON matching the schema. Do not include any explanation or ma
 6. Unusual or non-standard clauses
 7. Recommendations for negotiation
 
-Format your response in clear sections.`,
+Format your response in clear sections.
+${langBlock}`,
     };
 
     return this.complete(contractText, {

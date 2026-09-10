@@ -31,6 +31,8 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { toast } from 'sonner';
+import { useDisplayCurrency } from '@/hooks/useDisplayCurrency';
+import { formatDisplayTotal } from '@/lib/utils/formatters';
 
 // ============================================================================
 // TYPE DEFINITIONS
@@ -239,6 +241,7 @@ function CategoryBar({ category, maxCount }: { category: CategoryData; maxCount:
 // ============================================================================
 
 export default function CategoryAnalyticsPage() {
+  const displayCurrency = useDisplayCurrency();
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isBulkCategorizing, setIsBulkCategorizing] = useState(false);
@@ -349,11 +352,7 @@ export default function CategoryAnalyticsPage() {
 
   if (!analytics) return null;
 
-  const formatCurrency = (value: number) => {
-    if (value >= 1000000) return `$${(value / 1000000).toFixed(1)}M`;
-    if (value >= 1000) return `$${(value / 1000).toFixed(0)}K`;
-    return `$${value.toFixed(0)}`;
-  };
+  const formatCurrency = (value: number) => formatDisplayTotal(value, displayCurrency);
 
   const maxCategoryCount = Math.max(
     ...(Array.isArray(analytics.distribution) ? analytics.distribution.map((c) => c.count) : []),

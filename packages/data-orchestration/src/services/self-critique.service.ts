@@ -11,6 +11,7 @@
 import { ChatOpenAI } from '@langchain/openai';
 import { SystemMessage, HumanMessage } from '@langchain/core/messages';
 import { z } from 'zod';
+import { analysisLanguageInstructions } from '@repo/utils';
 
 // =============================================================================
 // TYPES
@@ -263,6 +264,9 @@ Your job is to find issues with the following AI-generated analysis.
 
 ${CRITIQUE_PROMPTS[check]}
 
+${analysisLanguageInstructions({ contractText: context.contractText })}
+Narrative fields in German, French, or Italian are not a defect. Do not flag non-English narrative as a formatting or tone issue. Do not regenerate into English.
+
 Respond in JSON format:
 {
   "issues": [
@@ -389,7 +393,9 @@ Now perform the ${check} check:`;
         .join('\n');
 
       const systemPrompt = `You are tasked with revising an AI-generated output to fix identified issues.
-Preserve the overall structure and good content while fixing the problems.`;
+Preserve the overall structure and good content while fixing the problems.
+${analysisLanguageInstructions({ contractText: context.contractText })}
+Do not translate narrative into English if it is German, French, or Italian.`;
 
       const userPrompt = `## Original Output:
 ${outputStr}

@@ -10,6 +10,7 @@ import {
   TrendingUp,
   Info,
 } from 'lucide-react';
+import { formatRateMoney } from '@/lib/rate-cards/format';
 
 interface BaselineComparison {
   rateCardEntryId: string;
@@ -171,13 +172,13 @@ export function BaselineComparisonCard({ rateCardEntryId }: BaselineComparisonCa
               <div>
                 <p className="text-sm text-gray-500">Actual Rate</p>
                 <p className="text-lg font-semibold">
-                  ${comparison.actualRate.toLocaleString()}
+                  {formatRateMoney(comparison.actualRate)}
                 </p>
               </div>
               <div>
                 <p className="text-sm text-gray-500">Baseline Rate</p>
                 <p className="text-lg font-semibold">
-                  ${comparison.baselineRate.toLocaleString()}
+                  {formatRateMoney(comparison.baselineRate)}
                 </p>
               </div>
             </div>
@@ -195,7 +196,7 @@ export function BaselineComparisonCard({ rateCardEntryId }: BaselineComparisonCa
                     comparison.variance > 0 ? 'text-red-600' : 'text-green-600'
                   }`}>
                     {comparison.variance > 0 ? '+' : ''}
-                    ${Math.abs(comparison.variance).toLocaleString()}
+                    {formatRateMoney(Math.abs(comparison.variance))}
                   </p>
                   <span className={`text-sm ${
                     comparison.variance > 0 ? 'text-red-600' : 'text-green-600'
@@ -209,7 +210,7 @@ export function BaselineComparisonCard({ rateCardEntryId }: BaselineComparisonCa
                 <div>
                   <p className="text-sm text-gray-500">Potential Savings</p>
                   <p className="text-lg font-semibold text-green-600">
-                    ${comparison.potentialSavings.toLocaleString()}
+                    {formatRateMoney(comparison.potentialSavings)}
                   </p>
                 </div>
               )}

@@ -46,6 +46,7 @@ interface UploadFile {
   startTime?: number
   endTime?: number
   skipDuplicateCheck?: boolean
+  registerAsVersion?: boolean
   /** Set when processing completed but some insights were not generated. */
   partialWarning?: boolean
 }
@@ -77,6 +78,16 @@ function effectiveFileProgress(f: UploadFile): number {
   }
 }
 
+/** XHR bypasses the fetch CSRF interceptor; cancel/retry fetches attach the same cookie header. */
+function getCsrfHeaders(): Record<string, string> {
+  if (typeof document === 'undefined') return {}
+  const csrfCookie = document.cookie.split(';').map(c => c.trim()).find(c => c.startsWith('csrf_token='))
+  if (!csrfCookie) return {}
+  const eqIdx = csrfCookie.indexOf('=')
+  if (eqIdx === -1) return {}
+  return { 'x-csrf-token': decodeURIComponent(csrfCookie.slice(eqIdx + 1)) }
+}
+
 // ── Page Component ───────────────────────────────────────────────────────────
 
 export default function UploadPage() {
@@ -86,6 +97,8 @@ export default function UploadPage() {
   const { dataMode } = useDataMode()
   const { canCreateContracts, loading: permsLoading } = usePermissions()
   const [files, setFiles] = useState<UploadFile[]>([])
+  const filesRef = useRef<UploadFile[]>(files)
+  filesRef.current = files
   const [isUploading, setIsUploading] = useState(false)
   const [isPaused, setIsPaused] = useState(false)
   const isPausedRef = useRef(false)
@@ -95,6 +108,7 @@ export default function UploadPage() {
   const [activeReview, setActiveReview] = useState<UploadMetadataReviewItem | null>(null)
   const [skipAllMetadataReview, setSkipAllMetadataReview] = useState(false)
   const [policyPackId, setPolicyPackId] = useState<string | null>(null)
+  const xhrByFileId = useRef<Map<string, XMLHttpRequest>>(new Map())
 
   // Clear stale HMR state on mount + cleanup on unmount
   useEffect(() => {
@@ -202,17 +216,14 @@ export default function UploadPage() {
       // Upload file - skip duplicate check if re-processing
       const headers: Record<string, string> = {
         'x-tenant-id': getTenantId(),
-        'x-data-mode': dataMode
+        'x-data-mode': dataMode,
+        ...getCsrfHeaders(),
       }
       if (skipDuplicateCheck) {
         headers['x-skip-duplicate-check'] = 'true'
       }
-      // XHR bypasses the global fetch CSRF interceptor — attach token manually.
-      // Use indexOf to avoid truncating base64 tokens that contain '=' padding.
-      const csrfCookie = document.cookie.split(';').map(c => c.trim()).find(c => c.startsWith('csrf_token='))
-      if (csrfCookie) {
-        const eqIdx = csrfCookie.indexOf('=')
-        headers['x-csrf-token'] = decodeURIComponent(csrfCookie.slice(eqIdx + 1))
+      if (uploadFile.registerAsVersion) {
+        headers['x-register-as-version'] = 'true'
       }
       
       // Adaptive timeout: 30s base + 30s per 10MB (e.g., 100MB file → 330s)
@@ -257,6 +268,7 @@ export default function UploadPage() {
 
         xhr.open('POST', '/api/contracts/upload')
         Object.entries(headers).forEach(([k, v]) => xhr.setRequestHeader(k, v))
+        xhrByFileId.current.set(uploadFile.id, xhr)
         xhr.send(formData)
       })
       
@@ -371,6 +383,8 @@ export default function UploadPage() {
           onClick: () => retryFile(uploadFile.id),
         },
       });
+    } finally {
+      xhrByFileId.current.delete(uploadFile.id)
     }
   }
 
@@ -411,10 +425,49 @@ export default function UploadPage() {
   }, [])
 
   const removeFile = useCallback((id: string) => {
-    setFiles(prev => prev.filter(f => f.id !== id))
+    const xhr = xhrByFileId.current.get(id)
+    if (xhr) {
+      xhr.abort()
+      xhrByFileId.current.delete(id)
+    }
+    setFiles(prev => {
+      const target = prev.find(f => f.id === id)
+      if (target?.contractId && (target.status === 'uploading' || target.status === 'processing' || target.status === 'error')) {
+        void fetch(`/api/contracts/${target.contractId}/cancel-upload`, {
+          method: 'POST',
+          headers: { 'x-tenant-id': getTenantId(), ...getCsrfHeaders() },
+        }).catch(() => undefined)
+      }
+      return prev.filter(f => f.id !== id)
+    })
   }, [])
 
-  const retryFile = useCallback((id: string) => {
+  const retryFile = useCallback((id: string, options?: { asNew?: boolean }) => {
+    const current = filesRef.current.find(f => f.id === id)
+    const inPlace = Boolean(
+      current?.contractId
+      && current.status === 'error'
+      && !current.isDuplicate
+      && !options?.asNew,
+    )
+    if (inPlace && current?.contractId) {
+      void fetch(`/api/contracts/${current.contractId}/retry`, {
+        method: 'POST',
+        headers: { 'x-tenant-id': getTenantId(), ...getCsrfHeaders() },
+      }).then((res) => {
+        if (!res.ok) throw new Error('retry failed')
+        setFiles(prev => prev.map(f => f.id === id
+          ? { ...f, status: 'processing', progress: 40, error: undefined, partialWarning: undefined }
+          : f))
+      }).catch(() => {
+        setFiles(prev => prev.map(f => f.id === id
+          ? { ...f, status: 'pending', progress: 0, error: undefined, skipDuplicateCheck: false }
+          : f))
+        setShouldAutoStart(true)
+      })
+      return
+    }
+
     setFiles(prev => prev.map(f =>
       f.id === id
         ? {
@@ -425,10 +478,9 @@ export default function UploadPage() {
             isDuplicate: false,
             existingContractId: undefined,
             partialWarning: undefined,
-            // Only skip duplicate detection if the previous attempt actually
-            // created a contract on the server — otherwise a retried network
-            // failure could create a duplicate contract.
-            skipDuplicateCheck: Boolean(f.contractId),
+            skipDuplicateCheck: Boolean(options?.asNew),
+            registerAsVersion: false,
+            contractId: options?.asNew ? undefined : f.contractId,
           }
         : f
     ))
@@ -447,7 +499,7 @@ export default function UploadPage() {
     // files that already created a contract on the server (see retryFile).
     setFiles(prev => prev.map(f =>
       f.status === 'error'
-        ? { ...f, status: 'pending', progress: 0, error: undefined, partialWarning: undefined, skipDuplicateCheck: Boolean(f.contractId) }
+        ? { ...f, status: 'pending', progress: 0, error: undefined, partialWarning: undefined, skipDuplicateCheck: false }
         : f
     ))
     
@@ -760,7 +812,15 @@ export default function UploadPage() {
                       isDuplicate={file.isDuplicate}
                       existingContractId={file.existingContractId}
                       versionNumber={file.versionNumber}
-                      onRetry={() => retryFile(file.id)}
+                      onRetry={() => retryFile(file.id, file.isDuplicate ? { asNew: true } : undefined)}
+                      onAddAsVersion={() => {
+                        setFiles(prev => prev.map(f =>
+                          f.id === file.id
+                            ? { ...f, status: 'pending', progress: 0, error: undefined, isDuplicate: false, registerAsVersion: true, skipDuplicateCheck: false }
+                            : f
+                        ))
+                        setShouldAutoStart(true)
+                      }}
                       onRemove={() => removeFile(file.id)}
                       onViewContract={viewContract}
                       onContractNotFound={() => {

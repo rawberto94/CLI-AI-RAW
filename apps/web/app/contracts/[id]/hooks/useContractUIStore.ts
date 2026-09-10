@@ -13,9 +13,7 @@ interface ContractUIState {
   showComparison: boolean
   showCategorySelector: boolean
   showReminderDialog: boolean
-  showUploadSignedDialog: boolean
   showExtendDialog: boolean
-  showCommandPalette: boolean
 
   // Edit mode
   isEditing: boolean
@@ -40,18 +38,14 @@ type DialogKey =
   | 'comparison'
   | 'categorySelector'
   | 'reminder'
-  | 'uploadSigned'
   | 'extend'
-  | 'commandPalette'
 
 const dialogFieldMap: Record<DialogKey, keyof ContractUIState> = {
   share: 'showShareDialog',
   comparison: 'showComparison',
   categorySelector: 'showCategorySelector',
   reminder: 'showReminderDialog',
-  uploadSigned: 'showUploadSignedDialog',
   extend: 'showExtendDialog',
-  commandPalette: 'showCommandPalette',
 }
 
 const initialState = {
@@ -61,9 +55,7 @@ const initialState = {
   showComparison: false,
   showCategorySelector: false,
   showReminderDialog: false,
-  showUploadSignedDialog: false,
   showExtendDialog: false,
-  showCommandPalette: false,
   isEditing: false,
   isFavorite: false,
 }

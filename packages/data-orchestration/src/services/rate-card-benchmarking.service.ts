@@ -10,6 +10,7 @@
 
 import { PrismaClient, Prisma } from '@prisma/client';
 import { subMonths, subYears } from 'date-fns';
+import { formatMoneyText } from '@repo/utils';
 
 // ============================================================================
 // Types & Interfaces
@@ -821,7 +822,7 @@ export class RateCardBenchmarkingEngine {
     // Range insights
     const rangePercent = (stats.range / stats.median) * 100;
     if (rangePercent > 50) {
-      insights.push(`Wide rate range ($${stats.min.toFixed(0)}-$${stats.max.toFixed(0)}). Significant savings potential through supplier selection.`);
+      insights.push(`Wide rate range (${formatMoneyText(stats.min)}-${formatMoneyText(stats.max)}). Significant savings potential through supplier selection.`);
     }
 
     return insights;
@@ -875,7 +876,7 @@ export class RateCardBenchmarkingEngine {
         rateCardEntryId,
         category: 'RATE_REDUCTION',
         title: `Reduce ${rateCard.roleStandardized} rate to market standard`,
-        description: `Current rate ($${currentRate.toFixed(0)}/day) is in the top quartile. Market 25th percentile is $${targetRate.toFixed(0)}/day.`,
+        description: `Current rate (${formatMoneyText(currentRate, rateCard.currency)}/day) is in the top quartile. Market 25th percentile is ${formatMoneyText(targetRate, rateCard.currency)}/day.`,
         currentAnnualCost: currentRate * volumeCommitted,
         projectedAnnualCost: targetRate * volumeCommitted,
         annualSavings,
@@ -883,11 +884,11 @@ export class RateCardBenchmarkingEngine {
         effort: savingsPercent > 20 ? 'HIGH' : savingsPercent > 10 ? 'MEDIUM' : 'LOW',
         risk: 'LOW',
         confidence: Math.min(benchmark.cohortSize / 20, 1),
-        recommendedAction: `Negotiate rate reduction to $${targetRate.toFixed(0)}/day (market 25th percentile)`,
+        recommendedAction: `Negotiate rate reduction to ${formatMoneyText(targetRate, rateCard.currency)}/day (market 25th percentile)`,
         negotiationPoints: [
-          `Market median is $${marketMedian.toFixed(0)}/day`,
+          `Market median is ${formatMoneyText(marketMedian, rateCard.currency)}/day`,
           `${benchmark.competitorCount} competing suppliers offer lower rates`,
-          `Potential annual savings of $${annualSavings.toFixed(0)}`,
+          `Potential annual savings of ${formatMoneyText(annualSavings, rateCard.currency)}`,
         ],
       });
     }
@@ -905,7 +906,7 @@ export class RateCardBenchmarkingEngine {
           rateCardEntryId,
           category: 'SUPPLIER_SWITCH',
           title: `Switch to more competitive supplier for ${rateCard.roleStandardized}`,
-          description: `Alternative suppliers available at $${bestAlternative.averageRate.toFixed(0)}/day vs current $${currentRate.toFixed(0)}/day`,
+          description: `Alternative suppliers available at ${formatMoneyText(bestAlternative.averageRate, rateCard.currency)}/day vs current ${formatMoneyText(currentRate, rateCard.currency)}/day`,
           currentAnnualCost: currentRate * volumeCommitted,
           projectedAnnualCost: bestAlternative.averageRate * volumeCommitted,
           annualSavings,

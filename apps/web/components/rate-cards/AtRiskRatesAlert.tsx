@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, ArrowRight } from 'lucide-react';
+import { formatRateMoney } from '@/lib/rate-cards/format'
 
 interface AtRiskRate {
   id: string;
@@ -27,14 +28,7 @@ export function AtRiskRatesAlert({ atRiskRates }: AtRiskRatesAlertProps) {
     return 'bg-orange-100 text-orange-800 border-orange-200';
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
+  const formatCurrency = (value: number) => formatRateMoney(value);
 
   if (atRiskRates.length === 0) {
     return null;

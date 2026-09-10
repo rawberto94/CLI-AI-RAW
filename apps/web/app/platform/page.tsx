@@ -267,7 +267,7 @@ export default function PlatformAdminPage() {
   };
 
   const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString("en-US", {
+    return new Date(date).toLocaleDateString("de-CH", {
       year: "numeric",
       month: "short",
       day: "numeric",

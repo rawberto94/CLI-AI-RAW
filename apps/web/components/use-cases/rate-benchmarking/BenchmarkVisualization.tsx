@@ -21,6 +21,7 @@ import {
   ArrowDownRight
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { formatRateMoney } from '@/lib/rate-cards/format';
 
 export interface BenchmarkDataPoint {
   category: string;
@@ -265,9 +266,9 @@ export function BenchmarkVisualization({
 
                     {/* Legend */}
                     <div className="flex items-center justify-between mt-2 text-xs text-gray-500">
-                      <span>${item.marketP25}/hr</span>
-                      <span className="font-medium text-violet-600">${item.yourRate}/hr (You)</span>
-                      <span>${item.marketP75}/hr</span>
+                      <span>{formatRateMoney(item.marketP25)}/hr</span>
+                      <span className="font-medium text-violet-600">{formatRateMoney(item.yourRate)}/hr (You)</span>
+                      <span>{formatRateMoney(item.marketP75)}/hr</span>
                     </div>
 
                     {/* Expanded Details */}
@@ -282,19 +283,19 @@ export function BenchmarkVisualization({
                           <div className="grid grid-cols-4 gap-3">
                             <div className="text-center">
                               <p className="text-xs text-gray-500">P25</p>
-                              <p className="font-medium text-gray-700">${item.marketP25}</p>
+                              <p className="font-medium text-gray-700">{formatRateMoney(item.marketP25)}</p>
                             </div>
                             <div className="text-center">
                               <p className="text-xs text-gray-500">Median</p>
-                              <p className="font-medium text-gray-700">${item.marketP50}</p>
+                              <p className="font-medium text-gray-700">{formatRateMoney(item.marketP50)}</p>
                             </div>
                             <div className="text-center">
                               <p className="text-xs text-gray-500">P75</p>
-                              <p className="font-medium text-gray-700">${item.marketP75}</p>
+                              <p className="font-medium text-gray-700">{formatRateMoney(item.marketP75)}</p>
                             </div>
                             <div className="text-center">
                               <p className="text-xs text-gray-500">Industry Avg</p>
-                              <p className="font-medium text-orange-600">${item.industryAvg}</p>
+                              <p className="font-medium text-orange-600">{formatRateMoney(item.industryAvg)}</p>
                             </div>
                           </div>
                           <div className="mt-3 p-2 bg-white rounded-lg">
@@ -336,7 +337,7 @@ export function BenchmarkVisualization({
                 <div key={item.category} className="space-y-1">
                   <div className="flex justify-between text-sm">
                     <span className="font-medium text-gray-700">{item.category}</span>
-                    <span className="text-gray-500">${item.yourRate}/hr</span>
+                    <span className="text-gray-500">{formatRateMoney(item.yourRate)}/hr</span>
                   </div>
                   <div className="relative h-6 bg-gray-100 rounded">
                     {/* Full range background */}
@@ -411,7 +412,7 @@ export function BenchmarkVisualization({
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-gray-900 truncate">{item.category}</p>
-                        <p className="text-sm text-gray-500">${item.yourRate}/hr</p>
+                        <p className="text-sm text-gray-500">{formatRateMoney(item.yourRate)}/hr</p>
                         <div className="flex items-center gap-1 mt-1">
                           {getTrendIcon(item.trend)}
                           <span className="text-xs text-gray-400">

@@ -27,6 +27,11 @@ import {
   parseMonetaryAmount,
   resolveLocalStoragePath,
   validateDIQueryAnswers,
+  analysisLanguageInstructions,
+  isHumanTcvLocked,
+  ourOrganizationPromptBlock,
+  pickOurOrganization,
+  resolveTcvWinner,
 } from '@repo/utils';
 import { createOpenAIClient, getOpenAIApiKey } from '@/lib/openai-client';
 import { categorizeContract } from '@/lib/categorization-service';
@@ -963,7 +968,7 @@ Return the extracted text in clean markdown format.`,
         },
       ],
       max_tokens: 8192,
-      temperature: 0.1,
+      temperature: 0,
     }, { signal: AbortSignal.timeout(90_000) });
     
     const text = response.choices[0]?.message?.content || '';
@@ -1342,7 +1347,7 @@ async function crossValidateWithVisionFirstPage(
       messages: [
         {
           role: 'system',
-          content: `You are verifying OCR-extracted contract fields against the first page image. Return strict JSON only with the same keys as the input. Only change a value if the image clearly contradicts the OCR value or if the OCR value is obviously wrong. Keys: title, contractType, startDate (YYYY-MM-DD), endDate (YYYY-MM-DD), clientName, supplierName, totalValue (number), currency (3-letter code). Return unchanged values when uncertain.`,
+          content: `You are verifying OCR-extracted contract fields against the first page image. Return strict JSON only with the same keys as the input. Only change a value if the image clearly contradicts the OCR value or if the OCR value is obviously wrong. Keys: title, contractType, startDate (YYYY-MM-DD), endDate (YYYY-MM-DD), clientName, supplierName, totalValue (number), currency (3-letter code). Return unchanged values when uncertain. Keep party names and titles verbatim. Fr. and SFr. mean CHF. Do not invent USD. Dates may be DD.MM.YYYY.`,
         },
         {
           role: 'user',
@@ -1436,7 +1441,11 @@ async function extractPDFWithDocumentIntelligence(fileContent: Buffer, totalPdfP
 
     // Helper: call DI layout for a specific page range
     const analyzePageRange = async (pages?: string): Promise<{ text: string; hasHandwriting: boolean; handwrittenSpans: string[]; pagesProcessed: number; pages: Array<{ words?: Array<{ confidence?: number }> }>; content: string; styles?: Array<{ isHandwritten?: boolean; confidence?: number; spans?: Array<{ offset: number; length: number }> }> }> => {
-      const layoutResult = await analyzeLayout(fileContent, { extractKeyValuePairs: true, pages });
+      const layoutResult = await analyzeLayout(fileContent, {
+        extractKeyValuePairs: true,
+        pages,
+        outputFormat: 'markdown',
+      });
       const layoutText = buildDocumentIntelligenceOcrText(layoutResult);
       const handwrittenSpans = extractHandwritten(layoutResult.content || '', (layoutResult as any).styles);
       const diPageCount = layoutResult.metadata?.pageCount || layoutResult.pages?.length || 0;
@@ -1821,7 +1830,8 @@ function tryParseDate(dateStr: string): string {
 async function extractContractMetadata(
   contractText: string,
   contractId: string,
-  seededBasicExtraction?: BasicContractExtraction
+  seededBasicExtraction?: BasicContractExtraction,
+  ourOrganization?: { name: string; aliases: string[] } | null,
 ): Promise<{
   title?: string;
   contractType?: string;
@@ -1877,7 +1887,10 @@ async function extractContractMetadata(
         messages: [
           {
             role: 'system',
-            content: 'You are a contract metadata extractor. Extract only explicit facts from the contract and return valid JSON only. Do not use addresses as party names. Derive endDate when the contract states an effective/start date plus a fixed duration such as 2 years or 24 months. Do not treat a missing endDate as evergreen. Do not infer total contract value from unit prices, installments, deposits, milestone payments, invoices, example calculations, insurance limits, liability caps, penalties, or forecasts. If a field is not explicit or derivable from explicit date plus duration, return null.',
+            content: `You are a contract metadata extractor. Extract only explicit facts from the contract and return valid JSON only. Do not use addresses as party names. Derive endDate when the contract states an effective/start date plus a fixed duration such as 2 years or 24 months. Do not treat a missing endDate as evergreen. Do not infer total contract value from unit prices, installments, deposits, milestone payments, invoices, example calculations, insurance limits, liability caps, penalties, or forecasts. If a field is not explicit or derivable from explicit date plus duration, return null.
+${ourOrganizationPromptBlock(ourOrganization)}
+When identifying clientName vs supplierName, treat OUR ORGANIZATION as us if it appears as a named party.
+${analysisLanguageInstructions({ contractText: truncatedText })}`,
           },
           {
             role: 'user',
@@ -1914,7 +1927,7 @@ Contract text:
 ${truncatedText}`,
           },
         ],
-        temperature: 0.2,
+        temperature: 0,
         max_tokens: 1000,
         response_format: { type: 'json_object' },
       }, { signal: AbortSignal.timeout(30_000) });
@@ -2157,7 +2170,10 @@ function extractBasicFieldsFromText(contractText: string): BasicContractExtracti
   if (result.clientName && result.supplierName && result.totalValue && result.title) {
     const typeLabel = result.contractType ? ` (${result.contractType})` : '';
     const periodStr = result.startDate && result.endDate ? `, effective from ${result.startDate} through ${result.endDate}` : '';
-    result.summary = `This ${result.title}${typeLabel} establishes an agreement between ${result.clientName} (Client) and ${result.supplierName} (Service Provider) with a total contract value of ${result.currency === 'USD' ? '$' : result.currency || ''}${result.totalValue.toLocaleString()} ${result.currency || 'USD'}${periodStr}.`;
+    const money = result.currency
+      ? `${result.currency} ${result.totalValue.toLocaleString()}`
+      : result.totalValue.toLocaleString();
+    result.summary = `This ${result.title}${typeLabel} establishes an agreement between ${result.clientName} (Client) and ${result.supplierName} (Service Provider) with a total contract value of ${money}${periodStr}.`;
   } else {
     const summaryParts: string[] = [];
     if (result.title) summaryParts.push(result.title);
@@ -2166,7 +2182,7 @@ function extractBasicFieldsFromText(contractText: string): BasicContractExtracti
       summaryParts.push(`Between ${result.clientName} and ${result.supplierName}`);
     }
     if (result.totalValue) {
-      summaryParts.push(`Value: ${result.currency === 'USD' ? '$' : result.currency || ''}${result.totalValue.toLocaleString()}`);
+      summaryParts.push(`Value: ${result.currency ? `${result.currency} ` : ''}${result.totalValue.toLocaleString()}`);
     }
     if (result.startDate && result.endDate) {
       summaryParts.push(`Period: ${result.startDate} to ${result.endDate}`);
@@ -2266,7 +2282,7 @@ function generateBasicArtifact(
     case 'FINANCIAL':
       return {
         ...baseData,
-        amounts: basicExtracted.totalValue ? [{ amount: basicExtracted.totalValue, currency: basicExtracted.currency || 'USD', description: 'Total Contract Value' }] : [],
+        amounts: basicExtracted.totalValue ? [{ amount: basicExtracted.totalValue, currency: basicExtracted.currency || null, description: 'Total Contract Value' }] : [],
         currency: basicExtracted.currency || null,
         totalValue: basicExtracted.totalValue || null,
         paymentTerms: basicExtracted.paymentTerms || null,
@@ -2417,7 +2433,8 @@ async function generateAIArtifact(
   ocrConfidence?: number,
   detectedTables?: string[],
   extractedContractFacts?: BasicContractExtraction,
-  contractTitle?: string | null
+  contractTitle?: string | null,
+  ourOrganization?: { name: string; aliases: string[] } | null,
 ): Promise<Record<string, any> | null> {
   // getOpenAIApiKey() throws if no AI key is configured — let it propagate
   // so callers know AI is required
@@ -2565,14 +2582,16 @@ async function generateAIArtifact(
       messages: [
         {
           role: 'system',
-          content: `You are a contract analysis expert. Always respond with valid JSON only, no markdown or explanation. Prefer explicit facts from the contract. If a field is not clearly stated, return null or an empty array instead of guessing. Preserve full numeric values as numbers without truncation.${contractType && contractType !== 'OTHER' ? `\nThis document is a ${contractType.replace(/_/g, ' ')}. Focus your analysis on elements typical of this contract type.` : ''}${ocrConfidence !== undefined && ocrConfidence < 0.7 ? `\nWARNING: OCR text quality is low (${Math.round(ocrConfidence * 100)}% confidence). Be cautious with numbers, dates, and proper nouns. Flag any values you are uncertain about.` : ''}`,
+          content: `You are a contract analysis expert. Always respond with valid JSON only, no markdown or explanation. Prefer explicit facts from the contract. If a field is not clearly stated, return null or an empty array instead of guessing. Preserve full numeric values as numbers without truncation.${contractType && contractType !== 'OTHER' ? `\nThis document is a ${contractType.replace(/_/g, ' ')}. Focus your analysis on elements typical of this contract type.` : ''}${ocrConfidence !== undefined && ocrConfidence < 0.7 ? `\nWARNING: OCR text quality is low (${Math.round(ocrConfidence * 100)}% confidence). Be cautious with numbers, dates, and proper nouns. Flag any values you are uncertain about.` : ''}
+${ourOrganizationPromptBlock(ourOrganization)}
+${analysisLanguageInstructions({ contractText: truncatedText })}`,
         },
         {
           role: 'user',
           content: `${prompt}\n\n${groundingFacts}\n\nContract text:\n${truncatedText}${tableContext}`,
         },
       ],
-      temperature: 0.3,
+      temperature: 0,
       max_tokens: 4000,
       response_format: { type: 'json_object' },
     }, { signal: AbortSignal.timeout(60_000) });
@@ -2839,6 +2858,15 @@ export async function generateRealArtifacts(
       throw new Error('Contract not found for tenant');
     }
 
+    const [tenantRow, tenantSettings] = await Promise.all([
+      prisma.tenant.findUnique({ where: { id: tenantId }, select: { name: true } }),
+      prisma.tenantSettings.findFirst({ where: { tenantId }, select: { customFields: true } }),
+    ]);
+    const ourOrganization = pickOurOrganization({
+      settings: tenantSettings?.customFields,
+      tenantName: tenantRow?.name,
+    });
+
     // Update contract status to PROCESSING
     await prisma.contract.update({
       where: { id: contractId },
@@ -2985,7 +3013,7 @@ export async function generateRealArtifacts(
     // Also store formatted HTML in metadata for the redline editor
     const existingContract = await prisma.contract.findFirst({
       where: { id: contractId, tenantId },
-      select: { metadata: true, aiMetadata: true, fileName: true, originalName: true, contractTitle: true },
+      select: { metadata: true, aiMetadata: true, fileName: true, originalName: true, contractTitle: true, contractType: true },
     });
     const existingMeta = (existingContract?.metadata as Record<string, unknown>) || {};
     const existingAiMetadata = (existingContract?.aiMetadata as Record<string, unknown>) || {};
@@ -3034,7 +3062,7 @@ export async function generateRealArtifacts(
     logger.info({ contractId }, 'Extracting contract metadata (pre-artifact)');
     try {
       const preSignatureEvidence = assessSignatureEvidence(contractText);
-      const preMetadata = await extractContractMetadata(contractText, contractId, extractedContractFacts);
+      const preMetadata = await extractContractMetadata(contractText, contractId, extractedContractFacts, ourOrganization);
       const internalFieldConfidence = buildInternalFieldConfidence(
         extractedContractFacts,
         preMetadata,
@@ -3059,15 +3087,17 @@ export async function generateRealArtifacts(
       if (preUpdateData.startDate && preUpdateData.endDate && preUpdateData.startDate > preUpdateData.endDate) {
         logger.warn({ contractId, startDate: preMetadata.startDate, endDate: preMetadata.endDate }, 'startDate is after endDate — both dates kept but flagged');
       }
-      if (preMetadata.totalValue != null) {
-        const tv = Number(preMetadata.totalValue);
-        if (!isNaN(tv) && tv >= 0) {
-          preUpdateData.totalValue = tv;
-        } else {
-          logger.warn({ contractId, value: preMetadata.totalValue }, 'Invalid totalValue from metadata extraction, skipped');
+      if (!isHumanTcvLocked(existingAiMetadata)) {
+        if (preMetadata.totalValue != null) {
+          const tv = Number(preMetadata.totalValue);
+          if (!isNaN(tv) && tv >= 0) {
+            preUpdateData.totalValue = tv;
+          } else {
+            logger.warn({ contractId, value: preMetadata.totalValue }, 'Invalid totalValue from metadata extraction, skipped');
+          }
         }
+        if (preMetadata.currency) preUpdateData.currency = preMetadata.currency;
       }
-      if (preMetadata.currency) preUpdateData.currency = preMetadata.currency;
       if (preMetadata.clientName) preUpdateData.clientName = preMetadata.clientName;
       if (preMetadata.supplierName) preUpdateData.supplierName = preMetadata.supplierName;
       if (preMetadata.parties && preMetadata.parties.length > 0) {
@@ -3212,7 +3242,8 @@ export async function generateRealArtifacts(
             resolvedOcrConfidence,
             detectedTables,
             artifactGroundingFacts,
-            contractTitle
+            contractTitle,
+            ourOrganization,
           );
           
           if (!artifactData) {
@@ -3310,6 +3341,7 @@ export async function generateRealArtifacts(
             keywords: true,
             totalValue: true,
             currency: true,
+            aiMetadata: true,
           },
         });
 
@@ -3425,22 +3457,23 @@ export async function generateRealArtifacts(
           }
         }
 
-        // FINANCIAL / deterministic extraction → Contract.totalValue. If a
-        // prior AI metadata pass picked a much smaller expense cap, replace it
-        // with the stronger aggregate-value evidence found in the contract text.
-        const financialTotalValue = coerceNumericValue((fin as Record<string, unknown>).totalValue);
-        const overviewTotalValue = coerceNumericValue((ovr as Record<string, unknown>).totalValue);
-        const deterministicTotalValue = artifactGroundingFacts.totalValue;
-        const strongestArtifactValue = deterministicTotalValue != null && (financialTotalValue == null || financialTotalValue < deterministicTotalValue * 0.5)
-          ? deterministicTotalValue
-          : financialTotalValue ?? overviewTotalValue ?? deterministicTotalValue;
-        const currentTotalValue = coerceNumericValue(current?.totalValue);
-        if (strongestArtifactValue != null && strongestArtifactValue > 0 && strongestArtifactValue < 1e12) {
-          if (currentTotalValue == null || currentTotalValue < strongestArtifactValue * 0.5) {
-            mirror.totalValue = strongestArtifactValue;
-            if (!current?.currency && artifactGroundingFacts.currency) {
-              mirror.currency = artifactGroundingFacts.currency;
-            }
+        // FINANCIAL / heuristic TCV winner → Contract.totalValue. Never pick the
+        // larger nearby cap/rate, and never overwrite a human-saved total.
+        if (!isHumanTcvLocked(current?.aiMetadata ?? existingAiMetadata)) {
+          const tcvWinner = resolveTcvWinner({
+            contractType: existingContract?.contractType,
+            diQueryAnswers: (existingAiMetadata.diQueryAnswers && typeof existingAiMetadata.diQueryAnswers === 'object')
+              ? existingAiMetadata.diQueryAnswers as Record<string, string>
+              : null,
+            contractText,
+            financialTotal: coerceNumericValue((fin as Record<string, unknown>).totalValue),
+            financialCurrency: typeof fin.currency === 'string' ? fin.currency : null,
+            overviewTotal: coerceNumericValue((ovr as Record<string, unknown>).totalValue),
+            overviewCurrency: typeof ovr.currency === 'string' ? ovr.currency : null,
+          });
+          if (tcvWinner.value != null) {
+            mirror.totalValue = tcvWinner.value;
+            if (tcvWinner.currency) mirror.currency = tcvWinner.currency;
           }
         }
 

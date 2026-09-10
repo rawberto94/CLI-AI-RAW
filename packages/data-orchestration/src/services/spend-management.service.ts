@@ -4,6 +4,7 @@
  */
 
 import { PrismaClient, Prisma } from '@prisma/client';
+import { resolvePersistCurrency } from '@repo/utils';
 
 const prisma = new PrismaClient();
 
@@ -13,7 +14,7 @@ export class SpendManagementService {
     const result = await prisma.$queryRaw`
       INSERT INTO purchase_orders (id, tenant_id, po_number, contract_id, vendor_name, status, total_amount, currency, line_items, department, cost_center, budget_code, requested_by, notes, metadata)
       VALUES (gen_random_uuid()::text, ${tenantId}, ${data.poNumber}, ${data.contractId || null}, ${data.vendorName},
-      'DRAFT', ${data.totalAmount}, ${data.currency || 'USD'}, ${JSON.stringify(data.lineItems || [])},
+      'DRAFT', ${data.totalAmount}, ${resolvePersistCurrency(data.currency)}, ${JSON.stringify(data.lineItems || [])},
       ${data.department || null}, ${data.costCenter || null}, ${data.budgetCode || null},
       ${data.requestedBy}, ${data.notes || null}, ${JSON.stringify(data.metadata || {})}) RETURNING *
     `;
@@ -41,7 +42,7 @@ export class SpendManagementService {
     const result = await prisma.$queryRaw`
       INSERT INTO invoices (id, tenant_id, invoice_number, po_id, contract_id, vendor_name, status, total_amount, currency, line_items, invoice_date, due_date, payment_terms, notes, metadata)
       VALUES (gen_random_uuid()::text, ${tenantId}, ${data.invoiceNumber}, ${data.poId || null}, ${data.contractId || null},
-      ${data.vendorName}, 'PENDING', ${data.totalAmount}, ${data.currency || 'USD'},
+      ${data.vendorName}, 'PENDING', ${data.totalAmount}, ${resolvePersistCurrency(data.currency)},
       ${JSON.stringify(data.lineItems || [])}, ${data.invoiceDate || null},
       ${data.dueDate || null}, ${data.paymentTerms || null}, ${data.notes || null},
       ${JSON.stringify(data.metadata || {})}) RETURNING *

@@ -20,6 +20,7 @@ import {
   Download,
   Brain
 } from 'lucide-react';
+import { formatAmountWithCurrency } from '@/lib/utils/formatters';
 
 interface ArtifactMetrics {
   totalArtifacts: number;
@@ -162,10 +163,7 @@ export default function ArtifactsAnalyticsPage() {
             </div>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" className="bg-white/80 backdrop-blur-sm border-white/50 hover:bg-white">
-              <Download className="h-4 w-4 mr-2" />
-              Export Report
-            </Button>
+
             <Button 
               onClick={loadMetrics}
               className="bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 shadow-lg shadow-violet-500/25"
@@ -182,7 +180,7 @@ export default function ArtifactsAnalyticsPage() {
             { label: 'Total Artifacts', value: metrics.totalArtifacts.toLocaleString(), iconName: 'FileText', color: 'blue' },
             { label: 'Avg Confidence', value: `${Math.round(metrics.avgConfidence * 100)}%`, iconName: 'CheckCircle2', color: 'green' },
             { label: 'Avg Completeness', value: `${metrics.avgCompleteness}%`, iconName: 'BarChart3', color: 'purple' },
-            { label: 'Cost Savings', value: `$${(metrics.costSavingsTotal / 1000000).toFixed(1)}M`, iconName: 'DollarSign', color: 'violet' }
+            { label: 'Cost Savings', value: formatAmountWithCurrency(metrics.costSavingsTotal), iconName: 'DollarSign', color: 'violet' }
           ].map((item, index) => {
             const IconComponent = item.iconName === 'FileText' ? FileText : item.iconName === 'CheckCircle2' ? CheckCircle2 : item.iconName === 'BarChart3' ? BarChart3 : DollarSign;
             const gradients: Record<string, string> = {
@@ -309,7 +307,7 @@ export default function ArtifactsAnalyticsPage() {
                       transition={{ type: "spring", stiffness: 200 }}
                       className="text-5xl font-bold bg-gradient-to-r from-violet-600 to-violet-600 bg-clip-text text-transparent mb-2"
                     >
-                      ${(metrics.costSavingsTotal / 1000000).toFixed(1)}M
+                      {formatAmountWithCurrency(metrics.costSavingsTotal)}
                     </motion.div>
                     <div className="text-sm text-slate-600 mb-4">
                       Total potential savings identified

@@ -199,7 +199,7 @@ export default function ProcessingStatusDashboard() {
             {autoRefresh ? <Pause className="h-3.5 w-3.5 mr-2" /> : <Play className="h-3.5 w-3.5 mr-2" />}
             Auto Refresh
           </Button>
-          <Button variant="outline" size="sm" className="h-8">
+          <Button variant="outline" size="sm" className="h-8" onClick={() => { void fetchData() }}>
             <RotateCcw className="h-3.5 w-3.5 mr-2" />
             Refresh Now
           </Button>
@@ -296,9 +296,6 @@ export default function ProcessingStatusDashboard() {
                     </div>
                     <div className="flex items-center gap-2.5">
                       {getStatusBadge(job.status)}
-                      <Button variant="ghost" size="sm" className="h-8">
-                        <Eye className="h-3.5 w-3.5" />
-                      </Button>
                     </div>
                   </div>
                   

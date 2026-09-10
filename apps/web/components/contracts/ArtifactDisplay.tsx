@@ -17,6 +17,7 @@ import {
   Info,
   RefreshCw
 } from 'lucide-react';
+import { normalizeExtractedClauses } from '@/lib/contracts/extracted-clauses';
 
 export interface ArtifactData {
   type: 'OVERVIEW' | 'FINANCIAL' | 'CLAUSES' | 'RATES' | 'COMPLIANCE' | 'RISK';
@@ -324,23 +325,27 @@ function FinancialDisplay({ data }: { data: any }) {
 }
 
 function ClausesDisplay({ data }: { data: any }) {
+  const clauses = normalizeExtractedClauses(data);
   return (
     <div className="space-y-3">
-      {data.clauses?.map((clause: any, index: number) => (
-        <div key={`clause-${clause.type}-${(clause.content || '').slice(0, 40)}`} className="p-4 border rounded-lg">
+      {clauses.map((clause, index) => (
+        <div key={`clause-${clause.title}-${index}`} className="p-4 border rounded-lg">
           <div className="flex items-start justify-between mb-2">
             <div className="flex items-center gap-2">
-              <Badge variant="outline">{clause.type}</Badge>
-              <Badge className={
-                clause.riskLevel === 'high' ? 'bg-red-100 text-red-800' :
-                clause.riskLevel === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                'bg-green-100 text-green-800'
-              }>
-                {clause.riskLevel} risk
-              </Badge>
+              {clause.type && <Badge variant="outline">{clause.type}</Badge>}
+              <span className="text-sm font-medium">{clause.title}</span>
+              {clause.riskLevel && (
+                <Badge className={
+                  clause.riskLevel === 'high' ? 'bg-red-100 text-red-800' :
+                  clause.riskLevel === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                  'bg-green-100 text-green-800'
+                }>
+                  {clause.riskLevel} risk
+                </Badge>
+              )}
             </div>
           </div>
-          <p className="text-sm text-gray-700">{clause.content}</p>
+          <p className="text-sm text-gray-700">{clause.summary || clause.fullText}</p>
         </div>
       ))}
     </div>

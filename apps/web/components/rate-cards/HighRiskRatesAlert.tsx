@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, TrendingUp, ExternalLink, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
+import { formatRateMoney } from '@/lib/rate-cards/format'
 
 // ============================================================================
 // Types
@@ -44,12 +45,7 @@ interface HighRiskRatesAlertProps {
 // ============================================================================
 
 function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(value);
+  return formatRateMoney(value);
 }
 
 function getRiskScoreColor(score: number): string {

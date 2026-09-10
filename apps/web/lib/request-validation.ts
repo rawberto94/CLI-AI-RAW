@@ -83,7 +83,7 @@ export const schemas = {
     supplierName: z.string().min(1).max(255).optional(),
     effectiveDate: z.string().datetime().optional(),
     expirationDate: z.string().datetime().optional(),
-    currency: z.string().length(3).default('USD'),
+    currency: z.string().length(3).optional(),
     description: z.string().max(2000).optional(),
   }),
 
@@ -92,7 +92,7 @@ export const schemas = {
     roleName: z.string().min(1).max(255),
     rateType: z.enum(['HOURLY', 'DAILY', 'MONTHLY', 'FIXED']).default('HOURLY'),
     rate: z.number().nonnegative(),
-    currency: z.string().length(3).default('USD'),
+    currency: z.string().length(3).optional(),
     level: z.string().max(100).optional(),
     location: z.string().max(255).optional(),
     effectiveDate: z.string().datetime().optional(),

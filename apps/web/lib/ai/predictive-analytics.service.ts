@@ -14,6 +14,7 @@
  */
 
 import { getAIModel } from '@/lib/ai/ai-sdk-provider';
+import { formatMoneyText } from '@repo/utils';
 import { generateObject } from 'ai';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
@@ -218,8 +219,8 @@ export async function predictRenewal(params: {
         supplierHistory.filter((c: any) => c.status === 'EXPIRED').length
       } expired, ${
         supplierHistory.filter((c: any) => c.status === 'ACTIVE').length
-      } active. Average value: $${
-        (supplierHistory.reduce((s: number, c: any) => s + (Number(c.totalValue) || 0), 0) / supplierHistory.length).toFixed(0)
+      } active. Average value: ${
+        formatMoneyText(supplierHistory.reduce((s: number, c: any) => s + (Number(c.totalValue) || 0), 0) / supplierHistory.length)
       }`
     : '';
 
@@ -227,7 +228,7 @@ export async function predictRenewal(params: {
 Contract: ${contract.contractTitle}
 Type: ${contract.contractType || 'Unknown'}
 Supplier: ${contract.supplierName || 'Unknown'}
-Value: $${contract.totalValue || 'N/A'}
+Value: ${contract.totalValue ?? 'N/A'}
 Start: ${contract.startDate?.toISOString().split('T')[0] || 'N/A'}
 End: ${contract.endDate?.toISOString().split('T')[0] || 'N/A'}
 Status: ${contract.status}
@@ -244,7 +245,8 @@ ${(contract.rawText || '').slice(0, 20_000)}`;
 2. Supplier relationship history
 3. Contract value and strategic importance
 4. Market conditions for this contract type
-Be honest about confidence — low confidence is fine when data is limited.`,
+Be honest about confidence — low confidence is fine when data is limited.
+Keep quoted contract text verbatim. JSON keys stay English. Fr. and SFr. mean CHF. Do not invent USD.`,
     prompt: `Predict the renewal outcome for this contract:\n${contractContext}`,
     temperature: 0.2,
   });
@@ -278,13 +280,13 @@ export async function forecastCosts(params: {
 
   const dataContext = `
 Portfolio Summary:
-${data.contracts.map((c: any) => `- ${c.status}: ${c.count} contracts, total $${Number(c.totalValue).toFixed(0)}, avg $${Number(c.avgValue).toFixed(0)}`).join('\n')}
+${data.contracts.map((c: any) => `- ${c.status}: ${c.count} contracts, total ${formatMoneyText(Number(c.totalValue))}, avg ${formatMoneyText(Number(c.avgValue))}`).join('\n')}
 
 Monthly Trend (last 12 months):
 ${data.recentActivity.map((m: any) => `${m.month}: +${m.created} created, -${m.expired} expired, ↻${m.renewed} renewed`).join('\n')}
 
 Expiring Soon (next 90 days):
-${data.expiringContracts.map((c: any) => `- ${c.title} ($${Number(c.totalValue).toFixed(0)}) expires ${c.endDate.toISOString().split('T')[0]}`).join('\n') || 'None'}`;
+${data.expiringContracts.map((c: any) => `- ${c.title} (${formatMoneyText(Number(c.totalValue))}) expires ${c.endDate.toISOString().split('T')[0]}`).join('\n') || 'None'}`;
 
   const { object: forecast } = await generateObject({
     model: getAIModel(),
@@ -323,14 +325,14 @@ export async function predictPortfolioHealth(params: {
 
   const dataContext = `
 Portfolio Stats:
-${data.contracts.map((c: any) => `- ${c.status}: ${c.count} contracts, $${Number(c.totalValue).toFixed(0)} total`).join('\n')}
+${data.contracts.map((c: any) => `- ${c.status}: ${c.count} contracts, ${formatMoneyText(Number(c.totalValue))} total`).join('\n')}
 
 Activity Trend:
 ${data.recentActivity.map((m: any) => `${m.month}: +${m.created} / -${m.expired}`).join('\n')}
 
 Upcoming Expirations:
-${data.expiringContracts.length} contracts expiring in next 90 days ($${
-  data.expiringContracts.reduce((s: number, c: any) => s + (Number(c.totalValue) || 0), 0).toFixed(0)
+${data.expiringContracts.length} contracts expiring in next 90 days (${
+  formatMoneyText(data.expiringContracts.reduce((s: number, c: any) => s + (Number(c.totalValue) || 0), 0))
 } total value)`;
 
   const { object: health } = await generateObject({

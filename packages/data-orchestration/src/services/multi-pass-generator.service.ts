@@ -9,6 +9,7 @@
  */
 
 import { createLogger } from '../utils/logger';
+import { detectCurrencyFromText, parseIsoDate, parseMonetaryAmount } from '@repo/utils';
 import { ArtifactType, GenerationResult } from './ai-artifact-generator.service';
 import { aiArtifactGeneratorService } from './ai-artifact-generator.service';
 import { artifactValidationService } from './artifact-validation.service';
@@ -344,36 +345,40 @@ export class MultiPassGeneratorService {
         }
 
         // Extract dates
-        const dateMatches = contractText.match(/\d{4}-\d{2}-\d{2}/g);
+        const dateMatches = contractText.match(/\d{4}-\d{2}-\d{2}|\d{1,2}\.\d{1,2}\.\d{2,4}/g);
         if (dateMatches && dateMatches.length > 0) {
-          data.effectiveDate = dateMatches[0];
+          data.effectiveDate = parseIsoDate(dateMatches[0]) || dateMatches[0];
           improvements.push('Extracted effective date');
         }
         break;
 
-      case 'FINANCIAL':
-        // Extract amounts
-        const amountMatches = contractText.match(/\$[\d,]+/g);
+      case 'FINANCIAL': {
+        const amountMatches = contractText.match(/(?:CHF|SFr\.?|Fr\.|EUR|€|USD|US\$|\$)\s*[\d''’.,]+/gi);
         if (amountMatches && amountMatches.length > 0) {
-          const amounts = amountMatches.map(m => parseInt(m.replace(/[$,]/g, '')));
-          data.totalValue = Math.max(...amounts);
-          data.currency = 'USD';
-          improvements.push('Extracted financial amounts');
+          const amounts = amountMatches
+            .map((m) => parseMonetaryAmount(m))
+            .filter((n): n is number => n != null && n > 0);
+          if (amounts.length > 0) {
+            data.totalValue = Math.max(...amounts);
+            data.currency = detectCurrencyFromText(amountMatches[0]) || detectCurrencyFromText(contractText);
+            improvements.push('Extracted financial amounts');
+          }
         }
         break;
+      }
 
-      case 'RATES':
-        // Extract hourly rates
-        const rateMatches = contractText.match(/\$(\d+)\/hour/gi);
+      case 'RATES': {
+        const rateMatches = contractText.match(/(?:CHF|Fr\.|EUR|€|USD|\$)?\s*\d+[\d''’.,]*\s*(?:\/\s*)?(?:hour|hr|day|tag|stunde|jour)/gi);
         if (rateMatches) {
-          data.rateCards = rateMatches.map(match => ({
-            rate: parseInt(match.replace(/[$\/hour]/gi, '')),
-            unit: 'hour',
-            currency: 'USD'
-          }));
+          data.rateCards = rateMatches.map((match) => ({
+            rate: parseMonetaryAmount(match),
+            unit: /day|tag|jour/i.test(match) ? 'day' : 'hour',
+            currency: detectCurrencyFromText(match) || detectCurrencyFromText(contractText),
+          })).filter((row) => row.rate != null);
           improvements.push('Extracted rate cards');
         }
         break;
+      }
     }
 
     return data;

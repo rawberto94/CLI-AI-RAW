@@ -205,5 +205,8 @@ export function formatProcessingTime(ms: number): string {
 }
 
 export function formatPercentage(value: number): string {
-  return `${Math.round(value * 100)}%`;
+  if (!Number.isFinite(value)) return '—';
+  if (value <= 1) return `${Math.round(value * 100)}%`;
+  if (value <= 100) return `${Math.round(value)}%`;
+  return '—';
 }

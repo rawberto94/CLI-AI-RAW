@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getTenantIdFromRequest } from '@/lib/tenant-server'
 import { withContractApiHandler, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { resolveDisplayCurrency, sumToDisplayCurrency } from '@/lib/display-currency.server';
 
 export const dynamic = 'force-dynamic'
 
@@ -37,6 +38,7 @@ export const GET = withContractApiHandler(async (request: NextRequest, ctx) => {
         documentRole: true,
         status: true,
         totalValue: true,
+        currency: true,
         effectiveDate: true,
         expirationDate: true,
         clientName: true,
@@ -65,6 +67,7 @@ export const GET = withContractApiHandler(async (request: NextRequest, ctx) => {
             contractType: true,
             status: true,
             totalValue: true,
+            currency: true,
             relationshipType: true,
             effectiveDate: true,
             expirationDate: true,
@@ -91,15 +94,22 @@ export const GET = withContractApiHandler(async (request: NextRequest, ctx) => {
       clientName: child.clientName,
       supplierName: child.supplierName,
       totalValue: child.totalValue ? Number(child.totalValue) : null,
+      currency: child.currency || null,
       effectiveDate: child.effectiveDate?.toISOString() || null,
       expirationDate: child.expirationDate?.toISOString() || null,
       isExpired: child.isExpired || false,
       daysUntilExpiry: child.daysUntilExpiry,
     }))
 
+    const displayCurrency = await resolveDisplayCurrency(ctx.tenantId)
     const totalContracts = 1 + members.length
-    const totalValue = (contract.totalValue ? Number(contract.totalValue) : 0) + 
-      members.reduce((sum, m) => sum + (m.totalValue || 0), 0)
+    const totalValue = sumToDisplayCurrency(
+      [
+        { amount: contract.totalValue ? Number(contract.totalValue) : null, currency: contract.currency },
+        ...members.map((m) => ({ amount: m.totalValue, currency: m.currency })),
+      ],
+      displayCurrency,
+    )
 
     // Calculate issues
     const issues: Array<{
@@ -307,6 +317,7 @@ export const GET = withContractApiHandler(async (request: NextRequest, ctx) => {
       clientName: null,
       supplierName: null,
       totalValue: null,
+      currency: null,
       effectiveDate: null,
       expirationDate: contract.parentContract.expirationDate?.toISOString() || null,
       isExpired: contract.parentContract.isExpired || false,
@@ -319,6 +330,7 @@ export const GET = withContractApiHandler(async (request: NextRequest, ctx) => {
       members,
       totalContracts,
       totalValue,
+      displayCurrency,
       healthScore,
       completeness,
       issues,

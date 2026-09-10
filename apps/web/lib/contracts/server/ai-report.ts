@@ -8,6 +8,10 @@ import { createErrorResponse, createSuccessResponse } from '@/lib/api-middleware
 import { prisma } from '@/lib/prisma';
 
 import type { ContractApiContext } from '@/lib/contracts/server/context';
+import { analysisLanguageInstructions } from '@repo/utils';
+import { formatAmountWithCurrency } from '@/lib/utils/formatters';
+import { resolveDisplayCurrency, sumToDisplayCurrency } from '@/lib/display-currency.server';
+import { DEFAULT_DISPLAY_CURRENCY } from '@/lib/display-currency';
 
 let openAIClient: OpenAI | null = null;
 
@@ -32,6 +36,7 @@ interface ContractSummary {
   fileName: string;
   status: string;
   totalValue: number | null;
+  currency?: string | null;
   riskLevel: string | null;
   expirationDate: Date | null;
   textExcerpt: string;
@@ -74,13 +79,21 @@ interface AIReportResult {
 interface PortfolioStats {
   totalValue: number;
   averageValue: number;
+  displayCurrency: string;
   riskDistribution: Record<string, number>;
   statusDistribution: Record<string, number>;
 }
 
-function calculatePortfolioStats(contracts: ContractSummary[]): PortfolioStats {
-  const totalValue = contracts.reduce((sum, contract) => sum + (contract.totalValue || 0), 0);
-  const averageValue = contracts.length > 0 ? totalValue / contracts.length : 0;
+function calculatePortfolioStats(contracts: ContractSummary[], displayCurrency: string): PortfolioStats {
+  const totalValue = sumToDisplayCurrency(
+    contracts.map((contract) => ({ amount: contract.totalValue, currency: contract.currency })),
+    displayCurrency,
+  );
+  const convertedCount = contracts.filter((c) => {
+    const converted = c.totalValue != null && c.currency;
+    return converted;
+  }).length;
+  const averageValue = convertedCount > 0 ? totalValue / convertedCount : 0;
   const riskDistribution: Record<string, number> = {};
   const statusDistribution: Record<string, number> = {};
 
@@ -95,6 +108,7 @@ function calculatePortfolioStats(contracts: ContractSummary[]): PortfolioStats {
   return {
     totalValue,
     averageValue,
+    displayCurrency,
     riskDistribution,
     statusDistribution,
   };
@@ -110,7 +124,7 @@ async function generateAIReport(
       (contract) => `
 Contract: ${contract.fileName}
 Status: ${contract.status}
-Value: $${(contract.totalValue || 0).toLocaleString()}
+Value: ${contract.totalValue ? formatAmountWithCurrency(contract.totalValue, contract.currency) : 'Not specified'}
 Risk: ${contract.riskLevel || 'Not assessed'}
 Expires: ${contract.expirationDate ? new Date(contract.expirationDate).toLocaleDateString() : 'N/A'}
 Content Preview: ${contract.textExcerpt.slice(0, 500)}...
@@ -121,8 +135,8 @@ Content Preview: ${contract.textExcerpt.slice(0, 500)}...
   const prompt = `You are analyzing a portfolio of ${contracts.length} contracts. Generate a comprehensive report.
 
 Portfolio Statistics:
-- Total Value: $${stats.totalValue.toLocaleString()}
-- Average Value: $${stats.averageValue.toLocaleString()}
+- Total Value: ${formatAmountWithCurrency(stats.totalValue, stats.displayCurrency || DEFAULT_DISPLAY_CURRENCY)}
+- Average Value: ${formatAmountWithCurrency(stats.averageValue, stats.displayCurrency || DEFAULT_DISPLAY_CURRENCY)}
 - Risk Distribution: ${JSON.stringify(stats.riskDistribution)}
 - Status Distribution: ${JSON.stringify(stats.statusDistribution)}
 
@@ -175,7 +189,9 @@ Focus on:
         {
           role: 'system',
           content:
-            'You are an expert contract portfolio analyst. Provide thorough, actionable insights in valid JSON format.',
+            `You are an expert contract portfolio analyst. Provide thorough, actionable insights in valid JSON format.
+${analysisLanguageInstructions({ contractText: prompt })}
+Keep quoted contract titles and amounts verbatim. Do not invent USD.`,
         },
         {
           role: 'user',
@@ -224,6 +240,7 @@ export async function postContractAiReport(
         rawText: true,
         status: true,
         totalValue: true,
+        currency: true,
         expirationRisk: true,
         contractType: true,
         supplierName: true,
@@ -242,6 +259,7 @@ export async function postContractAiReport(
       fileName: contract.contractTitle || contract.fileName,
       status: contract.status,
       totalValue: contract.totalValue ? Number(contract.totalValue) : null,
+      currency: contract.currency || null,
       riskLevel: contract.expirationRisk,
       expirationDate: contract.expirationDate,
       textExcerpt: contract.rawText?.slice(0, 1500) || 'No text available',
@@ -256,7 +274,8 @@ export async function postContractAiReport(
       );
     }
 
-    const portfolioStats = calculatePortfolioStats(contractSummaries);
+    const displayCurrency = await resolveDisplayCurrency(context.tenantId);
+    const portfolioStats = calculatePortfolioStats(contractSummaries, displayCurrency);
     const aiReport = await generateAIReport(contractSummaries, portfolioStats, reportType);
     const processingTime = Date.now() - startTime;
 

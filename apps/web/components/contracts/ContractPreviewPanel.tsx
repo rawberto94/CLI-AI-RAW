@@ -133,13 +133,24 @@ export interface ContractPreviewPanelProps {
 // Helper Functions
 // ============================================================================
 
-function formatCurrency(value: number, currency: string = "CHF"): string {
-  return new Intl.NumberFormat("de-CH", {
-    style: "currency",
-    currency,
+function formatCurrency(value: number, currency?: string): string {
+  const code = typeof currency === "string" ? currency.trim() : "";
+  if (code.length === 3 && code !== "XXX") {
+    try {
+      return new Intl.NumberFormat("de-CH", {
+        style: "currency",
+        currency: code,
+        notation: value >= 1000000 ? "compact" : "standard",
+        maximumFractionDigits: value >= 1000000 ? 1 : 0,
+      }).format(value);
+    } catch {
+      return `${code} ${value.toLocaleString("de-CH")}`;
+    }
+  }
+  return value.toLocaleString("de-CH", {
     notation: value >= 1000000 ? "compact" : "standard",
     maximumFractionDigits: value >= 1000000 ? 1 : 0,
-  }).format(value);
+  });
 }
 
 function formatFileSize(bytes: number): string {
@@ -403,10 +414,6 @@ const ClausesTab = memo(function ClausesTab({ clauses }: ClausesTabProps) {
       <div className="p-8 text-center">
         <FileText className="w-12 h-12 mx-auto text-gray-300 mb-3" />
         <p className="text-sm text-muted-foreground">No clauses analyzed yet</p>
-        <Button variant="outline" size="sm" className="mt-3">
-          <Sparkles className="w-4 h-4 mr-2" />
-          Run AI Analysis
-        </Button>
       </div>
     );
   }
@@ -469,9 +476,6 @@ const ObligationsTab = memo(function ObligationsTab({ obligations }: Obligations
       <div className="p-8 text-center">
         <Target className="w-12 h-12 mx-auto text-gray-300 mb-3" />
         <p className="text-sm text-muted-foreground">No obligations tracked</p>
-        <Button variant="outline" size="sm" className="mt-3">
-          Add Obligation
-        </Button>
       </div>
     );
   }
@@ -534,9 +538,6 @@ const AttachmentsTab = memo(function AttachmentsTab({ attachments }: Attachments
       <div className="p-8 text-center">
         <Paperclip className="w-12 h-12 mx-auto text-gray-300 mb-3" />
         <p className="text-sm text-muted-foreground">No attachments</p>
-        <Button variant="outline" size="sm" className="mt-3">
-          Upload File
-        </Button>
       </div>
     );
   }
@@ -558,13 +559,7 @@ const AttachmentsTab = memo(function AttachmentsTab({ attachments }: Attachments
               {format(parseISO(attachment.uploadedAt), "MMM d, yyyy")}
             </p>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="opacity-0 group-hover:opacity-100 transition-opacity"
-          >
-            <Download className="w-4 h-4" />
-          </Button>
+
         </div>
       ))}
     </div>

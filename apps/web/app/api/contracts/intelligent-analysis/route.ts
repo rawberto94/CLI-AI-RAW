@@ -23,6 +23,7 @@ import OpenAI from 'openai';
 import { createOpenAIClient, hasAIClientConfig } from '@/lib/openai-client';
 import { recordAICost, estimateTokenCost } from '@/lib/ai/model-router.service';
 import { withContractApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
+import { analysisLanguageInstructions } from '@repo/utils';
 
 // Import advanced intelligence services (lazy loaded for edge compatibility)
 let advancedIntelligence: any = null;
@@ -366,6 +367,7 @@ ${extractionHints.expectedSections?.map((s: string) => `- ${s}`).join('\n') || '
         {
           role: 'system',
           content: `You are an expert contract analyst. Extract ALL important data points from this ${documentType.primaryType || 'contract'}.
+${analysisLanguageInstructions({ contractText: textToAnalyze })}
 ${typeSpecificPrompt}
 Go beyond standard fields - discover EVERYTHING valuable for contract management:
 - All dates, deadlines, milestones
@@ -516,6 +518,7 @@ Return JSON:
           {
             role: 'system',
             content: `You are a contract risk analyst. Identify ALL risks in this ${documentType.primaryType || 'contract'}.
+${analysisLanguageInstructions({ contractText: textToAnalyze })}
 
 Look for:
 - Unlimited liability exposure
@@ -539,7 +542,7 @@ Return JSON:
       "description": "What the risk is",
       "severity": "critical|high|medium|low",
       "likelihood": "very_likely|likely|possible|unlikely",
-      "financialImpact": {"amount": null, "type": "uncapped|fixed|percentage", "currency": "USD"},
+      "financialImpact": {"amount": null, "type": "uncapped|fixed|percentage", "currency": null},
       "sourceClause": "exact quote",
       "mitigationSuggestion": "how to fix",
       "requiresReview": true/false
@@ -575,6 +578,7 @@ Return JSON:
           {
             role: 'system',
             content: `You are a contract negotiation expert. Identify opportunities to negotiate better terms.
+${analysisLanguageInstructions({ contractText: textToAnalyze })}
 
 Look for:
 - Unfavorable terms vs industry standards
@@ -628,6 +632,7 @@ Return JSON:
         {
           role: 'system',
           content: `You are a senior contract analyst. Generate key insights valuable for managing this contract.
+${analysisLanguageInstructions({ contractText: textToAnalyze })}
 
 Consider:
 - What are the most important things to know?

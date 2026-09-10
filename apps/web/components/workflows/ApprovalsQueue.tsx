@@ -33,6 +33,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { getTenantId } from '@/lib/tenant';
+import { formatAmountWithCurrency } from '@/lib/utils/formatters';
 import { useDataMode } from '@/contexts/DataModeContext';
 // import { useApprovalFlow } from '@/hooks/use-collaboration';
 import { toast } from 'sonner';
@@ -92,6 +93,7 @@ interface ApprovalRequest {
   priority: 'low' | 'medium' | 'high' | 'urgent';
   status: 'pending' | 'approved' | 'rejected' | 'escalated';
   value?: number;
+  currency?: string | null;
   currentStep: number;
   totalSteps: number;
   approvers: Approver[];
@@ -530,7 +532,7 @@ const DetailPanel: React.FC<DetailPanelProps> = ({ approval, onApprove, onReject
               <DollarSign className="w-4 h-4 text-violet-500" />
               <span className="text-xs text-violet-600 uppercase font-medium">Value</span>
             </div>
-            <div className="font-semibold text-violet-700">${approval.value?.toLocaleString() || 'N/A'}</div>
+            <div className="font-semibold text-violet-700">{approval.value != null ? formatAmountWithCurrency(approval.value, approval.currency) : 'N/A'}</div>
           </div>
           <div className="p-4 bg-gradient-to-br from-amber-50 to-orange-50/50 rounded-xl border border-amber-200/50">
             <div className="flex items-center gap-2 mb-1">
@@ -1448,10 +1450,13 @@ export const ApprovalsQueue: React.FC = () => {
               <UserPlus className="w-4 h-4" />
               Delegation
             </button>
-            <button className="px-4 py-2.5 bg-gradient-to-r from-violet-500 to-purple-600 text-white rounded-xl hover:shadow-lg hover:shadow-violet-200 transition-all font-medium flex items-center gap-2">
+            <Link
+              href="/audit-logs"
+              className="px-4 py-2.5 bg-gradient-to-r from-violet-500 to-purple-600 text-white rounded-xl hover:shadow-lg hover:shadow-violet-200 transition-all font-medium flex items-center gap-2"
+            >
               <History className="w-4 h-4" />
               History
-            </button>
+            </Link>
           </div>
         </div>
         
@@ -2045,7 +2050,7 @@ export const ApprovalsQueue: React.FC = () => {
                   You are about to approve <strong>&ldquo;{selectedApproval.title}&rdquo;</strong>
                   {selectedApproval.value && selectedApproval.value > 100000 && (
                     <span className="block mt-2 text-amber-600 font-medium">
-                      ⚠️ High-value item: ${selectedApproval.value.toLocaleString()}
+                      ⚠️ High-value item: {formatAmountWithCurrency(selectedApproval.value, selectedApproval.currency)}
                     </span>
                   )}
                   {(selectedApproval.priority === 'urgent' || selectedApproval.priority === 'high') && (

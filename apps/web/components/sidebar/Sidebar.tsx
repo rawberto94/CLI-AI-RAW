@@ -589,7 +589,7 @@ export function SidebarSearch({
   onSearch,
   className = '',
 }: SidebarSearchProps) {
-  const { isCollapsed, isMobile } = useSidebar();
+  const { isCollapsed, isMobile, toggleCollapse } = useSidebar();
   const [query, setQuery] = useState('');
   const showFull = !isCollapsed || isMobile;
 
@@ -600,7 +600,12 @@ export function SidebarSearch({
 
   if (!showFull) {
     return (
-      <button className="mx-auto p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+      <button
+        type="button"
+        onClick={toggleCollapse}
+        className="mx-auto p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+        aria-label="Expand sidebar to search"
+      >
         <Search className="w-5 h-5" />
       </button>
     );

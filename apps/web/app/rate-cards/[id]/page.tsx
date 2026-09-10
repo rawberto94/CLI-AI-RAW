@@ -296,10 +296,17 @@ export default function RateCardDetailPage() {
                 <div>
                   <div className="text-sm text-slate-500">Daily Rate</div>
                   <div className="font-semibold text-lg bg-gradient-to-r from-violet-600 to-violet-600 bg-clip-text text-transparent">
-                    {new Intl.NumberFormat('en-US', {
-                      style: 'currency',
-                      currency: rateCard.currency || 'USD',
-                    }).format(rateCard.dailyRate)}
+                    {(() => {
+                      const code = typeof rateCard.currency === 'string' ? rateCard.currency.trim() : '';
+                      if (code.length === 3 && code !== 'XXX') {
+                        try {
+                          return new Intl.NumberFormat('de-CH', { style: 'currency', currency: code }).format(rateCard.dailyRate);
+                        } catch {
+                          return `${code} ${Number(rateCard.dailyRate).toLocaleString('de-CH')}`;
+                        }
+                      }
+                      return Number(rateCard.dailyRate).toLocaleString('de-CH');
+                    })()}
                   </div>
                 </div>
                 <div>

@@ -15,6 +15,7 @@
 import { prisma } from "@/lib/prisma";
 import { openai } from "@/lib/openai-client";
 import { applyContractChangeSideEffects } from "@/lib/contracts/server/contract-change-side-effects";
+import { analysisLanguageInstructions } from "@repo/utils";
 
 // ============================================================================
 // TYPE DEFINITIONS
@@ -558,6 +559,8 @@ Use the above extracted information as PRIMARY signals for categorization. The s
       : text;
 
   return `You are a contract classification expert. Analyze the following contract and categorize it into the most appropriate category.
+${analysisLanguageInstructions({ contractText: text })}
+JSON keys stay English. Keep titles and quotes verbatim.
 
 ## Available Categories:
 ${categoryList}
@@ -631,7 +634,8 @@ async function categorizeByAI(
         {
           role: "system",
           content:
-            "You are a contract classification expert. Respond only with valid JSON.",
+            `You are a contract classification expert. Respond only with valid JSON.
+${analysisLanguageInstructions({ contractText: text })}`,
         },
         {
           role: "user",

@@ -17,6 +17,7 @@
  * - Relationship mapping (parties, references, dependencies)
  */
 
+import { analysisLanguageInstructions, resolveAnalysisLanguage } from '@repo/utils';
 import { createLogger } from '../utils/logger';
 import { estimateTokens } from '../utils/token-estimation';
 
@@ -413,6 +414,7 @@ export class IntelligentDocumentAnalyzerService {
           {
             role: 'system',
             content: `You are an expert contract analyst. Analyze this document and determine its type, characteristics, and structure.
+${analysisLanguageInstructions({ contractText: sampleText })}
 
 Return a JSON object with:
 {
@@ -467,10 +469,10 @@ Return a JSON object with:
     
     // Pattern detection for structure elements
     const sectionPatterns = [
-      /^(ARTICLE|SECTION)\s+(\d+|[IVXLC]+)[.:]\s*(.+)/i,
+      /^(ARTICLE|SECTION|ARTIKEL|ABSCHNITT|ARTICOLO)\s+(\d+|[IVXLC]+)[.:]\s*(.+)/i,
       /^(\d+)\.\s+([A-Z][A-Z\s]+)$/m,
       /^(\d+\.\d+)\s+(.+)$/m,
-      /^(EXHIBIT|SCHEDULE|APPENDIX)\s+([A-Z0-9]+)/i,
+      /^(EXHIBIT|SCHEDULE|APPENDIX|ANNEXE|ANLAGE|ANHANG|ALLEGATO)\s+([A-Z0-9]+)/i,
     ];
 
     let currentPosition = 0;
@@ -502,39 +504,39 @@ Return a JSON object with:
     return {
       totalSections: hierarchy.length,
       hierarchy,
-      hasTableOfContents: /table\s+of\s+contents/i.test(documentText),
-      hasExhibits: /\bexhibit\s+[a-z0-9]/i.test(documentText),
-      hasSchedules: /\bschedule\s+[a-z0-9]/i.test(documentText),
-      hasSignatureBlocks: /in\s+witness\s+whereof|signature|signed/i.test(documentText),
+      hasTableOfContents: /table\s+of\s+contents|inhaltsverzeichnis|table\s+des\s+mati[eè]res|indice/i.test(documentText),
+      hasExhibits: /\b(exhibit|anlage|anhang|annexe|allegato)\s+[a-z0-9]/i.test(documentText),
+      hasSchedules: /\b(schedule|anhang|annexe)\s+[a-z0-9]/i.test(documentText),
+      hasSignatureBlocks: /in\s+witness\s+whereof|signature|signed|geschehen\s+zu|en\s+foi\s+de\s+quoi|in\s+fede\s+di\s+che|unterzeichnet/i.test(documentText),
       estimatedPages: Math.ceil(documentText.length / 3000),
-      language: 'en',
+      language: resolveAnalysisLanguage({ contractText: documentText }),
       formality: this.detectFormality(documentText)
     };
   }
 
   private determineLevel(indicator: string): number {
     const upper = indicator.toUpperCase();
-    if (/^ARTICLE|^SECTION/.test(upper)) return 1;
+    if (/^ARTICLE|^SECTION|^ARTIKEL|^ABSCHNITT|^ARTICOLO/.test(upper)) return 1;
     if (/^\d+$/.test(indicator)) return 1;
     if (/^\d+\.\d+$/.test(indicator)) return 2;
     if (/^\d+\.\d+\.\d+$/.test(indicator)) return 3;
-    if (/^EXHIBIT|^SCHEDULE|^APPENDIX/.test(upper)) return 1;
+    if (/^EXHIBIT|^SCHEDULE|^APPENDIX|^ANNEXE|^ANLAGE|^ANHANG|^ALLEGATO/.test(upper)) return 1;
     return 2;
   }
 
   private determineNodeType(indicator: string): StructureNode['type'] {
     const upper = indicator.toUpperCase();
-    if (/^EXHIBIT/.test(upper)) return 'exhibit';
-    if (/^SCHEDULE/.test(upper)) return 'schedule';
-    if (/^ARTICLE|^SECTION/.test(upper)) return 'section';
+    if (/^EXHIBIT|^ANNEXE|^ALLEGATO/.test(upper)) return 'exhibit';
+    if (/^SCHEDULE|^ANLAGE|^ANHANG/.test(upper)) return 'schedule';
+    if (/^ARTICLE|^SECTION|^ARTIKEL|^ABSCHNITT|^ARTICOLO/.test(upper)) return 'section';
     if (/^\d+\.\d+/.test(indicator)) return 'subsection';
     return 'clause';
   }
 
   private estimateImportance(title: string): StructureNode['importance'] {
-    const critical = /termination|liability|indemnif|payment|price|fee|confidential/i;
-    const high = /obligation|warranty|represent|term|scope|deliverable/i;
-    const medium = /notice|amendment|assignment|force\s+majeure/i;
+    const critical = /termination|liability|indemnif|payment|price|fee|confidential|k[uü]ndigung|haftung|verg[uü]tung|vertraulich/i;
+    const high = /obligation|warranty|represent|term|scope|deliverable|laufzeit|gew[aä]hr/i;
+    const medium = /notice|amendment|assignment|force\s+majeure|mitteilung/i;
     
     if (critical.test(title)) return 'critical';
     if (high.test(title)) return 'high';
@@ -574,6 +576,7 @@ Return a JSON object with:
           {
             role: 'system',
             content: `You are an expert contract analyst. Identify and categorize all semantic sections in this document.
+${analysisLanguageInstructions({ contractText: textToAnalyze })}
 
 For each section, provide:
 {
@@ -643,6 +646,7 @@ For each section, provide:
           {
             role: 'system',
             content: `You are an expert contract analyst. Extract ALL important data points from this contract.
+${analysisLanguageInstructions({ contractText: documentText })}
 
 Go beyond standard fields - discover anything that would be valuable for contract management:
 - Specific dates, deadlines, and milestones
@@ -722,6 +726,7 @@ Return JSON with:
           {
             role: 'system',
             content: `You are an expert at extracting party information from contracts. Extract comprehensive details about each party.
+${analysisLanguageInstructions({ contractText: documentText })}
 
 Return JSON:
 {
@@ -865,6 +870,7 @@ IMPORTANT: Only extract REAL party names, not placeholders like "[Company Name]"
           {
             role: 'system',
             content: `You are a contract risk analyst. Identify all risk signals in this contract.
+${analysisLanguageInstructions({ contractText: documentText })}
 
 Look for:
 - Unlimited liability exposure
@@ -942,6 +948,7 @@ Return JSON:
           {
             role: 'system',
             content: `You are a contract negotiation expert. Identify opportunities to negotiate better terms.
+${analysisLanguageInstructions({ contractText: documentText })}
 
 Look for:
 - Terms that are unfavorable compared to industry standards
@@ -1055,6 +1062,7 @@ Return JSON:
           {
             role: 'system',
             content: `You are a senior contract analyst. Generate key insights that would be valuable for someone managing this contract.
+${analysisLanguageInstructions({ contractText: documentText })}
 
 Think about:
 - What are the most important things to know?

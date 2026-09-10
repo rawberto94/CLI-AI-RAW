@@ -10,6 +10,7 @@ import OpenAI from 'openai';
 import { createOpenAIClient, getOpenAIApiKey, hasAIClientConfig } from '@/lib/openai-client';
 import { prisma } from '@/lib/prisma';
 import { withContractApiHandler, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { analysisLanguageInstructions } from '@repo/utils';
 
 // Lazy OpenAI client — fails fast with clear error if key is missing
 let _openai: OpenAI | null = null;
@@ -149,7 +150,8 @@ export const POST = withContractApiHandler(async (request: NextRequest, ctx) => 
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o',
       messages: [
-        { role: 'system', content: systemPrompt },
+        { role: 'system', content: `${systemPrompt}
+${analysisLanguageInstructions({ contractText })}` },
         { role: 'user', content: userPrompt }
       ],
       temperature: 0.3,

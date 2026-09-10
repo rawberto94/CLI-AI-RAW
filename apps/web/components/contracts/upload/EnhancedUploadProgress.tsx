@@ -26,6 +26,11 @@ import {
   Info,
 } from 'lucide-react';
 import { cn, formatFileSize, formatDuration, humanizeUploadError } from '@/lib/utils';
+import {
+  getMissingArtifactDetails,
+  reasonLabel,
+  type MissingArtifact,
+} from '@/lib/contracts/artifact-coverage';
 import { useRouter } from 'next/navigation';
 
 // ============================================================================
@@ -53,6 +58,8 @@ interface ContractStatusResponse {
   artifactsGenerated: number;
   totalArtifacts: number;
   artifactTypes: string[];
+  missingArtifactTypes?: string[];
+  missingArtifacts?: Array<{ type?: string; label?: string; reason?: string }>;
   hasOverview: boolean;
   hasFinancial: boolean;
   hasRisk: boolean;
@@ -89,6 +96,7 @@ export interface UploadProgressProps {
   existingContractId?: string;
   versionNumber?: number;
   onRetry?: () => void;
+  onAddAsVersion?: () => void;
   onRemove?: () => void;
   onViewContract?: (contractId: string) => void;
   onContractNotFound?: () => void;  // Called when contract returns 404
@@ -109,19 +117,7 @@ export interface UploadProgressProps {
  * (mirrors DEFAULT_ARTIFACT_TYPES in packages/data-orchestration).
  * Ids are lowercase because the status API lowercases artifactTypes.
  */
-const EXPECTED_ARTIFACTS: Array<{ id: string; label: string }> = [
-  { id: 'overview', label: 'Overview' },
-  { id: 'clauses', label: 'Key Clauses' },
-  { id: 'financial', label: 'Financial Analysis' },
-  { id: 'risk', label: 'Risk Assessment' },
-  { id: 'compliance', label: 'Compliance Check' },
-  { id: 'obligations', label: 'Obligations' },
-  { id: 'renewal', label: 'Renewal Terms' },
-  { id: 'negotiation_points', label: 'Negotiation Points' },
-  { id: 'amendments', label: 'Amendments' },
-  { id: 'contacts', label: 'Contacts' },
-  { id: 'rates', label: 'Rate Cards' },
-];
+
 
 const MAX_PROCESSING_MS = 300_000; // 5 minutes — after this we show a "still working" note
 
@@ -183,9 +179,7 @@ function getProcessingMessage(apiStatus: ContractStatusResponse | null, hasContr
 }
 
 function getMissingArtifactLabels(apiStatus: ContractStatusResponse | null): string[] {
-  if (!apiStatus) return [];
-  const generated = new Set((apiStatus.artifactTypes ?? []).map(t => t.toLowerCase()));
-  return EXPECTED_ARTIFACTS.filter(a => !generated.has(a.id)).map(a => a.label);
+  return getMissingArtifactDetails(apiStatus).map((item) => item.label);
 }
 
 // ============================================================================
@@ -204,6 +198,7 @@ export function EnhancedUploadProgress({
   existingContractId,
   versionNumber,
   onRetry,
+  onAddAsVersion,
   onRemove,
   onViewContract: _onViewContract,
   onContractNotFound,
@@ -366,7 +361,8 @@ export function EnhancedUploadProgress({
   const artifactCount = apiStatus?.artifactsGenerated ?? 0;
   const totalArtifacts = apiStatus?.totalArtifacts ?? 0;
   const estimatedRemaining = apiStatus?.timing?.estimatedRemainingMs;
-  const missingArtifactLabels = isDone ? getMissingArtifactLabels(apiStatus) : [];
+  const missingArtifacts: MissingArtifact[] = isDone ? getMissingArtifactDetails(apiStatus) : [];
+  const missingArtifactLabels = missingArtifacts.map((item) => item.label);
   // Partial completion: fewer insights than the pipeline was expected to generate
   const isPartial = isDone && totalArtifacts > 0 && artifactCount < totalArtifacts;
   const processingMessage = getProcessingMessage(apiStatus, !!contractId);
@@ -487,7 +483,7 @@ export function EnhancedUploadProgress({
             Duplicate detected — no new copy was created.
           </p>
           <p className="mt-1 text-xs text-amber-700/80 dark:text-amber-300/80">
-            Open the existing contract or re-process to create a fresh analysis run.
+            Open the existing contract, add this file as a version, or upload it as a new analysis.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -500,6 +496,17 @@ export function EnhancedUploadProgress({
             <Eye className="h-3.5 w-3.5 mr-1" aria-hidden="true" />
             View Original
           </Button>
+          {onAddAsVersion && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-8 text-xs text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-800"
+              onClick={onAddAsVersion}
+            >
+              <Layers className="h-3.5 w-3.5 mr-1" aria-hidden="true" />
+              Add as version
+            </Button>
+          )}
           <Button
             size="sm"
             variant="ghost"
@@ -507,7 +514,7 @@ export function EnhancedUploadProgress({
             onClick={onRetry}
           >
             <RefreshCw className="h-3.5 w-3.5 mr-1" aria-hidden="true" />
-            Re-process Anyway
+            Upload as new
           </Button>
           <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={onRemove} aria-label="Remove file">
             <X className="h-3.5 w-3.5" />
@@ -612,8 +619,14 @@ export function EnhancedUploadProgress({
                         </button>
                       </TooltipTrigger>
                       <TooltipContent side="top" className="max-w-xs">
-                        <p className="font-medium">Not generated:</p>
-                        <p>{missingArtifactLabels.join(', ')}</p>
+                        <p className="font-medium">Not generated for this document</p>
+                        <ul className="mt-1 space-y-0.5">
+                          {missingArtifacts.map((item) => (
+                            <li key={item.type}>
+                              {item.label} — {reasonLabel(item.reason)}
+                            </li>
+                          ))}
+                        </ul>
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
@@ -714,8 +727,15 @@ export function EnhancedUploadProgress({
             </Button>
           )}
 
-          {(status === 'pending' || isFailed || isDone) && (
-            <Button size="sm" variant="ghost" className="h-9 w-9 p-0 text-slate-500 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800" onClick={onRemove} aria-label="Remove file">
+          {(status === 'pending' || status === 'uploading' || status === 'processing' || isFailed || isDone) && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-9 w-9 p-0 text-slate-500 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+              onClick={onRemove}
+              aria-label={status === 'uploading' || status === 'processing' ? 'Cancel upload' : 'Remove file'}
+              title={status === 'uploading' || status === 'processing' ? 'Cancel and remove this contract' : 'Remove'}
+            >
               <X className="h-4 w-4" />
             </Button>
           )}

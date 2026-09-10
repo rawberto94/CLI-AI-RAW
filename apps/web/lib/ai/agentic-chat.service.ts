@@ -622,7 +622,7 @@ async function executeGetRiskAssessment(
         recommendations: [
           expiringIn30.length > 0 && `Review ${expiringIn30.length} contracts expiring within 30 days`,
           autoRenewals.length > 0 && `Review ${autoRenewals.length} auto-renewing contracts`,
-          highValue.length > 0 && `High-value contracts ($${highValue.reduce((s, c) => s + Number(c.totalValue || 0), 0).toLocaleString()}) expiring soon`,
+          highValue.length > 0 && `High-value contracts (${highValue.reduce((s, c) => s + Number(c.totalValue || 0), 0).toLocaleString('de-CH')}) expiring soon`,
         ].filter(Boolean),
       },
       executionTimeMs: Date.now() - start,
@@ -804,6 +804,7 @@ export async function agenticChat(
 
   const webResearchOn = isFirecrawlWebResearchEnabled();
   const systemContent = `You are ConTigo AI, an intelligent contract management assistant. You have access to powerful tools to search, analyze, and manage contracts. 
+Match the user's language. If they write German, French, or Italian, answer in that language. Keep quoted contract text verbatim. Fr. and SFr. mean CHF. Do not invent USD. 
 
 Use the available tools to gather information before answering. You can call multiple tools if needed to fully answer the user's question.
 

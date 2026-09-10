@@ -15,6 +15,7 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { formatAmountWithCurrency, formatDisplayTotal } from '@/lib/utils/formatters';
 import {
   Tooltip,
   TooltipContent,
@@ -213,13 +214,13 @@ export function generateContractStats(data: {
   highRisk: number;
   processing: number;
   recentlyAdded: number;
+  currency?: string;
   onFilterClick?: (filter: string) => void;
 }): QuickStat[] {
-  const formatCurrency = (value: number) => {
-    if (value >= 1000000) return `$${(value / 1000000).toFixed(1)}M`;
-    if (value >= 1000) return `$${(value / 1000).toFixed(0)}K`;
-    return `$${value.toFixed(0)}`;
-  };
+  const formatMoney = (value: number) =>
+    data.currency
+      ? formatDisplayTotal(value, data.currency)
+      : formatAmountWithCurrency(value, null);
 
   return [
     {
@@ -233,7 +234,7 @@ export function generateContractStats(data: {
     {
       id: 'value',
       label: 'Total Value',
-      value: formatCurrency(data.totalValue),
+      value: formatMoney(data.totalValue),
       icon: DollarSign,
       color: 'green',
     },

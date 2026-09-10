@@ -26,6 +26,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
@@ -388,8 +389,9 @@ export const NotificationsCenter = memo(function NotificationsCenter({
                             variant="link"
                             size="sm"
                             className="h-auto p-0 mt-2 text-violet-600"
+                            asChild
                           >
-                            {notification.actionLabel} →
+                            <Link href={notification.actionUrl}>{notification.actionLabel} →</Link>
                           </Button>
                         )}
                       </div>

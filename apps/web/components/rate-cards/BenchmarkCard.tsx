@@ -4,6 +4,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { TrendingUp, TrendingDown, Minus, AlertCircle } from 'lucide-react';
+import { formatRateMoney } from '@/lib/rate-cards/format'
 
 // ============================================================================
 // Types
@@ -85,12 +86,7 @@ function getPositionLabel(position: MarketPosition['position']): string {
 }
 
 function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(value);
+  return formatRateMoney(value);
 }
 
 // ============================================================================

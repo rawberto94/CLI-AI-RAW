@@ -52,6 +52,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
@@ -439,9 +440,7 @@ export const TeamCollaboration = memo(function TeamCollaboration({
                           Manage Access
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem>
-                          <span className="text-slate-500 text-xs">Change Role:</span>
-                        </DropdownMenuItem>
+                        <DropdownMenuLabel className="text-slate-500 text-xs">Change Role</DropdownMenuLabel>
                         {Object.entries(roleConfig)
                           .filter(([key]) => key !== 'owner' && key !== member.role)
                           .map(([key, { label }]) => (

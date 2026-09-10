@@ -5,6 +5,7 @@
 
 import { ChatOpenAI } from '@langchain/openai';
 import { SystemMessage, HumanMessage } from '@langchain/core/messages';
+import { analysisLanguageInstructions, resolvePersistCurrency } from '@repo/utils';
 
 export interface ExtractedRate {
   roleOriginal: string;
@@ -118,7 +119,7 @@ export class RateCardExtractionService {
     const startTime = Date.now();
 
     try {
-      const systemPrompt = this.getSystemPrompt();
+      const systemPrompt = this.getSystemPrompt(contractText);
       const userPrompt = this.buildEnhancedExtractionPrompt(contractText);
 
       const response = await this.llm.invoke([
@@ -148,6 +149,7 @@ export class RateCardExtractionService {
    */
   private buildEnhancedExtractionPrompt(contractText: string): string {
     return `You are an expert at extracting rate card information from contracts, statements of work, and rate schedules.
+${analysisLanguageInstructions({ contractText })}
 
 TASK: Analyze the contract text and extract ALL rate information with maximum precision and accuracy.
 
@@ -262,6 +264,8 @@ IMPORTANT RULES:
 - If no rates found, return empty rates array
 - If supplier name unclear, use "Unknown Supplier" with low confidence
 - If dates not found, leave as null
+- If currency is not explicitly stated, set currency to null — never default to USD
+- If location/country is not stated, set to null — never default to United States
 - Include warnings for any assumptions or inferences
 - Be conservative with confidence scores
 - Preserve all original information in additionalInfo`;
@@ -270,8 +274,10 @@ IMPORTANT RULES:
   /**
    * Get system prompt for rate extraction
    */
-  private getSystemPrompt(): string {
+  private getSystemPrompt(contractText?: string): string {
     return `You are an expert procurement analyst specializing in rate card extraction from contracts.
+${analysisLanguageInstructions({ contractText })}
+Fr. and SFr. mean CHF. Do not invent USD. Keep role names verbatim.
 
 Your expertise includes:
 - Identifying rate information in various formats (tables, lists, inline text)
@@ -300,7 +306,7 @@ You always:
       roleStandardized: rate.roleStandardized,
       seniority: this.normalizeSeniority(rate.seniority),
       dailyRate: Number(rate.dailyRate) || 0,
-      currency: (rate.currency || 'USD').toUpperCase(),
+      currency: resolvePersistCurrency(rate.currency),
       location: rate.location,
       lineOfService: rate.lineOfService,
       skills: Array.isArray(rate.skills) ? rate.skills : [],

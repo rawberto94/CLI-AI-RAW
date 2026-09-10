@@ -190,7 +190,7 @@ export function ContractAuditLog({
     if (hours < 24) return `${hours}h ago`;
     if (days < 7) return `${days}d ago`;
     
-    return date.toLocaleDateString('en-US', {
+    return date.toLocaleDateString('de-CH', {
       month: 'short',
       day: 'numeric',
       year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined,

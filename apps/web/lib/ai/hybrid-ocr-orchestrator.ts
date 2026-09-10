@@ -22,6 +22,7 @@
  * - High: Vision + Textract merged (~$0.05/doc)
  */
 
+import { resolveAnalysisLanguage } from '@repo/utils';
 import { VisionDocumentAnalyzer, VisionAnalysisResult } from './vision-document-analyzer';
 import { AWSTextractClient, TextractResult } from './aws-textract-client';
 import { performTesseractOCR, performEUCompliantOCR, OCRResult } from './eu-compliant-ocr';
@@ -719,7 +720,7 @@ export class HybridOCROrchestrator {
         documentType: 'unknown',
         parties: [],
         sections: [],
-        language: 'en',
+        language: resolveAnalysisLanguage({ contractText: bestTextResult.text || '' }),
         pageCount: 1,
       },
       metadata: {
@@ -847,7 +848,7 @@ export class HybridOCROrchestrator {
         documentType: 'unknown',
         parties: [],
         sections: [],
-        language: 'en',
+        language: resolveAnalysisLanguage({ contractText: text }),
         pageCount,
       },
       metadata: {

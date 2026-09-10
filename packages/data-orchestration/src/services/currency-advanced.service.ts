@@ -152,9 +152,9 @@ export class CurrencyAdvancedService {
   /**
    * Detect currency volatility and generate alerts
    */
-  async detectVolatility(baseCurrency: string = 'USD'): Promise<CurrencyVolatilityAlert[]> {
+  async detectVolatility(baseCurrency: string = 'CHF'): Promise<CurrencyVolatilityAlert[]> {
     const alerts: CurrencyVolatilityAlert[] = [];
-    const currencies = ['EUR', 'GBP', 'JPY', 'CAD', 'AUD', 'CHF', 'CNY', 'INR'];
+    const currencies = ['USD', 'EUR', 'GBP', 'JPY', 'CAD', 'AUD', 'CHF', 'CNY', 'INR'];
 
     for (const currency of currencies) {
       if (currency === baseCurrency) continue;
@@ -256,7 +256,7 @@ export class CurrencyAdvancedService {
   /**
    * Update all exchange rates (called by scheduled job)
    */
-  async updateAllRates(baseCurrency: string = 'USD'): Promise<void> {
+  async updateAllRates(baseCurrency: string = 'CHF'): Promise<void> {
     const currencies = ['EUR', 'GBP', 'JPY', 'CAD', 'AUD', 'CHF', 'CNY', 'INR', 'BRL', 'MXN'];
 
     for (const currency of currencies) {

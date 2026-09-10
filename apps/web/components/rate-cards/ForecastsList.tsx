@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { ForecastIndicator } from './ForecastIndicator';
 import { TrendingUp, TrendingDown, Minus, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
+import { formatRateMoney } from '@/lib/rate-cards/format'
 
 // ============================================================================
 // Types
@@ -56,12 +57,7 @@ interface ForecastsListProps {
 // ============================================================================
 
 function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(value);
+  return formatRateMoney(value);
 }
 
 function getRiskLevelColor(riskLevel: string): string {

@@ -71,6 +71,7 @@ import { cn } from '@/lib/utils'
 import { getTenantId } from '@/lib/tenant';
 import { toast } from 'sonner'
 import { useTranslations } from 'next-intl'
+import { useDisplayCurrency } from '@/hooks/useDisplayCurrency'
 
 // ============ SCHEMA ============
 
@@ -98,7 +99,7 @@ const contractFormSchema = z.object({
   
   // Step 4: Financials
   totalValue: z.number().min(0).optional(),
-  currency: z.string().default('CHF'),
+  currency: z.string().optional(),
   paymentTerms: z.string().optional(),
   
   // Step 5: Additional
@@ -130,13 +131,13 @@ const CONTRACT_TYPES = [
 ]
 
 const CURRENCIES = [
-  { value: 'USD', label: 'USD - US Dollar', symbol: '$' },
+  { value: 'CHF', label: 'CHF - Swiss Franc', symbol: 'CHF' },
   { value: 'EUR', label: 'EUR - Euro', symbol: '€' },
+  { value: 'USD', label: 'USD - US Dollar', symbol: '$' },
   { value: 'GBP', label: 'GBP - British Pound', symbol: '£' },
   { value: 'CAD', label: 'CAD - Canadian Dollar', symbol: 'C$' },
   { value: 'AUD', label: 'AUD - Australian Dollar', symbol: 'A$' },
   { value: 'JPY', label: 'JPY - Japanese Yen', symbol: '¥' },
-  { value: 'CHF', label: 'CHF - Swiss Franc', symbol: 'CHF' },
   { value: 'CNY', label: 'CNY - Chinese Yuan', symbol: '¥' },
 ]
 
@@ -240,6 +241,7 @@ export default function CreateContractPage() {
   const router = useRouter()
   const t = useTranslations('contracts')
   const tCommon = useTranslations('common')
+  const displayCurrency = useDisplayCurrency()
 
   const WIZARD_STEPS: WizardStep[] = useMemo(
     () => WIZARD_STEPS_CONFIG.map(({ key, ...rest }) => ({
@@ -269,7 +271,7 @@ export default function CreateContractPage() {
       autoRenew: false,
       renewalNoticeDays: 30,
       totalValue: undefined,
-      currency: 'CHF',
+      currency: displayCurrency,
       paymentTerms: '',
       tags: [],
       priority: 'medium',
@@ -283,6 +285,12 @@ export default function CreateContractPage() {
     control: form.control,
     name: 'parties',
   })
+
+  useEffect(() => {
+    if (!form.formState.dirtyFields.currency) {
+      form.setValue('currency', displayCurrency)
+    }
+  }, [displayCurrency, form])
   
   const tags = form.watch('tags')
   const formValues = form.watch()
@@ -382,18 +390,21 @@ export default function CreateContractPage() {
         body: JSON.stringify(payload),
       })
       
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.message || 'Failed to create contract')
-      }
-      
       const result = await response.json()
+      if (!response.ok) {
+        throw new Error(result.error?.message || result.message || 'Failed to create contract')
+      }
+
+      const createdId = result.data?.id ?? result.id
+      if (!createdId) {
+        throw new Error('Contract created but no id was returned')
+      }
       
       toast.success('Contract created successfully!', {
         description: `${data.title} has been saved as a draft.`,
       })
       
-      router.push(`/contracts/${result.id}`)
+      router.push(`/contracts/${createdId}`)
     } catch (error: unknown) {
       toast.error('Failed to create contract', {
         description: error instanceof Error ? error.message : 'An unexpected error occurred',
@@ -410,7 +421,7 @@ export default function CreateContractPage() {
   
   // Currency symbol
   const currencySymbol = useMemo(() => {
-    return CURRENCIES.find(c => c.value === formValues.currency)?.symbol || '$'
+    return CURRENCIES.find(c => c.value === formValues.currency)?.symbol || formValues.currency || ''
   }, [formValues.currency])
   
   return (

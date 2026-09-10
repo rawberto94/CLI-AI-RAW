@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { TrendingUp, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
+import { formatRateMoney } from '@/lib/rate-cards/format'
 
 interface Opportunity {
   id: string;
@@ -42,14 +43,7 @@ export function TopOpportunitiesWidget() {
     }
   };
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(value);
-  };
+  const formatCurrency = (value: number) => formatRateMoney(value);
 
   const getCategoryColor = (category: string) => {
     const colors: Record<string, string> = {

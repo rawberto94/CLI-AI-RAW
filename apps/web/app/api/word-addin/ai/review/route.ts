@@ -18,6 +18,7 @@ import {
   createErrorResponse,
 } from '@/lib/api-middleware';
 import { getAIClient } from '@/lib/ai/ai-client';
+import { analysisLanguageInstructions } from '@repo/utils';
 import { logger } from '@/lib/logger';
 
 const reviewSchema = z.object({
@@ -51,6 +52,7 @@ export const POST = withAuthApiHandler(async (req: NextRequest, ctx) => {
     const headingList = headings.map((h) => `${'  '.repeat(h.level)}• ${h.text}`).join('\n');
 
     const systemPrompt = `You are a senior legal contract review agent. You will receive the full text of a contract document and its heading structure.
+${analysisLanguageInstructions({ contractText: truncatedText })}
 
 Perform a comprehensive review and return a JSON object with this EXACT structure (no markdown, just raw JSON):
 {

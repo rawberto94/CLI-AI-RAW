@@ -5,6 +5,7 @@
 
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
+import { formatRateMoney } from '@/lib/rate-cards/format'
 
 export interface PDFExportOptions {
   includeCoverPage?: boolean
@@ -171,12 +172,12 @@ export class PDFExportService {
     const summary = [
       `This report provides a comprehensive analysis for negotiating rates for ${data.role} - ${data.level} positions in ${data.location}.`,
       '',
-      `Current Rate: CHF ${data.currentRate.toLocaleString()} per day`,
-      `Target Rate: CHF ${data.targetRate.toLocaleString()} per day`,
-      `Market Median: CHF ${data.marketMedian.toLocaleString()} per day`,
+      `Current Rate: ${formatRateMoney(data.currentRate)} per day`,
+      `Target Rate: ${formatRateMoney(data.targetRate)} per day`,
+      `Market Median: ${formatRateMoney(data.marketMedian)} per day`,
       '',
       `Your current rate is at the ${data.percentile.toFixed(0)}th percentile of the market.`,
-      `Potential annual savings: CHF ${data.potentialSavings.toLocaleString()}`,
+      `Potential annual savings: ${formatRateMoney(data.potentialSavings)}`,
       '',
       `This report includes market intelligence, negotiation strategies, talking points, and scenario analysis to support your negotiation efforts.`
     ]
@@ -215,17 +216,17 @@ export class PDFExportService {
     
     this.pdf.text(`Position: ${positionText}`, this.margin + 5, this.currentY + 16)
     this.pdf.text(`Percentile: ${data.percentile.toFixed(0)}th`, this.margin + 5, this.currentY + 23)
-    this.pdf.text(`Potential Savings: CHF ${data.potentialSavings.toLocaleString()}`, this.margin + 5, this.currentY + 30)
+    this.pdf.text(`Potential Savings: ${formatRateMoney(data.potentialSavings)}`, this.margin + 5, this.currentY + 30)
 
     this.currentY += 50
 
     // Rate comparison table
     this.addTable([
       ['Metric', 'Value'],
-      ['Current Rate', `CHF ${data.currentRate.toLocaleString()}`],
-      ['Target Rate', `CHF ${data.targetRate.toLocaleString()}`],
-      ['Market Median', `CHF ${data.marketMedian.toLocaleString()}`],
-      ['Difference from Median', `CHF ${(data.currentRate - data.marketMedian).toLocaleString()}`]
+      ['Current Rate', formatRateMoney(data.currentRate)],
+      ['Target Rate', formatRateMoney(data.targetRate)],
+      ['Market Median', formatRateMoney(data.marketMedian)],
+      ['Difference from Median', formatRateMoney(data.currentRate - data.marketMedian)]
     ])
   }
 
@@ -300,7 +301,7 @@ export class PDFExportService {
     this.addSectionTitle('Scenario Analysis')
 
     const tableData = [
-      ['Scenario', 'Rate (CHF)', 'Annual Savings (CHF)'],
+      ['Scenario', 'Rate', 'Annual Savings'],
       ...scenarios.map(s => [
         s.name,
         s.rate.toLocaleString(),

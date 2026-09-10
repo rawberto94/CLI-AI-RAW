@@ -1,5 +1,6 @@
 import type { RoleRate, Geography } from './enhanced-rate-benchmarking-data'
 import { calculateConfidenceScore } from './data-quality'
+import { formatRateMoney } from '@/lib/rate-cards/format'
 
 /**
  * Export rate benchmarking data to CSV
@@ -15,16 +16,16 @@ export function exportToCSV(
     'Service Line',
     'Geography',
     'Seniority Level',
-    'Your Rate ($/hr)',
-    'ChainIQ Benchmark ($/hr)',
-    'Industry Average ($/hr)',
-    'P25 ($/hr)',
-    'P75 ($/hr)',
-    'P90 ($/hr)',
-    'Variance ($)',
+    'Your Rate (/hr)',
+    'ChainIQ Benchmark (/hr)',
+    'Industry Average (/hr)',
+    'P25 (/hr)',
+    'P75 (/hr)',
+    'P90 (/hr)',
+    'Variance',
     'Variance (%)',
     'FTE Count',
-    'Total Annual Cost ($)',
+    'Total Annual Cost',
     'Location Premium (%)',
     'Skills Premium (%)',
     'Contract Date',
@@ -247,15 +248,15 @@ export function generatePDFContent(
   <div class="summary">
     <div class="metric">
       <div class="metric-label">Current Annual Cost</div>
-      <div class="metric-value">$${(totalCurrentCost / 1000).toFixed(0)}K</div>
+      <div class="metric-value">${formatRateMoney(totalCurrentCost)}</div>
     </div>
     <div class="metric">
       <div class="metric-label">ChainIQ Benchmark Cost</div>
-      <div class="metric-value">$${(totalChainIQCost / 1000).toFixed(0)}K</div>
+      <div class="metric-value">${formatRateMoney(totalChainIQCost)}</div>
     </div>
     <div class="metric">
       <div class="metric-label">Potential Savings</div>
-      <div class="metric-value" style="color: #059669;">$${(totalSavings / 1000).toFixed(0)}K</div>
+      <div class="metric-value" style="color: #059669;">${formatRateMoney(totalSavings)}</div>
     </div>
     <div class="metric">
       <div class="metric-label">Savings Percentage</div>
@@ -302,10 +303,10 @@ export function generatePDFContent(
         return `
       <tr>
         <td>${role.role}</td>
-        <td>$${role.hourlyRate}/hr</td>
-        <td>$${role.chainIQBenchmark}/hr</td>
-        <td class="${status}">${variance > 0 ? '+' : ''}$${variance.toFixed(0)}/hr (${variancePercent.toFixed(1)}%)</td>
-        <td class="${status}">${annualSavings > 0 ? '+' : ''}$${(annualSavings / 1000).toFixed(0)}K</td>
+        <td>${formatRateMoney(role.hourlyRate, undefined, { maximumFractionDigits: 2 })}/hr</td>
+        <td>${formatRateMoney(role.chainIQBenchmark, undefined, { maximumFractionDigits: 2 })}/hr</td>
+        <td class="${status}">${variance > 0 ? '+' : ''}${formatRateMoney(variance, undefined, { maximumFractionDigits: 0 })}/hr (${variancePercent.toFixed(1)}%)</td>
+        <td class="${status}">${annualSavings > 0 ? '+' : ''}${formatRateMoney(annualSavings)}</td>
         <td class="${status}">${status.replace('-', ' ').toUpperCase()}</td>
       </tr>
         `
@@ -363,9 +364,9 @@ Geography: ${geography}
 EXECUTIVE SUMMARY
 -----------------
 Roles Analyzed: ${roles.length}
-Current Annual Cost: $${(totalCurrentCost / 1000).toFixed(0)}K
-ChainIQ Benchmark Cost: $${(totalChainIQCost / 1000).toFixed(0)}K
-Potential Savings: $${(totalSavings / 1000).toFixed(0)}K (${savingsPercent.toFixed(1)}%)
+Current Annual Cost: ${formatRateMoney(totalCurrentCost)}
+ChainIQ Benchmark Cost: ${formatRateMoney(totalChainIQCost)}
+Potential Savings: ${formatRateMoney(totalSavings)} (${savingsPercent.toFixed(1)}%)
 
 TOP SAVINGS OPPORTUNITIES
 -------------------------
@@ -376,7 +377,7 @@ ${roles
   }))
   .sort((a, b) => b.savings - a.savings)
   .slice(0, 5)
-  .map((r, i) => `${i + 1}. ${r.role}: $${(r.savings / 1000).toFixed(0)}K`)
+  .map((r, i) => `${i + 1}. ${r.role}: ${formatRateMoney(r.savings)}`)
   .join('\n')}
 
 ---

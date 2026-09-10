@@ -28,6 +28,7 @@ import {
 import pino from 'pino';
 
 import { getTraceContextFromJobData } from './observability/trace';
+import { analysisLanguageInstructions } from '@repo/utils';
 import { isRetryableError, RetryableError } from './utils/errors';
 import { sha256 } from './utils/hash';
 import { buildContractEmbeddingInsertBatch } from './utils/contract-embedding-write';
@@ -265,7 +266,8 @@ export async function processRAGIndexingJob(
         const summaryRes = await ctxClient.chat.completions.create({
           model: 'gpt-4o-mini',
           messages: [
-            { role: 'system', content: 'Summarize this contract in 3-4 sentences. Include: document type, parties involved, primary subject matter, and key terms. Be factual and concise.' },
+            { role: 'system', content: `Summarize this contract in 3-4 sentences. Include: document type, parties involved, primary subject matter, and key terms. Be factual and concise.
+${analysisLanguageInstructions({ contractText: contract.rawText })}` },
             { role: 'user', content: contract.rawText.slice(0, 6000) },
           ],
           temperature: 0,
@@ -291,6 +293,7 @@ export async function processRAGIndexingJob(
                   {
                     role: 'system',
                     content: `You contextualize contract chunks for a retrieval system. Given a document summary and multiple chunks, write a 1-2 sentence context prefix for EACH chunk that identifies its location in the document and provides enough context for standalone understanding.
+${analysisLanguageInstructions({ contractText: contract.rawText })}
 Return a JSON object with a "prefixes" key containing an array of strings, one prefix per chunk, in the same order. Example: {"prefixes": ["This chunk covers...", "This section deals with..."]}`,
                   },
                   {
@@ -358,7 +361,8 @@ Return a JSON object with a "prefixes" key containing an array of strings, one p
           const res = await raptorClient.chat.completions.create({
             model: 'gpt-4o-mini',
             messages: [
-              { role: 'system', content: instruction },
+              { role: 'system', content: `${instruction}
+${analysisLanguageInstructions({ contractText: texts.join('\n') })}` },
               { role: 'user', content: texts.join('\n\n---\n\n') },
             ],
             temperature: 0,

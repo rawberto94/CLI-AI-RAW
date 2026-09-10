@@ -326,11 +326,11 @@ export const FilterToolbar = memo(function FilterToolbar({
       const max = filters.valueRange.max;
       let value = '';
       if (min !== undefined && max !== undefined) {
-        value = `$${(min / 1000).toFixed(0)}K - $${(max / 1000).toFixed(0)}K`;
+        value = `${(min / 1000).toFixed(0)}K - ${(max / 1000).toFixed(0)}K`;
       } else if (min !== undefined) {
-        value = `Over $${(min / 1000).toFixed(0)}K`;
+        value = `Over ${(min / 1000).toFixed(0)}K`;
       } else if (max !== undefined) {
-        value = `Under $${(max / 1000).toFixed(0)}K`;
+        value = `Under ${(max / 1000).toFixed(0)}K`;
       }
       badges.push({
         label: 'Value',

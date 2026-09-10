@@ -125,6 +125,7 @@ import { FloatingAIBubble } from '@/components/ai/FloatingAIBubble';
 import { MarkdownContent } from '@/components/ai/MarkdownContent';
 import { AgentObservabilityDashboard } from '@/components/agents/AgentObservabilityDashboard';
 import { labsUi, labsTone, type LabsToneKey } from './labs-ui';
+import { formatAmountWithCurrency } from '@/lib/utils/formatters';
 
 // Message type for chat interface
 interface Message {
@@ -1849,8 +1850,8 @@ function TemplateImporter({ onImported }: { onImported: (t: TemplateLibraryItem)
 
             <TabsContent value="url" className="mt-6">
               <div className="space-y-4">
-                <Input placeholder="https://example.com/template.pdf" />
-                <Button className="w-full">Fetch Template</Button>
+                <Input placeholder="https://example.com/template.pdf" disabled />
+                <p className="text-xs text-muted-foreground">Paste the template text in the other tab. URL fetch is not available.</p>
               </div>
             </TabsContent>
           </Tabs>
@@ -2607,7 +2608,7 @@ function RFxStudioView() {
                 </div>
               </div>
               <div className="text-center md:text-right bg-slate-50 px-6 py-3 rounded-2xl border border-slate-100 w-full md:w-auto">
-                <p className="text-3xl font-bold text-slate-900 tracking-tight">${(totalValue / 1000000).toFixed(1)}M</p>
+                <p className="text-3xl font-bold text-slate-900 tracking-tight">{formatAmountWithCurrency(totalValue)}</p>
                 <p className="text-sm font-medium text-slate-500 mt-1">Total Pipeline Value</p>
               </div>
             </div>
@@ -2734,7 +2735,7 @@ function RFxStudioView() {
                     </div>
                     <div className="text-right ml-6">
                       <p className="font-bold text-emerald-600 text-lg">{item.savings}%</p>
-                      <p className="text-sm text-slate-500 font-medium">${(item.amount / 1000).toFixed(0)}k</p>
+                      <p className="text-sm text-slate-500 font-medium">{formatAmountWithCurrency(item.amount)}</p>
                     </div>
                   </div>
                 ))}
@@ -2786,8 +2787,8 @@ function RFxStudioView() {
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="font-bold text-slate-900 text-lg">${(award.value / 1000).toFixed(0)}k</p>
-                      <p className="text-sm font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md inline-block mt-1">Saved ${(award.savings / 1000).toFixed(0)}k</p>
+                      <p className="font-bold text-slate-900 text-lg">{formatAmountWithCurrency(award.value)}</p>
+                      <p className="text-sm font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md inline-block mt-1">Saved {formatAmountWithCurrency(award.savings)}</p>
                     </div>
                   </div>
                 )) : (
@@ -2963,7 +2964,7 @@ function OpportunityCardEnhanced({ opportunity, onCreateRFx }: any) {
           {opportunity.savingsPotential != null && (
             <div className="rounded-lg border border-slate-100 bg-slate-50/80 px-2 py-2 text-center dark:border-slate-800 dark:bg-slate-900/40">
               <p className="text-base font-semibold tabular-nums text-emerald-700">
-                ${(opportunity.savingsPotential / 1000).toFixed(0)}k
+                {formatAmountWithCurrency(opportunity.savingsPotential)}
               </p>
               <p className={labsUi.muted}>Savings</p>
             </div>
@@ -3069,7 +3070,7 @@ function RFxEventRowEnhanced({ event, onClick }: any) {
         <div className="text-left md:text-right">
           <p className="text-base font-semibold tabular-nums text-slate-900 dark:text-slate-50">
             {typeof event.value === 'number' && Number.isFinite(event.value)
-              ? `$${(event.value / 1000).toFixed(0)}k`
+              ? formatAmountWithCurrency(event.value)
               : '—'}
           </p>
           {typeof event.savings === 'number' && event.savings > 0 && (
@@ -3656,7 +3657,7 @@ function EventDetailModal({ event, onClose }: any) {
     : 'Draft';
   const estimatedValue =
     typeof event.value === 'number' && Number.isFinite(event.value)
-      ? `$${(event.value / 1000).toFixed(0)}k`
+      ? formatAmountWithCurrency(event.value)
       : '—';
   const vendorCount = event.vendors ?? event.vendorCount ?? 0;
   const bidCount = typeof event.bids === 'number' ? event.bids : event.bidCount ?? 0;
@@ -3872,7 +3873,7 @@ function AnalyticsView() {
       title: 'Cost Forecasting', 
       icon: TrendingUp, 
       color: 'emerald',
-      stat: metrics.totalValue ? `$${(metrics.totalValue / 1_000_000).toFixed(1)}M` : metrics.totalSpend ? `$${(metrics.totalSpend / 1_000_000).toFixed(1)}M` : '—',
+      stat: metrics.totalValue ? formatAmountWithCurrency(metrics.totalValue) : metrics.totalSpend ? formatAmountWithCurrency(metrics.totalSpend) : '—',
       statLabel: 'Projected',
       description: 'Predictive models forecast future contract costs based on inflation trends, vendor pricing patterns, and usage projections.',
       gradient: 'from-emerald-500 to-teal-600',
@@ -3892,7 +3893,7 @@ function AnalyticsView() {
       title: 'Optimization', 
       icon: Zap, 
       color: 'blue',
-      stat: metrics.savings ? `$${(metrics.savings / 1_000).toFixed(0)}K` : agentStats.opportunities?._sum?.potentialValue ? `$${(agentStats.opportunities._sum.potentialValue / 1_000).toFixed(0)}K` : '—',
+      stat: metrics.savings ? formatAmountWithCurrency(metrics.savings) : agentStats.opportunities?._sum?.potentialValue ? formatAmountWithCurrency(agentStats.opportunities._sum.potentialValue) : '—',
       statLabel: 'Savings Found',
       description: 'Data-driven recommendations for contract consolidation, renegotiation, and vendor management.',
       gradient: 'from-blue-500 to-indigo-600',
@@ -4149,18 +4150,7 @@ const TOOLBOX_ITEMS: ToolConfig[] = [
     tags: ['signatures', 'signing', 'tracking'],
     href: '/contracts',
   },
-  {
-    id: 'rate-cards',
-    name: 'Rate Card Analytics',
-    description: 'Analyze vendor rates, find savings, and benchmark pricing',
-    longDescription: 'Upload and compare vendor rate cards. Detect outliers, benchmark against market rates, identify consolidation opportunities, and forecast rate trends.',
-    icon: DollarSign,
-    gradient: 'from-lime-600 to-green-600',
-    category: 'platform',
-    status: 'active',
-    tags: ['rates', 'pricing', 'benchmarking'],
-    href: '/rate-cards',
-  },
+
   // --- Integrations ---
   {
     id: 'word-addin',

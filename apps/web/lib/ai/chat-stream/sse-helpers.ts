@@ -33,14 +33,14 @@ export function summarizeToolResult(result: ToolResult): string {
     case 'list_expiring_contracts':
       return `${d.count || 0} contracts expiring in ${d.daysAhead || 30} days`;
     case 'get_spend_analysis':
-      return `Analyzed ${d.totalContracts || 0} contracts, $${Number(d.totalSpend || 0).toLocaleString()} total`;
+      return `Analyzed ${d.totalContracts || 0} contracts, ${Number(d.totalSpend || 0).toLocaleString('de-CH')} total`;
     case 'get_risk_assessment': {
       const summary = d.summary as Record<string, number> | undefined;
       return summary ? `${summary.criticalRisks || 0} critical, ${summary.highRisks || 0} high risks` : 'Risk assessed';
     }
     case 'get_supplier_info': {
       const s = d.summary as Record<string, unknown> | undefined;
-      return s ? `${s.totalContracts || 0} contracts, $${Number(s.totalSpend || 0).toLocaleString()} spend` : 'Supplier loaded';
+      return s ? `${s.totalContracts || 0} contracts, ${Number(s.totalSpend || 0).toLocaleString('de-CH')} spend` : 'Supplier loaded';
     }
     case 'start_workflow':
       return `Started "${d.workflowName}" workflow`;
@@ -61,7 +61,7 @@ export function summarizeToolResult(result: ToolResult): string {
     case 'get_compliance_summary':
       return `Compliance: ${d.complianceScore || 0}%`;
     case 'get_contract_stats':
-      return `${d.totalContracts || 0} contracts, $${Number(d.totalValue || 0).toLocaleString()}`;
+      return `${d.totalContracts || 0} contracts, ${Number(d.totalValue || 0).toLocaleString('de-CH')}`;
     case 'get_agent_insights':
       return `${d.totalInsights || 0} agent insights across ${(d.categories as string[])?.length || 0} categories`;
     case 'get_agent_debate': {

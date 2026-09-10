@@ -8,6 +8,12 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { rateCardEvents, roleStandardizationService } from 'data-orchestration/services';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
+import {
+  UNKNOWN_CURRENCY,
+  convertedDailyRates,
+  resolvePersistCurrency,
+  resolvePersistGeo,
+} from '@/lib/rate-cards/persist-fields';
 
 export const POST = withAuthApiHandler(async (request, ctx) => {    const tenantId = ctx.tenantId;
     const userId = ctx.userId;
@@ -97,31 +103,17 @@ export const POST = withAuthApiHandler(async (request, ctx) => {    const tenant
                   name: data.supplierName,
                   legalName: data.supplierName,
                   tier: (data.supplierTier || 'TIER_2') as 'BIG_4' | 'TIER_2' | 'BOUTIQUE' | 'OFFSHORE',
-                  country: data.supplierCountry || data.country || '',
-                  region: data.region || 'Americas',
+                  country: resolvePersistGeo(data.supplierCountry, data.country),
+                  region: resolvePersistGeo(data.region),
                 },
               });
             }
 
-            // Convert currency
-            const convertCurrency = (amount: number, currency: string) => {
-              const rates: Record<string, { usd: number; chf: number }> = {
-                USD: { usd: 1.0, chf: 0.88 },
-                EUR: { usd: 1.08, chf: 0.95 },
-                GBP: { usd: 1.27, chf: 1.12 },
-                CHF: { usd: 1.14, chf: 1.0 },
-                CAD: { usd: 0.72, chf: 0.63 },
-                AUD: { usd: 0.65, chf: 0.57 },
-                INR: { usd: 0.012, chf: 0.011 },
-              };
-              const rate = rates[currency.toUpperCase()] ?? rates['USD']!;
-              return {
-                usd: amount * rate.usd,
-                chf: amount * rate.chf,
-              };
-            };
-
-            const converted = convertCurrency(data.dailyRate, data.currency);
+            const currency = resolvePersistCurrency(data.currency);
+            if (currency === UNKNOWN_CURRENCY) {
+              throw new Error('Missing currency — not imported as USD');
+            }
+            const converted = convertedDailyRates(Number(data.dailyRate), currency);
 
             // Create rate card entry
             const rateCard = await prisma.rateCardEntry.create({
@@ -147,13 +139,13 @@ export const POST = withAuthApiHandler(async (request, ctx) => {    const tenant
 
                 // Rate
                 dailyRate: data.dailyRate,
-                currency: data.currency,
+                currency,
                 dailyRateUSD: converted.usd,
                 dailyRateCHF: converted.chf,
 
                 // Geography
-                country: data.country || '',
-                region: data.region || '',
+                country: resolvePersistGeo(data.country, data.supplierCountry),
+                region: resolvePersistGeo(data.region),
                 city: data.city || null,
                 remoteAllowed: false,
 

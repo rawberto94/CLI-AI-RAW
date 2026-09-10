@@ -19,6 +19,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { useDataMode } from '@/contexts/DataModeContext';
+import { formatAmountWithCurrency } from '@/lib/utils/formatters';
 
 // ============================================================================
 // Shared Loading Skeleton
@@ -407,7 +408,7 @@ export function RenewalsWidget({
                     <span className="px-1.5 py-0.5 text-xs bg-violet-100 text-violet-700 rounded">Auto</span>
                   )}
                 </div>
-                <span className="text-xs text-slate-500">${(item.value / 1000).toFixed(0)}K value</span>
+                <span className="text-xs text-slate-500">{formatAmountWithCurrency(item.value, null)} value</span>
               </div>
               <span className={`text-sm font-medium ${item.daysUntil <= 30 ? 'text-red-600' : 'text-slate-600'}`}>
                 {item.daysUntil}d

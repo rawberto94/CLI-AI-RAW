@@ -571,7 +571,7 @@ export const AgentObservabilityDashboard = memo(function AgentObservabilityDashb
     for (let i = 6; i >= 0; i--) {
       const d = new Date(now);
       d.setDate(d.getDate() - i);
-      const label = d.toLocaleDateString('en-US', { weekday: 'short' });
+      const label = d.toLocaleDateString('de-CH', { weekday: 'short' });
       const dayStart = new Date(d); dayStart.setHours(0, 0, 0, 0);
       const dayEnd = new Date(d); dayEnd.setHours(23, 59, 59, 999);
       const dayTokens = traces
@@ -675,9 +675,7 @@ export const AgentObservabilityDashboard = memo(function AgentObservabilityDashb
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
           </Button>
-          <Button variant="outline" size="sm">
-            <Settings className="h-4 w-4" />
-          </Button>
+
         </div>
       </div>
 

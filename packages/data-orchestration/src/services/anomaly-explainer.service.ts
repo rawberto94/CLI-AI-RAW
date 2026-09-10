@@ -8,6 +8,7 @@
  */
 
 import { PrismaClient } from '@prisma/client';
+import { formatMoneyText } from '@repo/utils';
 
 // ============================================================================
 // Types & Interfaces
@@ -263,7 +264,7 @@ export class AnomalyExplainerService {
     // Check for suspicious values
     const rate = Number(rateCard.dailyRateUSD);
     if (rate < 50 || rate > 5000) {
-      issues.push(`Unusual rate value: $${rate}/day`);
+      issues.push(`Unusual rate value: ${formatMoneyText(rate, rateCard.currency)}/day`);
     }
 
     if (issues.length > 0) {
@@ -317,11 +318,11 @@ export class AnomalyExplainerService {
   private generateExplanation(anomaly: DetectedAnomaly, rateCard: any): string {
     switch (anomaly.type) {
       case 'STATISTICAL_OUTLIER':
-        return `The rate of $${anomaly.actualValue}/day for ${rateCard.roleStandardized} (${rateCard.seniority}) is ${anomaly.deviationSigma.toFixed(2)} standard deviations from the market average of $${anomaly.expectedValue.toFixed(0)}/day. This places it well outside the normal distribution of rates for this role and location, indicating either exceptional circumstances or potential data issues.`;
+        return `The rate of ${formatMoneyText(Number(anomaly.actualValue), rateCard.currency)}/day for ${rateCard.roleStandardized} (${rateCard.seniority}) is ${anomaly.deviationSigma.toFixed(2)} standard deviations from the market average of ${formatMoneyText(Number(anomaly.expectedValue), rateCard.currency)}/day. This places it well outside the normal distribution of rates for this role and location, indicating either exceptional circumstances or potential data issues.`;
 
       case 'RATE_SPIKE':
         const increasePercent = ((anomaly.actualValue - anomaly.expectedValue) / anomaly.expectedValue * 100).toFixed(1);
-        return `This rate represents a ${increasePercent}% increase from the previous rate of $${anomaly.expectedValue.toFixed(0)}/day. Such a significant increase in a short period is unusual and warrants investigation to understand the underlying reasons.`;
+        return `This rate represents a ${increasePercent}% increase from the previous rate of ${formatMoneyText(Number(anomaly.expectedValue), rateCard.currency)}/day. Such a significant increase in a short period is unusual and warrants investigation to understand the underlying reasons.`;
 
       case 'INCONSISTENT_CLASSIFICATION':
         return `The seniority classification of ${rateCard.seniority} appears inconsistent with the rate's market position at the ${anomaly.actualValue.toFixed(0)}th percentile. Typically, ${rateCard.seniority} roles fall within a different percentile range, suggesting possible misclassification or unique circumstances.`;

@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 import { logger } from '@/lib/logger';
+import { convertAmountToDisplay, resolveDisplayCurrency } from '@/lib/display-currency.server';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,8 +31,6 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
       spendMetricsRaw,
       workflowStats,
       recentSyncs,
-      topSuppliers,
-      categoryBreakdown,
       monthlySpendTrend,
     ] = await Promise.all([
       // 1. ERP / Integration statuses
@@ -93,27 +92,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
         take: 10,
       }),
 
-      // 6. Top suppliers by contract value
-      prisma.contract.groupBy({
-        by: ['supplierName'],
-        where: { tenantId, supplierName: { not: null } },
-        _sum: { totalValue: true, annualValue: true },
-        _count: { _all: true },
-        orderBy: { _sum: { totalValue: 'desc' } },
-        take: 10,
-      }),
-
-      // 7. Category breakdown
-      prisma.contract.groupBy({
-        by: ['categoryL1'],
-        where: { tenantId, categoryL1: { not: null } },
-        _sum: { totalValue: true },
-        _count: { _all: true },
-        orderBy: { _sum: { totalValue: 'desc' } },
-        take: 10,
-      }),
-
-      // 8. Monthly spend trend (last 12 months)
+      // 6. Monthly spend trend (last 12 months)
       prisma.$queryRaw`
         SELECT
           TO_CHAR(created_at, 'YYYY-MM') as month,
@@ -130,10 +109,32 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
     // ═══════════════════════════════════════════════════════════════════
 
     const spendMetrics = (spendMetricsRaw as Record<string, unknown>[])[0] || {};
+    const displayCurrency = await resolveDisplayCurrency(ctx.tenantId);
 
-    // Contract portfolio summary
-    const portfolioValue = contracts.reduce((sum, c) => sum + Number(c.totalValue || 0), 0);
-    const annualCommitment = contracts.reduce((sum, c) => sum + Number(c.annualValue || 0), 0);
+    // Contract portfolio summary — convert each stored currency; skip unknown.
+    let portfolioValue = 0;
+    let annualCommitment = 0;
+    const supplierAgg = new Map<string, { totalValue: number; annualValue: number; contractCount: number }>();
+    const categoryAgg = new Map<string, { totalValue: number; contractCount: number }>();
+    for (const c of contracts) {
+      const convertedTotal = convertAmountToDisplay(c.totalValue, c.currency, displayCurrency);
+      const convertedAnnual = convertAmountToDisplay(c.annualValue, c.currency, displayCurrency);
+      if (convertedTotal != null) portfolioValue += convertedTotal;
+      if (convertedAnnual != null) annualCommitment += convertedAnnual;
+      if (c.supplierName) {
+        const current = supplierAgg.get(c.supplierName) || { totalValue: 0, annualValue: 0, contractCount: 0 };
+        if (convertedTotal != null) current.totalValue += convertedTotal;
+        if (convertedAnnual != null) current.annualValue += convertedAnnual;
+        current.contractCount += 1;
+        supplierAgg.set(c.supplierName, current);
+      }
+      if (c.categoryL1) {
+        const current = categoryAgg.get(c.categoryL1) || { totalValue: 0, contractCount: 0 };
+        if (convertedTotal != null) current.totalValue += convertedTotal;
+        current.contractCount += 1;
+        categoryAgg.set(c.categoryL1, current);
+      }
+    }
 
     const statusCounts: Record<string, number> = {};
     const spendTypeCounts: Record<string, number> = {};
@@ -223,6 +224,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
         totalContracts: contracts.length,
         portfolioValue,
         annualCommitment,
+        displayCurrency,
         byStatus: Object.entries(statusCounts).map(([status, count]) => ({ status, count })),
         bySpendType: Object.entries(spendTypeCounts).map(([type, count]) => ({ type, count })),
         byCurrency: Object.entries(currencyCounts).map(([currency, count]) => ({ currency, count })),
@@ -262,19 +264,25 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
       },
 
       // Suppliers
-      topSuppliers: topSuppliers.map(s => ({
-        name: s.supplierName,
-        totalValue: Number(s._sum.totalValue || 0),
-        annualValue: Number(s._sum.annualValue || 0),
-        contractCount: s._count._all,
-      })),
+      topSuppliers: Array.from(supplierAgg.entries())
+        .map(([name, agg]) => ({
+          name,
+          totalValue: agg.totalValue,
+          annualValue: agg.annualValue,
+          contractCount: agg.contractCount,
+        }))
+        .sort((a, b) => b.totalValue - a.totalValue)
+        .slice(0, 10),
 
       // Categories
-      categories: categoryBreakdown.map(c => ({
-        category: c.categoryL1,
-        totalValue: Number(c._sum.totalValue || 0),
-        contractCount: c._count._all,
-      })),
+      categories: Array.from(categoryAgg.entries())
+        .map(([category, agg]) => ({
+          category,
+          totalValue: agg.totalValue,
+          contractCount: agg.contractCount,
+        }))
+        .sort((a, b) => b.totalValue - a.totalValue)
+        .slice(0, 10),
 
       // Monthly trend
       monthlyTrend: (monthlySpendTrend as Array<{ month: string; po_spend: number }>).map(m => ({

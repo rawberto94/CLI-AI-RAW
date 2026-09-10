@@ -5,6 +5,9 @@
 
 import { DetectedIntent, ActionResponse, ChatContext } from '../types';
 import { prisma } from '@/lib/prisma';
+import { formatAmountWithCurrency } from '@/lib/utils/formatters';
+import { sumToDisplayCurrency } from '@/lib/display-currency.server';
+import { DEFAULT_DISPLAY_CURRENCY } from '@/lib/display-currency';
 
 export async function handleAnalyticsActions(
   intent: DetectedIntent,
@@ -101,12 +104,16 @@ async function getSpendAnalysis(tenantId: string, supplierName?: string): Promis
       supplierName: true,
       category: true,
       totalValue: true,
+      currency: true,
       effectiveDate: true,
       expirationDate: true,
     },
   });
 
-  const totalSpend = contracts.reduce((sum, c) => sum + (Number(c.totalValue) || 0), 0);
+  const totalSpend = sumToDisplayCurrency(
+    contracts.map((c) => ({ amount: Number(c.totalValue) || 0, currency: c.currency })),
+    DEFAULT_DISPLAY_CURRENCY,
+  );
   
   // Group by supplier
   const bySupplier = contracts.reduce((acc, c) => {
@@ -136,7 +143,7 @@ async function getSpendAnalysis(tenantId: string, supplierName?: string): Promis
 
   return {
     success: true,
-    message: `Spend analysis complete: $${totalSpend.toLocaleString()} total across ${contracts.length} contracts`,
+    message: `Spend analysis complete: ${formatAmountWithCurrency(totalSpend, DEFAULT_DISPLAY_CURRENCY)} total across ${contracts.length} contracts`,
     data: {
       totalContracts: contracts.length,
       totalSpend,
@@ -171,7 +178,7 @@ async function getCostSavings(tenantId: string): Promise<ActionResponse> {
   return {
     success: true,
     message: opportunities.length > 0
-      ? `Found ${opportunities.length} savings opportunities totaling $${totalPotential.toLocaleString()}`
+      ? `Found ${opportunities.length} savings opportunities totaling ${formatAmountWithCurrency(totalPotential, null)}`
       : 'No active savings opportunities identified',
     data: {
       count: opportunities.length,

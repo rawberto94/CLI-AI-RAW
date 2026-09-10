@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { formatAmountWithCurrency } from '@/lib/utils/formatters'
 
 // ============================================================================
 // LEAN COMPONENT: Simple approval card with one-click actions
@@ -31,6 +32,7 @@ interface ApprovalItem {
   contractId: string
   contractName: string
   value?: number | null
+  currency?: string | null
   currentStep: string
   status: string
   createdAt: string
@@ -108,7 +110,7 @@ export function QuickApprovalCard({ item, onAction }: QuickApprovalCardProps) {
                 {item.value && (
                   <span className="flex items-center gap-1">
                     <DollarSign className="h-3.5 w-3.5" />
-                    ${item.value.toLocaleString()}
+                    {formatAmountWithCurrency(item.value, item.currency)}
                   </span>
                 )}
               </div>

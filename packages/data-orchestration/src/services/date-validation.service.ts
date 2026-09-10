@@ -10,6 +10,7 @@
  */
 
 import { createLogger } from '../utils/logger';
+import { parseIsoDate } from '@repo/utils';
 
 const logger = createLogger('date-validation-service');
 
@@ -144,29 +145,12 @@ export class DateValidationService {
    * Parse date from various formats
    */
   private parseDate(dateString: string): Date | null {
-    // Try ISO 8601 first (most reliable)
-    const isoDate = new Date(dateString);
-    if (!isNaN(isoDate.getTime())) {
-      return isoDate;
-    }
+    const iso = parseIsoDate(dateString);
+    if (iso) return new Date(`${iso}T00:00:00Z`);
 
-    // Try common formats
-    // YYYY-MM-DD
-    const iso = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateString);
-    if (iso) {
-      return new Date(parseInt(iso[1]), parseInt(iso[2]) - 1, parseInt(iso[3]));
-    }
-
-    // DD/MM/YYYY or DD-MM-YYYY
-    const dmy = /^(\d{2})[\/\-](\d{2})[\/\-](\d{4})$/.exec(dateString);
-    if (dmy) {
-      return new Date(parseInt(dmy[3]), parseInt(dmy[2]) - 1, parseInt(dmy[1]));
-    }
-
-    // MM/DD/YYYY (US format)
-    const mdy = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(dateString);
-    if (mdy) {
-      return new Date(parseInt(mdy[3]), parseInt(mdy[1]) - 1, parseInt(mdy[2]));
+    const jsDate = new Date(dateString);
+    if (!isNaN(jsDate.getTime()) && !/^\d{1,2}[./]\d{1,2}[./]\d{2,4}$/.test(dateString)) {
+      return jsDate;
     }
 
     return null;
@@ -512,7 +496,7 @@ export class DateValidationService {
       case 'short':
         return this.toYYYYMMDD(date);
       case 'long':
-        return date.toLocaleDateString('en-US', {
+        return date.toLocaleDateString('de-CH', {
           year: 'numeric',
           month: 'long',
           day: 'numeric',

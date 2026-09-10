@@ -1,5 +1,6 @@
 import pino from 'pino';
 import clientsDb from 'clients-db';
+import { analysisLanguageInstructions, formatMoneyText } from '@repo/utils';
 import { tryCreateOpenAIClient } from '../lib/openai';
 
 // Lazy-init OpenAI for LLM-powered risk detection (Azure-first factory)
@@ -283,6 +284,7 @@ export class ProactiveRiskDetector {
         {
           role: 'system',
           content: `You are a contract risk analyst. Analyze the contract text and identify MISSING critical clauses.
+${analysisLanguageInstructions({ contractText })}
 
 For each missing clause, return:
 - "title": name of the missing clause
@@ -601,7 +603,7 @@ Only include genuinely missing clauses — do NOT flag clauses that ARE present.
               severity: RiskSeverity.HIGH,
               title: 'Pricing Significantly Above Market',
               description: `Contract value is ${((currentValue / avgValue - 1) * 100).toFixed(0)}% above similar contracts`,
-              evidence: `Current: $${currentValue.toLocaleString()}, Average: $${avgValue.toLocaleString()}`,
+              evidence: `Current: ${formatMoneyText(currentValue, financialData.currency)}, Average: ${formatMoneyText(avgValue)}`,
               impact: 'Overpaying compared to market rates',
               recommendation: 'Negotiate pricing to align with market rates',
               autoFixable: false,
@@ -682,6 +684,7 @@ Only include genuinely missing clauses — do NOT flag clauses that ARE present.
         {
           role: 'system',
           content: `You are a contract language analyst specializing in detecting ambiguous, vague, or legally risky language.
+${analysisLanguageInstructions({ contractText })}
 
 Identify passages that could cause disputes: vague timing, undefined terms, unclear obligations, subjective standards, missing definitions, or contradictory statements.
 

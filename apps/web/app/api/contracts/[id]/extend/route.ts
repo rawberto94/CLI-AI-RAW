@@ -158,6 +158,7 @@ export const POST = withContractApiHandler(async (request: NextRequest, ctx) => 
         renewalDate: new Date(),
         expiryDate: newExpiration,
         value: validatedData.newTotalValue ?? (contract.totalValue ? Number(contract.totalValue) : undefined),
+        currency: contract.currency || undefined,
         submittedForApproval: validatedData.submitForApproval,
       }).catch((err) => {
         logger.error('[ContractExtend] Email notification error:', err);

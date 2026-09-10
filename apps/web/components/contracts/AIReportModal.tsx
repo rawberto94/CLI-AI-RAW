@@ -38,6 +38,8 @@ import {
   Zap,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useDisplayCurrency } from "@/hooks/useDisplayCurrency";
+import { formatDisplayTotal } from "@/lib/utils/formatters";
 
 interface KeyFinding {
   type: 'risk' | 'opportunity' | 'compliance' | 'action-needed';
@@ -108,6 +110,7 @@ const priorityConfig = {
 };
 
 export function AIReportModal({ isOpen, onClose, contractIds, contractNames }: AIReportModalProps) {
+  const displayCurrency = useDisplayCurrency();
   const [isLoading, setIsLoading] = useState(false);
   const [report, setReport] = useState<AIReport | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -163,8 +166,8 @@ EXECUTIVE SUMMARY
 ${report.executiveSummary}
 
 PORTFOLIO ANALYSIS
-- Total Value: $${report.portfolioAnalysis.totalValue.toLocaleString()}
-- Average Value: $${Math.round(report.portfolioAnalysis.averageValue).toLocaleString()}
+- Total Value: ${formatDisplayTotal(report.portfolioAnalysis.totalValue, displayCurrency)}
+- Average Value: ${formatDisplayTotal(Math.round(report.portfolioAnalysis.averageValue), displayCurrency)}
 
 KEY FINDINGS
 ${report.keyFindings.map(f => `• [${f.severity.toUpperCase()}] ${f.title}: ${f.description}`).join('\n')}
@@ -342,7 +345,7 @@ ${report.recommendations.map((r, i) => `${i + 1}. ${r}`).join('\n')}
                           <span className="text-xs font-medium text-green-700">Total Value</span>
                         </div>
                         <p className="text-xl font-bold mt-2 text-green-900">
-                          ${report.portfolioAnalysis.totalValue.toLocaleString()}
+                          {formatDisplayTotal(report.portfolioAnalysis.totalValue, displayCurrency)}
                         </p>
                       </CardContent>
                     </Card>

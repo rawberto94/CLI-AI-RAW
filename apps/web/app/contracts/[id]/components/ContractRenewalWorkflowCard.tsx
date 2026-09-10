@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { cn } from '@/lib/utils'
+import { formatAmountWithCurrency } from '@/lib/utils/formatters'
 import {
   RefreshCw,
   Calendar,
@@ -46,6 +47,7 @@ interface ContractRenewalWorkflowCardProps {
   renewalStatus: 'not_started' | 'in_progress' | 'pending_approval' | 'approved' | 'declined' | 'completed'
   currentValue?: number
   proposedValue?: number
+  currency?: string | null
   autoRenewal?: boolean
   renewalNoticeRequired?: boolean
   noticePeriodDays?: number
@@ -96,6 +98,7 @@ export const ContractRenewalWorkflowCard = memo(function ContractRenewalWorkflow
   renewalStatus,
   currentValue,
   proposedValue,
+  currency,
   autoRenewal = false,
   renewalNoticeRequired = false,
   noticePeriodDays = 30,
@@ -110,7 +113,7 @@ export const ContractRenewalWorkflowCard = memo(function ContractRenewalWorkflow
   onViewDetails,
   onScheduleMeeting,
   onGenerateProposal,
-  formatCurrency = (v) => v !== undefined ? `$${v.toLocaleString()}` : '—',
+  formatCurrency = (v) => formatAmountWithCurrency(v, currency),
   className,
 }: ContractRenewalWorkflowCardProps) {
   const [isExpanded, setIsExpanded] = useState(false)

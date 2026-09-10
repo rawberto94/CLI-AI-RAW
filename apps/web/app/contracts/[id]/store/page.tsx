@@ -41,6 +41,7 @@ import {
 } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { formatAmountWithCurrency } from '@/lib/utils/formatters';
 
 // ============================================================================
 // Types
@@ -317,7 +318,7 @@ export default function StoragePage({ params }: { params: Promise<{ id: string }
                 <div className="bg-slate-50 rounded-lg p-4">
                   <p className="text-xs text-slate-500 mb-1">Value</p>
                   <p className="font-semibold text-slate-900">
-                    ${(contract?.value || 0).toLocaleString()}
+                    {formatAmountWithCurrency(contract?.value || 0, contract?.currency)}
                   </p>
                 </div>
                 <div className="bg-slate-50 rounded-lg p-4">
@@ -543,7 +544,7 @@ export default function StoragePage({ params }: { params: Promise<{ id: string }
                   <p className="text-xs text-slate-500 mb-1">Value</p>
                   <p className="font-medium text-slate-900 flex items-center gap-2">
                     <DollarSign className="w-4 h-4 text-slate-400" />
-                    ${(contract?.value || 0).toLocaleString()}
+                    {formatAmountWithCurrency(contract?.value || 0, contract?.currency)}
                   </p>
                 </div>
                 <div>

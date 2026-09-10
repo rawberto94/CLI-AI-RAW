@@ -24,6 +24,8 @@ import {
     ExternalLink,
     Download
 } from 'lucide-react'
+import { formatAmountWithCurrency } from '@/lib/utils/formatters'
+import Link from 'next/link'
 
 // Optimized Savings Opportunity Card
 export function SavingsOpportunityCard({ opportunity, onViewDetails }: {
@@ -56,7 +58,7 @@ export function SavingsOpportunityCard({ opportunity, onViewDetails }: {
         <div className="grid grid-cols-2 gap-4 mb-3">
           <div>
             <div className="text-2xl font-bold text-green-600">
-              ${(opportunity.potentialSavings / 1000).toFixed(0)}K
+              {formatAmountWithCurrency(opportunity.potentialSavings)}
             </div>
             <div className="text-xs text-gray-500">Annual Savings</div>
           </div>
@@ -70,19 +72,14 @@ export function SavingsOpportunityCard({ opportunity, onViewDetails }: {
         
         <div className="flex items-center justify-between text-sm">
           <div className="text-gray-600">
-            Current: ${opportunity.currentRate}/hr
+            Current: {formatAmountWithCurrency(opportunity.currentRate)}/hr
           </div>
           <div className="text-gray-600">
-            Target: ${opportunity.benchmarkRate}/hr
+            Target: {formatAmountWithCurrency(opportunity.benchmarkRate)}/hr
           </div>
         </div>
         
-        <div className="mt-3 pt-3 border-t border-gray-100">
-          <Button size="sm" variant="outline" className="w-full">
-            <Target className="w-3 h-3 mr-2" />
-            Start Negotiation
-          </Button>
-        </div>
+
       </CardContent>
     </Card>
   )
@@ -141,13 +138,13 @@ export function RenewalAlertCard({ renewal, onTakeAction }: {
           </div>
           <div>
             <div className="text-lg font-bold text-violet-600">
-              ${(renewal.value / 1000000).toFixed(1)}M
+              {formatAmountWithCurrency(renewal.value)}
             </div>
             <div className="text-xs text-gray-500">Contract Value</div>
           </div>
           <div>
             <div className="text-lg font-bold text-gray-900">
-              {new Date(renewal.expiryDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+              {new Date(renewal.expiryDate).toLocaleDateString('de-CH', { month: 'short', day: 'numeric' })}
             </div>
             <div className="text-xs text-gray-500">Expires</div>
           </div>
@@ -158,10 +155,14 @@ export function RenewalAlertCard({ renewal, onTakeAction }: {
             <Zap className="w-3 h-3 mr-2" />
             Start RFx
           </Button>
-          <Button size="sm" variant="ghost" className="flex-1">
-            <FileText className="w-3 h-3 mr-2" />
-            View Contract
-          </Button>
+          {renewal.contractId && (
+            <Button size="sm" variant="ghost" className="flex-1" asChild>
+              <Link href={`/contracts/${renewal.contractId}`}>
+                <FileText className="w-3 h-3 mr-2" />
+                View Contract
+              </Link>
+            </Button>
+          )}
         </div>
       </CardContent>
     </Card>
@@ -297,7 +298,7 @@ export function SupplierPerformanceCard({ supplier, onViewDetails }: {
         
         <div className="flex items-center justify-between">
           <div>
-            <div className="text-sm font-medium">${(supplier.contractValue / 1000000).toFixed(1)}M</div>
+            <div className="text-sm font-medium">{formatAmountWithCurrency(supplier.contractValue)}</div>
             <div className="text-xs text-gray-500">Contract Value</div>
           </div>
           <Badge className={getRiskColor(supplier.riskLevel)}>
@@ -437,7 +438,7 @@ export function ActionCenter({ actions, onTakeAction }: {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4 text-sm text-gray-600">
                     {action.estimatedValue && (
-                      <span>Value: ${(action.estimatedValue / 1000).toFixed(0)}K</span>
+                      <span>Value: {formatAmountWithCurrency(action.estimatedValue)}</span>
                     )}
                     {action.dueDate && (
                       <span>Due: {new Date(action.dueDate).toLocaleDateString()}</span>
@@ -456,11 +457,7 @@ export function ActionCenter({ actions, onTakeAction }: {
         </Card>
       ))}
       
-      {actions.length > 5 && (
-        <Button variant="outline" className="w-full">
-          View All {actions.length} Actions
-        </Button>
-      )}
+
     </div>
   )
 }
@@ -516,12 +513,7 @@ export function SmartInsightsPanel({ insights }: {
                     {insight.impact.toUpperCase()} IMPACT
                   </Badge>
                   
-                  {insight.actionable && (
-                    <Button size="sm" variant="ghost">
-                      <ExternalLink className="w-3 h-3 mr-1" />
-                      Learn More
-                    </Button>
-                  )}
+
                 </div>
               </div>
             </div>
@@ -547,7 +539,7 @@ export function QuickStatsGrid({ stats }: {
     <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
       <div className="text-center p-4 bg-green-50 rounded-lg border border-green-200">
         <div className="text-2xl font-bold text-green-600">
-          ${(stats.totalSavingsIdentified / 1000000).toFixed(1)}M
+          {formatAmountWithCurrency(stats.totalSavingsIdentified)}
         </div>
         <div className="text-sm text-green-700">Savings Identified</div>
       </div>

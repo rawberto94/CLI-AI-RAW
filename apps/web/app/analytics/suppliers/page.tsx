@@ -27,6 +27,7 @@ import {
   Filter
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { formatAmountWithCurrency } from '@/lib/utils/formatters';
 
 export default function SupplierAnalyticsPage() {
   const [mode, setMode] = useState<DataMode>('real');
@@ -181,11 +182,7 @@ export default function SupplierAnalyticsPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="flex items-end">
-              <Button className="w-full">
-                Apply Filters
-              </Button>
-            </div>
+
           </div>
         </CardContent>
       </Card>
@@ -349,7 +346,7 @@ export default function SupplierAnalyticsPage() {
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-medium">Annual Revenue</span>
                   <span className="font-bold">
-                    ${(data.financialHealth.revenue / 1000000).toFixed(1)}M
+                    {formatAmountWithCurrency(data.financialHealth.revenue)}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
@@ -391,7 +388,7 @@ export default function SupplierAnalyticsPage() {
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-medium">Total Value</span>
                   <span className="font-bold">
-                    ${(data.relationships.totalValue / 1000000).toFixed(1)}M
+                    {formatAmountWithCurrency(data.relationships.totalValue)}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">

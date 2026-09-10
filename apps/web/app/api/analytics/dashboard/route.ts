@@ -3,6 +3,9 @@ import { prisma } from '@/lib/prisma';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 import { analyticsService } from 'data-orchestration/services';
 import { getCached, setCached } from '@/lib/cache';
+import { expirationOrEndDateFilter, portfolioWhere } from '@/lib/contracts/server/portfolio';
+import { clampTrendPercent } from '@/lib/utils/percent';
+import { resolveDisplayCurrency, sumGroupedTotalValue } from '@/lib/display-currency.server';
 
 // Helper to get date range from timeframe
 function getDateRange(timeframe: string): { start: Date; end: Date; previousStart: Date; previousEnd: Date } {
@@ -44,23 +47,24 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
   }
 
   // Check cache first (5 minute TTL for dashboard data)
-  const cacheKey = `analytics:dashboard:${tenantId}:${timeframe}`;
+  const displayCurrency = await resolveDisplayCurrency(ctx.tenantId);
+  const cacheKey = `analytics:dashboard:${tenantId}:${timeframe}:${displayCurrency}:v3`;
   const cached = await getCached<{ metrics: unknown; timeframe: string; period: unknown }>(cacheKey);
   if (cached) {
     return createSuccessResponse(ctx, cached);
   }
   
   const { start, end, previousStart, previousEnd } = getDateRange(timeframe);
+  const portfolio = portfolioWhere(tenantId);
   
-  // Build where clause
-  const whereClause: Record<string, unknown> = {
+  const whereClause = {
+    ...portfolio,
     createdAt: { gte: start, lte: end },
-    tenantId,
   };
   
-  const previousWhereClause: Record<string, unknown> = {
+  const previousWhereClause = {
+    ...portfolio,
     createdAt: { gte: previousStart, lte: previousEnd },
-    tenantId,
   };
 
   // Execute all queries in parallel for performance
@@ -69,8 +73,8 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
     previousTotalContracts,
     activeContracts,
     _previousActiveContracts,
-    valueAgg,
-    previousValueAgg,
+    valueByCurrency,
+    previousValueByCurrency,
     pendingApprovals,
     expiringContracts,
     statusCounts,
@@ -81,11 +85,11 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
     // Previous period total
     prisma.contract.count({ where: previousWhereClause }),
     
-    // Active contracts
+    // Active contracts in period (portfolio ACTIVE only)
     prisma.contract.count({
       where: {
         ...whereClause,
-        status: { in: ['ACTIVE', 'COMPLETED'] },
+        status: 'ACTIVE',
       },
     }),
     
@@ -93,61 +97,60 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
     prisma.contract.count({
       where: {
         ...previousWhereClause,
-        status: { in: ['ACTIVE', 'COMPLETED'] },
+        status: 'ACTIVE',
       },
     }),
     
-    // Total value aggregation
-    prisma.contract.aggregate({
-      where: whereClause,
+    prisma.contract.groupBy({
+      by: ['currency'],
+      where: { ...whereClause, totalValue: { not: null } },
       _sum: { totalValue: true },
-      _avg: { totalValue: true },
     }),
-    
-    // Previous period value
-    prisma.contract.aggregate({
-      where: previousWhereClause,
+    prisma.contract.groupBy({
+      by: ['currency'],
+      where: { ...previousWhereClause, totalValue: { not: null } },
       _sum: { totalValue: true },
     }),
     
-    // Pending approvals (PENDING status)
+    // Pending approvals (operational queue, not portfolio)
     prisma.contract.count({
       where: {
+        tenantId,
+        isDeleted: false,
         status: 'PENDING',
-        ...(tenantId ? { tenantId } : {}),
       },
     }),
     
     // Contracts expiring in the next 30 days
     prisma.contract.count({
       where: {
-        expirationDate: {
+        ...portfolio,
+        ...expirationOrEndDateFilter({
           gte: new Date(),
           lte: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-        },
-        status: { in: ['ACTIVE', 'COMPLETED'] },
-        ...(tenantId ? { tenantId } : {}),
+        }),
       },
     }),
     
-    // Status distribution
+    // Status distribution of non-deleted contracts
     prisma.contract.groupBy({
       by: ['status'],
-      where: tenantId ? { tenantId } : {},
+      where: { tenantId, isDeleted: false },
       _count: { id: true },
     }),
   ]);
 
-  // Calculate percentage changes
-  const contractsChange = previousTotalContracts > 0 
-    ? Math.round(((totalContracts - previousTotalContracts) / previousTotalContracts) * 100) 
+  const rawContractsChange = previousTotalContracts > 0
+    ? ((totalContracts - previousTotalContracts) / previousTotalContracts) * 100
     : totalContracts > 0 ? 100 : 0;
+  const contractsChange = clampTrendPercent(rawContractsChange, previousTotalContracts);
   
-  const currentValue = Number(valueAgg._sum.totalValue || 0);
-  const previousValue = Number(previousValueAgg._sum.totalValue || 0);
-  const valueChange = previousValue > 0 
-    ? Math.round(((currentValue - previousValue) / previousValue) * 100) 
+  const currentValue = sumGroupedTotalValue(valueByCurrency, displayCurrency);
+  const previousValue = sumGroupedTotalValue(previousValueByCurrency, displayCurrency);
+  const rawValueChange = previousValue > 0
+    ? ((currentValue - previousValue) / previousValue) * 100
     : currentValue > 0 ? 100 : 0;
+  const valueChange = clampTrendPercent(rawValueChange, previousTotalContracts);
 
   // Calculate risk score from contracts with risk metadata (placeholder - could be enhanced)
   // For now, using a simple calculation based on expiring contracts ratio
@@ -170,6 +173,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
     totalContracts,
     activeContracts,
     totalValue: currentValue / 1000000, // Convert to millions
+    displayCurrency,
     avgRiskScore,
     pendingApprovals,
     expiringThisMonth: expiringContracts,

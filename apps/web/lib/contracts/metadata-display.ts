@@ -31,6 +31,17 @@ export function resolveDocumentTitle(
   return '';
 }
 
+/** Stored classification, or `unknown` — never invent `contract`. */
+export function resolveDocumentClassification(
+  ...candidates: Array<string | null | undefined>
+): string {
+  for (const candidate of candidates) {
+    const value = typeof candidate === 'string' ? candidate.trim() : '';
+    if (value) return value;
+  }
+  return 'unknown';
+}
+
 export function isEmptyMetadataValue(value: unknown): boolean {
   return (
     value === undefined
@@ -117,6 +128,43 @@ export function enrichCommercialFieldsFromArtifacts(
   }
 
   return next;
+}
+
+const UI_ONLY_METADATA_KEYS = new Set([
+  'tcvProvenance',
+  'tcvDrift',
+  '_criticalFields',
+  '_field_confidence',
+  '_fieldValidations',
+  '_fields_needing_verification',
+  '_extraction_confidence',
+  '_extracted_at',
+  '_extraction_model',
+]);
+
+/** Payload for PUT /metadata — drops UI-only keys and placeholder zeros. */
+export function toPersistableMetadata(metadata: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(metadata)) {
+    if (!key || key.startsWith('_') || UI_ONLY_METADATA_KEYS.has(key)) continue;
+    if (key === 'tcv_amount' && (value === 0 || value === '0')) {
+      out[key] = null;
+      continue;
+    }
+    if (
+      (key === 'reminder_days_before_end' || key === 'notice_period_days')
+      && (value === '' || value === undefined)
+    ) {
+      out[key] = null;
+      continue;
+    }
+    out[key] = value;
+  }
+  if (typeof out.notice_period === 'string' && (out.notice_period_days == null || out.notice_period_days === '')) {
+    const days = Number.parseInt(out.notice_period, 10);
+    if (Number.isFinite(days) && days > 0) out.notice_period_days = days;
+  }
+  return out;
 }
 
 export function mergePersistedMetadata<T extends Record<string, unknown>>(

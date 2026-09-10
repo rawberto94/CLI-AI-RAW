@@ -37,6 +37,8 @@ import { getTenantId } from '@/lib/tenant';
 import { useDemoMode } from '@/hooks/useDemoMode';
 import { RenewalsCalendar } from '@/components/calendar/RenewalsCalendar';
 import { useTranslations } from 'next-intl';
+import { useDisplayCurrency } from '@/hooks/useDisplayCurrency';
+import { formatAmountWithCurrency, formatDisplayTotal, sumConvertedCurrency } from '@/lib/utils/formatters';
 
 // ============================================================================
 // Types
@@ -49,6 +51,7 @@ interface RenewalContract {
   supplierName: string;
   currentValue: number;
   projectedValue: number;
+  currency?: string;
   renewalDate: string;
   autoRenewal: boolean;
   noticeDeadline?: string;
@@ -258,7 +261,7 @@ const RenewalCard: React.FC<RenewalCardProps> = ({ renewal, isSelected, onSelect
             {renewal.daysUntilRenewal}d
           </div>
           <div className="text-xs text-slate-400 mt-1">
-            {renewal.renewalDate ? new Date(renewal.renewalDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
+            {renewal.renewalDate ? new Date(renewal.renewalDate).toLocaleDateString('de-CH', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
           </div>
         </div>
       </div>
@@ -267,12 +270,12 @@ const RenewalCard: React.FC<RenewalCardProps> = ({ renewal, isSelected, onSelect
       <div className="mt-3 grid grid-cols-2 gap-3">
         <div className="p-2 bg-slate-50 rounded-lg">
           <div className="text-xs text-slate-500">Current Value</div>
-          <div className="font-semibold text-slate-900">${renewal.currentValue.toLocaleString()}</div>
+          <div className="font-semibold text-slate-900">{formatAmountWithCurrency(renewal.currentValue, renewal.currency)}</div>
         </div>
         <div className="p-2 bg-slate-50 rounded-lg">
           <div className="text-xs text-slate-500">Projected</div>
           <div className="flex items-center gap-1">
-            <span className="font-semibold text-slate-900">${renewal.projectedValue.toLocaleString()}</span>
+            <span className="font-semibold text-slate-900">{formatAmountWithCurrency(renewal.projectedValue, renewal.currency)}</span>
             {valueChange !== 0 && (
               <span className={`text-xs flex items-center ${valueChange > 0 ? 'text-red-500' : 'text-green-500'}`}>
                 {valueChange > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
@@ -290,7 +293,7 @@ const RenewalCard: React.FC<RenewalCardProps> = ({ renewal, isSelected, onSelect
             <div className="flex items-center gap-2 p-2 bg-red-50 border border-red-200 rounded-lg">
               <AlertTriangle className="w-4 h-4 text-red-500" />
               <span className="text-xs text-red-700 font-medium">
-                Notice deadline: {new Date(renewal.noticeDeadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                Notice deadline: {new Date(renewal.noticeDeadline).toLocaleDateString('de-CH', { month: 'short', day: 'numeric', year: 'numeric' })}
               </span>
             </div>
           )}
@@ -413,6 +416,7 @@ export const RenewalManager: React.FC = () => {
       supplierName: item.supplier || item.counterparty || item.vendor || 'Unknown',
       currentValue: item.currentValue || item.contractValue || item.value || 0,
       projectedValue: item.projectedValue || item.currentValue || item.contractValue || 0,
+      currency: item.currency,
       renewalDate: item.expiryDate || item.endDate || item.renewalDate,
       autoRenewal: item.autoRenewal ?? false,
       noticeDeadline: item.noticeDeadline,
@@ -455,18 +459,25 @@ export const RenewalManager: React.FC = () => {
     [renewals, filter, searchQuery],
   );
 
+  const displayCurrency = useDisplayCurrency();
   const stats = useMemo(() => {
-    const totalValue = renewals.reduce((sum, r) => sum + r.currentValue, 0);
-    const potentialSavings = renewals.reduce((sum, r) => sum + (r.savings?.potential || 0), 0);
+    const totalValue = sumConvertedCurrency(
+      renewals.map((r) => ({ amount: r.currentValue, currency: r.currency })),
+      displayCurrency,
+    );
+    const potentialSavings = sumConvertedCurrency(
+      renewals.map((r) => ({ amount: r.savings?.potential, currency: r.currency })),
+      displayCurrency,
+    );
     return {
       total: renewals.length,
-      urgent: renewals.filter(r => r.daysUntilRenewal <= 30).length,
+      urgent: renewals.filter(r => r.daysUntilRenewal >= 0 && r.daysUntilRenewal <= 30).length,
       autoRenewal: renewals.filter(r => r.autoRenewal).length,
       totalValue,
       potentialSavings,
       atRisk: renewals.filter(r => r.recommendation === 'terminate' || r.recommendation === 'renegotiate').length,
     };
-  }, [renewals]);
+  }, [renewals, displayCurrency]);
 
   const renewalsByMonth = useMemo(() => {
     const grouped: Record<string, RenewalContract[]> = {};
@@ -719,11 +730,15 @@ export const RenewalManager: React.FC = () => {
             <div className="text-xs text-amber-600 font-medium">{t('renewalManager.stats.actionNeeded')}</div>
           </div>
           <div className="group p-3 bg-gradient-to-br from-violet-50 to-purple-100/70 rounded-xl text-center border border-violet-200/50 shadow-md hover:shadow-lg hover:shadow-violet-200/50 transition-all duration-300">
-            <div className="text-xl font-bold text-violet-600">${(stats.totalValue / 1000000).toFixed(1)}M</div>
+            <div className="text-xl font-bold text-violet-600">
+              {formatDisplayTotal(stats.totalValue, displayCurrency)}
+            </div>
             <div className="text-xs text-violet-600 font-medium">{t('renewalManager.stats.totalValue')}</div>
           </div>
           <div className="group p-3 bg-gradient-to-br from-violet-50 to-violet-100/70 rounded-xl text-center border border-green-200/50 shadow-md hover:shadow-lg hover:shadow-green-200/50 transition-all duration-300">
-            <div className="text-xl font-bold text-green-600">${(stats.potentialSavings / 1000).toFixed(0)}K</div>
+            <div className="text-xl font-bold text-green-600">
+              {formatDisplayTotal(stats.potentialSavings, displayCurrency)}
+            </div>
             <div className="text-xs text-green-600 font-medium">{t('renewalManager.stats.savingsIdentified')}</div>
           </div>
         </div>
@@ -986,7 +1001,7 @@ export const RenewalManager: React.FC = () => {
                   </div>
                   <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
                     <div className="text-slate-500">Current Value:</div>
-                    <div className="font-medium text-slate-900">${selectedRenewalForInitiate.currentValue.toLocaleString()}</div>
+                    <div className="font-medium text-slate-900">{formatAmountWithCurrency(selectedRenewalForInitiate.currentValue, selectedRenewalForInitiate.currency)}</div>
                     <div className="text-slate-500">Renewal Date:</div>
                     <div className="font-medium text-slate-900">{selectedRenewalForInitiate.renewalDate}</div>
                   </div>

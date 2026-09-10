@@ -4,6 +4,11 @@ import {
   TrendAnalysis,
   TargetRates,
 } from "./rate-history-types";
+import { formatRateMoney } from "@/lib/rate-cards/format";
+
+function money(n: number): string {
+  return formatRateMoney(n);
+}
 
 export interface TalkingPointsConfig {
   role: string;
@@ -57,10 +62,10 @@ export class TalkingPointsGenerator {
         id: `market-position-${Date.now()}`,
         category: "market",
         title: "Current Rate Above Market Average",
-        text: `Our current rate of CHF ${currentRate.toLocaleString()} places us in the ${percentile}th percentile of the market. This means we're paying more than ${percentile}% of similar engagements. Market data shows the median rate is CHF ${marketIntelligence.medianRate.toLocaleString()}, representing a ${Math.round(
+        text: `Our current rate of ${money(currentRate)} places us in the ${percentile}th percentile of the market. This means we're paying more than ${percentile}% of similar engagements. Market data shows the median rate is ${money(marketIntelligence.medianRate)}, representing a ${Math.round(
           ((currentRate - marketIntelligence.medianRate) / currentRate) * 100
         )}% premium.`,
-        supportingData: `Market median: CHF ${marketIntelligence.medianRate.toLocaleString()}`,
+        supportingData: `Market median: ${money(marketIntelligence.medianRate)}`,
         persuasivenessScore: 9,
         dataSource: "Market Intelligence Database",
       });
@@ -76,7 +81,7 @@ export class TalkingPointsGenerator {
         title: "Multiple Suppliers Offer Lower Rates",
         text: `Market analysis reveals ${competitorsBelow} suppliers offering comparable ${
           config.role
-        } resources at lower rates. The target rate of CHF ${targetRate.toLocaleString()} aligns with the 25th percentile, which is a reasonable market position while maintaining quality standards.`,
+        } resources at lower rates. The target rate of ${money(targetRate)} aligns with the 25th percentile, which is a reasonable market position while maintaining quality standards.`,
         supportingData: `${competitorsBelow} suppliers with lower rates identified`,
         persuasivenessScore: 8,
         dataSource: "Competitive Rate Analysis",
@@ -90,12 +95,12 @@ export class TalkingPointsGenerator {
         id: `market-average-${Date.now()}`,
         category: "market",
         title: "Rate Exceeds Market Average",
-        text: `The current rate exceeds the market average by CHF ${Math.round(
+        text: `The current rate exceeds the market average by ${money(Math.round(
           avgDiff
-        ).toLocaleString()} per day (${Math.round(
+        ))} per day (${Math.round(
           (avgDiff / currentRate) * 100
         )}%). Aligning with market averages would result in more competitive pricing while maintaining service quality.`,
-        supportingData: `Market average: CHF ${marketIntelligence.averageRate.toLocaleString()}`,
+        supportingData: `Market average: ${money(marketIntelligence.averageRate)}`,
         persuasivenessScore: 7,
         dataSource: "Market Statistics",
       });
@@ -120,10 +125,10 @@ export class TalkingPointsGenerator {
         id: `volume-commitment-${Date.now()}`,
         category: "volume",
         title: "Significant Volume Commitment",
-        text: `We're committing to ${volume} person-days annually, representing CHF ${annualValue.toLocaleString()} in annual business. This substantial volume warrants preferential pricing. A rate reduction to CHF ${config.targetRate.toLocaleString()} would still maintain CHF ${(
+        text: `We're committing to ${volume} person-days annually, representing ${money(annualValue)} in annual business. This substantial volume warrants preferential pricing. A rate reduction to ${money(config.targetRate)} would still maintain ${money(
           config.targetRate * volume
-        ).toLocaleString()} in annual revenue for the supplier.`,
-        supportingData: `${volume} person-days/year = CHF ${annualValue.toLocaleString()} annual value`,
+        )} in annual revenue for the supplier.`,
+        supportingData: `${volume} person-days/year = ${money(annualValue)} annual value`,
         persuasivenessScore: 8,
         dataSource: "Volume Analysis",
       });
@@ -162,8 +167,8 @@ export class TalkingPointsGenerator {
         config.role
       } (${config.level}) resources in ${
         config.location
-      } at rates between CHF ${targetRates.market.p10.toLocaleString()} and CHF ${targetRates.market.p25.toLocaleString()}. While we value our current partnership, we need to ensure competitive pricing to justify continued engagement.`,
-      supportingData: `Market range: CHF ${targetRates.market.p10.toLocaleString()} - CHF ${targetRates.market.p90.toLocaleString()}`,
+      } at rates between ${money(targetRates.market.p10)} and ${money(targetRates.market.p25)}. While we value our current partnership, we need to ensure competitive pricing to justify continued engagement.`,
+      supportingData: `Market range: ${money(targetRates.market.p10)} - ${money(targetRates.market.p90)}`,
       persuasivenessScore: 9,
       dataSource: "Supplier Market Analysis",
     });
@@ -199,16 +204,12 @@ export class TalkingPointsGenerator {
         title: "Market Rates Trending Downward",
         text: `Historical analysis shows ${config.role} rates in ${
           config.location
-        } have been declining at CHF ${Math.abs(
+        } have been declining at ${money(Math.abs(
           trendAnalysis.slope || 0
-        ).toFixed(
-          0
-        )} per month over the past year. This downward trend is expected to continue, with 6-month forecasts predicting rates around CHF ${(
+        ))} per month over the past year. This downward trend is expected to continue, with 6-month forecasts predicting rates around ${money(
           trendAnalysis.forecast || 0
-        ).toLocaleString()}. Adjusting rates now aligns with market trajectory.`,
-        supportingData: `Trend: ${(trendAnalysis.slope || 0).toFixed(
-          1
-        )} CHF/month decline`,
+        )}. Adjusting rates now aligns with market trajectory.`,
+        supportingData: `Trend: ${money(trendAnalysis.slope || 0)}/month decline`,
         persuasivenessScore: 8,
         dataSource: "Historical Trend Analysis",
       });
@@ -221,7 +222,7 @@ export class TalkingPointsGenerator {
         title: "Stable Market Conditions",
         text: `Market analysis shows stable rate conditions with low volatility (${trendAnalysis.volatility.toFixed(
           1
-        )}%). This stability provides confidence that the target rate of CHF ${config.targetRate.toLocaleString()} is sustainable and reflects true market value rather than temporary fluctuations.`,
+        )}%). This stability provides confidence that the target rate of ${money(config.targetRate)} is sustainable and reflects true market value rather than temporary fluctuations.`,
         supportingData: `Volatility: ${trendAnalysis.volatility.toFixed(1)}%`,
         persuasivenessScore: 6,
         dataSource: "Market Stability Analysis",
@@ -256,12 +257,12 @@ export class TalkingPointsGenerator {
       id: `mutual-benefit-${Date.now()}`,
       category: "relationship",
       title: "Mutual Benefit Proposition",
-      text: `A rate adjustment to CHF ${config.targetRate.toLocaleString()} maintains substantial value for both parties. The supplier retains CHF ${(
+      text: `A rate adjustment to ${money(config.targetRate)} maintains substantial value for both parties. The supplier retains ${money(
         config.targetRate * annualVolume
-      ).toLocaleString()} in annual revenue with guaranteed volume, while we achieve market-competitive pricing. This creates a sustainable, win-win partnership.`,
-      supportingData: `Retained annual value: CHF ${(
+      )} in annual revenue with guaranteed volume, while we achieve market-competitive pricing. This creates a sustainable, win-win partnership.`,
+      supportingData: `Retained annual value: ${money(
         config.targetRate * annualVolume
-      ).toLocaleString()}`,
+      )}`,
       persuasivenessScore: 8,
       dataSource: "Partnership Value Analysis",
     });

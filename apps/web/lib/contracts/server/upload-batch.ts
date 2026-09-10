@@ -21,8 +21,8 @@ import { scanBuffer } from '@/lib/security/virus-scan';
 
 const BATCH_CONFIG = {
   maxFiles: parseInt(process.env.BATCH_UPLOAD_MAX_FILES || '10', 10),
-  maxTotalSize: parseInt(process.env.BATCH_UPLOAD_MAX_TOTAL_SIZE || '209715200', 10),
-  maxFileSize: parseInt(process.env.MAX_FILE_SIZE || '52428800', 10),
+  maxTotalSize: parseInt(process.env.BATCH_UPLOAD_MAX_TOTAL_SIZE || '209715200', 10), // 200MB total
+  maxFileSize: parseInt(process.env.MAX_FILE_SIZE || '104857600', 10), // 100MB per file (app + nginx limit)
   allowedTypes: new Set([
     'application/pdf',
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
@@ -135,13 +135,25 @@ export async function postBatchUploadContracts(
           return;
         }
 
-        if (!BATCH_CONFIG.allowedTypes.has(file.type)) {
+        const extension = fileName.toLowerCase().slice(fileName.lastIndexOf('.'));
+        const allowedExtensions = new Set(['.pdf', '.docx', '.doc', '.txt', '.png', '.jpg', '.jpeg', '.tiff', '.tif']);
+        if (file.type && !BATCH_CONFIG.allowedTypes.has(file.type) && !allowedExtensions.has(extension)) {
           results[index] = {
             index,
             fileName,
             fileSize: file.size,
             status: 'error',
-            error: `Unsupported file type: ${file.type}`,
+            error: `Unsupported file type: ${file.type || extension || 'unknown'}`,
+          };
+          return;
+        }
+        if (!file.type && !allowedExtensions.has(extension)) {
+          results[index] = {
+            index,
+            fileName,
+            fileSize: file.size,
+            status: 'error',
+            error: `Unsupported file type: ${extension || 'unknown'}`,
           };
           return;
         }
@@ -184,7 +196,7 @@ export async function postBatchUploadContracts(
               status: 'duplicate',
               contractId: existing.id,
               contentHash,
-              error: `Duplicate of existing contract (${existing.fileName})`,
+              error: `This file matches an existing contract (${existing.fileName}). Batch upload skipped the duplicate. Open the existing contract, or upload it individually to add it as a new version.`,
             };
             return;
           }

@@ -1,10 +1,11 @@
 import { NextRequest } from 'next/server';
 import { currencyAdvancedService } from 'data-orchestration/services';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
+import { DEFAULT_DISPLAY_CURRENCY } from '@/lib/display-currency';
 
 export const GET = withAuthApiHandler(async (request, ctx) => {
     const searchParams = request.nextUrl.searchParams;
-    const baseCurrency = searchParams.get('baseCurrency') || 'USD';
+    const baseCurrency = searchParams.get('baseCurrency') || DEFAULT_DISPLAY_CURRENCY;
   const tenantId = ctx.tenantId;
 
     if (!tenantId) {

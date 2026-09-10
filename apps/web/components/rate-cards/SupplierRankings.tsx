@@ -30,6 +30,7 @@ import {
   RefreshCw,
   ArrowUpDown,
 } from 'lucide-react';
+import { formatRateMoney } from '@/lib/rate-cards/format';
 import Link from 'next/link';
 
 interface SupplierRanking {
@@ -279,7 +280,7 @@ export function SupplierRankings() {
                 <div>
                   <p className="text-xs text-gray-600 mb-1">Average Rate</p>
                   <p className="text-xl font-bold">
-                    ${supplier.averageRate.toFixed(0)}
+                    {formatRateMoney(supplier.averageRate)}
                   </p>
                 </div>
                 <div>
@@ -352,7 +353,7 @@ export function SupplierRankings() {
                     <td className="py-3 px-4">
                       <div>
                         <p className="font-medium">
-                          ${supplier.averageRate.toFixed(0)}
+                          {formatRateMoney(supplier.averageRate)}
                         </p>
                         {supplier.averageRate < supplier.marketAverage ? (
                           <div className="flex items-center gap-1 text-xs text-green-600">
@@ -402,7 +403,7 @@ export function SupplierRankings() {
                     </td>
                     <td className="py-3 px-4">
                       <p className="font-medium text-green-600">
-                        ${supplier.potentialSavings.toLocaleString()}
+                        {formatRateMoney(supplier.potentialSavings)}
                       </p>
                     </td>
                     <td className="py-3 px-4">
@@ -444,7 +445,7 @@ export function SupplierRankings() {
                       {supplier.supplierName}
                     </p>
                     <p className="text-sm text-green-700">
-                      ${supplier.averageRate.toFixed(0)} average rate
+                      {formatRateMoney(supplier.averageRate)} average rate
                     </p>
                   </div>
                 ))}

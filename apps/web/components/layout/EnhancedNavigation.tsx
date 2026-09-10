@@ -29,6 +29,7 @@ import {
   type NavigationAudience,
 } from '@/lib/navigation/visibility';
 import { useDemoMode } from '@/hooks/useDemoMode';
+import { isRateCardsEnabled } from '@/lib/features';
 import { Target } from 'lucide-react';
 import {
   LayoutDashboard,
@@ -601,6 +602,12 @@ function EnhancedNavigation() {
       const visibleChildren = item.children
         ?.map(filterItem)
         .filter((child): child is NavigationItem => child !== null);
+
+      if (!isRateCardsEnabled() && item.href?.startsWith('/rate-cards')) {
+        return visibleChildren && visibleChildren.length > 0
+          ? { ...item, children: visibleChildren }
+          : null;
+      }
 
       if (isDemo && item.demo === 'hide') {
         return visibleChildren && visibleChildren.length > 0

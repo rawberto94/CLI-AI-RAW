@@ -10,7 +10,6 @@ import {
   AlertTriangle,
   CheckCircle2,
   XCircle,
-  Eye,
   Lock,
   Unlock,
   Settings,
@@ -22,11 +21,9 @@ import {
   BarChart3,
   Sliders,
   Bell,
-  Filter,
   Search,
   ChevronDown,
   ChevronRight,
-  MoreVertical,
   RefreshCw,
   Download,
   Flag,
@@ -153,7 +150,6 @@ export function AIGuardrails() {
   const tCommon = useTranslations('common');
   const [activeTab, setActiveTab] = useState<'policies' | 'flags' | 'audit' | 'thresholds'>('policies');
   const [selectedPolicy, setSelectedPolicy] = useState<string | null>(null);
-  const [showPolicyModal, setShowPolicyModal] = useState(false);
   const [policies, setPolicies] = useState<Policy[]>([]);
   const [riskFlags, setRiskFlags] = useState<RiskFlag[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
@@ -170,6 +166,7 @@ export function AIGuardrails() {
     { id: 't6', name: 'Min Payment Terms', metric: 'Payment Terms', operator: 'gte', value: 45, unit: 'days', action: 'warn', enabled: false },
   ]);
   const [loading, setLoading] = useState(true);
+  const [flagFilter, setFlagFilter] = useState<'all' | 'open' | 'critical'>('all');
 
   // Fetch governance data from API - no mock data fallback
   useEffect(() => {
@@ -216,25 +213,13 @@ export function AIGuardrails() {
 
   const router = useRouter();
 
-  // Handle configure settings
   const handleConfigure = useCallback(() => {
-    toast.info('Opening configuration settings...');
-    // In a real app, this would open a configuration modal or page
-  }, []);
+    router.push('/settings');
+  }, [router]);
 
-  // Handle view rules
-  const handleViewRules = useCallback((policyId: string, policyName: string) => {
-    toast.info(`Viewing rules for: ${policyName}`);
-  }, []);
-
-  // Handle edit policy
-  const handleEditPolicy = useCallback((policyId: string, policyName: string) => {
-    toast.info(`Editing policy: ${policyName}`);
-  }, []);
-
-  // Handle toggle policy lock
   const handleToggleLock = useCallback((policyId: string, currentStatus: string) => {
-    const newStatus = currentStatus === 'active' ? 'disabled' : 'active';
+    const newStatus: Policy['status'] = currentStatus === 'active' ? 'inactive' : 'active';
+    setPolicies(prev => prev.map(p => p.id === policyId ? { ...p, status: newStatus } : p));
     toast.success(`Policy ${newStatus === 'active' ? 'activated' : 'deactivated'}`);
   }, []);
 
@@ -287,15 +272,6 @@ export function AIGuardrails() {
     });
   }, [riskFlagMutations.dismiss]);
 
-  // Handle investigate flag
-  const handleInvestigate = useCallback((flagId: string, contractId?: string) => {
-    if (contractId) {
-      router.push(`/contracts/${contractId}`);
-    } else {
-      toast.info('Opening investigation...');
-    }
-  }, [router]);
-
   // Handle export audit log
   const handleExportAuditLog = useCallback(() => {
     try {
@@ -321,12 +297,6 @@ export function AIGuardrails() {
       toast.error('Failed to export audit log');
     }
   }, [auditLogs]);
-
-  // Handle create new policy
-  const handleCreatePolicy = useCallback(() => {
-    toast.info('Opening policy creator...');
-    setShowPolicyModal(true);
-  }, []);
 
   if (loading) {
     return (
@@ -548,9 +518,7 @@ export function AIGuardrails() {
                           {policy.enforcement === 'block' ? 'Blocking' :
                            policy.enforcement === 'warn' ? 'Warning' : 'Audit Only'}
                         </span>
-                        <button className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-200">
-                          <MoreVertical className="h-4 w-4" />
-                        </button>
+
                       </div>
                     </div>
 
@@ -577,20 +545,13 @@ export function AIGuardrails() {
                             </div>
                           </div>
                           <div className="flex items-center gap-2 mt-4">
-                            <button onClick={() => handleViewRules(policy.id, policy.name)} className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-violet-50 text-violet-600 rounded-lg hover:bg-violet-100 text-sm">
-                              <Eye className="h-4 w-4" />
-                              {t('viewRules')}
-                            </button>
-                            <button onClick={() => handleEditPolicy(policy.id, policy.name)} className="flex-1 flex items-center justify-center gap-2 px-3 py-2 border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 text-sm">
-                              <Settings className="h-4 w-4" />
-                              {t('editPolicy')}
-                            </button>
                             <button onClick={() => handleToggleLock(policy.id, policy.status)} className="flex items-center justify-center gap-2 px-3 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 text-sm">
                               {policy.status === 'active' ? (
                                 <Lock className="h-4 w-4 text-gray-500" />
                               ) : (
                                 <Unlock className="h-4 w-4 text-gray-500" />
                               )}
+                              {policy.status === 'active' ? 'Disable' : 'Enable'}
                             </button>
                           </div>
                         </motion.div>
@@ -605,13 +566,25 @@ export function AIGuardrails() {
               <div className="space-y-4">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
-                    <button className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-sm hover:bg-gray-200">
+                    <button
+                      type="button"
+                      onClick={() => setFlagFilter('all')}
+                      className={`px-3 py-1.5 rounded-lg text-sm ${flagFilter === 'all' ? 'bg-gray-100 text-gray-700' : 'text-gray-500 hover:bg-gray-100'}`}
+                    >
                       All
                     </button>
-                    <button className="px-3 py-1.5 text-gray-500 rounded-lg text-sm hover:bg-gray-100">
+                    <button
+                      type="button"
+                      onClick={() => setFlagFilter('open')}
+                      className={`px-3 py-1.5 rounded-lg text-sm ${flagFilter === 'open' ? 'bg-gray-100 text-gray-700' : 'text-gray-500 hover:bg-gray-100'}`}
+                    >
                       Open
                     </button>
-                    <button className="px-3 py-1.5 text-gray-500 rounded-lg text-sm hover:bg-gray-100">
+                    <button
+                      type="button"
+                      onClick={() => setFlagFilter('critical')}
+                      className={`px-3 py-1.5 rounded-lg text-sm ${flagFilter === 'critical' ? 'bg-gray-100 text-gray-700' : 'text-gray-500 hover:bg-gray-100'}`}
+                    >
                       Critical
                     </button>
                   </div>
@@ -621,7 +594,11 @@ export function AIGuardrails() {
                   </button>
                 </div>
 
-                {riskFlags.map((flag) => (
+                {riskFlags.filter((flag) => {
+                  if (flagFilter === 'open') return flag.status === 'open';
+                  if (flagFilter === 'critical') return flag.severity === 'critical';
+                  return true;
+                }).map((flag) => (
                   <div
                     key={flag.id}
                     className={`p-5 rounded-xl border ${
@@ -701,10 +678,6 @@ export function AIGuardrails() {
                     />
                   </div>
                   <div className="flex items-center gap-2">
-                    <button onClick={() => toast.info('Opening filter options...')} className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-lg text-sm hover:bg-gray-50">
-                      <Filter className="h-4 w-4" />
-                      {tCommon('filter')}
-                    </button>
                     <button onClick={handleExportAuditLog} className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-lg text-sm hover:bg-gray-50">
                       <Download className="h-4 w-4" />
                       {tCommon('export')}
@@ -761,10 +734,7 @@ export function AIGuardrails() {
               <div className="space-y-4">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="font-semibold text-gray-900">{t('automatedThresholds')}</h3>
-                  <button className="flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 text-sm">
-                    <Sliders className="h-4 w-4" />
-                    {t('addThreshold')}
-                  </button>
+
                 </div>
 
                 <div className="bg-violet-50 border border-violet-200 rounded-lg p-4 mb-6">
@@ -836,9 +806,7 @@ export function AIGuardrails() {
                             />
                             <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-violet-100 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-violet-600"></div>
                           </label>
-                          <button className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100">
-                            <Settings className="h-4 w-4" />
-                          </button>
+
                         </div>
                       </div>
                     </div>

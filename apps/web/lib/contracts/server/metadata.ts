@@ -17,6 +17,22 @@ import {
   normalizeTagName,
   validateOrRegisterTenantTags,
 } from './tag-registry';
+import { resolveDocumentNumber } from '@/lib/contracts/document-number';
+import { toPersistableMetadata } from '@/lib/contracts/metadata-display';
+import { analysisLanguageInstructions } from '@repo/utils';
+
+async function contractTagSnapshot(contractId: string): Promise<string[]> {
+  try {
+    const row = await prisma.contract.findUnique({
+      where: { id: contractId },
+      select: { tags: true },
+    });
+    if (!Array.isArray(row?.tags)) return [];
+    return (row.tags as unknown[]).filter((tag): tag is string => typeof tag === 'string' && tag.trim().length > 0);
+  } catch {
+    return [];
+  }
+}
 
 import type { ContractApiContext } from '@/lib/contracts/server/context';
 
@@ -101,7 +117,7 @@ const metadataPutSchema = z.object({
   document_classification_warning: z.string().nullable().optional(),
   contract_short_description: z.string().optional(),
   external_parties: z.array(externalPartySchema).optional(),
-  tcv_amount: z.number().nonnegative().optional(),
+  tcv_amount: z.number().nonnegative().nullable().optional(),
   tcv_text: z.string().optional(),
   payment_type: z.string().optional(),
   billing_frequency_type: z.string().optional(),
@@ -114,9 +130,9 @@ const metadataPutSchema = z.object({
   end_date: isoDateLike,
   termination_date: isoDateLike,
   reminder_enabled: z.boolean().optional(),
-  reminder_days_before_end: z.number().int().min(0).max(3650).optional(),
+  reminder_days_before_end: z.number().int().min(0).max(3650).nullable().optional(),
   notice_period: z.string().optional(),
-  notice_period_days: z.number().int().min(0).max(3650).optional(),
+  notice_period_days: z.number().int().min(0).max(3650).nullable().optional(),
   jurisdiction: z.string().optional(),
   contract_language: z.string().optional(),
   created_by_user_id: z.string().optional(),
@@ -167,7 +183,7 @@ export interface EnterpriseMetadata {
     contactName?: string;
     contactEmail?: string;
   }>;
-  tcv_amount?: number;
+  tcv_amount?: number | null;
   tcv_text?: string;
   payment_type?: string;
   billing_frequency_type?: string;
@@ -648,26 +664,47 @@ export async function getContractMetadata(
     : aiMetadata.signature_status || contract.signatureStatus || 'unknown';
   const normalizedSignatureRequiredFlag = normalizedSignatureStatus === 'signed'
     ? false
-    : aiMetadata.signature_required_flag ?? contract.signatureRequiredFlag ?? (
-      normalizedSignatureStatus === 'unsigned' ||
-      normalizedSignatureStatus === 'partially_signed' ||
-      (!aiMetadata.signature_date && normalizedSignatureStatus !== 'signed')
-    );
+    : typeof aiMetadata.signature_required_flag === 'boolean'
+      ? aiMetadata.signature_required_flag
+      : typeof contract.signatureRequiredFlag === 'boolean'
+        ? contract.signatureRequiredFlag
+        : (normalizedSignatureStatus === 'unsigned' || normalizedSignatureStatus === 'partially_signed');
 
   const enterpriseMetadata: EnterpriseMetadata = {
-    document_number: aiMetadata.document_number || contract.id,
+    document_number: (() => {
+      const existing = typeof aiMetadata.document_number === 'string' ? aiMetadata.document_number : '';
+      if (existing && existing !== contract.id && !/^c[a-z0-9]{20,}$/i.test(existing)) return existing;
+      return resolveDocumentNumber({
+        extracted: existing,
+        fileName: contract.fileName,
+        contractId: contract.id,
+      });
+    })(),
     document_title: aiMetadata.document_title || contract.contractTitle || contract.fileName || '',
-    document_classification: (aiMetadata.document_classification || contract.documentClassification || 'contract') as EnterpriseMetadata['document_classification'],
+    document_classification: (aiMetadata.document_classification || contract.documentClassification || 'unknown') as EnterpriseMetadata['document_classification'],
     document_classification_confidence: aiMetadata.document_classification_confidence ?? contract.documentClassificationConf ?? contract.classificationConf ?? undefined,
     document_classification_warning: (aiMetadata.document_classification_warning || contract.documentClassificationWarning) ?? undefined,
     contract_short_description: aiMetadata.contract_short_description || contract.description || artifactOverview?.summary || '',
     external_parties: normalizedParties,
-    tcv_amount: aiMetadata.tcv_amount || (contract.totalValue ? Number(contract.totalValue) : 0) || (artifactOverview?.totalValue ? Number(artifactOverview.totalValue) : 0),
+    tcv_amount: ((): number | undefined => {
+      if (typeof aiMetadata.tcv_amount === 'number' && Number.isFinite(aiMetadata.tcv_amount) && aiMetadata.tcv_amount > 0) {
+        return aiMetadata.tcv_amount;
+      }
+      if (contract.totalValue != null) {
+        const n = Number(contract.totalValue);
+        if (Number.isFinite(n) && n > 0) return n;
+      }
+      if (artifactOverview?.totalValue != null) {
+        const n = Number(artifactOverview.totalValue);
+        if (Number.isFinite(n) && n > 0) return n;
+      }
+      return undefined;
+    })(),
     tcv_text: aiMetadata.tcv_text || '',
     payment_type: aiMetadata.payment_type || '',
     billing_frequency_type: aiMetadata.billing_frequency_type || contract.paymentFrequency || '',
     periodicity: aiMetadata.periodicity || contract.billingCycle || '',
-    currency: aiMetadata.currency || contract.currency || artifactOverview?.currency || 'USD',
+    currency: aiMetadata.currency || contract.currency || artifactOverview?.currency || '',
     signature_date: aiMetadata.signature_date || contract.signatureDate?.toISOString().split('T')[0] || null,
     signature_status: normalizedSignatureStatus as EnterpriseMetadata['signature_status'],
     signature_required_flag: normalizedSignatureRequiredFlag,
@@ -675,15 +712,27 @@ export async function getContractMetadata(
     end_date: aiMetadata.end_date || contract.expirationDate?.toISOString().split('T')[0] || contract.endDate?.toISOString().split('T')[0] || artifactOverview?.expirationDate || artifactOverview?.expiration_date || artifactOverview?.endDate || artifactOverview?.end_date || null,
     termination_date: aiMetadata.termination_date || null,
     reminder_enabled: aiMetadata.reminder_enabled ?? false,
-    reminder_days_before_end: aiMetadata.reminder_days_before_end || 30,
+    reminder_days_before_end: aiMetadata.reminder_days_before_end ?? null,
     notice_period: aiMetadata.notice_period || (contract.noticePeriodDays ? `${contract.noticePeriodDays} days` : ''),
     notice_period_days: aiMetadata.notice_period_days || contract.noticePeriodDays || undefined,
     jurisdiction: aiMetadata.jurisdiction || contract.jurisdiction || artifactOverview?.jurisdiction || '',
-    contract_language: aiMetadata.contract_language || artifactOverview?.language || 'en',
+    contract_language: aiMetadata.contract_language || artifactOverview?.language || '',
     created_by_user_id: aiMetadata.created_by_user_id || contract.uploadedBy || '',
     contract_owner_user_ids: aiMetadata.contract_owner_user_ids || [],
     access_group_ids: aiMetadata.access_group_ids || [],
-    tags: metadataRecord?.tags || aiMetadata.tags || (Array.isArray(contract.tags) ? contract.tags as string[] : []),
+    tags: (() => {
+      const fromMetadata = Array.isArray(metadataRecord?.tags) ? metadataRecord.tags : [];
+      const fromAi = Array.isArray(aiMetadata.tags)
+        ? (aiMetadata.tags as unknown[]).filter((tag): tag is string => typeof tag === 'string')
+        : [];
+      const fromContract = Array.isArray(contract.tags)
+        ? (contract.tags as unknown[]).filter((tag): tag is string => typeof tag === 'string')
+        : [];
+      const merged = [...fromMetadata, ...fromAi, ...fromContract]
+        .map((tag) => tag.trim())
+        .filter(Boolean);
+      return Array.from(new Set(merged));
+    })(),
     field_confidence: aiMetadata.field_confidence || {},
     last_ai_extraction: aiMetadata.last_ai_extraction || '',
   };
@@ -695,8 +744,8 @@ export async function getContractMetadata(
         confidenceMap[key] = {
           value,
           source: 'AI Extraction',
-          needsVerification: value < 0.8,
-          message: value < 0.8 ? 'Low confidence - please verify' : undefined,
+          needsVerification: value < 0.5,
+          message: value < 0.5 ? 'Low confidence — please verify' : undefined,
         };
       } else if (typeof value === 'object' && value !== null) {
         confidenceMap[key] = value as any;
@@ -859,7 +908,7 @@ export async function putContractMetadata(
     );
   }
 
-  const metadata: Record<string, any> = { ...parsed.data };
+  const metadata: Record<string, any> = toPersistableMetadata({ ...parsed.data });
   if (metadata.tags !== undefined) {
     metadata.tags = await validateOrRegisterTenantTags(context.tenantId, metadata.tags, {
       createdBy: context.userId,
@@ -926,7 +975,7 @@ export async function putContractMetadata(
     ...(metadata.document_title !== undefined && { document_title: metadata.document_title }),
     ...(metadata.contract_short_description !== undefined && { contract_short_description: metadata.contract_short_description }),
     ...(metadata.external_parties !== undefined && { external_parties: metadata.external_parties }),
-    ...(metadata.tcv_amount !== undefined && { tcv_amount: metadata.tcv_amount }),
+    ...(metadata.tcv_amount !== undefined && { tcv_amount: metadata.tcv_amount, tcvSource: 'human' }),
     ...(metadata.tcv_text !== undefined && { tcv_text: metadata.tcv_text }),
     ...(metadata.payment_type !== undefined && { payment_type: metadata.payment_type }),
     ...(metadata.billing_frequency_type !== undefined && { billing_frequency_type: metadata.billing_frequency_type }),
@@ -1479,7 +1528,7 @@ export async function putContractMetadataValidation(
             tenantId: context.tenantId,
             customFields: customFields as Prisma.InputJsonValue,
             systemFields: {},
-            tags: [],
+            tags: await contractTagSnapshot(contractId),
             lastUpdated: now,
             updatedBy: context.userId ?? 'system',
           },
@@ -1531,7 +1580,7 @@ export async function putContractMetadataValidation(
             tenantId: context.tenantId,
             customFields: customFields as Prisma.InputJsonValue,
             systemFields: {},
-            tags: [],
+            tags: await contractTagSnapshot(contractId),
             lastUpdated: now,
             updatedBy: context.userId ?? 'system',
           },
@@ -1622,7 +1671,7 @@ export async function putContractMetadataValidation(
           tenantId: context.tenantId,
           customFields: customFields as any,
           systemFields: {},
-          tags: [],
+          tags: await contractTagSnapshot(contractId),
           lastUpdated: new Date(),
           updatedBy: context.userId ?? 'system',
         },
@@ -1889,7 +1938,10 @@ async function validateWithAI(
     value: typeof value === 'object' ? JSON.stringify(value) : String(value),
   }));
 
-  const prompt = `Analyze the following contract text and validate these extracted metadata fields.
+  const prompt = `${analysisLanguageInstructions({ contractText })}
+Keep source quotes verbatim. Do not invent USD.
+
+Analyze the following contract text and validate these extracted metadata fields.
 For each field, provide:
 1. A confidence score (0-100) indicating how accurately the value matches the contract
 2. Any corrections or alternative values found in the contract

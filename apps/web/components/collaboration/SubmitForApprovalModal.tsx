@@ -100,7 +100,7 @@ export function SubmitForApprovalModal({
   contractId,
   contractTitle,
   contractValue,
-  contractCurrency = 'USD',
+  contractCurrency,
   supplierName,
   onSuccess,
 }: SubmitForApprovalModalProps) {

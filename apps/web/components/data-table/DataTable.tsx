@@ -4,7 +4,7 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ChevronUp, ChevronDown, ChevronsUpDown, Filter, Search,
-  CheckSquare, Square, MinusSquare, ArrowUpDown, Download,
+  CheckSquare, Square, MinusSquare, ArrowUpDown,
   Settings2, Eye, EyeOff, GripVertical, MoreHorizontal,
   ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight
 } from 'lucide-react';
@@ -287,9 +287,7 @@ export function DataTable<T>({
               </AnimatePresence>
             </div>
 
-            <button className="p-2 rounded-lg border border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800">
-              <Download className="w-4 h-4" />
-            </button>
+
           </div>
         </div>
       )}

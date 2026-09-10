@@ -40,12 +40,10 @@ import {
   FileSpreadsheet,
   FileText,
   Loader2,
-  ExternalLink,
   Archive,
   ArchiveRestore,
 } from 'lucide-react'
 import { toast } from 'sonner'
-import { logger } from '@/lib/logger'
 import { usePermissions } from '@/hooks/usePermissions'
 
 interface ContractFloatingActionsProps {
@@ -77,9 +75,7 @@ export const ContractFloatingActions = memo(function ContractFloatingActions({
 }: ContractFloatingActionsProps) {
   const isDemo = useDemoMode()
   const { canDeleteContracts, canEditContracts } = usePermissions()
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [showArchiveDialog, setShowArchiveDialog] = useState(false)
-  const [isDeleting, setIsDeleting] = useState(false)
   const [isArchiving, setIsArchiving] = useState(false)
   const [isFavoriting, setIsFavoriting] = useState(false)
   const [isTogglingReminder, setIsTogglingReminder] = useState(false)
@@ -112,7 +108,6 @@ export const ContractFloatingActions = memo(function ContractFloatingActions({
     setIsFavoriting(true)
     try {
       await onToggleFavorite()
-      toast.success(isFavorite ? 'Removed from favorites' : 'Added to favorites')
     } catch {
       toast.error('Failed to update favorite')
     } finally {
@@ -136,7 +131,6 @@ export const ContractFloatingActions = memo(function ContractFloatingActions({
     setExportingFormat(format)
     try {
       await onExport(format)
-      toast.success(`Exported as ${format.toUpperCase()}`)
     } catch {
       toast.error(`Failed to export as ${format.toUpperCase()}`)
     } finally {
@@ -144,26 +138,10 @@ export const ContractFloatingActions = memo(function ContractFloatingActions({
     }
   }
 
-  const handleDelete = async (e: React.MouseEvent) => {
-    e.preventDefault()
-    setIsDeleting(true)
-    try {
-      await onDelete()
-      toast.success('Contract deleted')
-      setShowDeleteDialog(false)
-    } catch (error) {
-      logger.error('Delete failed', error instanceof Error ? error : undefined);
-      toast.error('Failed to delete contract')
-    } finally {
-      setIsDeleting(false)
-    }
-  }
-
   const handleArchive = async () => {
     setIsArchiving(true)
     try {
       await onArchive()
-      toast.success(isArchived ? 'Contract restored' : 'Contract archived')
       setShowArchiveDialog(false)
     } catch {
       toast.error('Failed to update archive status')
@@ -314,13 +292,6 @@ export const ContractFloatingActions = memo(function ContractFloatingActions({
                   <Printer className="h-4 w-4 mr-2" />
                   Print
                 </DropdownMenuItem>
-                <DropdownMenuItem 
-                  onClick={() => window.open(`/contracts/${contractId}`, '_blank')}
-                  className="cursor-pointer"
-                >
-                  <ExternalLink className="h-4 w-4 mr-2" />
-                  Open in new tab
-                </DropdownMenuItem>
                 {!isDemo && canEditContracts && <DropdownMenuSeparator />}
                 {!isDemo && canEditContracts && (
                   <DropdownMenuItem 
@@ -343,7 +314,7 @@ export const ContractFloatingActions = memo(function ContractFloatingActions({
                 {!isDemo && canDeleteContracts && <DropdownMenuSeparator />}
                 {!isDemo && canDeleteContracts && (
                   <DropdownMenuItem 
-                    onClick={() => setShowDeleteDialog(true)}
+                    onClick={() => { void onDelete() }}
                     className="cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50"
                   >
                     <Trash2 className="h-4 w-4 mr-2" />
@@ -355,45 +326,6 @@ export const ContractFloatingActions = memo(function ContractFloatingActions({
           </TooltipProvider>
         </div>
       </motion.div>
-
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-red-600">Delete Contract</AlertDialogTitle>
-            <AlertDialogDescription className="text-slate-600">
-              Are you sure you want to delete <span className="font-medium text-slate-900">&ldquo;{filename}&rdquo;</span>? 
-              This action cannot be undone and will permanently remove all associated data, including:
-              <ul className="mt-2 ml-4 list-disc text-sm">
-                <li>Contract metadata and extracted data</li>
-                <li>AI analysis and insights</li>
-                <li>Version history</li>
-                <li>Audit logs</li>
-              </ul>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              disabled={isDeleting}
-              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
-            >
-              {isDeleting ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Deleting...
-                </>
-              ) : (
-                <>
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Delete permanently
-                </>
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       {/* Archive Confirmation Dialog */}
       <AlertDialog open={showArchiveDialog} onOpenChange={setShowArchiveDialog}>

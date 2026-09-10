@@ -31,6 +31,7 @@ import {
   MapPin
 } from 'lucide-react';
 import { RateCardFilterCriteria } from './RateCardFilters';
+import { formatRateMoney } from '@/lib/rate-cards/format';
 
 interface RateCardEntry {
   id: string;
@@ -373,10 +374,10 @@ export function RateComparisonTool({ initialFilters, onCompare }: RateComparison
                     </div>
                     <div className="text-right">
                       <p className="font-semibold text-sm">
-                        ${rateCard.dailyRate.toLocaleString()} {rateCard.currency}
+                        {formatRateMoney(rateCard.dailyRate, rateCard.currency)}/day
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        ${rateCard.dailyRateUSD.toLocaleString()} USD
+                        {formatRateMoney(rateCard.dailyRateUSD, 'USD')} USD (converted)
                       </p>
                     </div>
                   </div>

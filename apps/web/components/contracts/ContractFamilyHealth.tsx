@@ -39,7 +39,10 @@ import {
   ArrowRight,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { formatCurrency, formatDate } from '@/lib/design-tokens'
+import { formatDate } from '@/lib/design-tokens'
+import { unwrapApiResponseData } from '@/lib/api-fetch'
+import { formatAmountWithCurrency, formatDisplayTotal } from '@/lib/utils/formatters'
+import { DEFAULT_DISPLAY_CURRENCY } from '@/lib/display-currency'
 import { motion, AnimatePresence } from 'framer-motion'
 
 // ============ TYPES ============
@@ -53,6 +56,7 @@ interface FamilyMember {
   clientName: string | null
   supplierName: string | null
   totalValue: number | null
+  currency?: string | null
   effectiveDate: string | null
   expirationDate: string | null
   isExpired: boolean
@@ -72,6 +76,7 @@ interface ContractFamilyData {
   members: FamilyMember[]
   totalContracts: number
   totalValue: number
+  displayCurrency?: string
   healthScore: number
   completeness: number // Percentage of expected relationships present
   issues: Array<{
@@ -206,7 +211,7 @@ function RenewalChain({ renewals, currentContractId }: RenewalChainProps) {
                         </>
                       )}
                       {renewal.totalValue && (
-                        <span className="font-medium">{formatCurrency(renewal.totalValue)}</span>
+                        <span className="font-medium">{formatAmountWithCurrency(renewal.totalValue, renewal.currency)}</span>
                       )}
                     </div>
                   </div>
@@ -246,7 +251,7 @@ export function ContractFamilyHealth({
         return
       }
       
-      const data = await response.json()
+      const data = unwrapApiResponseData<ContractFamilyData>(await response.json())
       setFamilyData(data)
     } catch {
       setError('Failed to load family health data')
@@ -277,7 +282,8 @@ export function ContractFamilyHealth({
     return null
   }
 
-  const { healthScore, completeness, issues, totalContracts, totalValue, suggestedParents } = familyData
+  const { healthScore, completeness, issues, totalContracts, totalValue, displayCurrency, suggestedParents } = familyData
+  const familyDisplayCurrency = displayCurrency || DEFAULT_DISPLAY_CURRENCY
   const hasIssues = issues.length > 0
   const hasSuggestions = suggestedParents.length > 0
   const highSeverityIssues = issues.filter(i => i.severity === 'high').length
@@ -357,7 +363,7 @@ export function ContractFamilyHealth({
         </div>
         <CardDescription>
           {totalContracts} contract{totalContracts !== 1 ? 's' : ''} in family
-          {totalValue > 0 && ` • ${formatCurrency(totalValue)} total value`}
+          {totalValue > 0 && ` • ${formatDisplayTotal(totalValue, familyDisplayCurrency)} total value`}
         </CardDescription>
       </CardHeader>
 
@@ -480,7 +486,8 @@ interface FamilyHealthDetailsProps {
 }
 
 function FamilyHealthDetails({ data, contractId, onLinkSuggestion }: FamilyHealthDetailsProps) {
-  const { healthScore, completeness, issues, members, totalContracts, totalValue, suggestedParents } = data
+  const { healthScore, completeness, issues, members, totalContracts, totalValue, displayCurrency, suggestedParents } = data
+  const familyDisplayCurrency = displayCurrency || DEFAULT_DISPLAY_CURRENCY
   
   // Separate renewals from other members for special display
   const renewals = getRenewals(members)
@@ -519,7 +526,7 @@ function FamilyHealthDetails({ data, contractId, onLinkSuggestion }: FamilyHealt
         <div className="flex items-center gap-2 p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50">
           <DollarSign className="h-4 w-4 text-muted-foreground" />
           <div>
-            <div className="text-sm font-medium">{formatCurrency(totalValue)}</div>
+            <div className="text-sm font-medium">{formatDisplayTotal(totalValue, familyDisplayCurrency)}</div>
             <div className="text-xs text-muted-foreground">Total Value</div>
           </div>
         </div>

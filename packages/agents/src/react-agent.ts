@@ -643,6 +643,7 @@ export class ReActAgent {
     return `You are an intelligent contract analysis agent using the ReAct (Reasoning and Acting) pattern.
 
 Your goal is to help users analyze contracts by iteratively thinking about what you need to do, taking actions using available tools, and observing the results.
+Match the user's language. Keep quoted contract text verbatim. Fr. and SFr. mean CHF. Do not invent USD. JSON keys stay English.
 
 ## Available Tools:
 ${toolDescriptions}

@@ -12,6 +12,7 @@ import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleA
 import { contractService } from 'data-orchestration/services';
 import { auditLog, AuditAction } from '@/lib/security/audit';
 import { checkRateLimit, rateLimitResponse, AI_RATE_LIMITS } from '@/lib/ai/rate-limit';
+import { resolvePersistCurrency } from '@/lib/fx';
 export const dynamic = 'force-dynamic';
 
 // GET /api/drafts - List all drafts
@@ -146,7 +147,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
     variables = {},
     structure = {},
     estimatedValue,
-    currency = 'USD',
+    currency,
     proposedStartDate,
     proposedEndDate,
     externalParties = [],
@@ -191,7 +192,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
       variables,
       structure,
       estimatedValue: estimatedValue ? parseFloat(estimatedValue) : null,
-      currency,
+      currency: resolvePersistCurrency(currency),
       proposedStartDate: proposedStartDate ? new Date(proposedStartDate) : null,
       proposedEndDate: proposedEndDate ? new Date(proposedEndDate) : null,
       externalParties,

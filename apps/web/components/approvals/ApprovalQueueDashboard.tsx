@@ -11,6 +11,7 @@
 'use client';
 
 import { memo, useState, useMemo, useCallback } from 'react';
+import Link from 'next/link';
 import {
   CheckCircle2,
   XCircle,
@@ -26,7 +27,6 @@ import {
   MessageSquare,
   RefreshCw,
   Download,
-  Bell,
   Zap,
   Shield,
   Brain,
@@ -62,7 +62,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
@@ -217,7 +216,7 @@ function generateDemoData(): { items: ApprovalItem[]; stats: ApprovalStats } {
       contractName,
       artifactType: category === 'artifact' ? artifactTypes[i % artifactTypes.length] : undefined,
       value: Math.floor(Math.random() * 500000) + 10000,
-      currency: 'USD',
+      currency: 'CHF',
       risk: ['low', 'medium', 'high'][Math.floor(Math.random() * 3)] as 'low' | 'medium' | 'high',
       aiConfidence: category === 'artifact' || category === 'ai_output' ? 0.7 + Math.random() * 0.25 : undefined,
       approvalChain,
@@ -568,19 +567,14 @@ const ApprovalItemRow = memo(function ApprovalItemRow({
               <Eye className="h-4 w-4 mr-2" />
               View Details
             </DropdownMenuItem>
-            <DropdownMenuItem>
-              <MessageSquare className="h-4 w-4 mr-2" />
-              Add Comment
-            </DropdownMenuItem>
-            <DropdownMenuItem>
-              <FileText className="h-4 w-4 mr-2" />
-              View Contract
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem>
-              <Bell className="h-4 w-4 mr-2" />
-              Send Reminder
-            </DropdownMenuItem>
+            {item.contractId && (
+              <DropdownMenuItem asChild>
+                <Link href={`/contracts/${item.contractId}`}>
+                  <FileText className="h-4 w-4 mr-2" />
+                  View Contract
+                </Link>
+              </DropdownMenuItem>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
@@ -719,16 +713,7 @@ function ApprovalQueueDashboard({
             Manage pending approvals for contracts, AI outputs, and amendments
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm">
-            <Download className="h-4 w-4 mr-2" />
-            Export
-          </Button>
-          <Button variant="outline" size="sm">
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Refresh
-          </Button>
-        </div>
+        <div />
       </div>
 
       {/* Stats */}
@@ -866,10 +851,7 @@ function ApprovalQueueDashboard({
                 {filteredItems.length} Approval{filteredItems.length !== 1 ? 's' : ''}
               </CardTitle>
             </div>
-            <Button variant="ghost" size="sm">
-              <ArrowUpDown className="h-4 w-4 mr-2" />
-              Sort
-            </Button>
+
           </div>
         </CardHeader>
         <CardContent className="p-0">

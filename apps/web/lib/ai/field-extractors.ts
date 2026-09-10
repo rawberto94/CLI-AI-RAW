@@ -8,6 +8,7 @@
 
 import OpenAI from 'openai';
 import { createOpenAIClient, getOpenAIApiKey } from '@/lib/openai-client';
+import { analysisLanguageInstructions, resolveAnalysisLanguage } from '@repo/utils';
 
 let _openai: OpenAI | null = null;
 function getOpenAI(): OpenAI {
@@ -59,14 +60,15 @@ abstract class BaseFieldExtractor {
   
   abstract parseResponse(response: any, context: FieldExtractionContext): ExtractionResponse;
   
-  getSystemPrompt(): string {
+  getSystemPrompt(documentText?: string): string {
     return `You are a precision metadata extractor. Extract the requested field value from the document.
 Always respond in valid JSON format with these fields:
 - value: the extracted value (appropriate type for the field)
 - confidence: 0-100 score based on clarity of extraction
 - explanation: why you assigned this confidence
 - source_text: exact text from document where you found this
-- alternatives: array of other possible values if ambiguous`;
+- alternatives: array of other possible values if ambiguous
+${analysisLanguageInstructions({ contractText: documentText })}`;
   }
   
   async extract(
@@ -79,7 +81,7 @@ Always respond in valid JSON format with these fields:
       const completion = await openai.chat.completions.create({
         model: 'gpt-4o',
         messages: [
-          { role: 'system', content: this.getSystemPrompt() },
+          { role: 'system', content: this.getSystemPrompt(documentText) },
           { role: 'user', content: prompt },
         ],
         temperature: 0.1,
@@ -114,8 +116,9 @@ export class DateFieldExtractor extends BaseFieldExtractor {
 ${context.aiHint ? `Hint: ${context.aiHint}` : ''}
 
 Look for:
-- Explicit date labels like "Effective Date:", "Start Date:", "Signed on:"
-- Dates in various formats: "January 1, 2024", "01/01/2024", "2024-01-01"
+- Explicit date labels like "Effective Date:", "Start Date:", "Signed on:", "Inkrafttreten:", "Gültig ab:", "Date d'entrée en vigueur:", "Data di efficacia:"
+- Dates in various formats: "1 January 2024", "01.01.2024" (DD.MM.YYYY), "2024-01-01", "1. Januar 2024"
+- Do not assume US MM/DD/YYYY when the day is ≤ 12
 - Relative dates like "upon signing" or "30 days from effective date"
 
 Document:
@@ -177,18 +180,21 @@ export class CurrencyFieldExtractor extends BaseFieldExtractor {
   fieldType = 'currency';
   
   getExtractionPrompt(context: FieldExtractionContext, documentText: string): string {
-    const expectedCurrency = context.currency || 'USD';
+    const expectedCurrency = context.currency?.trim();
     
     return `Extract the "${context.fieldLabel}" monetary amount from this document.
 ${context.aiHint ? `Hint: ${context.aiHint}` : ''}
-Expected currency: ${expectedCurrency}
+${expectedCurrency ? `Expected currency: ${expectedCurrency}` : 'Use the currency written in the document. Do not assume USD.'}
 
 Look for:
-- Total contract value, fees, prices
-- Currency symbols: $, €, £, CHF, Fr.
-- Written amounts: "One Million Dollars"
+- Total contract value, fees, prices, Gesamtvertragswert, NTE
+- Currency symbols: CHF, Fr., SFr., €, £, $
+- Swiss apostrophe thousands: 1'200'000
+- Written amounts: "One Million Dollars", "1,2 Millionen"
 - Abbreviations: "1M", "2.5K", "3 Mio"
 - Payment terms and schedules
+- Do not invent USD. If currency is not stated, return null currency.
+- Do not treat a liability cap, insurance, or milestone as total contract value.
 
 Document:
 ${documentText.slice(0, 8000)}
@@ -197,7 +203,7 @@ Return JSON:
 {
   "value": numeric_value_only,
   "raw_value": "original text",
-  "currency": "detected currency code",
+  "currency": "ISO code or null if not stated",
   "currency_symbol": "symbol used",
   "confidence": 0-100,
   "explanation": "why this confidence",
@@ -1022,7 +1028,7 @@ Respond with:
   } catch {
     return {
       documentType: 'unknown',
-      language: 'en',
+      language: resolveAnalysisLanguage({ contractText: documentText }),
       estimatedComplexity: 'moderate',
       suggestedFields: [],
       keyTermsFound: [],

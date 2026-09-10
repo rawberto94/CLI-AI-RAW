@@ -121,7 +121,7 @@ export class ArtifactQualityValidator {
     data: Record<string, any>,
     issues: string[]
   ): number {
-    const requiredFields = this.getRequiredFields(artifactType);
+    const requiredFields = this.getRequiredFields(artifactType, data);
     let present = 0;
 
     for (const field of requiredFields) {
@@ -280,11 +280,12 @@ export class ArtifactQualityValidator {
   /**
    * Get required fields for artifact type
    */
-  private getRequiredFields(artifactType: string): string[] {
+  private getRequiredFields(artifactType: string, data: Record<string, any> = {}): string[] {
     const fieldMap: Record<string, string[]> = {
       OVERVIEW: ['summary', 'contractType', 'parties'],
       CLAUSES: ['clauses'],
-      FINANCIAL: ['currency'],
+      // Currency is required only when a TCV was actually extracted.
+      FINANCIAL: data.totalValue != null && data.totalValue !== 0 ? ['currency'] : [],
       RISK: ['overallRisk', 'risks'],
       COMPLIANCE: ['checks'],
       OBLIGATIONS: ['obligations'],
@@ -346,7 +347,8 @@ export class ArtifactQualityValidator {
 export async function selfCritiqueArtifact(
   artifactType: string,
   artifactData: Record<string, any>,
-  contractText: string
+  contractText: string,
+  options?: { analysisLanguage?: 'de' | 'fr' | 'it' | 'en' },
 ): Promise<{
   issues: string[];
   suggestions: string[];
@@ -372,10 +374,18 @@ Contract Text Sample: ${contractText.substring(0, 3000)}
 
 Review this artifact and identify:
 1. Any hallucinated information (data not in the contract)
-2. Missing important information
+2. Missing important information that IS stated in the contract
 3. Logical inconsistencies
 4. Data quality issues
 5. Whether the artifact should be regenerated
+
+Honesty rules:
+- Do not treat a missing total contract value as a defect if the contract does not state one.
+- Do not invent USD. Fr. and SFr. are CHF. Dates like 01.04.2026 are DD.MM.YYYY.
+- Liability caps, insurance, and milestones are not TCV.
+${options?.analysisLanguage && options.analysisLanguage !== 'en'
+  ? `- Narrative fields are intentionally in ${options.analysisLanguage === 'de' ? 'German' : options.analysisLanguage === 'fr' ? 'French' : 'Italian'}. That is not a defect. Do not regenerate to switch them to English.`
+  : ''}
 
 Return JSON:
 {
@@ -390,6 +400,7 @@ Return JSON:
       messages: [{ role: 'user', content: critiquePrompt }],
       temperature: 0.2,
       max_tokens: 1000,
+      response_format: { type: 'json_object' },
     });
 
     const content = response.choices[0]?.message?.content || '{}';

@@ -5,6 +5,7 @@
 
 import { analyticsService, PortfolioMetrics, SpendAnalysis, RiskAnalysis, SavingsOpportunities, ReportData, ChartData } from './analytics.service';
 import Anthropic from '@anthropic-ai/sdk';
+import { formatMoneyText } from '@repo/utils';
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY || '',
@@ -87,12 +88,12 @@ class ReportGeneratorService {
 
     // Expiration risk
     if (metrics.expiringIn30Days > 0) {
-      insights.push(`⏰ **Immediate Action Required**: ${metrics.expiringIn30Days} contracts expire within 30 days, representing $${risks.highValueAtRisk.toLocaleString()} at risk.`);
+      insights.push(`⏰ **Immediate Action Required**: ${metrics.expiringIn30Days} contracts expire within 30 days, representing ${formatMoneyText(risks.highValueAtRisk)} at risk.`);
     }
 
     // Savings potential
     if (savings.totalPotential > 0) {
-      insights.push(`💡 **Savings Opportunity**: ${savings.opportunities.length} opportunities identified with potential savings of $${savings.totalPotential.toLocaleString()}.`);
+      insights.push(`💡 **Savings Opportunity**: ${savings.opportunities.length} opportunities identified with potential savings of ${formatMoneyText(savings.totalPotential)}.`);
     }
 
     // Auto-renewals
@@ -125,7 +126,7 @@ class ReportGeneratorService {
     // Cost optimization
     if (savings.totalPotential > 100000) {
       const topSaving = savings.opportunities[0];
-      recommendations.push(`💰 **Priority 3**: Pursue ${topSaving.type} opportunities starting with "${topSaving.description}" for $${topSaving.potentialSavings.toLocaleString()} in savings.`);
+      recommendations.push(`💰 **Priority 3**: Pursue ${topSaving.type} opportunities starting with "${topSaving.description}" for ${formatMoneyText(topSaving.potentialSavings)} in savings.`);
     }
 
     // Supplier diversification
@@ -150,9 +151,9 @@ class ReportGeneratorService {
     const prompt = `Generate a concise 3-4 sentence executive summary for a contract portfolio with these metrics:
 
 Portfolio: ${metrics.totalContracts} total contracts, ${metrics.activeContracts} active
-Value: $${spend.totalSpend.toLocaleString()} total spend, $${spend.annualizedSpend.toLocaleString()} annualized
+Value: ${formatMoneyText(spend.totalSpend)} total spend, ${formatMoneyText(spend.annualizedSpend)} annualized
 Risk: ${risks.overallRiskScore}% risk score, ${metrics.expiringIn30Days} expiring in 30 days
-Savings: $${savings.totalPotential.toLocaleString()} potential savings identified
+Savings: ${formatMoneyText(savings.totalPotential)} potential savings identified
 
 Focus on business impact and key metrics. Be professional and data-driven.`;
 
@@ -166,7 +167,7 @@ Focus on business impact and key metrics. Be professional and data-driven.`;
       const content = message.content[0];
       return content.type === 'text' ? content.text : '';
     } catch {
-      return `Portfolio Overview: Managing ${metrics.totalContracts} contracts worth $${spend.totalSpend.toLocaleString()}. ${metrics.expiringIn30Days} contracts require immediate attention. Portfolio risk score of ${risks.overallRiskScore}% with $${savings.totalPotential.toLocaleString()} in identified savings opportunities.`;
+      return `Portfolio Overview: Managing ${metrics.totalContracts} contracts worth ${formatMoneyText(spend.totalSpend)}. ${metrics.expiringIn30Days} contracts require immediate attention. Portfolio risk score of ${risks.overallRiskScore}% with ${formatMoneyText(savings.totalPotential)} in identified savings opportunities.`;
     }
   }
 
@@ -265,12 +266,12 @@ Focus on business impact and key metrics. Be professional and data-driven.`;
   private async generateFinancialInsights(spend: SpendAnalysis, savings: SavingsOpportunities): Promise<string[]> {
     const insights: string[] = [];
 
-    insights.push(`💰 **Total Spend**: $${spend.totalSpend.toLocaleString()} across ${spend.bySupplier.length} suppliers`);
-    insights.push(`📊 **Annualized Spend**: $${spend.annualizedSpend.toLocaleString()} in active contract commitments`);
+    insights.push(`💰 **Total Spend**: ${formatMoneyText(spend.totalSpend)} across ${spend.bySupplier.length} suppliers`);
+    insights.push(`📊 **Annualized Spend**: ${formatMoneyText(spend.annualizedSpend)} in active contract commitments`);
 
     // Top supplier
     if (spend.topSuppliers.length > 0) {
-      insights.push(`🏆 **Top Supplier**: ${spend.topSuppliers[0].supplier} - $${spend.topSuppliers[0].value.toLocaleString()} (${spend.topSuppliers[0].contracts} contracts)`);
+      insights.push(`🏆 **Top Supplier**: ${spend.topSuppliers[0].supplier} - ${formatMoneyText(spend.topSuppliers[0].value)} (${spend.topSuppliers[0].contracts} contracts)`);
     }
 
     // Category breakdown
@@ -279,7 +280,7 @@ Focus on business impact and key metrics. Be professional and data-driven.`;
     }
 
     // Savings potential
-    insights.push(`💡 **Savings Potential**: $${savings.totalPotential.toLocaleString()} identified across ${savings.opportunities.length} opportunities`);
+    insights.push(`💡 **Savings Potential**: ${formatMoneyText(savings.totalPotential)} identified across ${savings.opportunities.length} opportunities`);
 
     return insights;
   }
@@ -292,14 +293,14 @@ Focus on business impact and key metrics. Be professional and data-driven.`;
 
     // Top savings opportunities
     savings.opportunities.slice(0, 3).forEach((opp, idx) => {
-      recommendations.push(`${idx + 1}. **${opp.type}**: ${opp.description} - Potential: $${opp.potentialSavings.toLocaleString()} (${opp.priority} priority, ${opp.effort} effort)`);
+      recommendations.push(`${idx + 1}. **${opp.type}**: ${opp.description} - Potential: ${formatMoneyText(opp.potentialSavings)} (${opp.priority} priority, ${opp.effort} effort)`);
     });
 
     return recommendations;
   }
 
   private async generateFinancialSummary(spend: SpendAnalysis, savings: SavingsOpportunities): Promise<string> {
-    return `Financial analysis reveals total contract spend of $${spend.totalSpend.toLocaleString()} with $${spend.annualizedSpend.toLocaleString()} in annual commitments. Analysis identified $${savings.totalPotential.toLocaleString()} in potential savings across ${savings.opportunities.length} optimization opportunities. Top spending categories include ${spend.byCategory.slice(0, 3).map((c) => c.category).join(', ')}.`;
+    return `Financial analysis reveals total contract spend of ${formatMoneyText(spend.totalSpend)} with ${formatMoneyText(spend.annualizedSpend)} in annual commitments. Analysis identified ${formatMoneyText(savings.totalPotential)} in potential savings across ${savings.opportunities.length} optimization opportunities. Top spending categories include ${spend.byCategory.slice(0, 3).map((c) => c.category).join(', ')}.`;
   }
 
   private generateFinancialCharts(spend: SpendAnalysis, savings: SavingsOpportunities): ChartData[] {
@@ -391,12 +392,12 @@ Focus on business impact and key metrics. Be professional and data-driven.`;
     insights.push(`📊 **Risk Distribution**: ${risks.riskDistribution.critical} Critical, ${risks.riskDistribution.high} High, ${risks.riskDistribution.medium} Medium, ${risks.riskDistribution.low} Low`);
 
     if (risks.expiringContracts.length > 0) {
-      insights.push(`⏰ **Expiring Contracts**: ${risks.expiringContracts.length} contracts expiring soon, $${risks.highValueAtRisk.toLocaleString()} at risk`);
+      insights.push(`⏰ **Expiring Contracts**: ${risks.expiringContracts.length} contracts expiring soon, ${formatMoneyText(risks.highValueAtRisk)} at risk`);
     }
 
     if (risks.autoRenewals.length > 0) {
       const autoRenewalValue = risks.autoRenewals.reduce((sum, a) => sum + a.value, 0);
-      insights.push(`🔄 **Auto-Renewals**: ${risks.autoRenewals.length} contracts will auto-renew ($${autoRenewalValue.toLocaleString()} value)`);
+      insights.push(`🔄 **Auto-Renewals**: ${risks.autoRenewals.length} contracts will auto-renew (${formatMoneyText(autoRenewalValue)} value)`);
     }
 
     if (risks.missingData.length > 0) {
@@ -434,7 +435,7 @@ Focus on business impact and key metrics. Be professional and data-driven.`;
   }
 
   private async generateRiskSummary(risks: RiskAnalysis, metrics: PortfolioMetrics): Promise<string> {
-    return `Risk analysis shows overall portfolio risk score of ${risks.overallRiskScore}/100. ${risks.expiringContracts.length} contracts require attention within 90 days, with $${risks.highValueAtRisk.toLocaleString()} in contract value at risk. ${risks.riskDistribution.high + risks.riskDistribution.critical} contracts classified as high or critical risk requiring immediate mitigation.`;
+    return `Risk analysis shows overall portfolio risk score of ${risks.overallRiskScore}/100. ${risks.expiringContracts.length} contracts require attention within 90 days, with ${formatMoneyText(risks.highValueAtRisk)} in contract value at risk. ${risks.riskDistribution.high + risks.riskDistribution.critical} contracts classified as high or critical risk requiring immediate mitigation.`;
   }
 
   private generateRiskCharts(risks: RiskAnalysis, metrics: PortfolioMetrics): ChartData[] {
@@ -645,8 +646,8 @@ Focus on business impact and key metrics. Be professional and data-driven.`;
   private async generateSupplierInsights(perf: NonNullable<Awaited<ReturnType<typeof analyticsService.getSupplierPerformance>>>): Promise<string[]> {
     const insights: string[] = [];
 
-    insights.push(`📊 **Portfolio**: ${perf.totalContracts} contracts (${perf.activeContracts} active) worth $${perf.totalValue.toLocaleString()}`);
-    insights.push(`💰 **Average Value**: $${perf.avgContractValue.toLocaleString()} per contract`);
+    insights.push(`📊 **Portfolio**: ${perf.totalContracts} contracts (${perf.activeContracts} active) worth ${formatMoneyText(perf.totalValue)}`);
+    insights.push(`💰 **Average Value**: ${formatMoneyText(perf.avgContractValue)} per contract`);
     insights.push(`📅 **Relationship**: ${perf.relationshipDuration} months partnership`);
     insights.push(`✅ **Performance**: ${perf.complianceScore}% compliance, ${perf.onTimeRenewalRate}% on-time renewals`);
 
@@ -676,7 +677,7 @@ Focus on business impact and key metrics. Be professional and data-driven.`;
   }
 
   private async generateSupplierSummary(perf: NonNullable<Awaited<ReturnType<typeof analyticsService.getSupplierPerformance>>>): Promise<string> {
-    return `${perf.supplier} partnership includes ${perf.totalContracts} contracts valued at $${perf.totalValue.toLocaleString()}. Relationship spans ${perf.relationshipDuration} months with ${perf.complianceScore}% compliance and ${perf.onTimeRenewalRate}% on-time renewal rate. Current risk assessment: ${perf.riskScore.toFixed(0)}%.`;
+    return `${perf.supplier} partnership includes ${perf.totalContracts} contracts valued at ${formatMoneyText(perf.totalValue)}. Relationship spans ${perf.relationshipDuration} months with ${perf.complianceScore}% compliance and ${perf.onTimeRenewalRate}% on-time renewal rate. Current risk assessment: ${perf.riskScore.toFixed(0)}%.`;
   }
 
   private generateSupplierCharts(perf: NonNullable<Awaited<ReturnType<typeof analyticsService.getSupplierPerformance>>>): ChartData[] {

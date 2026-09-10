@@ -3,6 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Users, TrendingUp, DollarSign } from 'lucide-react';
+import { formatRateMoney } from '@/lib/rate-cards/format';
 
 interface ClientMetrics {
   totalClients: number;
@@ -42,14 +43,7 @@ export function ClientOverviewWidget({
     );
   }
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      notation: 'compact',
-      maximumFractionDigits: 1,
-    }).format(amount);
-  };
+  const formatCurrency = (amount: number) => formatRateMoney(amount);
 
   return (
     <Card>

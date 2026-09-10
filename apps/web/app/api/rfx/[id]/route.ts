@@ -24,6 +24,7 @@ const RFX_ENABLED = process.env.RFX_AGENT_ENABLED !== 'false';
 import { z } from 'zod';
 import { createOpenAIClient, hasAIClientConfig } from '@/lib/openai-client';
 import { logger } from '@/lib/logger';
+import { formatMoneyText } from '@repo/utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -309,7 +310,8 @@ export const PATCH = withAuthApiHandler(async (request: NextRequest, ctx) => {
         input.vendorName,
         input.currentBid,
         input.targetPrice,
-        (event.requirements as any[]) || []
+        (event.requirements as any[]) || [],
+        event.currency
       );
       return createSuccessResponse(ctx, { event, strategy });
     }
@@ -381,7 +383,7 @@ ${criteriaText}
 Vendor Bids:
 ${responses.map((r: any) => `
 Vendor: ${r.vendorName}
-Price: $${r.commercialResponse?.totalPrice || 'Not provided'}
+Price: ${r.commercialResponse?.totalPrice != null ? formatMoneyText(r.commercialResponse.totalPrice, event.currency) : 'Not provided'}
 Strengths: ${r.strengths?.join(', ') || 'N/A'}
 Weaknesses: ${r.weaknesses?.join(', ') || 'N/A'}
 `).join('\n---\n')}
@@ -504,7 +506,7 @@ async function generateAwardJustification(event: any, winner: string): Promise<s
 RFx: ${event.title} (${event.type})
 Winner: ${winner}
 ${winnerBid?.totalScore ? `Score: ${winnerBid.totalScore}` : ''}
-${winnerBid?.commercialResponse?.totalPrice ? `Price: $${winnerBid.commercialResponse.totalPrice}` : ''}
+${winnerBid?.commercialResponse?.totalPrice != null ? `Price: ${formatMoneyText(winnerBid.commercialResponse.totalPrice, event.currency)}` : ''}
 ${winnerBid?.strengths ? `Strengths: ${winnerBid.strengths.join(', ')}` : ''}
 
 Total bidders: ${responses.length}
@@ -527,7 +529,8 @@ async function generateNegotiationStrategy(
   vendorName: string,
   currentBid: number,
   targetPrice: number,
-  requirements: any[]
+  requirements: any[],
+  currency?: string | null
 ) {
   try {
     const OpenAI = (await import('openai')).default;
@@ -538,9 +541,9 @@ async function generateNegotiationStrategy(
     const prompt = `As a negotiation expert, provide strategy for this procurement negotiation:
 
 Vendor: ${vendorName}
-Current Bid: $${currentBid.toLocaleString()}
-Target Price: $${targetPrice.toLocaleString()}
-Gap: ${gap}%
+Current Bid: ${formatMoneyText(currentBid, currency)}
+Target Price: ${formatMoneyText(targetPrice, currency)}
+Gap: ${gap}%`
 
 Key Requirements:
 ${requirements.slice(0, 10).map((r: any) => `- ${r.title}`).join('\n')}
@@ -566,7 +569,7 @@ Provide as JSON:
   } catch (err) {
     logger.warn('[RFx] AI negotiation strategy failed, using fallback', { error: String(err) });
     return {
-      openingPosition: `Open at $${targetPrice.toLocaleString()} with justification based on market rates`,
+      openingPosition: `Open at ${formatMoneyText(targetPrice, currency)} with justification based on market rates`,
       keyLevers: ['Volume commitment', 'Multi-year deal', 'Early payment terms'],
       concessionStrategy: 'Start at target, concede in small increments with value-adds',
       walkAwayPrice: Math.round(targetPrice * 1.1),

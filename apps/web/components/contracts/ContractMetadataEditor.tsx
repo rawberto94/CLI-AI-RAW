@@ -249,7 +249,7 @@ export function ContractMetadataEditor({
     if (field.type === 'currency') {
       return (
         <p className="text-sm text-gray-900 font-semibold">
-          {value ? `${formData.currency || 'USD'} ${Number(value).toLocaleString()}` : <span className="text-gray-400">Not set</span>}
+          {value ? `${formData.currency ? `${formData.currency} ` : ''}${Number(value).toLocaleString()}` : <span className="text-gray-400">Not set</span>}
         </p>
       );
     }

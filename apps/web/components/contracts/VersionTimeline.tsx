@@ -285,9 +285,12 @@ function VersionDetailPanel({
             size="sm" 
             variant="outline"
             className="text-xs"
+            asChild
           >
-            <Download className="h-3 w-3 mr-1" />
-            Download
+            <a href={version.fileUrl} download>
+              <Download className="h-3 w-3 mr-1" />
+              Download
+            </a>
           </Button>
         )}
         {!version.isActive && (

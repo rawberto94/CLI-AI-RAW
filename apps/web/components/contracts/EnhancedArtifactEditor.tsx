@@ -887,7 +887,7 @@ function getDefaultArrayItem(key: string): any {
     return { title: '', content: '', category: '' };
   }
   if (key === 'rates') {
-    return { role: '', seniorityLevel: '', hourlyRate: 0, currency: 'USD' };
+    return { role: '', seniorityLevel: '', hourlyRate: 0, currency: 'CHF' };
   }
   if (key === 'milestones') {
     return { name: '', dueDate: '', status: 'pending', payment: 0 };

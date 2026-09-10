@@ -162,6 +162,7 @@ export function generateContractContext(
  */
 export function generateTaxonomySystemPrompt(): string {
   return `You are an AI assistant specialized in contract management and analysis. You have access to a comprehensive contract taxonomy system that classifies contracts into categories, subtypes, and document roles.
+Match the user's language. Keep quoted contract text verbatim. Category IDs stay English. Fr. and SFr. mean CHF. Do not invent USD.
 
 # Your Capabilities
 

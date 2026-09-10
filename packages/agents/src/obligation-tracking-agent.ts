@@ -17,6 +17,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { PrismaClient } from '@prisma/client';
 import { prisma as defaultPrisma } from './lib/prisma';
 import { tryCreateOpenAIClient } from 'clients-openai';
+import { analysisLanguageInstructions } from '@repo/utils';
 
 // ============================================================================
 // TYPES
@@ -210,6 +211,8 @@ export class ObligationTrackingAgent extends EventEmitter {
     } = {}
   ): Promise<ObligationExtractionResult> {
     const prompt = `You are a legal AI assistant specialized in contract analysis. Extract all contractual obligations from the following contract text.
+${analysisLanguageInstructions({ contractText })}
+Keep sourceClause verbatim. JSON keys stay English.
 
 Contract Type: ${options.contractType || 'Unknown'}
 Our Party: ${options.parties?.us || 'Company'}

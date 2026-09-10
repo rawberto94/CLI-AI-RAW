@@ -28,6 +28,8 @@ import {
   Tooltip,
   ResponsiveContainer
 } from 'recharts'
+import { useDisplayCurrency } from '@/hooks/useDisplayCurrency'
+import { formatDisplayTotal } from '@/lib/utils/formatters'
 
 interface MetricCardProps {
   title: string
@@ -66,6 +68,7 @@ function MetricCard({ title, value, change, icon, trend }: MetricCardProps) {
 
 export function AnalyticsHub() {
   const { dataMode, isRealData } = useDataMode()
+  const displayCurrency = useDisplayCurrency()
   const [loading, setLoading] = useState(false)
   const [metrics, setMetrics] = useState({
     totalContracts: 0,
@@ -145,8 +148,8 @@ export function AnalyticsHub() {
     const csvContent = [
       ['Metric', 'Value'].join(','),
       ['Total Contracts', metrics.totalContracts].join(','),
-      ['Total Value ($)', metrics.totalValue].join(','),
-      ['Potential Savings ($)', metrics.potentialSavings].join(','),
+      ['Total Value (converted)', metrics.totalValue].join(','),
+      ['Potential Savings (converted)', metrics.potentialSavings].join(','),
       ['Active Suppliers', metrics.activeSuppliers].join(','),
       ['Upcoming Renewals', metrics.upcomingRenewals].join(','),
       ['Artifacts Processed', metrics.artifactsProcessed].join(','),
@@ -210,14 +213,14 @@ export function AnalyticsHub() {
         />
         <MetricCard
           title="Total Value"
-          value={`$${(metrics.totalValue / 1000000).toFixed(1)}M`}
+          value={formatDisplayTotal(metrics.totalValue, displayCurrency)}
           change={metrics.totalValue > 0 ? 'Portfolio value' : undefined}
           trend="up"
           icon={<DollarSign className="h-6 w-6 text-green-600" />}
         />
         <MetricCard
           title="Potential Savings"
-          value={`$${(metrics.potentialSavings / 1000000).toFixed(1)}M`}
+          value={formatDisplayTotal(metrics.potentialSavings, displayCurrency)}
           change={savingsPercent > 0 ? `${savingsPercent}% of total value` : undefined}
           trend="up"
           icon={<TrendingUp className="h-6 w-6 text-violet-600" />}
@@ -249,7 +252,7 @@ export function AnalyticsHub() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle>Contract Value Trend ($M)</CardTitle>
+            <CardTitle>Contract Value Trend</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-64">
@@ -257,8 +260,8 @@ export function AnalyticsHub() {
                 <AreaChart data={valueTrendData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                   <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-                  <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => `$${v}M`} />
-                  <Tooltip formatter={(value: number) => [`$${value}M`, 'Value']} />
+                  <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => `${v}M`} />
+                  <Tooltip formatter={(value: number) => [`${v}M`, 'Value']} />
                   <Area
                     type="monotone"
                     dataKey="value"
@@ -280,16 +283,16 @@ export function AnalyticsHub() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Top Suppliers by Value ($M)</CardTitle>
+            <CardTitle>Top Suppliers by Value</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={supplierData} layout="vertical">
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                  <XAxis type="number" tick={{ fontSize: 12 }} tickFormatter={(v) => `$${v}M`} />
+                  <XAxis type="number" tick={{ fontSize: 12 }} tickFormatter={(v) => `${v}M`} />
                   <YAxis type="category" dataKey="name" tick={{ fontSize: 12 }} width={50} />
-                  <Tooltip formatter={(value: number) => [`$${value}M`, 'Value']} />
+                  <Tooltip formatter={(value: number) => [`${v}M`, 'Value']} />
                   <Bar dataKey="value" fill="#7c3aed" radius={[0, 4, 4, 0]} />
                 </BarChart>
               </ResponsiveContainer>

@@ -60,8 +60,14 @@ function buildSummary(contractId: string, ctx: Record<string, any>): ContractSum
   const title = ctx.contractTitle || ctx.title || 'Untitled Contract';
   const supplier = ctx.supplierName || ctx.counterparty || ctx.vendor || 'Unknown Party';
   const type = ctx.contractType || 'Unknown Type';
-  const totalValue = Number(ctx.totalValue || ctx.value || 0);
-  const annualValue = Number(ctx.annualValue || 0);
+  const totalValue = Number(ctx.totalValue ?? ctx.value);
+  const annualValue = Number(ctx.annualValue);
+  const moneyCurrency = typeof ctx.currency === 'string' && /^[A-Z]{3}$/i.test(ctx.currency.trim())
+    ? ctx.currency.trim().toUpperCase()
+    : '';
+  const formatMoney = (n: number) => (Number.isFinite(n) && n > 0)
+    ? `${moneyCurrency ? `${moneyCurrency} ` : ''}${n.toLocaleString('de-CH')}`
+    : 'Not specified';
   const effDate = ctx.effectiveDate || null;
   const expDate = ctx.expirationDate || null;
   const autoRenewal = !!ctx.autoRenewalEnabled;
@@ -77,7 +83,7 @@ function buildSummary(contractId: string, ctx: Record<string, any>): ContractSum
   }
 
   // Build executive summary
-  const valuePart = totalValue > 0 ? ` valued at $${totalValue.toLocaleString()}` : '';
+  const valuePart = totalValue > 0 ? ` valued at ${formatMoney(totalValue)}` : '';
   const durationPart = durationDays !== null ? ` spanning ${durationDays} days` : '';
   const renewalPart = autoRenewal ? ' with auto-renewal' : '';
   const deptPart = department ? ` (${department})` : '';
@@ -87,8 +93,8 @@ function buildSummary(contractId: string, ctx: Record<string, any>): ContractSum
 
   // Key terms
   const keyTerms: KeyTerm[] = [];
-  if (totalValue > 0) keyTerms.push({ label: 'Total Value', value: `$${totalValue.toLocaleString()}`, importance: 'high' });
-  if (annualValue > 0) keyTerms.push({ label: 'Annual Value', value: `$${annualValue.toLocaleString()}`, importance: 'high' });
+  if (totalValue > 0) keyTerms.push({ label: 'Total Value', value: formatMoney(totalValue), importance: 'high' });
+  if (annualValue > 0) keyTerms.push({ label: 'Annual Value', value: formatMoney(annualValue), importance: 'high' });
   if (type) keyTerms.push({ label: 'Contract Type', value: type, importance: 'medium' });
   if (department) keyTerms.push({ label: 'Department', value: department, importance: 'medium' });
   keyTerms.push({ label: 'Auto-Renewal', value: autoRenewal ? 'Yes' : 'No', importance: autoRenewal ? 'high' : 'low' });
@@ -127,8 +133,8 @@ function buildSummary(contractId: string, ctx: Record<string, any>): ContractSum
     keyTerms,
     parties,
     financials: {
-      totalValue: totalValue > 0 ? `$${totalValue.toLocaleString()}` : 'Not specified',
-      annualValue: annualValue > 0 ? `$${annualValue.toLocaleString()}` : 'Not specified',
+      totalValue: formatMoney(totalValue),
+      annualValue: formatMoney(annualValue),
       paymentTerms: ctx.paymentTerms || 'Not specified',
     },
     timeline: {

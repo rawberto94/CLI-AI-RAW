@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
+import { formatAmountWithCurrency } from '@/lib/utils/formatters'
 import {
   X,
   FileText,
@@ -40,6 +41,7 @@ interface ContractForComparison {
     supplier?: string
   }
   value?: number
+  currency?: string
   effectiveDate?: string
   expirationDate?: string
   signatureStatus?: 'signed' | 'partially_signed' | 'unsigned' | 'unknown'
@@ -64,7 +66,7 @@ interface ContractComparisonDialogProps {
   onClose: () => void
   onViewContract?: (contractId: string) => void
   onDownloadComparison?: () => void
-  formatCurrency?: (value?: number) => string
+  formatCurrency?: (value?: number, currency?: string) => string
   formatDate?: (date?: string) => string
 }
 
@@ -148,7 +150,7 @@ export const ContractComparisonDialog = memo(function ContractComparisonDialog({
   onClose,
   onViewContract,
   onDownloadComparison,
-  formatCurrency = (v) => v !== undefined ? new Intl.NumberFormat('de-CH', { style: 'currency', currency: 'CHF', maximumFractionDigits: 0 }).format(v) : '—',
+  formatCurrency = (v, currency) => formatAmountWithCurrency(v, currency),
   formatDate = (d) => d ? new Date(d).toLocaleDateString() : '—',
 }: ContractComparisonDialogProps) {
   const [expandedSections, setExpandedSections] = useState({
@@ -371,7 +373,7 @@ export const ContractComparisonDialog = memo(function ContractComparisonDialog({
                       value: <span className={cn(
                         "text-sm font-bold",
                         c.value ? "text-slate-900" : "text-slate-400"
-                      )}>{formatCurrency(c.value)}</span>,
+                      )}>{formatCurrency(c.value, c.currency)}</span>,
                       raw: c.value
                     }))}
                   />

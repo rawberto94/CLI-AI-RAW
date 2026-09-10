@@ -14,6 +14,7 @@ import { createOpenAIClient, getOpenAIApiKey } from '@/lib/openai-client';
 import { aiCopilotService } from 'data-orchestration/services';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 import { logger } from '@/lib/logger';
+import { analysisLanguageInstructions } from '@repo/utils';
 
 // ============================================================================
 // Types
@@ -77,7 +78,9 @@ const SYSTEM_PROMPT = `You are an expert contract analyst assistant for the Cont
 - Understand procurement and vendor management contexts
 
 **Output Format:**
-Provide a clear, structured response. If citing specific sections, format as "According to [Section Name]: [quote or paraphrase]"`;
+Provide a clear, structured response. If citing specific sections, format as "According to [Section Name]: [quote or paraphrase]"
+
+Match the user's language. Keep quoted contract text verbatim. Fr. and SFr. mean CHF. Do not invent USD.`;
 
 const CONTEXT_PROMPT_TEMPLATE = (
   contractName: string,
@@ -89,7 +92,7 @@ const CONTEXT_PROMPT_TEMPLATE = (
 - Contract Name: ${contractName}
 - Supplier: ${supplierName || 'Not specified'}
 - Contract Type: ${contractType || 'Not specified'}
-- Total Value: ${totalValue ? `$${totalValue.toLocaleString()}` : 'Not specified'}
+- Total Value: ${totalValue != null ? String(totalValue) : 'Not specified'}
 `;
 
 // ============================================================================
@@ -242,7 +245,9 @@ ${result.text}`;
     const messages: OpenAI.ChatCompletionMessageParam[] = [
       {
         role: 'system',
-        content: SYSTEM_PROMPT },
+        content: `${SYSTEM_PROMPT}
+
+${analysisLanguageInstructions({ contractText: contract.rawText || contractContext })}` },
       {
         role: 'user',
         content: `${CONTEXT_PROMPT_TEMPLATE(

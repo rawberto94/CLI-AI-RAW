@@ -87,7 +87,8 @@ export type ContractEvidenceField =
   | 'autoRenewal'
   | 'terminationClause'
   | 'liabilityCap'
-  | 'keyObligations';
+  | 'keyObligations'
+  | 'contractCurrency';
 
 export interface ContractFieldEvidence {
   field: ContractEvidenceField;
@@ -144,10 +145,11 @@ export const CONTRACT_DI_QUERY_FIELD_DEFINITIONS: ContractDIQueryFieldDefinition
   { identifier: 'expirationDate', field: 'expirationDate', question: 'What is the contract expiration date or end date?' },
   { identifier: 'initialTerm', field: 'initialTerm', question: 'What is the initial contract term or duration?' },
   { identifier: 'renewalTerms', field: 'renewalTerms', question: 'What are the renewal terms or renewal period?' },
-  { identifier: 'noticePeriod', field: 'noticePeriod', question: 'What is the termination or renewal notice period?' },
-  { identifier: 'totalContractValue', field: 'totalContractValue', question: 'What is the total contract value or aggregate fee?' },
-  { identifier: 'paymentTerms', field: 'paymentTerms', question: 'What are the payment terms?' },
-  { identifier: 'governingLaw', field: 'governingLaw', question: 'What is the governing law or jurisdiction?' },
+  { identifier: 'noticePeriod', field: 'noticePeriod', question: 'What is the termination or renewal notice period (Kündigungsfrist)?' },
+  { identifier: 'totalContractValue', field: 'totalContractValue', question: 'What is the total contract value, aggregate fee, NTE, or Gesamtvertragswert? Do not return a milestone, liability cap, insurance, or example amount.' },
+  { identifier: 'contractCurrency', field: 'contractCurrency', question: 'What currency are the contract amounts in (CHF, Fr., EUR, USD)? Return an ISO 4217 code only.' },
+  { identifier: 'paymentTerms', field: 'paymentTerms', question: 'What are the payment terms (Zahlungsbedingungen, Net days)?' },
+  { identifier: 'governingLaw', field: 'governingLaw', question: 'What is the governing law, jurisdiction, or anwendbares Recht?' },
   { identifier: 'contractingParties', field: 'contractingParties', question: 'Who are the contracting parties?' },
   { identifier: 'clientName', field: 'clientName', question: 'Who is the client, buyer, or customer?' },
   { identifier: 'supplierName', field: 'supplierName', question: 'Who is the supplier, vendor, or service provider?' },
@@ -205,8 +207,8 @@ const NUMBER_WORDS: Record<string, number> = {
 
 const NUMBER_PATTERN = '(?:\\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)';
 const UNIT_PATTERN = '(?:years?|yrs?|months?|mos?|weeks?|wks?|days?)';
-const MONTH_NAMES = '(?:january|february|march|april|may|june|july|august|september|october|november|december)';
-const DATE_PATTERN = `(?:${MONTH_NAMES}\\s+\\d{1,2},?\\s+\\d{4}|\\d{1,2}\\s+${MONTH_NAMES}\\s+\\d{4}|\\d{1,2}[\\/\\-]\\d{1,2}[\\/\\-]\\d{2,4})`;
+const MONTH_NAMES = '(?:january|february|march|april|may|june|july|august|september|october|november|december|januar|februar|märz|maerz|mai|juni|juli|oktober|dezember)';
+const DATE_PATTERN = `(?:${MONTH_NAMES}\\s+\\d{1,2},?\\s+\\d{4}|\\d{1,2}\\.?\\s+${MONTH_NAMES}\\s+\\d{4}|\\d{1,2}[\\/\\.\\-]\\d{1,2}[\\/\\.\\-]\\d{2,4})`;
 
 const INITIAL_TERM_PATTERNS = [
   new RegExp(`\\b(?:initial\\s+)?term(?:\\s+of\\s+(?:this|the)\\s+agreement)?[^.\\n;]{0,120}?(?:is|shall\\s+be|will\\s+be|continues?\\s+for|lasts?|runs?|for|of)\\s+(?:a\\s+period\\s+of\\s+)?(?<value>${NUMBER_PATTERN})(?:\\s*\\(\\s*\\d+\\s*\\))?\\s*(?<unit>${UNIT_PATTERN})`, 'gi'),
@@ -226,29 +228,86 @@ const EXPLICIT_END_DATE_PATTERNS = [
   new RegExp(`\\b(?:until|through)\\s+(?<date>${DATE_PATTERN})`, 'gi'),
 ];
 
-const MONEY_PATTERN = /((?:USD|EUR|GBP|CHF)\s*[$€£]?\s*\d[\d,.]*(?:\s*(?:m|mn|mm|million|k|thousand))?|[$€£]\s*\d[\d,.]*(?:\s*(?:m|mn|mm|million|k|thousand))?|\b\d+(?:[.,]\d+)?\s*(?:m|mn|mm|million|k|thousand)\b(?:\s*(?:USD|EUR|GBP|CHF))?|\b\d{1,3}(?:,\d{3})+(?:\.\d+)?\b)/gi;
+const MONEY_PATTERN = /((?:USD|EUR|GBP|CHF|SFr\.?|Fr\.?)\s*[$€£]?\s*\d[\d''’.,]*(?:\s*(?:m|mn|mm|million|k|thousand))?|[$€£]\s*\d[\d''’.,]*(?:\s*(?:m|mn|mm|million|k|thousand))?|\b\d+(?:['’.,]\d+)?\s*(?:m|mn|mm|million|k|thousand)\b(?:\s*(?:USD|EUR|GBP|CHF))?|\b\d{1,3}(?:['’']\d{3})+(?:\.\d+)?\b|\b\d{1,3}(?:,\d{3})+(?:\.\d+)?\b)/gi;
 
 function normalizeWhitespace(value: string): string {
   return value.replace(/\s+/g, ' ').trim();
 }
 
-function parseIsoDate(value: string): string | null {
+const MONTH_NUMBER: Record<string, number> = {
+  january: 1, februar: 2, february: 2, march: 3, märz: 3, maerz: 3,
+  april: 4, may: 5, mai: 5, june: 6, juni: 6, july: 7, juli: 7,
+  august: 8, september: 9, october: 10, oktober: 10, november: 11,
+  december: 12, dezember: 12, januar: 1,
+};
+
+function pad2(n: number): string {
+  return n < 10 ? `0${n}` : String(n);
+}
+
+function ymd(yearRaw: string | number, month: number, day: number): string | null {
+  let year = typeof yearRaw === 'number' ? yearRaw : Number.parseInt(yearRaw, 10);
+  if (year < 100) year += year >= 70 ? 1900 : 2000;
+  if (!Number.isFinite(year) || month < 1 || month > 12 || day < 1 || day > 31) return null;
+  const dt = new Date(Date.UTC(year, month - 1, day));
+  if (dt.getUTCFullYear() !== year || dt.getUTCMonth() !== month - 1 || dt.getUTCDate() !== day) return null;
+  return `${year}-${pad2(month)}-${pad2(day)}`;
+}
+
+export function parseIsoDate(
+  value: string,
+  options?: { locale?: 'de' | 'fr' | 'it' | 'en' | string | null },
+): string | null {
   const normalized = value
     .replace(/(\d)(st|nd|rd|th)\b/gi, '$1')
-    .replace(/\b(?:effective|date|as of|on|from|until|through)\b/gi, ' ')
+    .replace(/\b(?:effective|date|as of|on|from|until|through|inkrafttreten|gültig(?:keitsdauer)?|unterzeichnet)\b/gi, ' ')
     .replace(/[,:;]+$/g, '')
     .trim();
   if (!normalized) return null;
 
+  const iso = normalized.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (iso) return ymd(iso[1]!, Number(iso[2]), Number(iso[3]));
+
+  // Swiss/German numeric dates: 01.01.2026 is 1 January, not 1st of a US month.
+  const dotted = normalized.match(/^(\d{1,2})\.(\d{1,2})\.(\d{2,4})$/);
+  if (dotted) return ymd(dotted[3]!, Number(dotted[2]), Number(dotted[1]));
+
+  // Slash dates: DE/FR/IT (and default) are DD/MM. English ambiguous MM/DD vs DD/MM is not guessed.
+  const slashed = normalized.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+  if (slashed) {
+    const first = Number(slashed[1]);
+    const second = Number(slashed[2]);
+    const year = slashed[3]!;
+    if (first > 12 && second <= 12) return ymd(year, second, first);
+    if (second > 12 && first <= 12) return ymd(year, first, second);
+    const loc = (options?.locale || 'de').toString().toLowerCase().slice(0, 2);
+    if (loc === 'en') return null;
+    return ymd(year, second, first);
+  }
+
+  const dayMonth = normalized.match(/^(\d{1,2})\.?\s+([A-Za-zäöüÄÖÜéè]+)\s+(\d{4})$/);
+  if (dayMonth) {
+    const month = MONTH_NUMBER[dayMonth[2]!.toLowerCase()];
+    if (month) return ymd(dayMonth[3]!, month, Number(dayMonth[1]));
+  }
+
+  const monthDay = normalized.match(/^([A-Za-z]+)\s+(\d{1,2}),?\s+(\d{4})$/);
+  if (monthDay) {
+    const month = MONTH_NUMBER[monthDay[1]!.toLowerCase()];
+    if (month) return ymd(monthDay[3]!, month, Number(monthDay[2]));
+  }
+
   const directDate = new Date(normalized);
-  if (!Number.isNaN(directDate.getTime())) {
+  if (!Number.isNaN(directDate.getTime()) && !/^\d{1,2}[./]\d{1,2}[./]\d{2,4}$/.test(normalized)) {
     return directDate.toISOString().slice(0, 10);
   }
 
   const dateMatch = normalized.match(new RegExp(DATE_PATTERN, 'i'));
   if (!dateMatch?.[0]) return null;
-
-  const matchedDate = new Date(dateMatch[0].replace(/(\d)(st|nd|rd|th)\b/gi, '$1'));
+  const matched = dateMatch[0];
+  const dottedMatch = matched.match(/(\d{1,2})\.(\d{1,2})\.(\d{2,4})/);
+  if (dottedMatch) return ymd(dottedMatch[3]!, Number(dottedMatch[2]), Number(dottedMatch[1]));
+  const matchedDate = new Date(matched.replace(/(\d)(st|nd|rd|th)\b/gi, '$1'));
   return Number.isNaN(matchedDate.getTime()) ? null : matchedDate.toISOString().slice(0, 10);
 }
 
@@ -329,7 +388,7 @@ function normalizeSignatureStatusAnswer(value: string): 'signed' | 'partially_si
 }
 
 function parseLiabilityCap(value: string): { amount: number | null; currency: string | null } {
-  const amountMatch = value.match(MONEY_PATTERN);
+  const amountMatch = value.match(new RegExp(MONEY_PATTERN.source, 'gi'));
   const amount = amountMatch?.[1] ? parseMonetaryAmount(amountMatch[1]) : parseMonetaryAmount(value);
   return {
     amount: amount != null && amount > 0 && amount < 1e12 ? amount : null,
@@ -400,16 +459,11 @@ function findNearestLegalEntity(text: string, nearIndex = 0): string | null {
 }
 
 function findMostMentionedCurrency(text: string): string | null {
-  const matches = text.match(/\b(?:USD|EUR|GBP|CHF)\b|[$€£]/gi) || [];
+  const matches = text.match(/\b(?:USD|EUR|GBP|CHF|SFr\.?)\b|(?:^|[^\w])Fr\.|[$€£]/gi) || [];
   if (matches.length === 0) return null;
   const counts = new Map<string, number>();
   for (const match of matches) {
-    const code = match.toUpperCase();
-    const currency = code === 'USD' || code === '$' ? 'USD'
-      : code === 'EUR' || code === '€' ? 'EUR'
-      : code === 'GBP' || code === '£' ? 'GBP'
-      : code === 'CHF' ? 'CHF'
-      : null;
+    const currency = detectCurrency(match);
     if (!currency) continue;
     counts.set(currency, (counts.get(currency) || 0) + 1);
   }
@@ -522,6 +576,18 @@ export function validateDIQueryAnswers(
           flags.push({ field: id, issue: `${id} answer does not contain a legal entity suffix: "${original}"`, confidencePenalty: 0.2 });
         }
       }
+    }
+
+    if (id === 'contractCurrency') {
+      const detected = detectCurrency(value);
+      const code = detected || (/^[A-Z]{3}$/.test(value.trim().toUpperCase()) ? value.trim().toUpperCase() : null);
+      if (!code || code === 'XXX') {
+        flags.push({ field: id, issue: `contractCurrency is not a real ISO code: "${value}"`, confidencePenalty: 0.3 });
+        delete validated[id];
+        rejected.push(id);
+        continue;
+      }
+      validated[id] = code;
     }
 
     if (id === 'governingLaw') {
@@ -711,7 +777,10 @@ export function assessContractTermEvidence(
   };
 }
 
-export function parseMonetaryAmount(value: string): number | null {
+export function parseMonetaryAmount(
+  value: string,
+  options?: { locale?: 'de' | 'fr' | 'it' | 'en' | string | null },
+): number | null {
   const normalizedText = value.toLowerCase();
   const multiplier = /\b(?:m|mn|mm|million)\b/.test(normalizedText)
     ? 1_000_000
@@ -720,12 +789,18 @@ export function parseMonetaryAmount(value: string): number | null {
       : 1;
   const cleaned = value
     .replace(/\b(?:USD|EUR|GBP|CHF)\b/gi, '')
+    .replace(/\bSFr\.?\s*/gi, '')
+    .replace(/\bFr\.\s*/gi, '')
     .replace(/[$€£]/g, '')
     .replace(/\b(?:m|mn|mm|million|k|thousand)\b/gi, '')
+    .replace(/'/g, '')
     .replace(/[^\d,.-]/g, '')
     .trim();
 
   if (!cleaned) return null;
+
+  const loc = (options?.locale || '').toString().toLowerCase().slice(0, 2);
+  const european = loc === 'de' || loc === 'fr' || loc === 'it';
 
   let numericText = cleaned;
   if (cleaned.includes(',') && cleaned.includes('.')) {
@@ -737,6 +812,12 @@ export function parseMonetaryAmount(value: string): number | null {
     numericText = parts[parts.length - 1]?.length === 2
       ? cleaned.replace(',', '.')
       : cleaned.replace(/,/g, '');
+  } else if (cleaned.includes('.') && !cleaned.includes(',') && european) {
+    const parts = cleaned.split('.');
+    const last = parts[parts.length - 1] || '';
+    if (last.length === 3 && parts.length >= 2) {
+      numericText = cleaned.replace(/\./g, '');
+    }
   }
 
   const parsed = Number.parseFloat(numericText);
@@ -744,7 +825,7 @@ export function parseMonetaryAmount(value: string): number | null {
 }
 
 function detectCurrency(value: string): string | null {
-  if (/\bCHF\b/i.test(value)) return 'CHF';
+  if (/\bCHF\b/i.test(value) || /\bSFr\.?\b/i.test(value) || /\bFr\./i.test(value)) return 'CHF';
   if (/\bEUR\b/i.test(value) || /€/.test(value)) return 'EUR';
   if (/\bGBP\b/i.test(value) || /£/.test(value)) return 'GBP';
   if (/\bUSD\b/i.test(value) || /\$/.test(value)) return 'USD';
@@ -860,6 +941,11 @@ export function normalizeDIQueryAnswers(
     } else if (definition.field === 'renewalTerms') {
       item.normalizedValue = value;
       metadata.renewalTerms = value;
+    } else if (definition.field === 'contractCurrency') {
+      const currency = detectCurrency(value)
+        || (/^[A-Z]{3}$/.test(value.trim().toUpperCase()) ? value.trim().toUpperCase() : null);
+      item.normalizedValue = currency;
+      if (currency && !metadata.currency) metadata.currency = currency;
     }
 
     evidence.push(item);
@@ -868,7 +954,12 @@ export function normalizeDIQueryAnswers(
   // Currency may come from a dedicated query field or from validation fallback.
   const currencyAnswer = answers.contractCurrency ?? answers.currency;
   if (currencyAnswer && !metadata.currency) {
-    metadata.currency = normalizeWhitespace(String(currencyAnswer)).toUpperCase().slice(0, 3);
+    const detected = detectCurrency(String(currencyAnswer));
+    const code = detected
+      || (/^[A-Z]{3}$/.test(normalizeWhitespace(String(currencyAnswer)).toUpperCase())
+        ? normalizeWhitespace(String(currencyAnswer)).toUpperCase()
+        : null);
+    if (code) metadata.currency = code;
   }
 
   if (!metadata.endDate && metadata.startDate) {
@@ -894,16 +985,38 @@ export function normalizeDIQueryAnswers(
   return { evidence, metadata };
 }
 
+const STRONG_AGGREGATE_RE = /total\s+contract\s+value|contract\s+value|total\s+value|aggregate\s+(?:amount|fees?|consideration|value)|not\s+to\s+exceed|maximum\s+(?:amount|fees?|value)|total\s+(?:fees?|price|payable|compensation|consideration|amount)|contract\s+amount|purchase\s+price|overall\s+(?:value|amount|fees?)|gesamtvertragswert|vertragswert|auftragswert|höchstbetrag|maximalbetrag|nicht\s+überschreiten|valeur\s+totale|valeur\s+du\s+contrat|plafond|valore\s+complessivo/gi;
+const MEDIUM_AGGREGATE_RE = /transaction\s+fee|success[-\s]related\s+transaction\s+fee|service\s+fee|advisory\s+fee|fixed\s+fee|fee\s+shall\s+amount\s+to|shall\s+amount\s+to|amounts?\s+to|budget|consideration|vergütung|honorar/gi;
+const INSTALLMENT_RE = /payment\s+schedule|milestone|instal?lment|deposit|advance|invoice|monthly|annual|per\s+(?:month|year|hour|day|unit|tag|stunde)|rate\s+card|unit\s+price|first\s+payment|upon\s+execution|due\s+upon|payment\s+\d+|tagessatz|tagesansatz|stundensatz|honorartabelle|meilenstein|abschlag|taux\s+journalier/gi;
+const EXCLUDED_RE = /example|sample|illustrative|liability|insurance|coverage|discount|interest|penalt|shipment|forecast|warranty|tax|vat|gst|late\s+fee|expense\s+cap|reimbursement|haftung|haftungsobergrenze|versicherung|vertragsstrafe|beispiel|responsabilité|responsabilit[aà]/gi;
+
+function nearestLabelBefore(context: string, regex: RegExp, origin: number): number {
+  const re = new RegExp(regex.source, 'gi');
+  let best = Number.POSITIVE_INFINITY;
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(context)) !== null) {
+    if (match.index <= origin) {
+      best = Math.min(best, origin - match.index);
+    }
+  }
+  return best;
+}
+
 function scoreMonetaryCandidate(amountText: string, context: string, value: number): MonetaryCandidate {
-  const normalized = context.toLowerCase();
   const reasons: string[] = [];
   let score = 0;
   let kind: MonetaryCandidate['kind'] = 'unknown';
-
-  const hasStrongAggregateLabel = /\b(?:total\s+contract\s+value|contract\s+value|total\s+value|aggregate\s+(?:amount|fees?|consideration|value)|not\s+to\s+exceed|maximum\s+(?:amount|fees?|value)|total\s+(?:fees?|price|payable|compensation|consideration|amount)|contract\s+amount|purchase\s+price|overall\s+(?:value|amount|fees?))\b/.test(normalized);
-  const hasMediumAggregateLabel = /\b(?:transaction\s+fee|success[-\s]related\s+transaction\s+fee|service\s+fee|advisory\s+fee|fixed\s+fee|fee\s+shall\s+amount\s+to|shall\s+amount\s+to|amounts?\s+to|budget|consideration)\b/.test(normalized);
-  const hasInstallmentLabel = /\b(?:payment\s+schedule|milestone|instal?lment|deposit|advance|invoice|monthly|annual|per\s+(?:month|year|hour|day|unit)|rate\s+card|unit\s+price|first\s+payment|upon\s+execution|due\s+upon|payment\s+\d+)\b/.test(normalized);
-  const hasExcludedLabel = /\b(?:example|sample|illustrative|liability|insurance|coverage|discount|interest|penalt|shipment|forecast|warranty|tax|vat|gst|late\s+fee|expense\s+cap|reimbursement)\b/.test(normalized);
+  const origin = Math.max(0, context.toLowerCase().indexOf(amountText.toLowerCase()));
+  const aggregateDist = Math.min(
+    nearestLabelBefore(context, STRONG_AGGREGATE_RE, origin),
+    nearestLabelBefore(context, MEDIUM_AGGREGATE_RE, origin) + 20,
+  );
+  const installmentDist = nearestLabelBefore(context, INSTALLMENT_RE, origin);
+  const excludedDist = nearestLabelBefore(context, EXCLUDED_RE, origin);
+  const hasStrongAggregateLabel = nearestLabelBefore(context, STRONG_AGGREGATE_RE, origin) !== Number.POSITIVE_INFINITY;
+  const hasMediumAggregateLabel = nearestLabelBefore(context, MEDIUM_AGGREGATE_RE, origin) !== Number.POSITIVE_INFINITY;
+  const hasInstallmentLabel = installmentDist !== Number.POSITIVE_INFINITY;
+  const hasExcludedLabel = excludedDist !== Number.POSITIVE_INFINITY;
 
   if (hasStrongAggregateLabel) {
     score += 120;
@@ -920,12 +1033,17 @@ function scoreMonetaryCandidate(amountText: string, context: string, value: numb
     if (!hasStrongAggregateLabel && !hasMediumAggregateLabel) kind = 'installment';
     reasons.push('installment or rate context');
   }
-  if (hasExcludedLabel) {
+  if (hasExcludedLabel && excludedDist + 8 < aggregateDist) {
     score -= 160;
     kind = 'excluded';
     reasons.push('excluded context');
+  } else if (hasExcludedLabel) {
+    reasons.push('excluded label farther than aggregate');
   }
-  if (/\b(?:USD|EUR|GBP|CHF)\b|[$€£]/i.test(amountText)) {
+  if (kind !== 'excluded' && installmentDist + 8 < aggregateDist && hasInstallmentLabel) {
+    kind = 'installment';
+  }
+  if (/\b(?:USD|EUR|GBP|CHF|SFr\.?)\b|[$€£]|Fr\./i.test(amountText)) {
     score += 10;
     reasons.push('currency marker');
   }
@@ -963,7 +1081,7 @@ export function extractFinancialEvidence(contractText: string): FinancialEvidenc
     };
   }
 
-  for (const match of contractText.matchAll(MONEY_PATTERN)) {
+  for (const match of contractText.matchAll(new RegExp(MONEY_PATTERN.source, 'gi'))) {
     const amountText = match[1];
     if (!amountText) continue;
 
@@ -986,13 +1104,177 @@ export function extractFinancialEvidence(contractText: string): FinancialEvidenc
   }
 
   return {
-    totalValue: bestCandidate?.value ?? (paymentScheduleTotal && paymentScheduleTotal > 0 ? paymentScheduleTotal : null),
+    totalValue: bestCandidate?.value ?? null,
     currency: bestCandidate?.currency ?? sortedCandidates.find(candidate => candidate.currency)?.currency ?? null,
     bestCandidate,
     candidates: sortedCandidates.slice(0, 20),
     paymentScheduleTotal,
     validationIssues,
   };
+}
+
+export type TcvSource = 'canonical' | 'di_query' | 'heuristic' | 'financial' | 'overview' | 'invoice' | 'none';
+
+/** Human-saved TCV on Contract.aiMetadata.tcvSource — re-analysis must not overwrite. */
+export function isHumanTcvLocked(aiMetadata: unknown): boolean {
+  if (!aiMetadata || typeof aiMetadata !== 'object' || Array.isArray(aiMetadata)) return false;
+  return (aiMetadata as Record<string, unknown>).tcvSource === 'human';
+}
+
+export interface TcvWinner {
+  value: number | null;
+  currency: string | null;
+  source: TcvSource;
+  quote: string | null;
+  label: string;
+}
+
+const TCV_SOURCE_LABEL: Record<TcvSource, string> = {
+  canonical: 'Saved by you',
+  di_query: 'Document Intelligence',
+  heuristic: 'Explicit TCV in the text',
+  financial: 'Financial analysis',
+  overview: 'Overview analysis',
+  invoice: 'Invoice total',
+  none: 'Not found',
+};
+
+function positiveAmount(value: unknown): number | null {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) return null;
+  return value;
+}
+
+function almostEqualAmount(a: number, b: number): boolean {
+  const abs = Math.abs(a - b);
+  if (abs < 0.5) return true;
+  return abs / Math.max(a, b) < 0.001;
+}
+
+function contextForAmount(text: string | null | undefined, value: number, quote: string | null): string {
+  if (text) {
+    const heuristic = extractFinancialEvidence(text);
+    const match = heuristic.candidates.find((candidate) => almostEqualAmount(candidate.value, value));
+    if (match?.source) return match.source;
+  }
+  return quote || '';
+}
+
+function isAcceptableTcvCandidate(
+  value: number,
+  context: string,
+  evidence?: FinancialEvidenceAssessment | null,
+): boolean {
+  const scored = scoreMonetaryCandidate(String(value), context, value);
+  if (scored.kind === 'excluded' || scored.kind === 'installment') return false;
+  if (evidence) {
+    const collision = evidence.candidates.find(
+      (candidate) =>
+        almostEqualAmount(candidate.value, value) &&
+        (candidate.kind === 'excluded' || candidate.kind === 'installment'),
+    );
+    const aggregate = evidence.candidates.find(
+      (candidate) => almostEqualAmount(candidate.value, value) && candidate.kind === 'aggregate',
+    );
+    if (collision && !aggregate) return false;
+  }
+  return true;
+}
+
+/**
+ * One TCV winner with provenance. Order: DI query → heuristic aggregate → FINANCIAL → OVERVIEW.
+ * Invoice totals are used only when the document is classified as an invoice/PO.
+ * Canonical (saved) value is not the extraction winner; callers overlay it for display + drift.
+ */
+export function resolveTcvWinner(input: {
+  contractType?: string | null;
+  diQueryAnswers?: Record<string, string> | null;
+  contractText?: string | null;
+  financialTotal?: number | null;
+  financialCurrency?: string | null;
+  financialQuote?: string | null;
+  overviewTotal?: number | null;
+  overviewCurrency?: string | null;
+  overviewQuote?: string | null;
+  invoiceTotal?: number | null;
+  invoiceCurrency?: string | null;
+}): TcvWinner {
+  const type = (input.contractType || '').toUpperCase();
+  const isInvoice = type.includes('INVOICE') || type === 'PURCHASE_ORDER' || type === 'RECEIPT';
+  const evidence = input.contractText ? extractFinancialEvidence(input.contractText) : null;
+
+  const di = input.diQueryAnswers && Object.keys(input.diQueryAnswers).length > 0
+    ? normalizeDIQueryAnswers(input.diQueryAnswers)
+    : null;
+  const diValue = positiveAmount(di?.metadata.totalValue);
+  if (diValue != null) {
+    const quote = di?.evidence.find((item) => item.field === 'totalContractValue')?.sourceQuote
+      || input.diQueryAnswers?.totalContractValue
+      || null;
+    const context = contextForAmount(input.contractText, diValue, quote);
+    if (isAcceptableTcvCandidate(diValue, context, evidence)) {
+      return {
+        value: diValue,
+        currency: di?.metadata.currency || null,
+        source: 'di_query',
+        quote,
+        label: TCV_SOURCE_LABEL.di_query,
+      };
+    }
+  }
+
+  const heuristicValue = positiveAmount(evidence?.totalValue);
+  if (heuristicValue != null) {
+    return {
+      value: heuristicValue,
+      currency: evidence?.currency ?? null,
+      source: 'heuristic',
+      quote: evidence?.bestCandidate?.source || evidence?.bestCandidate?.amountText || null,
+      label: TCV_SOURCE_LABEL.heuristic,
+    };
+  }
+
+  const financial = positiveAmount(input.financialTotal);
+  if (financial != null) {
+    const context = contextForAmount(input.contractText, financial, input.financialQuote || null);
+    if ((context || input.financialQuote) && isAcceptableTcvCandidate(financial, context, evidence)) {
+      return {
+        value: financial,
+        currency: input.financialCurrency || null,
+        source: 'financial',
+        quote: input.financialQuote || context || null,
+        label: TCV_SOURCE_LABEL.financial,
+      };
+    }
+  }
+
+  const overview = positiveAmount(input.overviewTotal);
+  if (overview != null) {
+    const context = contextForAmount(input.contractText, overview, input.overviewQuote || null);
+    if ((context || input.overviewQuote) && isAcceptableTcvCandidate(overview, context, evidence)) {
+      return {
+        value: overview,
+        currency: input.overviewCurrency || null,
+        source: 'overview',
+        quote: input.overviewQuote || context || null,
+        label: TCV_SOURCE_LABEL.overview,
+      };
+    }
+  }
+
+  if (isInvoice) {
+    const invoice = positiveAmount(input.invoiceTotal);
+    if (invoice != null) {
+      return {
+        value: invoice,
+        currency: input.invoiceCurrency || null,
+        source: 'invoice',
+        quote: null,
+        label: TCV_SOURCE_LABEL.invoice,
+      };
+    }
+  }
+
+  return { value: null, currency: null, source: 'none', quote: null, label: TCV_SOURCE_LABEL.none };
 }
 
 function getObject(value: unknown): Record<string, unknown> | null {

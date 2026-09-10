@@ -78,9 +78,9 @@ interface UserPreferences {
 const defaultPreferences: UserPreferences = {
   theme: 'system',
   language: 'en',
-  timezone: 'UTC',
-  dateFormat: 'MM/dd/yyyy',
-  currency: 'USD',
+  timezone: 'Europe/Zurich',
+  dateFormat: 'DD.MM.YYYY',
+  currency: 'CHF',
   dataMode: 'live',
   dashboard: {
     layout: 'grid',

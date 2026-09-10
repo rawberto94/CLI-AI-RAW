@@ -8,6 +8,7 @@
 
 import { PrismaClient, BaselineType, BaselineSource, ApprovalStatus, SeniorityLevel } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
+import { resolvePersistCurrency } from '@repo/utils';
 
 export interface BaselineImportRow {
   baselineName: string;
@@ -119,7 +120,7 @@ export class BaselineManagementService {
               : null,
             targetRateUSD: new Decimal(baseline.dailyRateUSD),
             targetRate: new Decimal(baseline.dailyRateUSD),
-            currency: baseline.currency || 'USD',
+            currency: resolvePersistCurrency(baseline.currency),
             rateUnit: 'daily',
             minimumRate: baseline.minimumRate ? new Decimal(baseline.minimumRate) : null,
             maximumRate: baseline.maximumRate ? new Decimal(baseline.maximumRate) : null,

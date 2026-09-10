@@ -62,76 +62,8 @@ export function AnomalyDetectionDashboard() {
       setStats(result.stats || null);
     } catch {
       toast.error('Failed to load anomaly data');
-
-      // Fallback data
-      const fallbackAnomalies: Anomaly[] = [
-        {
-          id: '1',
-          type: 'price_spike',
-          severity: 'high',
-          supplierName: 'Acme Consulting',
-          roleName: 'Senior Developer',
-          currentRate: 1200,
-          expectedRate: 850,
-          deviation: 41.2,
-          currency: 'USD',
-          detectedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-          status: 'new',
-          description: 'Rate increased by 41% above historical average',
-        },
-        {
-          id: '2',
-          type: 'outlier',
-          severity: 'high',
-          supplierName: 'Tech Solutions Inc',
-          roleName: 'Junior Developer',
-          currentRate: 800,
-          expectedRate: 450,
-          deviation: 77.8,
-          currency: 'USD',
-          detectedAt: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
-          status: 'new',
-          description: 'Rate significantly above market average for this seniority level',
-        },
-        {
-          id: '3',
-          type: 'price_drop',
-          severity: 'medium',
-          supplierName: 'Global IT Partners',
-          roleName: 'Principal Architect',
-          currentRate: 900,
-          expectedRate: 1250,
-          deviation: -28.0,
-          currency: 'USD',
-          detectedAt: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString(),
-          status: 'acknowledged',
-          description: 'Unusual rate decrease detected - potential data entry error',
-        },
-        {
-          id: '4',
-          type: 'unusual_pattern',
-          severity: 'low',
-          supplierName: 'DevOps Experts',
-          roleName: 'DevOps Engineer',
-          currentRate: 750,
-          expectedRate: 700,
-          deviation: 7.1,
-          currency: 'USD',
-          detectedAt: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(),
-          status: 'new',
-          description: 'Multiple small rate adjustments in short timeframe',
-        },
-      ];
-
-      setAnomalies(fallbackAnomalies);
-      setStats({
-        total: fallbackAnomalies.length,
-        high: fallbackAnomalies.filter((a) => a.severity === 'high').length,
-        medium: fallbackAnomalies.filter((a) => a.severity === 'medium').length,
-        low: fallbackAnomalies.filter((a) => a.severity === 'low').length,
-        resolved: 0,
-        falsePositives: 0,
-      });
+      setAnomalies([]);
+      setStats(null);
     } finally {
       setIsLoading(false);
     }

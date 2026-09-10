@@ -1,4 +1,5 @@
 import { NegotiationScenario } from './rate-history-types'
+import { formatRateMoney } from '@/lib/rate-cards/format'
 
 export interface ScenarioConfig {
   name: string
@@ -172,7 +173,7 @@ export class ScenarioModeler {
     
     // Analyze savings
     if (scenario.savings > 0) {
-      pros.push(`Annual savings of CHF ${scenario.savings.toLocaleString()} (${reductionPercent.toFixed(1)}%)`)
+      pros.push(`Annual savings of ${formatRateMoney(scenario.savings)} (${reductionPercent.toFixed(1)}%)`)
       
       if (scenario.savings > 50000) {
         pros.push('Significant cost reduction enables budget reallocation')

@@ -15,7 +15,7 @@
 // Use any for Job type due to cross-package compatibility
 type Job<T = any> = { id?: string; name: string; data: T; attemptsMade: number; opts: any; updateProgress: (progress: number | object) => Promise<void> };
 
-import { FIELD_TRUST_THRESHOLDS } from '@repo/utils';
+import { FIELD_TRUST_THRESHOLDS, isHumanTcvLocked } from '@repo/utils';
 import { getTraceContextFromJobData } from './observability/trace';
 import { ensureProcessingJob, updateStep, assertRetryableReady } from './workflow/processing-job';
 import { RetryableError } from './utils/errors';
@@ -122,6 +122,8 @@ export async function processMetadataExtractionJob(
         id: true,
         rawText: true,
         status: true,
+        tags: true,
+        aiMetadata: true,
         contractMetadata: { select: { customFields: true } },
       },
     });
@@ -293,10 +295,12 @@ export async function processMetadataExtractionJob(
     if (typeof metadataToApply.client_name === 'string') contractUpdates.clientName = metadataToApply.client_name;
     if (typeof metadataToApply.supplier_name === 'string') contractUpdates.supplierName = metadataToApply.supplier_name;
     if (typeof metadataToApply.contract_type === 'string') contractUpdates.contractType = metadataToApply.contract_type;
-    if (metadataToApply.total_value !== undefined && metadataToApply.total_value !== null && !Number.isNaN(Number(metadataToApply.total_value))) {
-      contractUpdates.totalValue = Number(metadataToApply.total_value);
+    if (!isHumanTcvLocked(contract.aiMetadata)) {
+      if (metadataToApply.total_value !== undefined && metadataToApply.total_value !== null && !Number.isNaN(Number(metadataToApply.total_value))) {
+        contractUpdates.totalValue = Number(metadataToApply.total_value);
+      }
+      if (typeof metadataToApply.currency === 'string') contractUpdates.currency = metadataToApply.currency;
     }
-    if (typeof metadataToApply.currency === 'string') contractUpdates.currency = metadataToApply.currency;
     if (typeof metadataToApply.payment_terms === 'string') contractUpdates.paymentTerms = metadataToApply.payment_terms;
     if (typeof metadataToApply.jurisdiction === 'string') contractUpdates.jurisdiction = metadataToApply.jurisdiction;
     if (typeof metadataToApply.effective_date === 'string' || metadataToApply.effective_date instanceof Date) {
@@ -327,7 +331,7 @@ export async function processMetadataExtractionJob(
           tenantId,
           customFields: mergedCustomFields,
           systemFields: {},
-          tags: [],
+          tags: tagsFromContract(contract.tags),
           lastUpdated: appliedAt,
           updatedBy: 'metadata-extraction-worker',
         },
@@ -467,6 +471,15 @@ export const METADATA_EXTRACTION_CONFIG = {
 // ============================================================================
 // HELPER FUNCTIONS
 // ============================================================================
+
+/** String tags from Contract.tags for ContractMetadata create. */
+export function tagsFromContract(tags: unknown): string[] {
+  if (!Array.isArray(tags)) return [];
+  return tags
+    .filter((tag): tag is string => typeof tag === 'string')
+    .map((tag) => tag.trim())
+    .filter(Boolean);
+}
 
 /**
  * Queue a metadata extraction job

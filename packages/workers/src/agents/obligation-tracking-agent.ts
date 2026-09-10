@@ -12,6 +12,7 @@ import type {
   AgentRecommendation,
 } from './types';
 import { logger } from '../utils/logger';
+import { formatMoneyText } from '@repo/utils';
 
 // --------------------------------------------------------------------------
 // Internal types
@@ -93,7 +94,7 @@ function extractObligationsFromContext(
     obligations.push({
       id: mkId(),
       type: 'payment',
-      description: `Payment obligation: $${value.toLocaleString()} (${schedule})`,
+      description: `Payment obligation: ${formatMoneyText(value, ctx.currency)} (${schedule})`,
       dueDate: null,
       status: 'pending',
       severity: value > 100_000 ? 'high' : 'medium',

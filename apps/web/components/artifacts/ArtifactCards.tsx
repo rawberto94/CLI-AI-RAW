@@ -31,6 +31,8 @@ import {
   Edit3
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useParams } from 'next/navigation'
+import { FindingSourceLink } from '@/components/contracts/FindingSourceLink'
 import { getRiskColor, getComplianceColor, formatCurrency, formatDate } from '@/lib/design-tokens'
 
 // ============ HELPER TO UNWRAP AI VALUES ============
@@ -1848,6 +1850,8 @@ interface ObligationsArtifactProps extends ArtifactBaseProps {
 }
 
 export function ObligationsArtifact({ data, className, isLoading }: ObligationsArtifactProps) {
+  const params = useParams();
+  const contractId = typeof params?.id === 'string' ? params.id : Array.isArray(params?.id) ? params.id[0] : undefined;
   if (isLoading) {
     return <ArtifactSkeleton />;
   }
@@ -2015,6 +2019,14 @@ export function ObligationsArtifact({ data, className, isLoading }: ObligationsA
                       )}
                       {obl.penalty && (
                         <p className="text-[10px] text-rose-500">Penalty: {obl.penalty}</p>
+                      )}
+                      {obl.sourceClause && (
+                        <FindingSourceLink
+                          className="mt-1"
+                          contractId={contractId}
+                          snippet={obl.sourceClause}
+                          heading={obl.title}
+                        />
                       )}
                     </div>
                     <div className="text-right shrink-0">

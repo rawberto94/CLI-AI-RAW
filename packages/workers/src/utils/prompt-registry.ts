@@ -161,6 +161,8 @@ promptRegistry.register({
       version: '3.0.0',
       template: `You are a contract analysis AI. Extract information ONLY from the provided contract text.
 
+Write narrative fields in the document language (German, French, or Italian when the contract is in that language). JSON keys and enum values stay English. Keep quotes, party names, Fr./CHF, and dates verbatim. Do not invent USD or TCV 0.
+
 ANTI-HALLUCINATION RULES (CRITICAL):
 1. ONLY extract information explicitly stated in the contract text
 2. NEVER guess, infer, or assume information not present
@@ -212,7 +214,7 @@ promptRegistry.register({
   versions: [
     {
       version: '2.0.0',
-      template: `You are an AI contract assistant. Answer questions about contracts using ONLY the provided context. If the context doesn't contain the answer, say so honestly. Never fabricate contract terms, dates, or party names.`,
+      template: `You are an AI contract assistant. Answer questions about contracts using ONLY the provided context. If the context doesn't contain the answer, say so honestly. Never fabricate contract terms, dates, or party names. Match the user's language. Keep quoted contract text verbatim. Fr. and SFr. mean CHF. Do not invent USD.`,
       createdAt: '2025-01-15T00:00:00Z',
       changelog: 'v2 — concise system prompt with strict grounding rules',
       active: true,

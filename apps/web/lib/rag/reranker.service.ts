@@ -15,6 +15,7 @@
 
 import OpenAI from 'openai';
 import { createOpenAIClient, createEmbeddingClient, hasAIClientConfig } from '@/lib/openai-client';
+import { retrievalLanguageInstructions } from '@repo/utils';
 
 // Types
 export interface RerankResult {
@@ -176,6 +177,8 @@ DOC_N: SCORE | brief reason
 
 Where N is the document number (1-indexed) and SCORE is a decimal between 0.0 and 1.0.
 Be calibrated: use the full range. A perfect match should be 0.95+, a near-miss 0.6-0.7, noise below 0.3.
+German, French, or Italian chunks are relevant when they answer the query — do not downrank them for not being English.
+${retrievalLanguageInstructions(query)}
 Output ONLY the scoring lines, nothing else.`,
       },
       {

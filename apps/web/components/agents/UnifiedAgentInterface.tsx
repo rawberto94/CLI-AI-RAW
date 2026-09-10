@@ -643,7 +643,7 @@ export function UnifiedAgentInterface() {
               ? {
                   type: 'savings' as const,
                   value: a.context.savings,
-                  currency: '$',
+                  currency: typeof a.context?.currency === 'string' ? a.context.currency : undefined,
                 }
               : undefined,
             alternatives: Array.isArray(a.alternatives)
@@ -1150,8 +1150,10 @@ function ActivityDetail({
                 <div className="rounded-xl border border-white bg-white/80 px-4 py-3 shadow-sm">
                   <p className="text-2xl font-semibold tabular-nums text-violet-700">
                     {activity.approvalContext.impact.type === 'savings' ? '+' : ''}
-                    {activity.approvalContext.impact.currency}
-                    {activity.approvalContext.impact.value.toLocaleString()}
+                    {activity.approvalContext.impact.currency
+                      ? `${activity.approvalContext.impact.currency} `
+                      : ''}
+                    {activity.approvalContext.impact.value.toLocaleString('de-CH')}
                   </p>
                   <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
                     Estimated {activity.approvalContext.impact.type}
@@ -1756,7 +1758,7 @@ function getDemoActivities(): AgentActivity[] {
         recommendation: 'Start renewal negotiations now to avoid service disruption',
         reasoning: 'Contract expires in 30 days. Historical data shows similar renewals take 45-60 days. Early engagement increases negotiation leverage.',
         confidence: 0.92,
-        impact: { type: 'risk', value: 500000, currency: '$' },
+        impact: { type: 'risk', value: 500000, currency: 'CHF' },
         alternatives: ['Let contract auto-renew', 'Switch vendors', 'Extend by 6 months'],
         risks: ['Service disruption if not renewed on time', 'Potential rate increases with late renewal'],
         actions: [

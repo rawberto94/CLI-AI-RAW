@@ -7,6 +7,8 @@ import {
   Activity, DollarSign, Users, Eye, ShoppingCart, 
   ArrowUp, ArrowDown, MoreHorizontal, ExternalLink, Info
 } from 'lucide-react';
+import { useDisplayCurrency } from '@/hooks/useDisplayCurrency';
+import { formatAmountWithCurrency, formatDisplayTotal } from '@/lib/utils/formatters';
 
 // ============================================================================
 // Types
@@ -31,30 +33,27 @@ interface StatValue {
 // Formatters
 // ============================================================================
 
-function formatValue(value: number | string, format?: string, prefix?: string, suffix?: string): string {
+function formatValue(value: number | string, format?: string, prefix?: string, suffix?: string, currency?: string): string {
   if (typeof value === 'string') return `${prefix || ''}${value}${suffix || ''}`;
   
   let formatted: string;
   switch (format) {
     case 'currency':
-      formatted = new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'USD',
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0,
-      }).format(value);
+      formatted = currency
+        ? formatDisplayTotal(value, currency)
+        : formatAmountWithCurrency(value, null);
       break;
     case 'percent':
       formatted = `${value.toFixed(1)}%`;
       break;
     case 'compact':
-      formatted = new Intl.NumberFormat('en-US', {
+      formatted = new Intl.NumberFormat('de-CH', {
         notation: 'compact',
         maximumFractionDigits: 1,
       }).format(value);
       break;
     default:
-      formatted = new Intl.NumberFormat('en-US').format(value);
+      formatted = new Intl.NumberFormat('de-CH').format(value);
   }
   
   return `${prefix || ''}${formatted}${suffix || ''}`;
@@ -85,6 +84,7 @@ export function StatCard({
   loading = false,
   className = '',
 }: StatCardProps) {
+  const displayCurrency = useDisplayCurrency();
   const colorClasses = {
     blue: 'bg-violet-50 dark:bg-violet-950 text-violet-600 dark:text-violet-400',
     green: 'bg-green-50 dark:bg-green-950 text-green-600 dark:text-green-400',
@@ -137,7 +137,7 @@ export function StatCard({
             animate={{ opacity: 1, y: 0 }}
             className="text-2xl font-bold text-gray-900 dark:text-white mb-1"
           >
-            {formatValue(value, format, prefix, suffix)}
+            {formatValue(value, format, prefix, suffix, displayCurrency)}
           </motion.div>
           
           <div className="flex items-center gap-2">
@@ -170,6 +170,7 @@ export function StatRow({
   suffix,
   className = '',
 }: StatCardProps) {
+  const displayCurrency = useDisplayCurrency();
   const changeColors = {
     increase: 'text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-950',
     decrease: 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950',
@@ -184,7 +185,7 @@ export function StatRow({
       </div>
       <div className="flex items-center gap-2">
         <span className="font-semibold text-gray-900 dark:text-white">
-          {formatValue(value, format, prefix, suffix)}
+          {formatValue(value, format, prefix, suffix, displayCurrency)}
         </span>
         {change !== undefined && (
           <span className={`text-xs px-1.5 py-0.5 rounded ${changeColors[changeType || 'neutral']}`}>

@@ -86,7 +86,7 @@ export const ContractMetadataSchema = z.object({
   effectiveDate: DateSchema.optional(),
   expirationDate: DateSchema.optional(),
   jurisdiction: z.string().optional(),
-  language: z.string().default('English'),
+  language: z.string().optional(),
   tags: z.array(z.string()).optional(),
 });
 

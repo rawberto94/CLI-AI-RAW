@@ -1,5 +1,6 @@
 
 import { PrismaClient, SavingsCategory, EffortLevel, RiskLevel, OpportunityStatus } from '@prisma/client';
+import { formatMoneyText } from '@repo/utils';
 
 interface DetectionOptions {
   minSavingsAmount?: number;
@@ -154,7 +155,7 @@ export class SavingsOpportunityService {
       tenantId,
       rateCardEntryId: rateCard.id,
       title: `Reduce ${rateCard.roleStandardized} rate with ${rateCard.supplierName}`,
-      description: `Current rate of $${rateCard.dailyRateUSD}/day is at the ${rateCard.percentileRank}th percentile. Market median is $${benchmark.median}/day.`,
+      description: `Current rate of ${formatMoneyText(Number(rateCard.dailyRateUSD), rateCard.currency)}/day is at the ${rateCard.percentileRank}th percentile. Market median is ${formatMoneyText(Number(benchmark.median), rateCard.currency)}/day.`,
       category: 'RATE_REDUCTION' as SavingsCategory,
       currentAnnualCost: parseFloat(rateCard.dailyRateUSD.toString()) * volumeCommitted,
       projectedAnnualCost: parseFloat(benchmark.median.toString()) * volumeCommitted,
@@ -163,7 +164,7 @@ export class SavingsOpportunityService {
       effort: this.calculateEffort(savingsPercentage),
       risk: this.calculateRisk(rateCard, benchmark),
       confidence: this.calculateConfidence(benchmark.cohortSize),
-      recommendedAction: `Negotiate rate reduction to market median of $${benchmark.median}/day`,
+      recommendedAction: `Negotiate rate reduction to market median of ${formatMoneyText(Number(benchmark.median), rateCard.currency)}/day`,
       alternativeSuppliers: await this.findAlternativeSuppliers(rateCard, tenantId),
       negotiationPoints: this.generateNegotiationPoints(rateCard, benchmark),
       implementationTime: '1-3 months',
@@ -242,7 +243,7 @@ export class SavingsOpportunityService {
       tenantId,
       rateCardEntryId: rateCard.id,
       title: `Geographic arbitrage: ${rateCard.roleStandardized} in ${lowestRate.country}`,
-      description: `Similar role available in ${lowestRate.country} at $${lowestRate.dailyRateUSD}/day vs current $${rateCard.dailyRateUSD}/day in ${rateCard.country}`,
+      description: `Similar role available in ${lowestRate.country} at ${formatMoneyText(Number(lowestRate.dailyRateUSD), lowestRate.currency)}/day vs current ${formatMoneyText(Number(rateCard.dailyRateUSD), rateCard.currency)}/day in ${rateCard.country}`,
       category: 'GEOGRAPHIC_ARBITRAGE' as SavingsCategory,
       currentAnnualCost: parseFloat(rateCard.dailyRateUSD.toString()) * volumeCommitted,
       projectedAnnualCost: parseFloat(lowestRate.dailyRateUSD.toString()) * volumeCommitted,
@@ -438,17 +439,17 @@ export class SavingsOpportunityService {
     return [
       {
         point: `Current rate is at ${rateCard.percentileRank}th percentile`,
-        data: `Market median: $${benchmark.median}/day`,
+        data: `Market median: ${formatMoneyText(Number(benchmark.median), rateCard.currency)}/day`,
         priority: 1,
       },
       {
-        point: `Market average is $${benchmark.average}/day`,
+        point: `Market average is ${formatMoneyText(Number(benchmark.average), rateCard.currency)}/day`,
         data: `${benchmark.cohortSize} comparable rates in database`,
         priority: 2,
       },
       {
-        point: `Top quartile rate is $${benchmark.percentile25}/day`,
-        data: `Potential savings: $${parseFloat(rateCard.dailyRateUSD.toString()) - parseFloat(benchmark.percentile25.toString())}/day`,
+        point: `Top quartile rate is ${formatMoneyText(Number(benchmark.percentile25), rateCard.currency)}/day`,
+        data: `Potential savings: ${formatMoneyText(parseFloat(rateCard.dailyRateUSD.toString()) - parseFloat(benchmark.percentile25.toString()), rateCard.currency)}/day`,
         priority: 3,
       },
     ];

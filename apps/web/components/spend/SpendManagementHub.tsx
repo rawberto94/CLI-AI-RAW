@@ -13,15 +13,18 @@ import { DollarSign, Plus, FileText, Receipt, AlertTriangle, CheckCircle2, XCirc
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useTranslations } from 'next-intl';
+import { useDisplayCurrency } from '@/hooks/useDisplayCurrency';
+import { formatAmountWithCurrency, formatDisplayTotal } from '@/lib/utils/formatters';
 
 export default function SpendManagementHub() {
   const t = useTranslations('suppliers.spend');
+  const displayCurrency = useDisplayCurrency();
   const [tab, setTab] = useState('overview');
   const [data, setData] = useState<any>({});
   const [loading, setLoading] = useState(true);
   const [showAddPO, setShowAddPO] = useState(false);
   const [showAddInvoice, setShowAddInvoice] = useState(false);
-  const [poForm, setPoForm] = useState({ poNumber: '', vendorName: '', totalAmount: '', currency: 'USD' });
+  const [poForm, setPoForm] = useState({ poNumber: '', vendorName: '', totalAmount: '', currency: displayCurrency });
   const [invForm, setInvForm] = useState({ invoiceNumber: '', vendorName: '', totalAmount: '', poId: '' });
 
   const fetchData = useCallback(async () => {
@@ -78,8 +81,8 @@ export default function SpendManagementHub() {
         <TabsContent value="overview" className="mt-4">
           {data.metrics && (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <Card className="p-4"><div className="text-sm text-muted-foreground flex items-center gap-1"><FileText className="h-4 w-4" /> {t('kpi.totalPOs')}</div><p className="text-2xl font-bold">{data.metrics.total_pos}</p><p className="text-sm text-muted-foreground">${Number(data.metrics.total_po_value).toLocaleString()}</p></Card>
-              <Card className="p-4"><div className="text-sm text-muted-foreground flex items-center gap-1"><Receipt className="h-4 w-4" /> {t('kpi.totalInvoices')}</div><p className="text-2xl font-bold">{data.metrics.total_invoices}</p><p className="text-sm text-muted-foreground">${Number(data.metrics.total_invoice_value).toLocaleString()}</p></Card>
+              <Card className="p-4"><div className="text-sm text-muted-foreground flex items-center gap-1"><FileText className="h-4 w-4" /> {t('kpi.totalPOs')}</div><p className="text-2xl font-bold">{data.metrics.total_pos}</p><p className="text-sm text-muted-foreground">{formatDisplayTotal(Number(data.metrics.total_po_value), displayCurrency)}</p></Card>
+              <Card className="p-4"><div className="text-sm text-muted-foreground flex items-center gap-1"><Receipt className="h-4 w-4" /> {t('kpi.totalInvoices')}</div><p className="text-2xl font-bold">{data.metrics.total_invoices}</p><p className="text-sm text-muted-foreground">{formatDisplayTotal(Number(data.metrics.total_invoice_value), displayCurrency)}</p></Card>
               <Card className="p-4"><div className="text-sm text-muted-foreground flex items-center gap-1"><CheckCircle2 className="h-4 w-4 text-green-500" /> {t('kpi.matched')}</div><p className="text-2xl font-bold text-green-500">{data.metrics.matched}</p></Card>
               <Card className="p-4"><div className="text-sm text-muted-foreground flex items-center gap-1"><AlertTriangle className="h-4 w-4 text-red-500" /> {t('kpi.discrepancies')}</div><p className="text-2xl font-bold text-red-500">{data.metrics.discrepant}</p></Card>
             </div>
@@ -90,7 +93,7 @@ export default function SpendManagementHub() {
           {(data.purchaseOrders || []).map((po: any) => (
             <Card key={po.id}><CardContent className="py-4 px-5 flex items-center justify-between">
               <div><h3 className="font-semibold">{po.po_number}</h3><p className="text-sm text-muted-foreground">{po.vendor_name}</p></div>
-              <div className="text-right"><p className="font-bold">${Number(po.total_amount).toLocaleString()}</p><Badge variant="outline">{po.status}</Badge></div>
+              <div className="text-right"><p className="font-bold">{formatAmountWithCurrency(po.total_amount, po.currency)}</p><Badge variant="outline">{po.status}</Badge></div>
             </CardContent></Card>
           ))}
           {(!data.purchaseOrders || data.purchaseOrders.length === 0) && <Card className="p-12 text-center text-muted-foreground">{t('empty.noPurchaseOrders')}</Card>}
@@ -101,7 +104,7 @@ export default function SpendManagementHub() {
             <Card key={inv.id}><CardContent className="py-4 px-5 flex items-center justify-between">
               <div><h3 className="font-semibold">{inv.invoice_number}</h3><p className="text-sm text-muted-foreground">{inv.vendor_name}</p></div>
               <div className="flex items-center gap-3">
-                <div className="text-right"><p className="font-bold">${Number(inv.total_amount).toLocaleString()}</p>
+                <div className="text-right"><p className="font-bold">{formatAmountWithCurrency(inv.total_amount, inv.currency)}</p>
                   <Badge className={inv.match_status === 'MATCHED' ? 'bg-green-100 text-green-800' : inv.match_status === 'DISCREPANCY' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'}>{inv.match_status || 'UNMATCHED'}</Badge>
                 </div>
                 {(!inv.match_status || inv.match_status === 'UNMATCHED') && <Button size="sm" onClick={() => handleMatch(inv.id)}>Match</Button>}

@@ -140,7 +140,7 @@ async function showVersionHistory(
       const userName = v.uploadedByUser 
         ? `${v.uploadedByUser.firstName || ''} ${v.uploadedByUser.lastName || ''}`.trim()
         : v.uploadedBy || 'System';
-      const date = new Date(v.uploadedAt).toLocaleDateString('en-US', {
+      const date = new Date(v.uploadedAt).toLocaleDateString('de-CH', {
         month: 'short',
         day: 'numeric',
         year: 'numeric'

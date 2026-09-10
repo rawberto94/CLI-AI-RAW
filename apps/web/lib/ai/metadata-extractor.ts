@@ -20,6 +20,7 @@ import {
   MetadataFieldType 
 } from '@/lib/services/metadata-schema.service';
 import { adaptiveExtractionEngine, type PromptEnhancement } from './adaptive-extraction-engine';
+import { analysisLanguageInstructions, ourOrganizationPromptBlock } from '@repo/utils';
 
 // ============================================================================
 // Types
@@ -87,6 +88,7 @@ export interface ExtractionOptions {
   tenantId?: string;
   contractType?: string;
   enableAdaptiveLearning?: boolean;
+  ourOrganization?: { name: string; aliases?: string[] } | null;
 }
 
 // ============================================================================
@@ -108,6 +110,7 @@ export class SchemaAwareMetadataExtractor {
     tenantId: 'demo',
     contractType: '',
     enableAdaptiveLearning: true,
+    ourOrganization: null,
   };
 
   constructor(apiKey?: string) {
@@ -241,7 +244,7 @@ export class SchemaAwareMetadataExtractor {
         messages: [
           {
             role: 'system',
-            content: this.getSystemPrompt(),
+            content: this.getSystemPrompt(documentText, opts.ourOrganization),
           },
           { role: 'user', content: prompt },
         ],
@@ -301,7 +304,8 @@ export class SchemaAwareMetadataExtractor {
         messages: [
           {
             role: 'system',
-            content: `You are a precision metadata extraction specialist. Focus on extracting specific fields with high accuracy. Use the context from already-extracted fields to improve your extraction.`,
+            content: `You are a precision metadata extraction specialist. Focus on extracting specific fields with high accuracy. Use the context from already-extracted fields to improve your extraction.
+${analysisLanguageInstructions({ contractText: documentText })}`,
           },
           { role: 'user', content: prompt },
         ],
@@ -343,13 +347,21 @@ export class SchemaAwareMetadataExtractor {
   // Prompt Building
   // --------------------------------------------------------------------------
 
-  private getSystemPrompt(): string {
+  private getSystemPrompt(
+    documentText?: string,
+    ourOrganization?: { name: string; aliases?: string[] } | null,
+  ): string {
     let basePrompt = `You are an expert contract metadata extractor. Your task is to extract specific metadata fields from contract documents.
+
+${ourOrganizationPromptBlock(ourOrganization)}
+When identifying client vs supplier, treat OUR ORGANIZATION as us if it appears as a named party.
+
+${analysisLanguageInstructions({ contractText: documentText })}
 
 Guidelines:
 1. Extract values EXACTLY as they appear in the document when possible
 2. For dates, convert to ISO 8601 format (YYYY-MM-DD)
-3. For currency amounts, extract both the number and currency code
+3. For currency amounts, extract both the number and currency code. Fr. and SFr. are CHF. Do not invent USD.
 4. For select fields, match to the closest valid option
 5. Provide confidence scores based on how clearly the value appears in the document
 6. If a field cannot be found, mark it with confidence 0 and explain why

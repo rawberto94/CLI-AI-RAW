@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { formatRateMoney } from '@/lib/rate-cards/format';
 
 interface Scenario {
   scenarioType: 'best' | 'likely' | 'worst';
@@ -86,20 +87,20 @@ export function ScenarioAnalysisPanel({ rateCardId, tenantId }: ScenarioAnalysis
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
           <div>
             <div className="text-sm text-gray-600">Current Rate</div>
-            <div className="text-2xl font-bold">${analysis.currentRate}</div>
+            <div className="text-2xl font-bold">{formatRateMoney(analysis.currentRate)}</div>
           </div>
           <div>
             <div className="text-sm text-gray-600">Market Median</div>
-            <div className="text-2xl font-bold">${analysis.marketMedian}</div>
+            <div className="text-2xl font-bold">{formatRateMoney(analysis.marketMedian)}</div>
           </div>
           <div>
             <div className="text-sm text-gray-600">Recommended Target</div>
-            <div className="text-2xl font-bold text-violet-600">${analysis.recommendedTarget}</div>
+            <div className="text-2xl font-bold text-violet-600">{formatRateMoney(analysis.recommendedTarget)}</div>
           </div>
           <div>
             <div className="text-sm text-gray-600">Expected Savings</div>
             <div className="text-2xl font-bold text-green-600">
-              ${analysis.probabilityWeightedSavings.toLocaleString()}
+              {formatRateMoney(analysis.probabilityWeightedSavings)}
             </div>
           </div>
         </div>
@@ -136,9 +137,9 @@ export function ScenarioAnalysisPanel({ rateCardId, tenantId }: ScenarioAnalysis
                 </div>
               </div>
               <div className="text-right">
-                <div className="text-2xl font-bold">${scenario.targetRate}</div>
+                <div className="text-2xl font-bold">{formatRateMoney(scenario.targetRate)}</div>
                 <div className="text-sm text-green-600 font-semibold">
-                  ${((scenario as any).annualSavingsPotential || 0).toLocaleString()}/year
+                  {formatRateMoney((scenario as any).annualSavingsPotential || 0)}/year
                 </div>
               </div>
             </div>

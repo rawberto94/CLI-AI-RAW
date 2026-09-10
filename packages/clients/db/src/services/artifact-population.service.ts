@@ -150,9 +150,9 @@ export class ArtifactPopulationService {
           vendor: this.generatePartyName('vendor', contractType),
         },
         financials: {
-          totalValue: this.generateContractValue(contractType),
-          currency: 'USD',
-          paymentTerms: this.generatePaymentTerms(contractType),
+          totalValue: Number(contract.totalValue) || 0,
+          currency: this.persistCurrency(contract.currency),
+          paymentTerms: contract.paymentTerms || this.generatePaymentTerms(contractType),
         },
         timeline: {
           effectiveDate: new Date().toISOString().split('T')[0]!,
@@ -478,18 +478,9 @@ export class ArtifactPopulationService {
     return names[Math.floor(Math.random() * names.length)]!;
   }
 
-  private generateContractValue(contractType: string): number {
-    const ranges: Record<string, [number, number]> = {
-      'MSA': [500000, 5000000],
-      'SLA': [100000, 2000000],
-      'NDA': [0, 0],
-      'DPA': [200000, 1500000],
-      'Employment': [80000, 200000],
-      'SOW': [50000, 1000000],
-    };
-    
-    const [min, max] = ranges[contractType] || [10000, 500000];
-    return Math.floor(Math.random() * (max - min) + min);
+  private persistCurrency(code: unknown): string {
+    const value = typeof code === 'string' ? code.trim().toUpperCase() : '';
+    return /^[A-Z]{3}$/.test(value) && value !== 'XXX' ? value : 'XXX';
   }
 
   private generatePaymentTerms(contractType: string): string {

@@ -8,6 +8,11 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { realTimeBenchmarkService } from 'data-orchestration/services';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
+import {
+  UNKNOWN_GEO,
+  convertedDailyRates,
+  resolvePersistGeo,
+} from '@/lib/rate-cards/persist-fields';
 
 interface SaveRateCardRequest {
   rates: Array<{
@@ -83,8 +88,10 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
         'Malaysia': 'APAC', 'Thailand': 'APAC', 'Indonesia': 'APAC', 'Philippines': 'APAC',
         'Vietnam': 'APAC', 'New Zealand': 'APAC',
       };
-      const supplierCountry = body.supplierInfo.country || 'United States';
-      const region = countryToRegion[supplierCountry] || 'Americas';
+      const supplierCountry = resolvePersistGeo(body.supplierInfo.country);
+      const region = supplierCountry === UNKNOWN_GEO
+        ? UNKNOWN_GEO
+        : (countryToRegion[supplierCountry] || UNKNOWN_GEO);
 
       supplier = await prisma.rateCardSupplier.create({
         data: {
@@ -98,31 +105,12 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
       });
     }
 
-    // Convert currency for each rate
-    const convertCurrency = (amount: number, currency: string) => {
-      const rates: Record<string, { usd: number; chf: number }> = {
-        USD: { usd: 1.0, chf: 0.88 },
-        EUR: { usd: 1.08, chf: 0.95 },
-        GBP: { usd: 1.27, chf: 1.12 },
-        CHF: { usd: 1.14, chf: 1.0 },
-        CAD: { usd: 0.72, chf: 0.63 },
-        AUD: { usd: 0.65, chf: 0.57 },
-        INR: { usd: 0.012, chf: 0.011 },
-      };
-      const rate = rates[currency.toUpperCase()] ?? rates['USD']!;
-      return {
-        usd: amount * rate.usd,
-        chf: amount * rate.chf,
-      };
-    };
-
-    // Save each rate card
     const savedRateCards: Array<{ id: string; [key: string]: unknown }> = [];
     const errors: Array<{ role: string; error: string }> = [];
 
     for (const rate of body.rates) {
       try {
-        const converted = convertCurrency(rate.dailyRate, rate.currency);
+        const converted = convertedDailyRates(rate.dailyRate, rate.currency);
 
         const rateCard = await prisma.rateCardEntry.create({
           data: {
@@ -149,6 +137,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
             // Rate
             dailyRate: rate.dailyRate,
             currency: rate.currency,
+            // Derived sort/benchmark cache only — source rate is dailyRate + currency.
             dailyRateUSD: converted.usd,
             dailyRateCHF: converted.chf,
 
@@ -159,7 +148,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
             remoteAllowed: false,
 
             // Contract context
-            contractType: body.contractContext.contractType || 'SOW',
+            contractType: body.contractContext.contractType || null,
             effectiveDate: body.contractContext.effectiveDate
               ? new Date(body.contractContext.effectiveDate)
               : new Date(),

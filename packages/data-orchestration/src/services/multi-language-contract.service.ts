@@ -11,6 +11,7 @@
  */
 
 import OpenAI from 'openai';
+import { detectCurrencyFromText, UNKNOWN_CURRENCY } from '@repo/utils';
 import { createLogger } from '../utils/logger';
 
 const logger = createLogger('multi-language-service');
@@ -109,9 +110,9 @@ const LOCALE_CONFIGS: Partial<Record<SupportedLanguage, LocaleConfig>> = {
   },
   fr: {
     language: 'fr',
-    dateFormats: ['DD/MM/YYYY', 'DD Month YYYY'],
-    currencySymbols: ['€', '$', '£'],
-    currencyCode: 'EUR',
+    dateFormats: ['DD.MM.YYYY', 'DD/MM/YYYY', 'DD Month YYYY'],
+    currencySymbols: ['CHF', 'Fr.', 'SFr.', '€'],
+    currencyCode: 'CHF',
     numberFormat: { thousandsSeparator: ' ', decimalSeparator: ',' },
     commonLegalTerms: {
       'contrat': 'contract',
@@ -128,8 +129,8 @@ const LOCALE_CONFIGS: Partial<Record<SupportedLanguage, LocaleConfig>> = {
   de: {
     language: 'de',
     dateFormats: ['DD.MM.YYYY', 'DD. Month YYYY'],
-    currencySymbols: ['€', 'CHF', '$'],
-    currencyCode: 'EUR',
+    currencySymbols: ['CHF', 'Fr.', 'SFr.', '€'],
+    currencyCode: 'CHF',
     numberFormat: { thousandsSeparator: '.', decimalSeparator: ',' },
     commonLegalTerms: {
       'vertrag': 'contract',
@@ -141,6 +142,24 @@ const LOCALE_CONFIGS: Partial<Record<SupportedLanguage, LocaleConfig>> = {
       'schadlos halten': 'indemnify',
       'gewährleisten': 'warrant',
       'laufzeit': 'term',
+    },
+  },
+  it: {
+    language: 'it',
+    dateFormats: ['DD.MM.YYYY', 'DD/MM/YYYY'],
+    currencySymbols: ['CHF', 'Fr.', 'SFr.', '€'],
+    currencyCode: 'CHF',
+    numberFormat: { thousandsSeparator: "'", decimalSeparator: '.' },
+    commonLegalTerms: {
+      'contratto': 'contract',
+      'accordo': 'agreement',
+      'parte': 'party',
+      'clausola': 'clause',
+      'premessa': 'recital',
+      'pertanto': 'therefore',
+      'indennizzare': 'indemnify',
+      'garantire': 'warrant',
+      'durata': 'term',
     },
   },
   pt: {
@@ -379,17 +398,17 @@ Return JSON with this structure:
 
 ### Date Formats
 Expect dates in these formats: ${config.dateFormats.join(', ')}
-Always normalize dates to ISO 8601 format (YYYY-MM-DD) in the output.
+Always normalize dates to ISO 8601 format (YYYY-MM-DD) in the output. Do not assume US MM/DD/YYYY.
 
 ### Currency
 Common symbols: ${config.currencySymbols.join(', ')}
-Default currency code: ${config.currencyCode}
+Do not invent a currency. Fr. and SFr. mean CHF. € means EUR. $ means USD only when $ is present.
 Number format: thousands separator "${config.numberFormat.thousandsSeparator}", decimal separator "${config.numberFormat.decimalSeparator}"
 
 ### Legal Term Mappings
 ${termMappings}
 
-When extracting, use the English equivalents for standardized field names while preserving original text in extracted values.
+JSON keys stay English. Keep extracted values, quotes, party names, and legal terms verbatim in the original language. Write narrative explanations in the document language.
 `;
   }
 
@@ -529,32 +548,25 @@ IMPORTANT:
 
     // Remove currency symbols and spaces
     let cleaned = amountString.trim();
-    let detectedCurrency = config.currencyCode;
+    let detectedCurrency = detectCurrencyFromText(amountString) || UNKNOWN_CURRENCY;
 
-    // Detect currency from symbol
-    const currencySymbols: Record<string, string> = {
-      '$': 'USD', '€': 'EUR', '£': 'GBP', '¥': 'JPY', '￥': 'CNY',
-      'R$': 'BRL', 'CHF': 'CHF', '₹': 'INR', '₩': 'KRW',
-    };
-
-    for (const [symbol, code] of Object.entries(currencySymbols)) {
-      if (cleaned.includes(symbol)) {
-        detectedCurrency = code;
-        cleaned = cleaned.replace(symbol, '');
-        break;
-      }
-    }
+    cleaned = cleaned.replace(/\b(CHF|SFr\.?|Fr\.|USD|EUR|GBP|CAD|AUD|JPY)\b/gi, '');
+    cleaned = cleaned.replace(/[$€£¥￥]/g, '');
 
     // Normalize number format
     cleaned = cleaned.trim();
-    
-    // Replace locale-specific separators
-    if (config.numberFormat.thousandsSeparator === '.') {
+
+    if (/'\d{3}/.test(amountString)) {
+      // Swiss: 1'200'000.50
+      cleaned = cleaned.replace(/'/g, '').replace(/\s/g, '');
+    } else if (config.numberFormat.thousandsSeparator === '.') {
       // European format: 1.234.567,89
       cleaned = cleaned.replace(/\./g, '').replace(',', '.');
     } else if (config.numberFormat.thousandsSeparator === ' ') {
       // French format: 1 234 567,89
       cleaned = cleaned.replace(/\s/g, '').replace(',', '.');
+    } else if (config.numberFormat.thousandsSeparator === "'") {
+      cleaned = cleaned.replace(/'/g, '').replace(/\s/g, '');
     } else {
       // US format: 1,234,567.89
       cleaned = cleaned.replace(/,/g, '');

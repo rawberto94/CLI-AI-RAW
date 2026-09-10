@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { formatRateMoney } from '@/lib/rate-cards/format'
 
 interface OpportunityDetailsProps {
   opportunityId: string;
@@ -77,14 +78,7 @@ export function OpportunityDetails({ opportunityId }: OpportunityDetailsProps) {
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
+  const formatCurrency = (value: number) => formatRateMoney(value);
 
   if (loading) {
     return <div className="p-8 text-center">Loading opportunity details...</div>;
@@ -272,7 +266,10 @@ export function OpportunityDetails({ opportunityId }: OpportunityDetailsProps) {
               <div>
                 <div className="text-gray-500">Current Rate</div>
                 <div className="font-semibold">
-                  {formatCurrency(opportunity.rateCardEntry.dailyRateUSD)}/day
+                  {formatRateMoney(
+                    opportunity.rateCardEntry.dailyRate ?? opportunity.rateCardEntry.dailyRateUSD,
+                    opportunity.rateCardEntry.currency,
+                  )}/day
                 </div>
               </div>
               <div>

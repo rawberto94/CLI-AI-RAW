@@ -11,6 +11,7 @@ import { prisma } from '@/lib/prisma';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 import { auditLog, AuditAction } from '@/lib/security/audit';
 import { checkRateLimit, rateLimitResponse, AI_RATE_LIMITS } from '@/lib/ai/rate-limit';
+import { analysisLanguageInstructions } from '@repo/utils';
 
 let _openai: OpenAI | null = null;
 function getOpenAI(): OpenAI {
@@ -118,7 +119,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
         c.contractType && `Type: ${c.contractType}`,
         c.clientName && `Client: ${c.clientName}`,
         c.supplierName && `Supplier: ${c.supplierName}`,
-        c.totalValue && `Value: ${c.currency || 'USD'} ${Number(c.totalValue).toLocaleString()}`,
+        c.totalValue && `Value: ${c.currency ? `${c.currency} ` : ''}${Number(c.totalValue).toLocaleString()}`,
         c.effectiveDate && `Effective: ${c.effectiveDate.toISOString().split('T')[0]}`,
         c.expirationDate && `Expires: ${c.expirationDate.toISOString().split('T')[0]}`,
         c.jurisdiction && `Jurisdiction: ${c.jurisdiction}`,
@@ -206,7 +207,9 @@ Be specific with contract language references. Identify clause-level differences
       messages: [
         {
           role: 'system',
-          content: `You are an expert legal contract analyst. You specialize in clause-level comparison, risk assessment, and providing actionable negotiation guidance. Analyze contracts thoroughly and identify both obvious and subtle differences that could impact the contracting party's position. Always reference specific contract language when identifying differences.`,
+          content: `You are an expert legal contract analyst. You specialize in clause-level comparison, risk assessment, and providing actionable negotiation guidance. Analyze contracts thoroughly and identify both obvious and subtle differences that could impact the contracting party's position. Always reference specific contract language when identifying differences.
+${analysisLanguageInstructions({ contractText: contractsWithText.map(c => c.rawText || '').join('\n') })}
+If the contracts are in different languages, write the comparison in English and keep quotes verbatim.`,
         },
         {
           role: 'user',

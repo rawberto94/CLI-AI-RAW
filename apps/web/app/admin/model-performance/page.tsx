@@ -36,6 +36,7 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import Link from 'next/link';
 
 // =============================================================================
 // TYPES
@@ -470,9 +471,11 @@ export default function ModelPerformancePage() {
                 with competitive cost. Consider gradually increasing its traffic allocation through an A/B test 
                 to validate performance at scale before full rollout.
               </p>
-              <Button size="sm" variant="outline" className="mt-3">
-                <FlaskConical className="h-3 w-3 mr-2" />
-                Create A/B Test
+              <Button size="sm" variant="outline" className="mt-3" asChild>
+                <Link href="/admin/ab-testing">
+                  <FlaskConical className="h-3 w-3 mr-2" />
+                  Create A/B Test
+                </Link>
               </Button>
             </div>
           </div>

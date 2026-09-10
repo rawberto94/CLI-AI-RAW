@@ -94,7 +94,9 @@ function InsightCard({ insight }: { insight: AIInsight }) {
             )}>
               {insight.severity}
             </span>
-            <span className="text-xs text-gray-500">{insight.confidence}% confidence</span>
+            <span className="text-xs text-gray-500">
+              {insight.confidence <= 1 ? Math.round(insight.confidence * 100) : Math.round(insight.confidence)}% confidence
+            </span>
           </div>
         </div>
       </div>

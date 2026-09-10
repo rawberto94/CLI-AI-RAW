@@ -16,6 +16,7 @@ import {
   MessageSquare,
   Building2
 } from 'lucide-react';
+import { formatRateMoney } from '@/lib/rate-cards/format';
 
 // Local type definition to avoid cross-package import issues
 interface NegotiationBrief {
@@ -208,7 +209,7 @@ export function NegotiationAssistant({ rateCardId }: NegotiationAssistantProps) 
                 <div>
                   <p className="text-sm text-muted-foreground">Current Rate</p>
                   <p className="font-semibold text-2xl">
-                    ${brief.currentSituation.currentRate.toLocaleString()}/day
+                    {formatRateMoney(brief.currentSituation.currentRate)}/day
                   </p>
                 </div>
                 <div>
@@ -261,15 +262,15 @@ export function NegotiationAssistant({ rateCardId }: NegotiationAssistantProps) 
               <div className="grid grid-cols-3 gap-4 pt-4 border-t">
                 <div>
                   <p className="text-sm text-muted-foreground">P25</p>
-                  <p className="font-semibold">${brief.marketPosition.marketP25.toLocaleString()}</p>
+                  <p className="font-semibold">{formatRateMoney(brief.marketPosition.marketP25)}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Median</p>
-                  <p className="font-semibold">${brief.marketPosition.marketMedian.toLocaleString()}</p>
+                  <p className="font-semibold">{formatRateMoney(brief.marketPosition.marketMedian)}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">P75</p>
-                  <p className="font-semibold">${brief.marketPosition.marketP75.toLocaleString()}</p>
+                  <p className="font-semibold">{formatRateMoney(brief.marketPosition.marketP75)}</p>
                 </div>
               </div>
 
@@ -330,10 +331,10 @@ export function NegotiationAssistant({ rateCardId }: NegotiationAssistantProps) 
                     <Badge variant="destructive">Stretch Goal</Badge>
                   </div>
                   <p className="text-3xl font-bold text-green-600">
-                    ${brief.targetRates.aggressive.toLocaleString()}/day
+                    {formatRateMoney(brief.targetRates.aggressive)}/day
                   </p>
                   <p className="text-sm text-muted-foreground mt-2">
-                    Savings: ${(brief.currentSituation.currentRate - brief.targetRates.aggressive).toLocaleString()}/day
+                    Savings: {formatRateMoney(brief.currentSituation.currentRate - brief.targetRates.aggressive)}/day
                     ({(((brief.currentSituation.currentRate - brief.targetRates.aggressive) / brief.currentSituation.currentRate) * 100).toFixed(1)}%)
                   </p>
                 </div>
@@ -345,10 +346,10 @@ export function NegotiationAssistant({ rateCardId }: NegotiationAssistantProps) 
                     <Badge>Recommended</Badge>
                   </div>
                   <p className="text-3xl font-bold text-violet-600">
-                    ${brief.targetRates.realistic.toLocaleString()}/day
+                    {formatRateMoney(brief.targetRates.realistic)}/day
                   </p>
                   <p className="text-sm text-muted-foreground mt-2">
-                    Savings: ${(brief.currentSituation.currentRate - brief.targetRates.realistic).toLocaleString()}/day
+                    Savings: {formatRateMoney(brief.currentSituation.currentRate - brief.targetRates.realistic)}/day
                     ({(((brief.currentSituation.currentRate - brief.targetRates.realistic) / brief.currentSituation.currentRate) * 100).toFixed(1)}%)
                   </p>
                 </div>
@@ -360,10 +361,10 @@ export function NegotiationAssistant({ rateCardId }: NegotiationAssistantProps) 
                     <Badge variant="secondary">Minimum</Badge>
                   </div>
                   <p className="text-3xl font-bold text-orange-600">
-                    ${brief.targetRates.fallback.toLocaleString()}/day
+                    {formatRateMoney(brief.targetRates.fallback)}/day
                   </p>
                   <p className="text-sm text-muted-foreground mt-2">
-                    Savings: ${(brief.currentSituation.currentRate - brief.targetRates.fallback).toLocaleString()}/day
+                    Savings: {formatRateMoney(brief.currentSituation.currentRate - brief.targetRates.fallback)}/day
                     ({(((brief.currentSituation.currentRate - brief.targetRates.fallback) / brief.currentSituation.currentRate) * 100).toFixed(1)}%)
                   </p>
                 </div>
@@ -444,7 +445,7 @@ export function NegotiationAssistant({ rateCardId }: NegotiationAssistantProps) 
                         </div>
                         <div className="text-right">
                           <p className="text-2xl font-bold text-green-600">
-                            ${alt.dailyRate.toLocaleString()}/day
+                            {formatRateMoney(alt.dailyRate)}/day
                           </p>
                           <Badge variant="default">
                             Save {alt.savingsPercent.toFixed(1)}%
@@ -473,7 +474,7 @@ export function NegotiationAssistant({ rateCardId }: NegotiationAssistantProps) 
 
                       <div className="mt-3 pt-3 border-t">
                         <p className="text-sm text-muted-foreground">
-                          Potential annual savings: ${(alt.savingsAmount * (brief.currentSituation.volumeCommitted || 200)).toLocaleString()}
+                          Potential annual savings: {formatRateMoney(alt.savingsAmount * (brief.currentSituation.volumeCommitted || 200))}
                         </p>
                       </div>
                     </div>

@@ -593,16 +593,7 @@ export function ModelRegistryDashboard({ tenantId, className }: ModelRegistryDas
           </h1>
           <p className="text-muted-foreground text-sm">Manage, monitor, and optimize AI models</p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm">
-            <Download className="w-4 h-4 mr-2" />
-            Export
-          </Button>
-          <Button size="sm">
-            <Plus className="w-4 h-4 mr-2" />
-            Register Model
-          </Button>
-        </div>
+        <div />
       </div>
 
       {/* Stats Row */}
@@ -844,9 +835,7 @@ export function ModelRegistryDashboard({ tenantId, className }: ModelRegistryDas
                 </div>
               </div>
 
-              <div className="pt-4 border-t">
-                <Button>Save Settings</Button>
-              </div>
+
             </CardContent>
           </Card>
         </TabsContent>

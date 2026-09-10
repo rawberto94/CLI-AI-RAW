@@ -39,6 +39,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
+import { formatAmountWithCurrency } from '@/lib/utils/formatters';
 import {
   type Comparison,
   type Difference,
@@ -134,7 +135,7 @@ function ContractCard({
           label="Value"
           value={
             contract.totalValue != null
-              ? `${contract.currency ?? 'USD'} ${contract.totalValue.toLocaleString()}`
+              ? formatAmountWithCurrency(contract.totalValue, contract.currency)
               : undefined
           }
         />

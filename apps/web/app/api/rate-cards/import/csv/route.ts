@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from "@/lib/prisma";
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 import { rateCardManagementService, rateCardEntryService } from 'data-orchestration/services';
+import {
+  UNKNOWN_CURRENCY,
+  convertedDailyRates,
+  resolvePersistCurrency,
+  resolvePersistGeo,
+} from '@/lib/rate-cards/persist-fields';
 
 // Using singleton prisma instance from @/lib/prisma
 
@@ -66,6 +72,9 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
           errors.push('dailyRateUSD is required and must be a number');
         }
         if (!row.country) errors.push('country is required');
+        if (resolvePersistCurrency(row.currency) === UNKNOWN_CURRENCY) {
+          errors.push('currency is required and must be a real ISO code — not imported as USD');
+        }
 
         // Seniority validation
         const validSeniorities = ['JUNIOR', 'MID', 'SENIOR', 'PRINCIPAL', 'PARTNER'];
@@ -112,7 +121,9 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
           continue;
         }
 
-        // Import the rate card
+        const csvAmount = Number(row.dailyRateUSD)
+        const csvCurrency = resolvePersistCurrency(row.currency)
+        const converted = convertedDailyRates(csvAmount, csvCurrency)
         const rateCardEntry = await prisma.rateCardEntry.create({
           data: {
             tenantId,
@@ -120,18 +131,18 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
             roleStandardized: row.roleStandardized,
             roleCategory: row.roleCategory || 'Professional Services',
             seniority: row.seniority.toUpperCase() as any,
-            dailyRate: Number(row.dailyRateUSD),
-            dailyRateUSD: Number(row.dailyRateUSD),
-            dailyRateCHF: Number(row.dailyRateCHF || row.dailyRateUSD),
-            currency: row.currency || 'USD',
-            country: row.country,
-            region: row.region || 'Not Specified',
+            dailyRate: csvAmount,
+            dailyRateUSD: converted.usd,
+            dailyRateCHF: row.dailyRateCHF != null ? Number(row.dailyRateCHF) : converted.chf,
+            currency: csvCurrency,
+            country: resolvePersistGeo(row.country),
+            region: resolvePersistGeo(row.region),
             lineOfService: row.lineOfService || 'Professional Services',
             supplierId: row.supplierId || 'csv-import',
             supplierName: row.supplierName || 'Bulk Import',
             supplierTier: (row.supplierTier?.toUpperCase() || 'TIER_2') as any,
-            supplierCountry: row.country,
-            supplierRegion: row.region || 'Not Specified',
+            supplierCountry: resolvePersistGeo(row.country),
+            supplierRegion: resolvePersistGeo(row.region),
             effectiveDate: row.effectiveDate ? new Date(row.effectiveDate) : new Date(),
             expiryDate: row.expiryDate ? new Date(row.expiryDate) : null,
             source: 'CSV_UPLOAD',

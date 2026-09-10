@@ -65,6 +65,7 @@ import {
   Periodicity,
   getFieldsBySection,
   getFieldsNeedingAttention,
+  fieldNeedsAttention,
   formatPaymentType,
   formatBillingFrequency,
   formatPeriodicity,
@@ -74,15 +75,18 @@ import {
   SignatureStatus,
   DocumentClassification
 } from '@/lib/types/contract-metadata-schema';
-import { formatCurrency, formatDate } from '@/lib/design-tokens';
+import { formatDate } from '@/lib/design-tokens';
+import { formatAmountWithCurrency } from '@/lib/utils/formatters';
 import { isFieldRequired } from '@/lib/contracts/metadata-requirements';
 import { FieldTrustChip } from '@/components/contracts/FieldTrustChip';
-import type { FieldTrust } from '@repo/utils';
+import { FindingSourceLink } from '@/components/contracts/FindingSourceLink';
+import { hasTcvDrift, isHumanTcvLocked, resolveTcvWinner, type FieldTrust } from '@repo/utils';
 import {
   enrichCommercialFieldsFromArtifacts,
   mergePersistedMetadata,
   resolveDocumentTitle,
   titleFromSummary,
+  toPersistableMetadata,
 } from '@/lib/contracts/metadata-display';
 import { detailUi } from '@/app/contracts/[id]/components/detail-ui';
 
@@ -733,26 +737,10 @@ function MetadataSection({
   // A field needs review iff: low extraction confidence, a schema attention flag,
   // or a required (for this contract type) value is missing — and not yet verified.
   const attentionFields = fields.filter(f => {
-    // Skip if field has been validated
     const savedValidation = fieldValidations?.[f.key];
     const isValidated = savedValidation?.status === 'validate' || savedValidation?.status === 'validated';
     if (isValidated) return false;
-    
-    // Check AI confidence
-    const confidence = (metadata._field_confidence as Record<string, { value: number; source?: string; needsVerification: boolean; message?: string }> | undefined)?.[f.key];
-    const hasLowConfidence = confidence && confidence.value < 0.8;
-    const needsVerification = confidence?.needsVerification;
-    
-    // Check if field has attention requirement from schema
-    const hasSchemaAttention = f.ui_attention !== 'none';
-    
-    // Check if required field is missing a value (contract-type-aware)
-    const value = (metadata as Record<string, unknown>)[f.key];
-    const isMissingRequired = f.required
-      && isFieldRequired(f.key, contractType ?? null)
-      && (value === undefined || value === null || value === '' || (Array.isArray(value) && value.length === 0));
-    
-    return hasSchemaAttention || hasLowConfidence || needsVerification || isMissingRequired;
+    return fieldNeedsAttention(f, metadata, { contractType: contractType ?? null });
   });
   
   // Exception-based review: sections open only when they contain flagged fields.
@@ -953,15 +941,15 @@ function normalizeMetadataFieldValue(field: MetadataFieldDefinition, value: unkn
   }
 
   if (field.type === 'integer') {
-    if (value === '' || value === undefined || value === null) return 0;
+    if (value === '' || value === undefined || value === null) return null;
     const parsed = typeof value === 'number' ? value : Number.parseInt(String(value), 10);
-    return Number.isNaN(parsed) ? 0 : parsed;
+    return Number.isNaN(parsed) ? null : parsed;
   }
 
   if (field.type === 'decimal') {
-    if (value === '' || value === undefined || value === null) return 0;
+    if (value === '' || value === undefined || value === null) return null;
     const parsed = typeof value === 'number' ? value : Number.parseFloat(String(value));
-    return Number.isNaN(parsed) ? 0 : parsed;
+    return Number.isNaN(parsed) ? null : parsed;
   }
 
   return value;
@@ -1004,34 +992,31 @@ function MetadataField({
     }
   }, [isValidatedFromAPI]);
   
-  // Determine if field needs attention (more comprehensive check).
-  // document_number is a system-generated internal reference — it is never
-  // flagged for review or counted in verification.
-  const hasLowConfidence = confidence && confidence.value < 0.8;
-  const hasSchemaAttention = field.ui_attention !== 'none';
   const isMissingRequired = field.required
     && isFieldRequired(field.key, contractType ?? null)
     && (value === undefined || value === null || value === '' || (Array.isArray(value) && value.length === 0));
-  const needsAttention = field.key !== 'document_number'
-    && (hasSchemaAttention || hasLowConfidence || confidence?.needsVerification || isMissingRequired)
-    && !isVerified;
+  const hasLowConfidence = Boolean(confidence && typeof confidence.value === 'number' && confidence.value < 0.5);
+  const needsAttention = !isVerified && fieldNeedsAttention(field, metadata, { contractType: contractType ?? null });
   
-  // Determine attention level based on severity
   const getAttentionLevel = (): UIAttention => {
     if (!needsAttention) return 'none';
-    if (isMissingRequired && field.ui_attention === 'error') return 'error';
+    if (field.key === 'signature_required_flag' || field.key === 'document_classification_warning') return 'error';
+    if (isMissingRequired) return field.ui_attention === 'error' ? 'error' : 'warning';
+    if (hasLowConfidence) return 'warning';
     if (field.ui_attention === 'error') return 'error';
-    if (hasLowConfidence && confidence!.value < 0.5) return 'error';
-    if (hasLowConfidence || hasSchemaAttention) return 'warning';
+    if (field.ui_attention === 'warning') return 'warning';
     return 'info';
   };
   
-  // Generate attention message
   const getAttentionMessage = (): string => {
+    if (field.key === 'signature_required_flag') return 'Signature is still outstanding';
+    if (field.key === 'document_classification_warning') return String(metadata.document_classification_warning || 'Classification needs review');
+    if (field.key === 'signature_status' && (value === 'unknown' || value === '' || value == null)) {
+      return 'Signature status is unknown — set signed or unsigned';
+    }
     if (isMissingRequired) return `${field.label} is required`;
+    if (hasLowConfidence) return `AI confidence: ${Math.round(confidence!.value * 100)}% — please verify`;
     if (confidence?.message) return confidence.message;
-    if (hasLowConfidence) return `AI confidence: ${Math.round(confidence!.value * 100)}% - please verify`;
-    if (hasSchemaAttention) return 'This field requires verification';
     return 'Requires verification';
   };
   
@@ -1130,7 +1115,7 @@ function MetadataField({
 
   const renderValue = () => {
     // Special handling for certain fields
-    if (field.key === 'document_number') {
+    if (field.key === 'document_number' && !isEditing) {
       return <CopyableValue value={String(value) || 'Not assigned'} />;
     }
 
@@ -1146,17 +1131,58 @@ function MetadataField({
     }
     
     if (field.type === 'decimal' && field.key === 'tcv_amount') {
-      const currency = metadata.currency || 'USD';
+      const currency = typeof metadata.currency === 'string' && metadata.currency.trim()
+        ? metadata.currency
+        : undefined;
       const trust = (metadata as { _criticalFields?: Record<string, { trust: FieldTrust; confidence?: number | null }> })
         ._criticalFields?.totalValue;
+      const provenance = (metadata as {
+        tcvProvenance?: { label?: string; quote?: string | null; source?: string } | null
+        tcvDrift?: { extracted: number; saved: number } | null
+      });
       return (
         <span className="inline-flex items-center gap-2 flex-wrap">
           {value ? (
-            <span className={FIELD_VALUE_EMPHASIS_CLASS}>{formatCurrency(Number(value), currency)}</span>
+            <span className={FIELD_VALUE_EMPHASIS_CLASS}>{formatAmountWithCurrency(Number(value), currency)}</span>
           ) : (
             emptyValue()
           )}
-          {trust && <FieldTrustChip trust={trust.trust} confidence={trust.confidence} />}
+          {trust && (
+            <FieldTrustChip
+              trust={trust.trust}
+              confidence={trust.confidence}
+              sourceQuote={
+                (metadata as { _groundedFields?: Record<string, { sourceQuote?: string | null }> })._groundedFields?.totalValue?.sourceQuote
+                || provenance.tcvProvenance?.quote
+                || null
+              }
+              pageNumbers={
+                (metadata as { _groundedFields?: Record<string, { pageNumbers?: number[] }> })._groundedFields?.totalValue?.pageNumbers
+                || null
+              }
+            />
+          )}
+          {provenance.tcvProvenance?.label && (
+            <span className="text-[11px] text-slate-500">
+              Source: {provenance.tcvProvenance.label}
+            </span>
+          )}
+          {provenance.tcvDrift && (
+            <span className="text-[11px] text-amber-700">
+              Extracted {formatAmountWithCurrency(provenance.tcvDrift.extracted, currency)} differs from saved value
+            </span>
+          )}
+          {provenance.tcvProvenance?.quote && (
+            <span className="basis-full text-[11px] text-slate-500 italic line-clamp-2">
+              “{provenance.tcvProvenance.quote}”
+              <FindingSourceLink
+                className="ml-2 not-italic"
+                contractId={contractId}
+                snippet={provenance.tcvProvenance.quote}
+                heading="Total contract value"
+              />
+            </span>
+          )}
         </span>
       );
     }
@@ -1312,7 +1338,7 @@ function MetadataField({
             const rawValue = e.target.value;
             updateDraftValue(rawValue === '' ? '' : field.type === 'integer' ? Number.parseInt(rawValue, 10) : Number.parseFloat(rawValue));
           }}
-          placeholder="0"
+          placeholder=""
           className={cn(FIELD_INPUT_CLASS, 'font-mono')}
         />
       );
@@ -1439,7 +1465,7 @@ function MetadataField({
         </div>
         
         <div className="flex items-center gap-0.5 shrink-0 opacity-70 hover:opacity-100 transition-opacity">
-          {!isVerified && !isEditing && field.key !== 'document_number' && (
+          {!isVerified && !isEditing && (
             <button
               onClick={handleMarkVerified}
               disabled={isVerifying}
@@ -1598,16 +1624,16 @@ export function EnhancedContractMetadataSection({
     return val;
   }, []);
   
-  const unwrapNumber = useCallback((val: unknown): number => {
+  const unwrapNumber = useCallback((val: unknown): number | null => {
     const unwrapped = unwrapValue(val);
-    if (unwrapped === null || unwrapped === undefined) return 0;
-    if (typeof unwrapped === 'number') return unwrapped;
+    if (unwrapped === null || unwrapped === undefined || unwrapped === '') return null;
+    if (typeof unwrapped === 'number') return Number.isFinite(unwrapped) ? unwrapped : null;
     if (typeof unwrapped === 'string') {
       const cleaned = unwrapped.replace(/[$€£¥,]/g, '').trim();
       const parsed = parseFloat(cleaned);
-      return isNaN(parsed) ? 0 : parsed;
+      return Number.isNaN(parsed) ? null : parsed;
     }
-    return 0;
+    return null;
   }, [unwrapValue]);
   
   const unwrapString = useCallback((val: unknown): string => {
@@ -1622,7 +1648,10 @@ export function EnhancedContractMetadataSection({
     
     // Map fields from API response (high priority)
     if (contract) {
-      if (!base.document_number) base.document_number = String(contract.id || contractId);
+      if (!base.document_number || base.document_number === contract.id || base.document_number === contractId) {
+        const fromFile = String(contract.filename || contract.fileName || '').replace(/\.[^.]+$/, '');
+        base.document_number = fromFile || '';
+      }
       if (!base.document_title) {
         base.document_title = resolveDocumentTitle([
           String(contract.document_title || ''),
@@ -1632,14 +1661,15 @@ export function EnhancedContractMetadataSection({
           String(contract.filename || ''),
         ]);
       }
-      if (!base.currency) base.currency = String(contract.currency || 'USD');
+      if (!base.currency && contract.currency) base.currency = String(contract.currency);
       if (!base.start_date) base.start_date = String(contract.effectiveDate || contract.startDate || '');
       if (!base.end_date) base.end_date = contract.expirationDate || contract.endDate ? String(contract.expirationDate || contract.endDate) : null;
       
       // Financial data (from DB or API-built)
       if (!base.tcv_amount && (contract.totalValue !== undefined || contract.tcv_amount !== undefined)) {
         const val = contract.totalValue !== undefined ? contract.totalValue : contract.tcv_amount;
-        base.tcv_amount = typeof val === 'number' ? val : typeof val === 'string' ? parseFloat(val) || 0 : 0;
+        const parsed = typeof val === 'number' ? val : typeof val === 'string' ? parseFloat(val) : NaN;
+        if (Number.isFinite(parsed) && parsed > 0) base.tcv_amount = parsed;
       }
       
       // Use external_parties from API (built from artifacts)
@@ -1723,8 +1753,11 @@ export function EnhancedContractMetadataSection({
       if (!base.document_title) base.document_title = unwrapString(overviewData.contractTitle);
       if (!base.contract_short_description) base.contract_short_description = unwrapString(overviewData.summary) || unwrapString(overviewData.description);
       if (!base.jurisdiction) base.jurisdiction = unwrapString(overviewData.jurisdiction);
-      if (!base.contract_language) base.contract_language = unwrapString(overviewData.language) || 'en';
-      if (!base.tcv_amount) base.tcv_amount = unwrapNumber(overviewData.totalValue);
+      if (!base.contract_language) base.contract_language = unwrapString(overviewData.language);
+      if (!base.tcv_amount) {
+        const overviewTcv = unwrapNumber(overviewData.totalValue);
+        if (overviewTcv != null && overviewTcv > 0) base.tcv_amount = overviewTcv;
+      }
       if (!base.start_date) base.start_date = unwrapString(overviewData.effectiveDate) || unwrapString(overviewData.effective_date) || unwrapString(overviewData.startDate);
       if (!base.end_date) {
         const endDate = unwrapString(overviewData.expirationDate) || unwrapString(overviewData.expiration_date) || unwrapString(overviewData.endDate);
@@ -1748,10 +1781,61 @@ export function EnhancedContractMetadataSection({
     ) as Partial<ContractMetadataSchema>;
 
     if (financialData?.totalValue) {
-      enriched.tcv_amount = enriched.tcv_amount || unwrapNumber(financialData.totalValue);
-      enriched.tcv_text = enriched.tcv_text || formatCurrency(unwrapNumber(financialData.totalValue), enriched.currency || 'USD');
-      enriched.currency = enriched.currency || unwrapString(financialData.currency) || 'USD';
+      const financialTcv = unwrapNumber(financialData.totalValue);
+      if (!enriched.tcv_amount && financialTcv != null && financialTcv > 0) {
+        enriched.tcv_amount = financialTcv;
+      }
+      if (!enriched.tcv_text && financialTcv != null && financialTcv > 0 && enriched.currency) {
+        enriched.tcv_text = formatAmountWithCurrency(financialTcv, enriched.currency);
+      }
+      if (!enriched.currency) {
+        enriched.currency = unwrapString(financialData.currency) || '';
+      }
     }
+
+    const aiMeta = ((contract?.aiMetadata || {}) as Record<string, unknown>);
+    const diQueryAnswers = aiMeta.diQueryAnswers && typeof aiMeta.diQueryAnswers === 'object'
+      ? aiMeta.diQueryAnswers as Record<string, string>
+      : null;
+    const invoiceFields = aiMeta.diInvoiceFields && typeof aiMeta.diInvoiceFields === 'object'
+      ? aiMeta.diInvoiceFields as { invoiceTotal?: number; currency?: string }
+      : null;
+    const tcvWinner = resolveTcvWinner({
+      contractType: effectiveContractType,
+      diQueryAnswers,
+      contractText: typeof contract?.rawText === 'string' ? contract.rawText : null,
+      financialTotal: financialData?.totalValue != null ? unwrapNumber(financialData.totalValue) : null,
+      financialCurrency: unwrapString(financialData?.currency) || null,
+      overviewTotal: overviewData?.totalValue != null ? unwrapNumber(overviewData.totalValue) : null,
+      overviewCurrency: unwrapString(overviewData?.currency) || null,
+      invoiceTotal: invoiceFields?.invoiceTotal ?? null,
+      invoiceCurrency: invoiceFields?.currency ?? null,
+    });
+    const humanTcvLocked = isHumanTcvLocked(aiMeta);
+    const savedTcv = typeof (contract as { totalValue?: number })?.totalValue === 'number'
+      ? (contract as { totalValue?: number }).totalValue
+      : typeof enriched.tcv_amount === 'number' ? enriched.tcv_amount : null;
+    (enriched as Record<string, unknown>).tcvProvenance = humanTcvLocked
+      ? {
+          value: savedTcv ?? null,
+          currency: typeof enriched.currency === 'string' ? enriched.currency : tcvWinner.currency,
+          source: 'canonical',
+          quote: null,
+          label: 'Saved by you',
+        }
+      : tcvWinner.source === 'none' ? null : tcvWinner;
+    if (!humanTcvLocked && !enriched.tcv_amount && tcvWinner.value) {
+      enriched.tcv_amount = tcvWinner.value;
+      enriched.currency = enriched.currency || tcvWinner.currency || '';
+    }
+    if (!humanTcvLocked && tcvWinner.quote && !enriched.tcv_text) {
+      enriched.tcv_text = tcvWinner.quote;
+    }
+    const saved = typeof enriched.tcv_amount === 'number' ? enriched.tcv_amount : null;
+    (enriched as Record<string, unknown>).tcvDrift =
+      !humanTcvLocked && saved != null && tcvWinner.value != null && hasTcvDrift(saved, tcvWinner.value)
+        ? { extracted: tcvWinner.value, saved }
+        : null;
 
     const withInitialMetadata = { ...enriched, ...initialMetadata };
     const withApiMetadata = mergePersistedMetadata(
@@ -1760,7 +1844,7 @@ export function EnhancedContractMetadataSection({
     ) as Partial<ContractMetadataSchema>;
 
     return normalizeSignatureMetadataSnapshot(withApiMetadata);
-  }, [contractId, contract, overviewData, financialData, initialMetadata, metadataFromAPI, unwrapString, unwrapNumber]);
+  }, [contractId, contract, overviewData, financialData, initialMetadata, metadataFromAPI, unwrapString, unwrapNumber, effectiveContractType]);
   
   const [metadata, setMetadata] = useState<Partial<ContractMetadataSchema>>(mergedInitial);
   const [isEditing, setIsEditing] = useState(false);
@@ -1777,16 +1861,11 @@ export function EnhancedContractMetadataSection({
   // Type-aware: fields exempted for this contract type (e.g. value on an NDA)
   // never count as needing review.
   const fieldsNeedingAttention = useMemo(() => {
-    const baseFields = getFieldsNeedingAttention(metadata);
-    return baseFields.filter(field => {
+    return getFieldsNeedingAttention(metadata, { contractType: effectiveContractType }).filter((field) => {
       const validation = fieldValidations[field.key];
       const isValidated = validation?.status === 'validate' || validation?.status === 'validated';
       if (isValidated) return false;
-      if (field.key === 'document_number') return false; // system-generated internal reference
-      // A "missing required value" flag only stands if the field is required for this type
-      const value = (metadata as Record<string, unknown>)[field.key];
-      const isMissing = value === undefined || value === null || value === '' || (Array.isArray(value) && value.length === 0);
-      if (isMissing && field.required && !isFieldRequired(field.key, effectiveContractType)) return false;
+      if (field.key === 'document_number' && field.editable === false) return false;
       return true;
     });
   }, [metadata, fieldValidations, effectiveContractType]);
@@ -1906,7 +1985,7 @@ export function EnhancedContractMetadataSection({
           headers: { 'Content-Type': 'application/json', 'x-tenant-id': tenantId },
           body: JSON.stringify({
             tenantId,
-            metadata: nextMetadata,
+            metadata: toPersistableMetadata(nextMetadata as Record<string, unknown>),
             // Optimistic locking — server returns 409 if someone else saved first
             ...(metadataVersion != null ? { metadataVersion } : {}),
           })

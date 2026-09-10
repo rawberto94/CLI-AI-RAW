@@ -168,9 +168,9 @@ function VersionItem({ version, isLast, onCompare, onRevert, onView }: VersionIt
                 
                 <div className="flex items-center gap-2">
                   {hasChanges && (
-                    <button className="text-slate-400 hover:text-slate-600">
+                    <span className="text-slate-400">
                       {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                    </button>
+                    </span>
                   )}
                   
                   <DropdownMenu>
@@ -189,9 +189,11 @@ function VersionItem({ version, isLast, onCompare, onRevert, onView }: VersionIt
                         Compare
                       </DropdownMenuItem>
                       {version.fileUrl && (
-                        <DropdownMenuItem>
-                          <Download className="h-4 w-4 mr-2" />
-                          Download File
+                        <DropdownMenuItem asChild>
+                          <a href={version.fileUrl} download>
+                            <Download className="h-4 w-4 mr-2" />
+                            Download File
+                          </a>
                         </DropdownMenuItem>
                       )}
                       {!version.isActive && (

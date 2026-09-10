@@ -26,6 +26,7 @@ import {
   Zap
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { formatAmountWithCurrency } from '@/lib/utils/formatters';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -688,7 +689,7 @@ export function SmartSuggestionPanel({
                 <div className="text-center p-2 rounded-lg bg-muted/50">
                   <DollarSign size={18} className="mx-auto text-green-600 dark:text-green-400" />
                   <div className="text-lg font-bold">
-                    ${(suggestion.estimatedImpact.revenue / 1000).toFixed(0)}K
+                    {formatAmountWithCurrency(suggestion.estimatedImpact.revenue, suggestion.estimatedImpact.currency)}
                   </div>
                   <div className="text-xs text-muted-foreground">Revenue</div>
                 </div>

@@ -37,6 +37,7 @@ import { useDataMode } from '@/contexts/DataModeContext';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import Link from 'next/link';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -852,13 +853,11 @@ export function TemplateManager() {
           >
             <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
           </Button>
-          <Button variant="outline" className="gap-2">
-            <Upload className="h-4 w-4" />
-            Import
-          </Button>
-          <Button className="gap-2">
-            <Plus className="h-4 w-4" />
-            New Template
+          <Button className="gap-2" asChild>
+            <Link href="/templates">
+              <Plus className="h-4 w-4" />
+              Templates
+            </Link>
           </Button>
         </div>
       </div>
@@ -956,9 +955,11 @@ export function TemplateManager() {
               ? 'Try adjusting your search or filters' 
               : 'Create your first template to get started'}
           </p>
-          <Button>
-            <Plus className="h-4 w-4 mr-2" />
-            Create Template
+          <Button asChild>
+            <Link href="/templates">
+              <Plus className="h-4 w-4 mr-2" />
+              Create Template
+            </Link>
           </Button>
         </Card>
       )}

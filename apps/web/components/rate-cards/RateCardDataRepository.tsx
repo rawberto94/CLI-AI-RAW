@@ -33,6 +33,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { FilterCriteria } from './AdvancedFilters';
+import { formatRateMoney } from '@/lib/rate-cards/format';
 import { useToast } from '@/hooks/use-toast';
 
 interface RateCardEntry {
@@ -43,6 +44,7 @@ interface RateCardEntry {
   supplierName: string;
   supplierTier: string;
   dailyRateUSD: number;
+  dailyRate?: number;
   currency: string;
   country: string;
   region: string;
@@ -107,7 +109,8 @@ export function RateCardDataRepository({ filters }: RateCardDataRepositoryProps)
           supplierName: entry.supplierName || 'Unknown',
           supplierTier: entry.supplierTier || 'TIER_2',
           dailyRateUSD: entry.dailyRateUSD || entry.rate || 0,
-          currency: entry.currency || 'USD',
+          dailyRate: entry.dailyRate,
+          currency: entry.currency || '',
           country: entry.country || 'Unknown',
           region: entry.region || 'Unknown',
           lineOfService: entry.lineOfService || 'General',
@@ -287,7 +290,7 @@ export function RateCardDataRepository({ filters }: RateCardDataRepositoryProps)
                   { key: 'seniority', label: 'Seniority' },
                   { key: 'supplierName', label: 'Supplier' },
                   { key: 'supplierTier', label: 'Tier' },
-                  { key: 'dailyRateUSD', label: 'Daily Rate' },
+                  { key: 'dailyRateUSD', label: 'Daily Rate (source)' },
                   { key: 'country', label: 'Country' },
                   { key: 'region', label: 'Region' },
                   { key: 'lineOfService', label: 'Line of Service' },
@@ -453,7 +456,7 @@ export function RateCardDataRepository({ filters }: RateCardDataRepositoryProps)
                       )}
                       {visibleColumns.has('dailyRateUSD') && (
                         <TableCell className="text-right font-semibold">
-                          ${row.dailyRateUSD.toLocaleString()}/day
+                          {formatRateMoney(row.dailyRate ?? row.dailyRateUSD, row.currency)}/day
                         </TableCell>
                       )}
                       {visibleColumns.has('country') && (

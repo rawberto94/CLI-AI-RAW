@@ -3,6 +3,8 @@
  * Analyzes market position and provides intelligent negotiation strategies
  */
 
+import { formatRateMoney } from '@/lib/rate-cards/format'
+
 export interface MarketPosition {
   currentRate: number
   marketMedian: number
@@ -382,7 +384,7 @@ export class AIRecommendationEngine {
     const insights: string[] = []
     const { marketPosition } = context
     
-    insights.push(`Market median rate: CHF ${marketPosition.marketMedian.toLocaleString()}`)
+    insights.push(`Market median rate: ${formatRateMoney(marketPosition.marketMedian)}`)
     insights.push(`Your position: ${marketPosition.percentile.toFixed(0)}th percentile`)
     
     if (marketPosition.competitorsBelow > 0) {

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { TrendingUp, TrendingDown, Minus, Award } from 'lucide-react';
+import { formatRateMoney } from '@/lib/rate-cards/format'
 
 interface CategoryTrend {
   category: string;
@@ -58,14 +59,7 @@ export function DashboardTrendCharts() {
     }
   };
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(value);
-  };
+  const formatCurrency = (value: number) => formatRateMoney(value);
 
   const getTrendIcon = (trend: string) => {
     switch (trend) {

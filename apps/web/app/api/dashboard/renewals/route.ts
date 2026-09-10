@@ -10,6 +10,7 @@ import { prisma } from "@/lib/prisma";
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 import { analyticsService } from 'data-orchestration/services';
 import { getCached, setCached } from '@/lib/cache';
+import { expirationOrEndDateFilter, portfolioWhere } from '@/lib/contracts/server/portfolio';
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -36,34 +37,22 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
   
   const tenantId = ctx.tenantId;
 
-  const cacheKey = `dashboard:renewals:${tenantId}:${days}:${limit}`;
+  const cacheKey = `dashboard:renewals:${tenantId}:${days}:${limit}:v2`;
   const cached = await getCached(cacheKey);
   if (cached) return createSuccessResponse(ctx, cached);
 
   const now = new Date();
   const futureDate = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
-  
-  // Query contracts with upcoming expiration dates
+  const recentlyExpired = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const portfolio = portfolioWhere(tenantId);
+
   const renewals = await prisma.contract.findMany({
     where: {
-      tenantId,
-      OR: [
-        // Contracts with endDate in the future within range
-        {
-          endDate: {
-            gte: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000), // Include recently expired
-            lte: futureDate
-          }
-        },
-        // Contracts with expirationDate in the future within range
-        {
-          expirationDate: {
-            gte: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000),
-            lte: futureDate
-          }
-        }
-      ],
-      status: { in: ['COMPLETED', 'ACTIVE', 'PROCESSING'] }
+      ...portfolio,
+      ...expirationOrEndDateFilter({
+        gte: recentlyExpired,
+        lte: futureDate,
+      }),
     },
     include: {
       artifacts: {
@@ -79,11 +68,10 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
   });
   
   // Transform to renewal format
-  const renewalData = renewals.map(contract => {
-    const expiryDate = contract.endDate || contract.expirationDate;
-    const daysUntilExpiry = expiryDate 
-      ? Math.ceil((expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-      : null;
+  const renewalData = renewals.flatMap(contract => {
+    const expiryDate = contract.expirationDate ?? contract.endDate;
+    if (!expiryDate) return [];
+    const daysUntilExpiry = Math.ceil((expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 
     // Extract value from contract or artifacts
     let contractValue = contract.totalValue ? Number(contract.totalValue) : null;
@@ -101,19 +89,19 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
       contractType = overviewData.contractType || null;
     }
       
-    return {
+    return [{
       id: contract.id,
       name: contract.contractTitle || contract.originalName || contract.fileName,
       type: contractType || 'Unknown',
-      endDate: expiryDate?.toISOString() || null,
+      endDate: expiryDate.toISOString(),
       startDate: (contract.startDate || contract.effectiveDate)?.toISOString() || null,
       daysUntilExpiry,
-      priority: daysUntilExpiry !== null && daysUntilExpiry <= 0 ? 'expired' as const :
-               daysUntilExpiry !== null && daysUntilExpiry <= 30 ? 'urgent' as const : 
-               daysUntilExpiry !== null && daysUntilExpiry <= 60 ? 'high' as const : 'medium' as const,
+      priority: daysUntilExpiry < 0 ? 'expired' as const :
+               daysUntilExpiry <= 30 ? 'urgent' as const :
+               daysUntilExpiry <= 60 ? 'high' as const : 'medium' as const,
       value: contractValue,
       supplier: contract.supplierName || null,
-    };
+    }];
   });
 
   // Sort by urgency (expired first, then by days)
@@ -132,10 +120,9 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
     medium: renewalData.filter(r => r.daysUntilExpiry !== null && r.daysUntilExpiry > 60).length,
     withoutDates: await prisma.contract.count({
       where: {
-        tenantId,
-        status: { in: ['COMPLETED', 'ACTIVE'] },
-        endDate: null,
+        ...portfolio,
         expirationDate: null,
+        endDate: null,
       }
     }),
   };

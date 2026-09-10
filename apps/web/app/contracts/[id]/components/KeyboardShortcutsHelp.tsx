@@ -25,14 +25,13 @@ const shortcuts: ShortcutItem[] = [
   { keys: ['1'], description: 'Switch to Summary tab', category: 'navigation' },
   { keys: ['2'], description: 'Switch to Details tab', category: 'navigation' },
   { keys: ['3'], description: 'Switch to Activity tab', category: 'navigation' },
-  { keys: ['4', 'A'], description: 'Switch to AI tab', category: 'navigation' },
+  { keys: ['4'], description: 'Switch to Analysis tab', category: 'navigation' },
   { keys: ['P'], description: 'Toggle PDF viewer', category: 'navigation' },
   { keys: ['Esc'], description: 'Close dialogs / Exit edit mode', category: 'navigation' },
   // Actions
   { keys: ['E'], description: 'Enter edit mode', category: 'actions' },
   { keys: ['⌘', 'D'], description: 'Download contract', category: 'actions' },
   { keys: ['⌘', 'R'], description: 'Refresh data', category: 'actions' },
-  { keys: ['⌘', 'S'], description: 'Save changes (in edit mode)', category: 'actions' },
   // General
   { keys: ['?'], description: 'Show keyboard shortcuts', category: 'general' },
   { keys: ['⌘', 'K'], description: 'Open command palette', category: 'general' },

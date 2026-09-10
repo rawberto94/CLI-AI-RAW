@@ -12,6 +12,7 @@
  */
 
 import pino from 'pino';
+import { resolveAnalysisLanguage } from '@repo/utils';
 
 const logger = pino({ name: 'legal-ner' });
 
@@ -98,12 +99,16 @@ const PATTERNS = {
     { pattern: /\b(Landlord|Tenant|Lessor|Lessee)\b/gi, role: 'LEASE' },
     { pattern: /\b(Discloser|Recipient)\b/gi, role: 'NDA' },
     { pattern: /\b(Contractor|Subcontractor)\b/gi, role: 'SERVICE' },
+    { pattern: /\b(Auftraggeber|Kunde|Mandant)\b/gi, role: 'CLIENT' },
+    { pattern: /\b(Auftragnehmer|Lieferant|Dienstleister)\b/gi, role: 'VENDOR' },
   ],
 
   // Date patterns
   DATES: {
     ISO: /\b(\d{4}-\d{2}-\d{2})\b/g,
     US_LONG: /\b((?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},?\s+\d{4})\b/gi,
+    DE_LONG: /\b(\d{1,2}\.?\s+(?:Januar|Februar|März|April|Mai|Juni|Juli|August|September|Oktober|November|Dezember)\s+\d{4})\b/gi,
+    FR_LONG: /\b(\d{1,2}\s+(?:janvier|février|fevrier|mars|avril|mai|juin|juillet|août|aout|septembre|octobre|novembre|décembre|decembre)\s+\d{4})\b/gi,
     US_SHORT: /\b(\d{1,2}\/\d{1,2}\/\d{2,4})\b/g,
     EU: /\b(\d{1,2}[./-]\d{1,2}[./-]\d{2,4})\b/g,
     ORDINAL: /\b(?:the\s+)?(\d{1,2}(?:st|nd|rd|th)\s+(?:day\s+of\s+)?(?:January|February|March|April|May|June|July|August|September|October|November|December),?\s+\d{4})\b/gi,
@@ -116,6 +121,12 @@ const PATTERNS = {
     { pattern: /terminat(?:e|ion|es|ing)\s+(?:on|date)[:\s]+([^\n,;]+)/gi, type: 'EXPIRATION_DATE' as EntityType },
     { pattern: /sign(?:ed|ing)\s+(?:on|date)[:\s]+([^\n,;]+)/gi, type: 'SIGNING_DATE' as EntityType },
     { pattern: /dated\s+(?:as\s+of\s+)?([^\n,;]+)/gi, type: 'SIGNING_DATE' as EntityType },
+    { pattern: /inkrafttreten[:\s]+([^\n,;]+)/gi, type: 'EFFECTIVE_DATE' as EntityType },
+    { pattern: /gültig(?:keitsdauer)?\s+(?:ab|vom)[:\s]+([^\n,;]+)/gi, type: 'EFFECTIVE_DATE' as EntityType },
+    { pattern: /vertragsbeginn[:\s]+([^\n,;]+)/gi, type: 'EFFECTIVE_DATE' as EntityType },
+    { pattern: /vertragsende[:\s]+([^\n,;]+)/gi, type: 'EXPIRATION_DATE' as EntityType },
+    { pattern: /geschehen\s+zu[:\s]+([^\n,;]+)/gi, type: 'SIGNING_DATE' as EntityType },
+    { pattern: /date\s+d['’]entr[eé]e\s+en\s+vigueur[:\s]+([^\n,;]+)/gi, type: 'EFFECTIVE_DATE' as EntityType },
   ],
 
   // Monetary patterns
@@ -136,6 +147,7 @@ const PATTERNS = {
     /\b(\d+)\s*(?:week|wk)s?\b/gi,
     /\b(\d+)\s*(?:day|business\s+day)s?\b/gi,
     /\b(\d+)\s*(?:hour|hr)s?\b/gi,
+    /\b(\d+)\s*(?:Jahr|Jahre|Monat|Monate|Tag|Tage|Woche|Wochen)\b/gi,
   ],
 
   // Jurisdiction and governing law
@@ -144,6 +156,8 @@ const PATTERNS = {
     /jurisdiction\s+(?:of|in)\s+(?:the\s+)?([A-Z][A-Za-z\s,]+)/gi,
     /courts?\s+(?:of|in|located\s+in)\s+(?:the\s+)?([A-Z][A-Za-z\s,]+)/gi,
     /(?:Swiss|German|French|Italian|English|US|American)\s+law/gi,
+    /(?:schweizerischem|deutschem|französischem|italienischem)\s+Recht/gi,
+    /droit\s+suisse|diritto\s+svizzero/gi,
   ],
 
   // Contact patterns
@@ -213,7 +227,7 @@ const SWISS_PATTERNS = {
   POSTAL_CODE: /(?:CH[-\s]?)?\d{4}\s+[A-Za-zäöüÄÖÜéèàêâ\s]+/gi,
   
   // Swiss currencies
-  FRANCS: /(?:CHF|Fr\.?|SFr\.?)\s*([\d'']+(?:\.\d{2})?)|(?:Schweizer\s+)?Franken\s*([\d'']+(?:\.\d{2})?)/gi,
+  FRANCS: /(?:CHF|Fr\.?|SFr\.?)\s*([\d''']+(?:\.\d{2})?)|([\d''']+(?:\.\d{2})?)\s*(?:CHF|SFr\.?|Fr\.)|(?:Schweizer\s+)?Franken\s*([\d''']+(?:\.\d{2})?)/gi,
 };
 
 // ============================================================================
@@ -229,6 +243,10 @@ const MULTILINGUAL_PATTERNS = {
     DATE_CONTEXTS: [
       { pattern: /(?:ab|vom|per)\s+(\d{1,2}[.]\d{1,2}[.]\d{2,4})/gi, type: 'EFFECTIVE_DATE' as EntityType },
       { pattern: /(?:bis|endet\s+am)\s+(\d{1,2}[.]\d{1,2}[.]\d{2,4})/gi, type: 'EXPIRATION_DATE' as EntityType },
+      { pattern: /inkrafttreten[:\s]+([^\n,;]+)/gi, type: 'EFFECTIVE_DATE' as EntityType },
+      { pattern: /gültig(?:keitsdauer)?\s+(?:ab|vom)[:\s]+([^\n,;]+)/gi, type: 'EFFECTIVE_DATE' as EntityType },
+      { pattern: /(?:gültig\s+bis|auslauf(?:datum)?)[:\s]+([^\n,;]+)/gi, type: 'EXPIRATION_DATE' as EntityType },
+      { pattern: /unterzeichnet\s+am[:\s]+([^\n,;]+)/gi, type: 'SIGNING_DATE' as EntityType },
     ],
     LEGAL_TERMS: [
       /\b(Haftungsbeschränkung)\b/gi,
@@ -285,25 +303,7 @@ const MULTILINGUAL_PATTERNS = {
  * Detect document language
  */
 function detectLanguage(text: string): 'en' | 'de' | 'fr' | 'it' {
-  const indicators = {
-    en: /\b(whereas|agreement|party|herein|shall|between|pursuant)\b/gi,
-    de: /\b(zwischen|vereinbarung|vertrag|hiermit|gemäß|vertragspartei)\b/gi,
-    fr: /\b(entre|accord|contrat|ci-après|partie|conformément)\b/gi,
-    it: /\b(tra|accordo|contratto|seguente|parte|conformemente)\b/gi,
-  };
-
-  const counts = {
-    en: (text.match(indicators.en) || []).length,
-    de: (text.match(indicators.de) || []).length,
-    fr: (text.match(indicators.fr) || []).length,
-    it: (text.match(indicators.it) || []).length,
-  };
-
-  const maxLang = Object.entries(counts).reduce((a, b) => 
-    counts[a[0] as keyof typeof counts] > counts[b[0] as keyof typeof counts] ? a : b
-  );
-
-  return (maxLang[1] > 0 ? maxLang[0] : 'en') as 'en' | 'de' | 'fr' | 'it';
+  return resolveAnalysisLanguage({ contractText: text });
 }
 
 /**
@@ -344,10 +344,26 @@ function normalizeDate(dateStr: string): string | undefined {
       }
     }
 
-    // Try natural language dates
-    const date = new Date(dateStr);
-    if (!isNaN(date.getTime())) {
-      return date.toISOString().split('T')[0];
+    const named = dateStr.match(/^(\d{1,2})\.?\s+([A-Za-zäöüÄÖÜéè]+)\s+(\d{4})$/i);
+    if (named) {
+      const months: Record<string, string> = {
+        january: '01', februar: '02', february: '02', march: '03', märz: '03', maerz: '03',
+        april: '04', may: '05', mai: '05', june: '06', juni: '06', july: '07', juli: '07',
+        august: '08', september: '09', october: '10', oktober: '10', november: '11',
+        december: '12', dezember: '12', januar: '01',
+      };
+      const month = months[named[2]!.toLowerCase()];
+      if (month) {
+        return `${named[3]}-${month}-${named[1]!.padStart(2, '0')}`;
+      }
+    }
+
+    // Try natural language dates (skip dotted numerics — those are DD.MM.YYYY)
+    if (!/^\d{1,2}\.\d{1,2}\.\d{2,4}$/.test(dateStr.trim())) {
+      const date = new Date(dateStr);
+      if (!isNaN(date.getTime())) {
+        return date.toISOString().split('T')[0];
+      }
     }
   } catch {
     // Fall through
@@ -462,6 +478,29 @@ function extractDates(text: string, language: string): ExtractedEntity[] {
     }
   }
 
+  for (const [name, pattern] of Object.entries(PATTERNS.DATES)) {
+    if (name === 'US_SHORT') continue;
+    const regex = new RegExp(pattern.source, pattern.flags);
+    let match: RegExpExecArray | null;
+    while ((match = regex.exec(text)) !== null) {
+      const dateStr = (match[1] || match[0]).trim();
+      if (!dateStr) continue;
+      const start = match.index;
+      const end = match.index + match[0].length;
+      if (entities.some((e) => start < e.end && end > e.start)) continue;
+      entities.push({
+        type: 'EFFECTIVE_DATE',
+        value: dateStr,
+        normalizedValue: normalizeDate(dateStr),
+        confidence: 0.55,
+        start,
+        end,
+        context: getContext(text, start, end),
+        metadata: { unlabeled: true },
+      });
+    }
+  }
+
   return entities;
 }
 
@@ -484,7 +523,7 @@ function extractMonetary(text: string): ExtractedEntity[] {
     let match;
     
     while ((match = regex.exec(text)) !== null) {
-      const amountStr = match[1] || match[2] || '';
+      const amountStr = match[1] || match[2] || match[3] || '';
       if (amountStr) {
         const { amount } = normalizeAmount(amountStr, currency);
         entities.push({

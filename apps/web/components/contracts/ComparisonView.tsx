@@ -22,7 +22,7 @@ import {
   type Comparison,
   type Difference,
 } from "@/lib/contracts/comparison";
-import { formatCurrency, formatDateTime } from "@/lib/utils/formatters";
+import { formatAmountWithCurrency, formatCurrency, formatDateTime } from "@/lib/utils/formatters";
 
 // Unwrap potentially wrapped AI values
 function unwrapValue<T>(val: T | { value: T; source?: string } | undefined): T | undefined {
@@ -144,7 +144,7 @@ export function ComparisonView({ contracts, onClose }: ComparisonViewProps) {
           <div className="bg-white p-4 rounded-lg border border-gray-200">
             <div className="text-sm text-gray-600 mb-1">Value Difference</div>
             <div className="text-2xl font-bold text-gray-900">
-              {formatCurrency(comparison.metrics.valueDifference)}
+              {formatAmountWithCurrency(comparison.metrics.valueDifference, null)}
             </div>
           </div>
           <div className="bg-white p-4 rounded-lg border border-gray-200">

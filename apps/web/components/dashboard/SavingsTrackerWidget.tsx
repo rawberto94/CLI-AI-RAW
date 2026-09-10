@@ -39,6 +39,8 @@ import {
   CheckCircle,
   AlertCircle,
 } from 'lucide-react';
+import { useDisplayCurrency } from '@/hooks/useDisplayCurrency';
+import { formatDisplayTotal, sumConvertedCurrency } from '@/lib/utils/formatters';
 
 // ============ Types ============
 
@@ -82,16 +84,6 @@ interface SavingsTrackerWidgetProps {
 
 // ============ Helpers ============
 
-const formatCurrency = (amount: number): string => {
-  if (amount >= 1000000) {
-    return `CHF ${(amount / 1000000).toFixed(1)}M`;
-  }
-  if (amount >= 1000) {
-    return `CHF ${(amount / 1000).toFixed(0)}K`;
-  }
-  return `CHF ${amount.toFixed(0)}`;
-};
-
 const getConfidenceColor = (confidence: SavingsOpportunity['confidence']) => {
   switch (confidence) {
     case 'high': return 'text-green-500 bg-green-500/10';
@@ -122,6 +114,7 @@ const SavingsOverview = memo(function SavingsOverview({
   previous: number;
   period: string;
 }) {
+  const displayCurrency = useDisplayCurrency();
   const progress = Math.min((total / target) * 100, 100);
   const change = previous > 0 ? ((total - previous) / previous) * 100 : 0;
   const isPositive = change >= 0;
@@ -130,9 +123,9 @@ const SavingsOverview = memo(function SavingsOverview({
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-2xl font-bold">{formatCurrency(total)}</p>
+          <p className="text-2xl font-bold">{formatDisplayTotal(total, displayCurrency)}</p>
           <p className="text-xs text-muted-foreground">
-            of {formatCurrency(target)} target
+            of {formatDisplayTotal(target, displayCurrency)} target
           </p>
         </div>
         <div className={`flex items-center gap-1 text-sm ${isPositive ? 'text-green-500' : 'text-red-500'}`}>
@@ -157,6 +150,7 @@ const CategoryBreakdown = memo(function CategoryBreakdown({
 }: {
   categories: SavingsCategory[];
 }) {
+  const displayCurrency = useDisplayCurrency();
   const maxAmount = Math.max(...categories.map(c => c.amount));
 
   return (
@@ -170,7 +164,7 @@ const CategoryBreakdown = memo(function CategoryBreakdown({
               style={{ backgroundColor: category.color }}
             />
             <span className="text-xs flex-1 truncate">{category.name}</span>
-            <span className="text-xs font-medium">{formatCurrency(category.amount)}</span>
+            <span className="text-xs font-medium">{formatDisplayTotal(category.amount, displayCurrency)}</span>
             <div className="w-16 h-1.5 bg-muted rounded-full overflow-hidden">
               <div 
                 className="h-full rounded-full"
@@ -195,6 +189,7 @@ const OpportunityItem = memo(function OpportunityItem({
   onClick?: () => void;
 }) {
   const StatusIcon = getStatusIcon(opportunity.status);
+  const displayCurrency = useDisplayCurrency();
   
   return (
     <button
@@ -213,7 +208,7 @@ const OpportunityItem = memo(function OpportunityItem({
         )}
       </div>
       <span className="text-xs font-medium text-green-500">
-        +{formatCurrency(opportunity.potentialSavings)}
+        +{formatDisplayTotal(opportunity.potentialSavings, displayCurrency)}
       </span>
     </button>
   );
@@ -271,6 +266,7 @@ export function SavingsTrackerWidget({
   className = '',
 }: SavingsTrackerWidgetProps) {
   const [activeTab, setActiveTab] = useState<'overview' | 'opportunities'>('overview');
+  const displayCurrency = useDisplayCurrency();
 
   const periodLabels = {
     month: 'This Month',
@@ -281,8 +277,12 @@ export function SavingsTrackerWidget({
   const pendingOpportunities = data.opportunities.filter(
     o => o.status === 'identified' || o.status === 'in-progress'
   );
-  const totalPotential = pendingOpportunities.reduce(
-    (sum, o) => sum + o.potentialSavings, 0
+  const totalPotential = sumConvertedCurrency(
+    pendingOpportunities.map((o) => ({
+      amount: o.potentialSavings,
+      currency: 'currency' in o ? (o as { currency?: string }).currency : undefined,
+    })),
+    displayCurrency,
   );
 
   return (
@@ -384,7 +384,7 @@ export function SavingsTrackerWidget({
                   Potential savings identified
                 </p>
                 <Badge variant="outline" className="text-green-500 border-green-500/30">
-                  {formatCurrency(totalPotential)}
+                  {formatDisplayTotal(totalPotential, displayCurrency)}
                 </Badge>
               </div>
               

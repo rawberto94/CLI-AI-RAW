@@ -4,6 +4,7 @@
  */
 
 import { PrismaClient, Prisma } from '@prisma/client';
+import { resolvePersistCurrency } from '@repo/utils';
 
 const prisma = new PrismaClient();
 
@@ -49,7 +50,7 @@ export class ContractRequestService {
 
     const request = await prisma.$queryRaw`
       INSERT INTO contract_requests (id, tenant_id, requester_id, title, description, request_type, urgency, department, cost_center, estimated_value, currency, counterparty_name, counterparty_email, contract_type, desired_start_date, desired_end_date, business_justification, attachments, custom_fields, status, sla_deadline, created_at, updated_at)
-      VALUES (gen_random_uuid()::text, ${input.tenantId}, ${input.requesterId}, ${input.title}, ${input.description || null}, ${input.requestType || 'NEW_CONTRACT'}, ${input.urgency || 'MEDIUM'}, ${input.department || null}, ${input.costCenter || null}, ${input.estimatedValue || null}, ${input.currency || 'USD'}, ${input.counterpartyName || null}, ${input.counterpartyEmail || null}, ${input.contractType || null}, ${input.desiredStartDate || null}, ${input.desiredEndDate || null}, ${input.businessJustification || null}, ${JSON.stringify(input.attachments || [])}, ${JSON.stringify(input.customFields || {})}, 'SUBMITTED', ${slaDeadline}, NOW(), NOW())
+      VALUES (gen_random_uuid()::text, ${input.tenantId}, ${input.requesterId}, ${input.title}, ${input.description || null}, ${input.requestType || 'NEW_CONTRACT'}, ${input.urgency || 'MEDIUM'}, ${input.department || null}, ${input.costCenter || null}, ${input.estimatedValue || null}, ${resolvePersistCurrency(input.currency)}, ${input.counterpartyName || null}, ${input.counterpartyEmail || null}, ${input.contractType || null}, ${input.desiredStartDate || null}, ${input.desiredEndDate || null}, ${input.businessJustification || null}, ${JSON.stringify(input.attachments || [])}, ${JSON.stringify(input.customFields || {})}, 'SUBMITTED', ${slaDeadline}, NOW(), NOW())
       RETURNING *
     `;
 

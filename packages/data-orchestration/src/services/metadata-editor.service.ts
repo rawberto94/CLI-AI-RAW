@@ -228,17 +228,24 @@ export class MetadataEditorService {
     userId: string
   ): Promise<void> {
     try {
-      const metadata = await dbAdaptor.getClient().contractMetadata.findUnique({
-        where: { contractId },
-      });
+      const client = dbAdaptor.getClient();
+      const [metadata, contract] = await Promise.all([
+        client.contractMetadata.findUnique({
+          where: { contractId },
+          select: { tags: true },
+        }),
+        client.contract.findUnique({
+          where: { id: contractId },
+          select: { tags: true },
+        }),
+      ]);
 
-      if (!metadata) {
-        throw new Error('Contract metadata not found');
-      }
-
-      // Merge with existing tags (remove duplicates)
-      const existingTags = metadata.tags || [];
-      const newTags = Array.from(new Set([...existingTags, ...tags]));
+      const fromMetadata = Array.isArray(metadata?.tags) ? metadata.tags : [];
+      const fromContract = Array.isArray(contract?.tags)
+        ? (contract.tags as unknown[]).filter((tag): tag is string => typeof tag === 'string')
+        : [];
+      const existingTags = fromMetadata.length > 0 ? fromMetadata : fromContract;
+      const newTags = Array.from(new Set([...existingTags, ...tags].map((tag) => tag.trim()).filter(Boolean)));
 
       await this.updateContractMetadata({
         contractId,
@@ -266,13 +273,11 @@ export class MetadataEditorService {
     try {
       const metadata = await dbAdaptor.getClient().contractMetadata.findUnique({
         where: { contractId },
+        select: { tags: true },
       });
 
-      if (!metadata) {
-        throw new Error('Contract metadata not found');
-      }
-
-      const updatedTags = (metadata.tags || []).filter(t => t !== tagName);
+      const existingTags = Array.isArray(metadata?.tags) ? metadata.tags : [];
+      const updatedTags = existingTags.filter((t: string) => t !== tagName);
 
       await this.updateContractMetadata({
         contractId,

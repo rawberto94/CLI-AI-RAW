@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { Prisma } from '@prisma/client';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, getApiContext} from '@/lib/api-middleware';
+import { resolvePersistCurrency } from '@/lib/fx';
 
 export const dynamic = 'force-dynamic';
 
@@ -69,7 +70,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
       VALUES (gen_random_uuid()::text, ${ctx.tenantId}, ${ctx.userId}, ${body.title}, ${body.description || null},
         ${body.requestType || 'NEW_CONTRACT'}, ${body.urgency || 'MEDIUM'},
         ${body.department || null}, ${body.costCenter || null},
-        ${body.estimatedValue || null}, ${body.currency || 'USD'},
+        ${body.estimatedValue || null}, ${resolvePersistCurrency(body.currency)},
         ${body.counterpartyName || null}, ${body.counterpartyEmail || null},
         ${body.contractType || null}, ${body.desiredStartDate || null},
         ${body.desiredEndDate || null}, ${body.businessJustification || null},

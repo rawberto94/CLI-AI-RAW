@@ -13,6 +13,9 @@ import { getServerTenantId } from '@/lib/tenant-server';
 import { publishRealtimeEvent } from '@/lib/realtime/publish';
 import { withAuthApiHandler, createSuccessResponse, handleApiError, createErrorResponse } from '@/lib/api-middleware';
 import { contractService } from 'data-orchestration/services';
+import { expirationOrEndDateFilter, portfolioWhere } from '@/lib/contracts/server/portfolio';
+
+const MS_PER_DAY = 1000 * 60 * 60 * 24;
 
 const RenewalActionSchema = z.object({
   contractId: z.string().optional(),
@@ -60,7 +63,20 @@ interface RenewalContract {
   assignedTo: { id: string; name: string; email: string } | null;
 }
 
-function calculatePriority(daysUntilExpiry: number): RenewalContract['priority'] {
+function calculatePriority(
+  daysUntilExpiry: number,
+  noticeDeadline: Date | null,
+  now: Date,
+): RenewalContract['priority'] {
+  // Real notice deadlines only: red/critical if overdue or due within 14 days.
+  // Synthesized notices are not attached, so they cannot force CRITICAL.
+  if (noticeDeadline) {
+    const daysUntilNotice = Math.ceil((noticeDeadline.getTime() - now.getTime()) / MS_PER_DAY);
+    if (now.getTime() >= noticeDeadline.getTime() || daysUntilNotice <= 14) {
+      return 'critical';
+    }
+  }
+  if (daysUntilExpiry < 0) return 'critical';
   if (daysUntilExpiry <= 7) return 'critical';
   if (daysUntilExpiry <= 30) return 'high';
   if (daysUntilExpiry <= 60) return 'medium';
@@ -75,10 +91,11 @@ function calculateStatus(daysUntilExpiry: number, hasRenewalRecord: boolean): Re
   return 'upcoming';
 }
 
-function calculateNoticeStatus(daysUntilExpiry: number, noticePeriod: number): RenewalContract['noticeStatus'] {
-  const daysUntilNoticeDeadline = daysUntilExpiry - noticePeriod;
-  if (daysUntilNoticeDeadline < 0) return 'overdue';
-  if (daysUntilNoticeDeadline <= 7) return 'pending';
+function calculateNoticeStatus(noticeDeadline: Date | null, now: Date): RenewalContract['noticeStatus'] {
+  if (!noticeDeadline) return 'not-due';
+  const daysUntilNotice = Math.ceil((noticeDeadline.getTime() - now.getTime()) / MS_PER_DAY);
+  if (now.getTime() >= noticeDeadline.getTime()) return 'overdue';
+  if (daysUntilNotice <= 14) return 'pending';
   return 'not-due';
 }
 
@@ -152,15 +169,11 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
     const tenantId = await getServerTenantId();
     const now = new Date();
 
-    // Get contracts with end dates (upcoming renewals)
+    // Portfolio contracts that have a real expirationDate or endDate (no missing-date fallback).
     const contracts = await prisma.contract.findMany({
       where: {
-        tenantId,
-        status: { in: ['COMPLETED', 'ACTIVE', 'PENDING'] },
-        OR: [
-          { endDate: { not: null } },
-          { expirationDate: { not: null } },
-        ],
+        ...portfolioWhere(tenantId),
+        ...expirationOrEndDateFilter({ gte: new Date(0) }),
       },
       include: {
         artifacts: {
@@ -213,12 +226,11 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
     }
 
     // Transform to renewal records
-    let renewals: RenewalContract[] = await Promise.all(contracts.map(async (contract) => {
-      // Use endDate or expirationDate
-      const expiryDate = contract.endDate || contract.expirationDate;
-      const daysUntilExpiry = expiryDate 
-        ? Math.ceil((expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-        : 365; // Default to far future if no date
+    const mappedRenewals = await Promise.all(contracts.map(async (contract) => {
+      // Prefer expirationDate, then endDate — matches expirationOrEndDateFilter.
+      const expiryDate = contract.expirationDate ?? contract.endDate;
+      if (!expiryDate) return null;
+      const daysUntilExpiry = Math.ceil((expiryDate.getTime() - now.getTime()) / MS_PER_DAY);
 
       // Extract value from contract or financial artifact
       let contractValue = contract.totalValue ? Number(contract.totalValue) : null;
@@ -241,7 +253,12 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
         supplier = vendorParty?.name || null;
       }
 
-      const noticePeriod = contract.noticePeriodDays || 60;
+      const noticePeriod = contract.noticePeriodDays && contract.noticePeriodDays > 0
+        ? contract.noticePeriodDays
+        : 0;
+      const noticeDeadlineDate = noticePeriod > 0
+        ? new Date(expiryDate.getTime() - noticePeriod * MS_PER_DAY)
+        : null;
       const healthScore = calculateHealthScore(contract);
       const hasRenewalRecord = contract.renewalStatus === 'INITIATED';
 
@@ -295,13 +312,11 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
         expiryDate: expiryDate?.toISOString() || null,
         daysUntilExpiry,
         status: calculateStatus(daysUntilExpiry, hasRenewalRecord),
-        priority: calculatePriority(daysUntilExpiry),
+        priority: calculatePriority(daysUntilExpiry, noticeDeadlineDate, now),
         autoRenewal: contract.autoRenewalEnabled || false,
         noticePeriod,
-        noticeDeadline: expiryDate 
-          ? new Date(expiryDate.getTime() - noticePeriod * 24 * 60 * 60 * 1000).toISOString()
-          : null,
-        noticeStatus: calculateNoticeStatus(daysUntilExpiry, noticePeriod),
+        noticeDeadline: noticeDeadlineDate?.toISOString() ?? null,
+        noticeStatus: calculateNoticeStatus(noticeDeadlineDate, now),
         healthScore,
         riskLevel: calculateRiskLevel(healthScore),
         contractType: contract.contractType || contract.category || null,
@@ -309,23 +324,17 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
       };
     }));
 
-    // Deduplicate by contractId (keep the first occurrence)
+    let renewals: RenewalContract[] = mappedRenewals.filter(
+      (renewal): renewal is RenewalContract => renewal !== null,
+    );
+
+    // Deduplicate by contractId only (same title can be distinct contracts)
     const seenContractIds = new Set<string>();
-    const seenContractNames = new Set<string>();
-    renewals = renewals.filter(renewal => {
-      // Skip if we've seen this contract ID
+    renewals = renewals.filter((renewal) => {
       if (seenContractIds.has(renewal.contractId)) {
         return false;
       }
-      // Also skip if we've seen this exact contract name (likely a duplicate upload)
-      const normalizedName = renewal.contractName?.toLowerCase().trim();
-      if (normalizedName && seenContractNames.has(normalizedName)) {
-        return false;
-      }
       seenContractIds.add(renewal.contractId);
-      if (normalizedName) {
-        seenContractNames.add(normalizedName);
-      }
       return true;
     });
 

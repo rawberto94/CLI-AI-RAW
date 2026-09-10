@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { negotiationAssistantService } from 'data-orchestration/services';
 import { withAuthApiHandler, createErrorResponse } from '@/lib/api-middleware';
+import { formatMoneyText } from '@repo/utils';
 
 type NegotiationBrief = Awaited<ReturnType<negotiationAssistantService['generateNegotiationBrief']>>;
 
@@ -74,7 +75,7 @@ export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
 });
 
 function generateNegotiationBriefHTML(brief: NegotiationBrief): string {
-  const currentDate = new Date().toLocaleDateString('en-US', {
+  const currentDate = new Date().toLocaleDateString('de-CH', {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
@@ -422,7 +423,7 @@ function generateNegotiationBriefHTML(brief: NegotiationBrief): string {
     </div>
     <div class="info-item">
       <div class="info-label">Current Rate</div>
-      <div class="info-value">$${brief.currentSituation.currentRate.toLocaleString()}/day</div>
+      <div class="info-value">${formatMoneyText(brief.currentSituation.currentRate)}/day</div>
     </div>
     <div class="info-item">
       <div class="info-label">Role</div>
@@ -468,9 +469,9 @@ function generateNegotiationBriefHTML(brief: NegotiationBrief): string {
         <th>75th Percentile</th>
       </tr>
       <tr>
-        <td>$${brief.marketPosition.marketP25.toLocaleString()}</td>
-        <td>$${brief.marketPosition.marketMedian.toLocaleString()}</td>
-        <td>$${brief.marketPosition.marketP75.toLocaleString()}</td>
+        <td>${formatMoneyText(brief.marketPosition.marketP25)}</td>
+        <td>${formatMoneyText(brief.marketPosition.marketMedian)}</td>
+        <td>${formatMoneyText(brief.marketPosition.marketP75)}</td>
       </tr>
     </table>
   </div>
@@ -484,9 +485,9 @@ function generateNegotiationBriefHTML(brief: NegotiationBrief): string {
       <span class="target-rate-title">Aggressive Target</span>
       <span class="badge badge-warning">Stretch Goal</span>
     </div>
-    <div class="rate-amount">$${brief.targetRates.aggressive.toLocaleString()}/day</div>
+    <div class="rate-amount">${formatMoneyText(brief.targetRates.aggressive)}/day</div>
     <div class="savings-text">
-      Savings: $${(Number(brief.currentSituation.currentRate) - Number(brief.targetRates.aggressive)).toLocaleString()}/day
+      Savings: ${formatMoneyText(Number(brief.currentSituation.currentRate) - Number(brief.targetRates.aggressive))}/day
       (${(((Number(brief.currentSituation.currentRate) - Number(brief.targetRates.aggressive)) / Math.max(1, Number(brief.currentSituation.currentRate))) * 100).toFixed(1)}%)
     </div>
   </div>
@@ -496,9 +497,9 @@ function generateNegotiationBriefHTML(brief: NegotiationBrief): string {
       <span class="target-rate-title">Realistic Target</span>
       <span class="badge badge-primary">Recommended</span>
     </div>
-    <div class="rate-amount">$${brief.targetRates.realistic.toLocaleString()}/day</div>
+    <div class="rate-amount">${formatMoneyText(brief.targetRates.realistic)}/day</div>
     <div class="savings-text">
-      Savings: $${(Number(brief.currentSituation.currentRate) - Number(brief.targetRates.realistic)).toLocaleString()}/day
+      Savings: ${formatMoneyText(Number(brief.currentSituation.currentRate) - Number(brief.targetRates.realistic))}/day
       (${(((Number(brief.currentSituation.currentRate) - Number(brief.targetRates.realistic)) / Math.max(1, Number(brief.currentSituation.currentRate))) * 100).toFixed(1)}%)
     </div>
   </div>
@@ -508,9 +509,9 @@ function generateNegotiationBriefHTML(brief: NegotiationBrief): string {
       <span class="target-rate-title">Fallback Target</span>
       <span class="badge badge-secondary">Minimum</span>
     </div>
-    <div class="rate-amount">$${brief.targetRates.fallback.toLocaleString()}/day</div>
+    <div class="rate-amount">${formatMoneyText(brief.targetRates.fallback)}/day</div>
     <div class="savings-text">
-      Savings: $${(Number(brief.currentSituation.currentRate) - Number(brief.targetRates.fallback)).toLocaleString()}/day
+      Savings: ${formatMoneyText(Number(brief.currentSituation.currentRate) - Number(brief.targetRates.fallback))}/day
       (${(((Number(brief.currentSituation.currentRate) - Number(brief.targetRates.fallback)) / Math.max(1, Number(brief.currentSituation.currentRate))) * 100).toFixed(1)}%)
     </div>
   </div>
@@ -576,7 +577,7 @@ function generateNegotiationBriefHTML(brief: NegotiationBrief): string {
           <div style="color: #64748b; font-size: 14px;">${alt.country}</div>
         </div>
         <div style="text-align: right;">
-          <div class="alternative-rate">$${alt.dailyRate.toLocaleString()}/day</div>
+          <div class="alternative-rate">${formatMoneyText(alt.dailyRate)}/day</div>
           <div class="badge badge-success">Save ${alt.savingsPercent.toFixed(1)}%</div>
         </div>
       </div>
@@ -595,7 +596,7 @@ function generateNegotiationBriefHTML(brief: NegotiationBrief): string {
         </div>
       </div>
       <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #e2e8f0; font-size: 14px; color: #64748b;">
-        Potential annual savings: $${(alt.savingsAmount * (brief.currentSituation.volumeCommitted || 200)).toLocaleString()}
+        Potential annual savings: ${formatMoneyText(alt.savingsAmount * (brief.currentSituation.volumeCommitted || 200))}
       </div>
     </div>
   `

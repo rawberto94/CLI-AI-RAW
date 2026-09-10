@@ -16,6 +16,7 @@ import {
   ComposedChart,
 } from 'recharts';
 import { ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
+import { formatRateMoney } from '@/lib/rate-cards/format';
 
 interface TimeSeriesDataPoint {
   date: string;
@@ -58,7 +59,7 @@ export function TimeSeriesChart({
     return (
       <div className="bg-white p-4 rounded-lg shadow-lg border border-gray-200">
         <p className="font-semibold text-gray-900 mb-2">
-          {new Date(label).toLocaleDateString('en-US', {
+          {new Date(label).toLocaleDateString('de-CH', {
             year: 'numeric',
             month: 'short',
             day: 'numeric',
@@ -74,7 +75,7 @@ export function TimeSeriesChart({
                 />
                 <span className="text-sm text-gray-600">{entry.name}:</span>
               </div>
-              <span className="text-sm font-medium">${entry.value.toFixed(2)}</span>
+              <span className="text-sm font-medium">{formatRateMoney(entry.value, null, { maximumFractionDigits: 2 })}</span>
             </div>
           ))}
         </div>
@@ -165,7 +166,7 @@ export function TimeSeriesChart({
           <XAxis
             dataKey="date"
             tickFormatter={(value) =>
-              new Date(value).toLocaleDateString('en-US', {
+              new Date(value).toLocaleDateString('de-CH', {
                 month: 'short',
                 day: 'numeric',
               })
@@ -211,7 +212,7 @@ export function TimeSeriesChart({
               height={30}
               stroke="#7c3aed"
               tickFormatter={(value) =>
-                new Date(value).toLocaleDateString('en-US', {
+                new Date(value).toLocaleDateString('de-CH', {
                   month: 'short',
                 })
               }

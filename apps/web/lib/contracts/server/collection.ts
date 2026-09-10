@@ -931,7 +931,7 @@ export async function getContractsCollection(
                 signatureStatus: (contract as any).signatureStatus || (contract.aiMetadata as any)?.signature_status || 'unknown',
                 signatureDate: (contract as any).signatureDate?.toISOString() || (contract.aiMetadata as any)?.signature_date || null,
                 signatureRequiredFlag: (contract as any).signatureRequiredFlag ?? false,
-                documentClassification: (contract as any).documentClassification || (contract.aiMetadata as any)?.document_classification || 'contract',
+                documentClassification: (contract as any).documentClassification || (contract.aiMetadata as any)?.document_classification || 'unknown',
                 documentClassificationConfidence: (contract as any).documentClassificationConf || null,
                 documentClassificationWarning: (contract as any).documentClassificationWarning || (contract.aiMetadata as any)?.document_classification_warning || null,
                 metadataCompleteness: metadataQuality.metadataCompleteness,
@@ -1081,7 +1081,7 @@ export async function getContractsOrganized(
           key,
           label: key === 'no-expiration'
             ? 'No Expiration Date'
-            : new Date(`${key}-01`).toLocaleDateString('en-US', { year: 'numeric', month: 'long' }),
+            : new Date(`${key}-01`).toLocaleDateString('de-CH', { year: 'numeric', month: 'long' }),
           count: contractsInGroup.length,
           totalValue: contractsInGroup.reduce((sum, contract) => sum + (Number(contract.totalValue) || 0), 0),
           contracts: includeContracts ? contractsInGroup.map(mapOrganizedContract) : [],
@@ -1118,7 +1118,7 @@ export async function getContractsOrganized(
           : first[0].localeCompare(second[0]))
         .map(([key, contractsInGroup]) => ({
           key,
-          label: new Date(`${key}-01`).toLocaleDateString('en-US', { year: 'numeric', month: 'long' }),
+          label: new Date(`${key}-01`).toLocaleDateString('de-CH', { year: 'numeric', month: 'long' }),
           count: contractsInGroup.length,
           totalValue: contractsInGroup.reduce((sum, contract) => sum + (Number(contract.totalValue) || 0), 0),
           contracts: includeContracts ? contractsInGroup.map(mapOrganizedContract) : [],

@@ -2,6 +2,8 @@
 
 import React, { useEffect, useState } from 'react';
 import { Brain, FileText, Activity, DollarSign, Shield, TrendingUp, AlertTriangle, Loader2 } from 'lucide-react';
+import { useDisplayCurrency } from '@/hooks/useDisplayCurrency';
+import { formatDisplayTotal } from '@/lib/utils/formatters';
 
 interface DashboardStats {
   totalContracts: number;
@@ -38,6 +40,7 @@ function StatCard({ icon: Icon, label, value, subtext, color }: {
 }
 
 export function IntelligenceDashboard() {
+  const displayCurrency = useDisplayCurrency();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -87,9 +90,7 @@ export function IntelligenceDashboard() {
     );
   }
 
-  const fmtValue = (v: number) =>
-    v >= 1_000_000 ? `$${(v / 1_000_000).toFixed(1)}M` :
-    v >= 1_000 ? `$${(v / 1_000).toFixed(0)}K` : `$${v}`;
+  const fmtValue = (v: number) => formatDisplayTotal(v, displayCurrency);
 
   return (
     <div className="space-y-6">

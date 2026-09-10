@@ -13,6 +13,7 @@ import {
   Legend,
   ReferenceLine,
 } from 'recharts';
+import { formatRateMoney } from '@/lib/rate-cards/format';
 
 interface BoxPlotData {
   category: string;
@@ -67,27 +68,27 @@ export function InteractiveBoxPlot({
         <div className="space-y-1 text-sm">
           <div className="flex justify-between gap-4">
             <span className="text-gray-600">Max:</span>
-            <span className="font-medium">${data.max.toFixed(2)}</span>
+            <span className="font-medium">{formatRateMoney(data.max, null, { maximumFractionDigits: 2 })}</span>
           </div>
           <div className="flex justify-between gap-4">
             <span className="text-gray-600">Q3 (75%):</span>
-            <span className="font-medium">${data.q3.toFixed(2)}</span>
+            <span className="font-medium">{formatRateMoney(data.q3, null, { maximumFractionDigits: 2 })}</span>
           </div>
           <div className="flex justify-between gap-4">
             <span className="text-gray-600">Median:</span>
-            <span className="font-medium text-violet-600">${data.median.toFixed(2)}</span>
+            <span className="font-medium text-violet-600">{formatRateMoney(data.median, null, { maximumFractionDigits: 2 })}</span>
           </div>
           <div className="flex justify-between gap-4">
             <span className="text-gray-600">Mean:</span>
-            <span className="font-medium text-green-600">${data.mean.toFixed(2)}</span>
+            <span className="font-medium text-green-600">{formatRateMoney(data.mean, null, { maximumFractionDigits: 2 })}</span>
           </div>
           <div className="flex justify-between gap-4">
             <span className="text-gray-600">Q1 (25%):</span>
-            <span className="font-medium">${data.q1.toFixed(2)}</span>
+            <span className="font-medium">{formatRateMoney(data.q1, null, { maximumFractionDigits: 2 })}</span>
           </div>
           <div className="flex justify-between gap-4">
             <span className="text-gray-600">Min:</span>
-            <span className="font-medium">${data.min.toFixed(2)}</span>
+            <span className="font-medium">{formatRateMoney(data.min, null, { maximumFractionDigits: 2 })}</span>
           </div>
           <div className="flex justify-between gap-4 pt-2 border-t border-gray-200">
             <span className="text-gray-600">Sample Size:</span>

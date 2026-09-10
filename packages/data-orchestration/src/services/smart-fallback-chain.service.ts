@@ -12,6 +12,7 @@
  */
 
 import { createLogger } from '../utils/logger';
+import { detectCurrencyFromText, parseIsoDate, parseMonetaryAmount, UNKNOWN_CURRENCY } from '@repo/utils';
 
 const logger = createLogger('smart-fallback-chain');
 
@@ -220,13 +221,8 @@ function normalizeDate(value: string): string | null {
       return dateStr.split('T')[0];
     }
     
-    // US format MM/DD/YYYY or MM-DD-YYYY
-    const usMatch = dateStr.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
-    if (usMatch) {
-      let year = parseInt(usMatch[3]);
-      if (year < 100) year += 2000;
-      return `${year}-${usMatch[1].padStart(2, '0')}-${usMatch[2].padStart(2, '0')}`;
-    }
+    const numeric = parseIsoDate(dateStr);
+    if (numeric) return numeric;
     
     // Named month format
     const namedMatch = dateStr.match(/([A-Za-z]+)\s+(\d{1,2}),?\s+(\d{4})/);
@@ -260,29 +256,19 @@ function normalizeCurrency(value: string): { amount: number; currency: string; f
   try {
     const cleanValue = typeof value === 'string' ? value : String(value);
     
-    // Extract currency symbol
-    const currencyMatch = cleanValue.match(/([€$£¥]|USD|EUR|GBP|CAD|AUD)/);
-    let currency = 'USD';
-    if (currencyMatch) {
-      const symbol = currencyMatch[1];
-      if (symbol === '€' || symbol === 'EUR') currency = 'EUR';
-      else if (symbol === '£' || symbol === 'GBP') currency = 'GBP';
-      else if (symbol === '¥') currency = 'JPY';
-      else if (symbol === 'CAD') currency = 'CAD';
-      else if (symbol === 'AUD') currency = 'AUD';
-    }
+    const currency = detectCurrencyFromText(cleanValue) || UNKNOWN_CURRENCY;
     
     // Extract amount
-    const amountMatch = cleanValue.replace(/[€$£¥]/g, '').match(/[\d,]+(?:\.\d{2})?/);
-    if (amountMatch) {
-      const amount = parseFloat(amountMatch[0].replace(/,/g, ''));
+    const amount = parseMonetaryAmount(cleanValue);
+    if (amount != null) {
       const symbols: Record<string, string> = {
-        'USD': '$', 'EUR': '€', 'GBP': '£', 'JPY': '¥', 'CAD': 'CA$', 'AUD': 'A$'
+        'USD': '$', 'EUR': '€', 'GBP': '£', 'JPY': '¥', 'CAD': 'CA$', 'AUD': 'A$', 'CHF': 'CHF ',
       };
+      const prefix = symbols[currency] || '';
       return {
         amount,
         currency,
-        formatted: `${symbols[currency] || '$'}${amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}`
+        formatted: `${prefix}${amount.toLocaleString('de-CH', { minimumFractionDigits: 2 })}`,
       };
     }
     
@@ -621,7 +607,7 @@ export class SmartFallbackChainService {
             if (dateMatch) extractedValue = normalizeDate(dateMatch[1]);
             break;
           case 'currency':
-            const currencyMatch = surroundingText.match(/\$?([\d,]+(?:\.\d{2})?)/);
+            const currencyMatch = surroundingText.match(/(?:CHF|SFr\.?|Fr\.|EUR|€|USD|\$)\s*[\d''’.,]+/i);
             if (currencyMatch) extractedValue = normalizeCurrency(currencyMatch[0]);
             break;
           case 'number':

@@ -2,6 +2,7 @@
 
 import React, { useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { formatRateMoney } from '@/lib/rate-cards/format';
 
 interface GeographicData {
   region: string;
@@ -49,7 +50,7 @@ export function GeographicHeatMap({
   }, [data, metric]);
 
   const formatValue = (value: number) => {
-    if (metric === 'avgRate') return `$${value.toFixed(2)}/hr`;
+    if (metric === 'avgRate') return `${formatRateMoney(value, null, { maximumFractionDigits: 2 })}/hr`;
     if (metric === 'percentile') return `${value.toFixed(0)}th`;
     return value.toString();
   };

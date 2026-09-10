@@ -1127,7 +1127,7 @@ class ContractHierarchyService {
       status: contract.status,
       party: contract.supplierName ?? undefined,
       value: Number(contract.totalValue || 0),
-      currency: contract.currency || 'USD',
+      currency: contract.currency || '',
       startDate: contract.startDate || undefined,
       endDate: contract.endDate || undefined,
       level,

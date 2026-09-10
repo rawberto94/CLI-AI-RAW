@@ -320,11 +320,19 @@ export const formatDuration = (ms: number): string => {
   }
 }
 
-export const formatCurrency = (amount: number, currency = 'USD'): string => {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency,
-  }).format(amount)
+export const formatCurrency = (amount: number, currency?: string): string => {
+  const code = typeof currency === 'string' ? currency.trim() : ''
+  if (code.length === 3 && code !== 'XXX') {
+    try {
+      return new Intl.NumberFormat('de-CH', {
+        style: 'currency',
+        currency: code,
+      }).format(amount)
+    } catch {
+      return `${code} ${amount.toLocaleString('de-CH')}`
+    }
+  }
+  return amount.toLocaleString('de-CH')
 }
 
 export const formatPercentage = (value: number, decimals = 1): string => {

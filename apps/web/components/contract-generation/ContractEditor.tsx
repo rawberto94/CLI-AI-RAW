@@ -35,6 +35,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -624,9 +625,6 @@ function AISuggestionsPanel() {
             </CardHeader>
             <CardContent className="p-3 pt-0">
               <p className="text-xs text-muted-foreground mb-2">{suggestion.description}</p>
-              <Button size="sm" variant="outline" className="h-7 text-xs">
-                {suggestion.action}
-              </Button>
             </CardContent>
           </Card>
         ))}
@@ -766,9 +764,11 @@ export function ContractEditor({ draft, onSave, onSubmit }: EditorProps) {
       {/* Toolbar */}
       <div className="border-b px-4 py-2 flex items-center justify-between bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-10">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" className="gap-2">
-            <ChevronLeft className="h-4 w-4" />
-            Back
+          <Button variant="ghost" size="sm" className="gap-2" asChild>
+            <Link href="/drafting">
+              <ChevronLeft className="h-4 w-4" />
+              Back
+            </Link>
           </Button>
           <Separator orientation="vertical" className="h-6" />
           <div>
@@ -783,38 +783,9 @@ export function ContractEditor({ draft, onSave, onSubmit }: EditorProps) {
         </div>
         
         <div className="flex items-center gap-2">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Undo">
-                  <Undo className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Undo</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Redo">
-                  <Redo className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Redo</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-          <Separator orientation="vertical" className="h-6" />
           <Button variant="outline" size="sm" onClick={() => setShowPreview(!showPreview)} className="gap-2">
             {showPreview ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             Preview
-          </Button>
-          <Button variant="outline" size="sm" className="gap-2">
-            <Download className="h-4 w-4" />
-            Export
-          </Button>
-          <Button variant="outline" size="sm" className="gap-2">
-            <Share2 className="h-4 w-4" />
-            Share
           </Button>
           <Separator orientation="vertical" className="h-6" />
           <Button variant="outline" size="sm" onClick={handleSave} disabled={isSaving} className="gap-2">

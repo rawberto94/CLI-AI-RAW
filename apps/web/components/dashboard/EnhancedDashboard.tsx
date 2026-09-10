@@ -46,6 +46,8 @@ import {
   LazyLegend as Legend,
   LazyResponsiveContainer as ResponsiveContainer,
 } from '@/components/charts/lazy-charts';
+import { useDisplayCurrency } from '@/hooks/useDisplayCurrency';
+import { formatDisplayTotal } from '@/lib/utils/formatters';
 
 interface DashboardMetrics {
   totalContracts: number;
@@ -75,6 +77,7 @@ const statusColors: Record<string, string> = { Active: '#10b981', Draft: '#f59e0
 const riskColors: Record<string, string> = { Low: '#10b981', Medium: '#f59e0b', High: '#ef4444', Critical: '#dc2626' };
 
 export function EnhancedDashboard() {
+  const displayCurrency = useDisplayCurrency();
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -256,7 +259,7 @@ export function EnhancedDashboard() {
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Total Value</p>
                 <p className="text-3xl font-bold text-foreground mt-1">
-                  {(() => { const v = metrics?.totalValue ?? 0; return v >= 1_000_000 ? `$${(v / 1_000_000).toFixed(1)}M` : v >= 1_000 ? `$${(v / 1_000).toFixed(0)}K` : `$${v.toLocaleString()}`; })()}
+                  {formatDisplayTotal(metrics?.totalValue ?? 0, displayCurrency)}
                 </p>
                 <div className="flex items-center gap-1 mt-2">
                   {(metrics?.trends.valueChange ?? 0) > 0 ? (
@@ -364,7 +367,7 @@ export function EnhancedDashboard() {
                   stroke="#10b981"
                   fillOpacity={1}
                   fill="url(#colorValue)"
-                  name="Value ($M)"
+                  name={`Value (${displayCurrency})`}
                 />
               </AreaChart>
             </ResponsiveContainer>
@@ -499,7 +502,7 @@ export function EnhancedDashboard() {
                 </div>
                 <div>
                   <p className="text-sm font-medium">5 contracts expire in 7 days</p>
-                  <p className="text-xs text-muted-foreground">$1.2M total value at risk</p>
+                  <p className="text-xs text-muted-foreground">Review expirations on the renewals calendar</p>
                 </div>
               </div>
               <div className="flex items-start gap-3">
@@ -560,7 +563,7 @@ export function EnhancedDashboard() {
                   <DollarSign className="h-4 w-4 text-green-600" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium">$180K savings opportunity</p>
+                  <p className="text-sm font-medium">Rate optimization available</p>
                   <p className="text-xs text-muted-foreground">Rate optimization available</p>
                 </div>
               </div>
@@ -569,7 +572,7 @@ export function EnhancedDashboard() {
                   <Zap className="h-4 w-4 text-green-600" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium">23 contracts for auto-renewal</p>
+                  <p className="text-sm font-medium">Upcoming auto-renewals from live renewal data</p>
                   <p className="text-xs text-muted-foreground">Set up automation</p>
                 </div>
               </div>

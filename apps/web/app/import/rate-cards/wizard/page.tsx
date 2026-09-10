@@ -65,7 +65,7 @@ export default function ImportWizardPage() {
         rateType: String(row.rateType || row['Rate Type'] || 'HOURLY').toUpperCase(),
         minRate: parseFloat(String(row.minRate || row['Min Rate'] || row['Rate'] || '0')),
         maxRate: parseFloat(String(row.maxRate || row['Max Rate'] || row['Rate'] || '0')),
-        currency: String(row.currency || row['Currency'] || 'USD'),
+        currency: String(row.currency || row['Currency'] || ''),
         region: row.region || row['Region'] || row['Location'] || null,
         skillCategory: row.skillCategory || row['Category'] || row['Skill'] || null,
         effectiveDate: row.effectiveDate || row['Effective Date'] || null,

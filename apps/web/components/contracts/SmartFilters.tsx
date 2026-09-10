@@ -244,9 +244,7 @@ const DEFAULT_QUICK_FILTERS: Array<{
 // ============================================================================
 
 function formatCurrency(value: number): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
+  return new Intl.NumberFormat("de-CH", {
     notation: value >= 1000000 ? "compact" : "standard",
     maximumFractionDigits: 0,
   }).format(value);

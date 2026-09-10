@@ -20,6 +20,7 @@
 
 import OpenAI from 'openai';
 import { createOpenAIClient, hasAIClientConfig } from '@/lib/openai-client';
+import { retrievalLanguageInstructions } from '@repo/utils';
 import type { SearchResult } from './advanced-rag.service';
 
 // ============================================================================
@@ -121,7 +122,9 @@ Rules:
 - PARTIALLY_RELEVANT: Chunk has some related info but doesn't directly answer
 - IRRELEVANT: Chunk has no useful information for the query
 
-Be strict but fair. Legal context matters — a termination clause IS relevant to a question about ending a contract.`,
+Be strict but fair. Legal context matters — a termination clause IS relevant to a question about ending a contract.
+German, French, or Italian chunks can be RELEVANT even if the query is English (and vice versa) when they address the same legal concept (Kündigung/termination, Haftung/liability).
+${retrievalLanguageInstructions(query)}`,
           },
           {
             role: 'user',

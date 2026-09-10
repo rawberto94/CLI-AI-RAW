@@ -53,6 +53,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { formatAmountWithCurrency } from '@/lib/utils/formatters';
 
 // ============================================================================
 // TYPES
@@ -469,7 +470,7 @@ export default function RFxDetailPage() {
           <StatCard label="Requirements" value={requirements.length} sub={`${userReqs.length} user + ${aiReqs.length} AI`} />
           <StatCard label="Vendors" value={event.invitedVendors?.length || 0} sub="invited" />
           <StatCard label="Bids" value={responses.length} sub="received" />
-          <StatCard label="Est. Value" value={event.estimatedValue ? `$${(event.estimatedValue / 1000).toFixed(0)}K` : '—'} sub={event.currency || 'USD'} />
+          <StatCard label="Est. Value" value={event.estimatedValue ? formatAmountWithCurrency(event.estimatedValue, event.currency) : '—'} sub={event.currency || '—'} />
           <StatCard label="Deadline" value={event.responseDeadline ? new Date(event.responseDeadline).toLocaleDateString() : '—'} sub="response due" />
         </div>
       </div>
@@ -624,7 +625,7 @@ export default function RFxDetailPage() {
                           <span className="font-semibold text-slate-900">{vendor}</span>
                           {profile && (
                             <p className="text-xs text-slate-500">
-                              {profile.contractCount} contracts, avg ${(profile.avgValue / 1000).toFixed(0)}K
+                              {profile.contractCount} contracts, avg {formatAmountWithCurrency(profile.avgValue)}
                             </p>
                           )}
                         </div>
@@ -832,11 +833,11 @@ export default function RFxDetailPage() {
                         </div>
                         <div>
                           <p className="text-xs text-slate-500">Average</p>
-                          <p className="font-bold text-slate-900">${evalResult.priceAnalysis.average?.toLocaleString()}</p>
+                          <p className="font-bold text-slate-900">{formatAmountWithCurrency(evalResult.priceAnalysis.average)}</p>
                         </div>
                         <div>
                           <p className="text-xs text-slate-500">Spread</p>
-                          <p className="font-bold text-slate-900">${evalResult.priceAnalysis.spread?.toLocaleString()}</p>
+                          <p className="font-bold text-slate-900">{formatAmountWithCurrency(evalResult.priceAnalysis.spread)}</p>
                         </div>
                       </div>
                     </CardContent>
@@ -943,11 +944,11 @@ export default function RFxDetailPage() {
                   <div className="grid grid-cols-3 gap-4">
                     <div className="p-3 bg-white rounded-lg border border-blue-200">
                       <p className="text-xs text-slate-500">Walk-Away Price</p>
-                      <p className="text-lg font-bold text-red-600">${negoResult.walkAwayPrice?.toLocaleString()}</p>
+                      <p className="text-lg font-bold text-red-600">{formatAmountWithCurrency(negoResult.walkAwayPrice)}</p>
                     </div>
                     <div className="p-3 bg-white rounded-lg border border-blue-200">
                       <p className="text-xs text-slate-500">Est. Savings</p>
-                      <p className="text-lg font-bold text-emerald-700">${negoResult.estimatedSavings?.toLocaleString()}</p>
+                      <p className="text-lg font-bold text-emerald-700">{formatAmountWithCurrency(negoResult.estimatedSavings)}</p>
                     </div>
                     <div className="p-3 bg-white rounded-lg border border-blue-200">
                       <p className="text-xs text-slate-500">Timeline</p>
@@ -960,7 +961,7 @@ export default function RFxDetailPage() {
                       <div className="space-y-2">
                         {negoResult.counterOffers.map((co: any, i: number) => (
                           <div key={i} className="flex items-center gap-3 p-2 bg-white border border-blue-200 rounded-lg">
-                            <span className="font-bold text-sm text-blue-700">${co.amount?.toLocaleString()}</span>
+                            <span className="font-bold text-sm text-blue-700">{formatAmountWithCurrency(co.amount)}</span>
                             <span className="text-xs text-slate-600">{co.justification}</span>
                           </div>
                         ))}

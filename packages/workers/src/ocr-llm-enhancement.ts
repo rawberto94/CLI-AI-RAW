@@ -14,6 +14,7 @@
  */
 
 import pino from 'pino';
+import { ocrLanguageInstructions } from '@repo/utils';
 
 const logger = pino({ name: 'ocr-llm-enhancement' });
 
@@ -510,7 +511,7 @@ async function processChunkWithLLM(
   provider: AIProviderConfig,
   focusAreas: string[]
 ): Promise<{ correctedText: string; corrections: LLMCorrectionResult['corrections'] }> {
-  const systemPrompt = buildSpellCheckPrompt(focusAreas);
+  const systemPrompt = buildSpellCheckPrompt(focusAreas, chunk);
   
   if (provider.provider === 'azure-openai') {
     return await callAzureOpenAI(chunk, systemPrompt, provider);
@@ -528,10 +529,10 @@ async function processChunkWithLLM(
 /**
  * Build the spell-check prompt
  */
-function buildSpellCheckPrompt(focusAreas: string[]): string {
+function buildSpellCheckPrompt(focusAreas: string[], chunkText = ''): string {
   const areaInstructions = {
-    legal: 'Pay special attention to legal terminology such as: indemnification, arbitration, jurisdiction, liability, force majeure, termination, breach, waiver, covenant, etc.',
-    financial: 'Carefully correct financial terms and numbers: amounts, currencies, percentages, payment terms, fiscal periods.',
+    legal: 'Pay special attention to legal terminology such as: indemnification, arbitration, jurisdiction, liability, force majeure, termination, breach, waiver, covenant, Kündigung, Haftung, Vergütung, résiliation, responsabilité, risoluzione.',
+    financial: 'Carefully correct financial terms and numbers: amounts, currencies, percentages, payment terms, fiscal periods. Fr. and SFr. mean CHF. Keep Swiss apostrophe thousands (1\'200\'000). Do not invent USD.',
     technical: 'Correct technical terminology accurately, preserving acronyms and technical specifications.',
     general: 'Correct general spelling and grammar while maintaining the formal tone of legal/business documents.',
   };
@@ -544,13 +545,16 @@ function buildSpellCheckPrompt(focusAreas: string[]): string {
   return `You are an expert proofreader specializing in legal and business documents. 
 Your task is to correct spelling errors, OCR artifacts, and grammar issues in the provided text.
 
+${ocrLanguageInstructions({ contractText: chunkText })}
+
 IMPORTANT RULES:
 1. ONLY fix clear spelling/grammar errors - do not change the meaning or structure
-2. Preserve all legal terminology exactly (e.g., "hereinafter", "whereas", "thereof")
+2. Preserve all legal terminology exactly (e.g., "hereinafter", "whereas", "thereof", "hiermit", "gemäß", "ci-après")
 3. Preserve all proper nouns, company names, and technical terms
-4. Preserve all numbers, dates, and monetary amounts
+4. Preserve all numbers, dates, and monetary amounts (DD.MM.YYYY, Fr./CHF)
 5. Preserve any placeholders like [EMAIL_1] or [PHONE_2] exactly
 6. Do not add or remove content
+7. Do not translate. Do not strip umlauts or accents.
 
 ${focusInstructions}
 

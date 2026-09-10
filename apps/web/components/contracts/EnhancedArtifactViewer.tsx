@@ -17,6 +17,9 @@
  */
 
 import React, { useState } from 'react';
+import { useParams } from 'next/navigation';
+import { FindingSourceLink } from '@/components/contracts/FindingSourceLink';
+import { formatAmountWithCurrency } from '@/lib/utils/formatters';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -38,6 +41,7 @@ import {
   ContactsArtifact,
 } from '@/components/artifacts/ArtifactCards';
 import { PolicyRenderer } from '@/components/contracts/artifact-renderers/PolicyRenderer';
+import { normalizeExtractedClauses } from '@/lib/contracts/extracted-clauses';
 
 interface EnhancedArtifactViewerProps {
   type: string;
@@ -54,6 +58,8 @@ export function EnhancedArtifactViewer({
   processingTime,
   onExport 
 }: EnhancedArtifactViewerProps) {
+  const params = useParams();
+  const contractId = typeof params?.id === 'string' ? params.id : Array.isArray(params?.id) ? params.id[0] : undefined;
   const [copiedSection, setCopiedSection] = useState<string | null>(null);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
 
@@ -368,8 +374,7 @@ export function EnhancedArtifactViewer({
                   <p className="text-white text-lg font-medium opacity-90">Total Contract Value</p>
                 </div>
                 <p className="text-6xl font-bold text-white mb-3">
-                  {data.totalValue?.currency || '$'}
-                  {data.totalValue?.amount?.toLocaleString() || 'N/A'}
+                  {formatAmountWithCurrency(data.totalValue?.amount, data.totalValue?.currency, 'N/A')}
                 </p>
                 <div className="flex items-center gap-3">
                   {data.totalValue?.confidence && (
@@ -456,7 +461,7 @@ export function EnhancedArtifactViewer({
                       </div>
                       <div className="text-right">
                         <div className="text-3xl font-bold text-green-700">
-                          ${payment.amount?.toLocaleString()}
+                          {formatAmountWithCurrency(payment.amount, payment.currency || data.totalValue?.currency)}
                         </div>
                         <Badge variant="outline" className="mt-1 bg-green-50">
                           {payment.percentage}% of total
@@ -532,7 +537,7 @@ export function EnhancedArtifactViewer({
                         </div>
                         <div className="text-right">
                           <div className="text-4xl font-bold bg-gradient-to-r from-violet-600 to-pink-600 bg-clip-text text-transparent">
-                            ${typeof rate.dailyRate === 'number' ? rate.dailyRate.toLocaleString() : rate.rate?.toLocaleString()}
+                            {formatAmountWithCurrency(typeof rate.dailyRate === 'number' ? rate.dailyRate : rate.rate, rate.currency)}
                           </div>
                           <div className="text-sm text-gray-600 font-medium mt-1">
                             per {rate.unit || 'day'} {rate.currency || ''}
@@ -675,7 +680,7 @@ export function EnhancedArtifactViewer({
       </motion.div>
 
       {/* Identified Risks */}
-      {data.identifiedRisks && data.identifiedRisks.length > 0 && (
+      {(data.risks || data.identifiedRisks || data.riskFactors || []).length > 0 && (
         <motion.div variants={itemVariants}>
           <Card className="border-orange-200 hover:shadow-xl transition-all duration-300">
             <CardHeader className="bg-gradient-to-r from-orange-50 to-red-50">
@@ -685,13 +690,13 @@ export function EnhancedArtifactViewer({
                 </div>
                 Identified Risks
                 <Badge variant="outline" className="ml-2">
-                  {data.identifiedRisks.length} risks
+                  {(data.risks || data.identifiedRisks || data.riskFactors || []).length} risks
                 </Badge>
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-6">
               <div className="space-y-4">
-                {data.identifiedRisks.map((risk: any, idx: number) => (
+                {(data.risks || data.identifiedRisks || data.riskFactors || []).map((risk: any, idx: number) => (
                   <motion.div
                     key={idx}
                     initial={{ x: -20, opacity: 0 }}
@@ -719,7 +724,15 @@ export function EnhancedArtifactViewer({
                         </Badge>
                       </div>
                     </div>
-                    <p className="font-semibold text-gray-900 mb-3 text-lg">{risk.description}</p>
+                    <p className="font-semibold text-gray-900 mb-3 text-lg">{risk.description || risk.title}</p>
+                    {(risk.sourceClause || risk.source) && (
+                      <FindingSourceLink
+                        className="mb-3"
+                        contractId={contractId}
+                        snippet={risk.sourceClause || risk.source}
+                        heading={risk.title || risk.category}
+                      />
+                    )}
                     <div className="bg-gradient-to-r from-violet-50 to-violet-50 rounded-lg p-4 border-2 border-green-200">
                       <div className="flex items-start gap-2">
                         <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
@@ -1080,16 +1093,18 @@ export function EnhancedArtifactViewer({
     </motion.div>
   );
 
-  const renderClauses = (data: any) => (
+  const renderClauses = (data: any) => {
+    const clauses = normalizeExtractedClauses(data);
+    return (
     <motion.div 
       className="space-y-4"
       variants={containerVariants}
       initial="hidden"
       animate="visible"
     >
-      {data.clauses && data.clauses.length > 0 ? (
-        data.clauses.map((clause: any, idx: number) => (
-          <motion.div key={idx} variants={itemVariants}>
+      {clauses.length > 0 ? (
+        clauses.map((clause, idx) => (
+          <motion.div key={`${clause.title}-${idx}`} variants={itemVariants}>
             <Card className="border-2 border-gray-200 hover:border-violet-400 hover:shadow-xl transition-all duration-300">
               <CardHeader className="pb-3 bg-gradient-to-r from-gray-50 to-purple-50">
                 <div className="flex items-start justify-between">
@@ -1099,42 +1114,55 @@ export function EnhancedArtifactViewer({
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        <Badge variant="outline" className="bg-violet-50 border-violet-300">
-                          {clause.type}
-                        </Badge>
+                        {clause.type && (
+                          <Badge variant="outline" className="bg-violet-50 border-violet-300">
+                            {clause.type}
+                          </Badge>
+                        )}
                         <CardTitle className="text-base">{clause.title}</CardTitle>
                       </div>
-                      {clause.pageReference && (
-                        <p className="text-sm text-gray-500">{clause.pageReference}</p>
+                      {clause.section && (
+                        <p className="text-sm text-gray-500">{clause.section}</p>
                       )}
                     </div>
                   </div>
-                  <Badge 
-                    variant="outline"
-                    className={
-                      clause.riskLevel === 'high' ? 'bg-red-100 text-red-700 border-red-300' :
-                      clause.riskLevel === 'medium' ? 'bg-yellow-100 text-yellow-700 border-yellow-300' :
-                      'bg-green-100 text-green-700 border-green-300'
-                    }
-                  >
-                    {clause.riskLevel}
-                  </Badge>
+                  {clause.riskLevel && (
+                    <Badge 
+                      variant="outline"
+                      className={
+                        clause.riskLevel === 'high' ? 'bg-red-100 text-red-700 border-red-300' :
+                        clause.riskLevel === 'medium' ? 'bg-yellow-100 text-yellow-700 border-yellow-300' :
+                        'bg-green-100 text-green-700 border-green-300'
+                      }
+                    >
+                      {clause.riskLevel}
+                    </Badge>
+                  )}
                 </div>
               </CardHeader>
               <CardContent className="space-y-3 pt-4">
-                <div>
-                  <p className="text-sm font-semibold text-gray-600 mb-2 flex items-center gap-1">
-                    <Eye className="h-4 w-4" />
-                    Summary:
-                  </p>
-                  <p className="text-sm text-gray-700 leading-relaxed">{clause.summary}</p>
-                </div>
+                {clause.summary && clause.summary !== clause.fullText && (
+                  <div>
+                    <p className="text-sm font-semibold text-gray-600 mb-2 flex items-center gap-1">
+                      <Eye className="h-4 w-4" />
+                      Summary:
+                    </p>
+                    <p className="text-sm text-gray-700 leading-relaxed">{clause.summary}</p>
+                  </div>
+                )}
                 <div className="bg-gradient-to-br from-gray-50 to-purple-50 rounded-lg p-4 border-2 border-gray-200">
                   <p className="text-sm font-semibold text-gray-600 mb-2 flex items-center gap-1">
                     <FileText className="h-4 w-4" />
                     Full Text:
                   </p>
-                  <p className="text-sm text-gray-700 leading-relaxed">{clause.content}</p>
+                  <p className="text-sm text-gray-700 leading-relaxed">{clause.fullText || clause.summary}</p>
+                  <FindingSourceLink
+                    className="mt-2"
+                    contractId={contractId}
+                    snippet={clause.snippet}
+                    heading={clause.section || clause.title}
+                    page={clause.page}
+                  />
                 </div>
               </CardContent>
             </Card>
@@ -1147,7 +1175,8 @@ export function EnhancedArtifactViewer({
         </div>
       )}
     </motion.div>
-  );
+    );
+  };
 
   const renderParties = (data: any) => {
     const parties = data?.parties || data?.involvedParties || (Array.isArray(data) ? data : []);
@@ -1422,7 +1451,7 @@ export function EnhancedArtifactViewer({
                       <tr key={idx} className="border-b border-gray-100 hover:bg-emerald-50/50">
                         <td className="p-2 text-gray-900">{rate.description || rate.role || rate.item || `Item ${idx + 1}`}</td>
                         <td className="p-2 text-right font-semibold text-emerald-700">
-                          {typeof rate.rate === 'number' ? `$${rate.rate.toLocaleString()}` : rate.rate || rate.amount || '-'}
+                          {typeof rate.rate === 'number' ? formatAmountWithCurrency(rate.rate, rate.currency) : rate.rate || rate.amount || '-'}
                         </td>
                         <td className="p-2 text-gray-600">{rate.unit || rate.per || rate.period || '-'}</td>
                       </tr>

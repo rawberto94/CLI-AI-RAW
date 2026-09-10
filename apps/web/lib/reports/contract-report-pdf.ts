@@ -236,13 +236,16 @@ function fmtDate(d: Date | string | null | undefined): string {
   if (!d) return '—';
   const date = typeof d === 'string' ? new Date(d) : d;
   if (isNaN(date.getTime())) return '—';
-  return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  return date.toLocaleDateString('de-CH', { year: 'numeric', month: 'long', day: 'numeric' });
 }
 
 function fmtMoney(val: number | bigint | null | undefined, currency?: string | null): string {
   if (val == null) return '—';
   const num = typeof val === 'bigint' ? Number(val) : val;
-  return `${currency || 'USD'} ${num.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+  if (!Number.isFinite(num) || num === 0) return '—';
+  const code = typeof currency === 'string' ? currency.trim() : '';
+  const formatted = num.toLocaleString('de-CH', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  return code ? `${code} ${formatted}` : formatted;
 }
 
 function severityColor(severity: string): readonly [number, number, number] {
@@ -393,7 +396,7 @@ function renderCoverPage(
   doc.setFontSize(9);
   doc.setTextColor(100, 116, 139);
   doc.text('Contract Intelligence Report', MARGIN, pageHeight - 30);
-  doc.text(`Generated: ${new Date().toLocaleDateString('en-US', {
+  doc.text(`Generated: ${new Date().toLocaleDateString('de-CH', {
     year: 'numeric', month: 'long', day: 'numeric',
   })}`, MARGIN, pageHeight - 24);
   if (tenantName) {
@@ -634,7 +637,7 @@ function renderFinancialSection(
       body: rates.slice(0, 20).map((r: any) => [
         r.role || r.title || r.item || '—',
         typeof r.rate === 'number' ? r.rate.toLocaleString() : String(r.rate || '—'),
-        r.currency || data.currency || contract.currency || 'USD',
+        r.currency || data.currency || contract.currency || '—',
         r.unit || r.period || '—',
       ]),
       theme: 'striped',

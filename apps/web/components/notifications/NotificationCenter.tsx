@@ -8,6 +8,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -316,9 +317,12 @@ export function NotificationCenter({
                 variant="ghost"
                 size="sm"
                 className="text-xs text-gray-500"
+                asChild
               >
-                <Settings className="h-4 w-4 mr-1" />
-                Settings
+                <Link href="/settings/notifications">
+                  <Settings className="h-4 w-4 mr-1" />
+                  Settings
+                </Link>
               </Button>
             </div>
           )}

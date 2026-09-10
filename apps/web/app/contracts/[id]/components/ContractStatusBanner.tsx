@@ -25,7 +25,6 @@ interface StatusBannerProps {
   onSetReminder?: () => void
   onRequestSignature?: () => void
   onStartReview?: () => void
-  onStartRedline?: () => void
   onRetryArtifactType?: (artifactType: string) => void
   onRetryAllArtifacts?: () => void
 }
@@ -104,7 +103,6 @@ export const ContractStatusBanner = memo(function ContractStatusBanner({
   onSetReminder,
   onRequestSignature,
   onStartReview,
-  onStartRedline,
   onRetryArtifactType,
   onRetryAllArtifacts,
 }: StatusBannerProps) {

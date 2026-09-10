@@ -9,7 +9,7 @@ export type OnStep = (step: AgentStep) => void | Promise<void>;
 
 const overviewSchema = z.object({ summary: z.string().min(1), parties: z.array(z.string()).optional(), effectiveDate: z.string().optional() });
 const clausesSchema = z.object({ clauses: z.array(z.object({ name: z.string(), present: z.boolean(), snippet: z.string().optional() })) });
-const ratesSchema = z.object({ roles: z.array(z.object({ role: z.string(), uom: z.string().default('Day'), rate: z.number().or(z.string()), currency: z.string().default('CHF') })) });
+const ratesSchema = z.object({ roles: z.array(z.object({ role: z.string(), uom: z.string().default('Day'), rate: z.number().or(z.string()), currency: z.string().optional() })) });
 
 export class ContractOrchestrator {
   llm: ChatOpenAI;

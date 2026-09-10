@@ -15,6 +15,7 @@ import {
 } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowUp, ArrowDown, Minus } from 'lucide-react';
+import { formatRateMoney } from '@/lib/rate-cards/format';
 
 interface ComparisonData {
   name: string;
@@ -84,13 +85,13 @@ export function ComparisonBarChart({
         <div className="font-semibold">{data.name}</div>
         <div className="text-sm">
           <span className="text-muted-foreground">Rate: </span>
-          <span className="font-medium">${data.value.toFixed(2)}/hr</span>
+          <span className="font-medium">{formatRateMoney(data.value, null, { maximumFractionDigits: 2 })}/hr</span>
         </div>
         {data.baseline && (
           <>
             <div className="text-sm">
               <span className="text-muted-foreground">Baseline: </span>
-              <span className="font-medium">${data.baseline.toFixed(2)}/hr</span>
+              <span className="font-medium">{formatRateMoney(data.baseline, null, { maximumFractionDigits: 2 })}/hr</span>
             </div>
             <div className="text-sm flex items-center gap-1">
               <span className="text-muted-foreground">Variance: </span>

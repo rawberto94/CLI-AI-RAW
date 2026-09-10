@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
+import { clearDisplayCurrencyCache } from "@/hooks/useDisplayCurrency";
 import { Toggle, ToggleGroup } from "@/components/toggle";
 
 // Must match LOCALE_COOKIE in i18n/request.ts
@@ -44,10 +45,11 @@ import {
 // Default settings matching the API defaults
 const DEFAULT_SETTINGS = {
   system: {
-    timezone: 'America/New_York',
+    timezone: 'Europe/Zurich',
     language: 'en',
-    dateFormat: 'MM/DD/YYYY',
+    dateFormat: 'DD.MM.YYYY',
     currency: 'CHF',
+    ourOrganization: '',
     theme: 'system',
   },
   notifications: {
@@ -334,6 +336,7 @@ export default function SettingsClient({ initialTab = "general" }: SettingsClien
       );
 
       if (results.every(r => r.ok)) {
+        clearDisplayCurrencyCache();
         toast.success('Settings saved successfully');
         setDirty(false);
       } else {
@@ -760,6 +763,21 @@ export default function SettingsClient({ initialTab = "general" }: SettingsClien
                         <option value="CHF">CHF (Fr)</option>
                         <option value="JPY">JPY (¥)</option>
                       </select>
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                        Our organization
+                      </label>
+                      <input
+                        type="text"
+                        value={(systemSettings as { ourOrganization?: string }).ourOrganization || ''}
+                        onChange={(e) => updateSystem({ ourOrganization: e.target.value } as Partial<typeof systemSettings>)}
+                        placeholder="Legal name used as the baseline party in AI analysis"
+                        className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+                      />
+                      <p className="mt-1 text-xs text-slate-500">
+                        AI uses this name to identify which party is us versus the counterparty.
+                      </p>
                     </div>
                   </div>
                 </CardContent>

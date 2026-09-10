@@ -162,7 +162,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
     contractId: item.contractId,
     contractName: item.contract?.contractTitle,
     value: item.contract?.totalValue,
-    currency: item.contract?.currency || 'USD',
+    currency: item.contract?.currency || '',
     approvalChain: item.stepExecutions.map((se, idx) => ({
       id: se.id,
       approver: {

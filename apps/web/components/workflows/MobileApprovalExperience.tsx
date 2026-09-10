@@ -99,12 +99,7 @@ export function SwipeableApprovalCard({
   };
 
   const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(value);
+    return value.toLocaleString('de-CH', { maximumFractionDigits: 0 });
   };
 
   const formatDate = (date: Date) => {
@@ -116,7 +111,7 @@ export function SwipeableApprovalCard({
     if (days === 0) return 'Today';
     if (days === 1) return 'Tomorrow';
     if (days <= 7) return `${days} days`;
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return date.toLocaleDateString('de-CH', { month: 'short', day: 'numeric' });
   };
 
   return (

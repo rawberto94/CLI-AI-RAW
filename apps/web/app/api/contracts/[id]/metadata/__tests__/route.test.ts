@@ -92,6 +92,50 @@ const routeContext = {
   params: Promise.resolve({ id: 'contract-1' }),
 };
 
+function metadataContract(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 'contract-1',
+    fileName: 'Signed NDA.pdf',
+    contractTitle: 'Signed NDA',
+    contractType: 'NDA',
+    classificationConf: null,
+    contractCategoryId: null,
+    categoryL1: null,
+    categoryL2: null,
+    status: 'COMPLETED',
+    effectiveDate: null,
+    expirationDate: null,
+    startDate: null,
+    endDate: null,
+    totalValue: null,
+    currency: null,
+    supplierName: null,
+    clientName: null,
+    description: null,
+    tags: [],
+    jurisdiction: null,
+    paymentTerms: null,
+    paymentFrequency: null,
+    billingCycle: null,
+    signatureStatus: 'unknown',
+    signatureDate: null,
+    signatureRequiredFlag: false,
+    noticePeriodDays: null,
+    terminationClause: null,
+    autoRenewalEnabled: null,
+    metadata: {},
+    aiMetadata: {},
+    documentClassification: null,
+    documentClassificationConf: null,
+    documentClassificationWarning: null,
+    createdAt: new Date('2026-01-01'),
+    updatedAt: new Date('2026-01-01'),
+    uploadedBy: 'user-1',
+    metadataVersion: 1,
+    ...overrides,
+  };
+}
+
 function createRequest(method: 'GET' | 'PUT', body?: Record<string, unknown>) {
   return new NextRequest('http://localhost:3000/api/contracts/contract-1/metadata', {
     method,
@@ -178,6 +222,21 @@ describe('/api/contracts/[id]/metadata', () => {
     expect(response.status).toBe(200);
     expect(data.data.metadata.signature_status).toBe('signed');
     expect(data.data.metadata.signature_required_flag).toBe(false);
+  });
+
+  it('does not invent USD, TCV 0, reminder lead time, or English when those fields are empty', async () => {
+    mockContractFindFirst.mockResolvedValue(metadataContract());
+
+    const response = await GET(createRequest('GET'), routeContext);
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.data.metadata.currency).toBe('');
+    expect(data.data.metadata.tcv_amount).toBeUndefined();
+    expect(data.data.metadata.reminder_days_before_end).toBeNull();
+    expect(data.data.metadata.reminder_enabled).toBe(false);
+    expect(data.data.metadata.contract_language).toBe('');
+    expect(data.data.metadata.document_classification).toBe('unknown');
   });
 
   it('returns 409 when the client metadataVersion is stale', async () => {
@@ -431,6 +490,32 @@ describe('/api/contracts/[id]/metadata', () => {
         aiMetadata: expect.objectContaining({
           reminder_enabled: false,
           reminder_days_before_end: 60,
+        }),
+      }),
+    }));
+  });
+
+  it('stores placeholder TCV 0 as null and derives notice_period_days from notice text', async () => {
+    mockContractFindFirst.mockResolvedValue({ aiMetadata: {}, metadata: {} });
+    mockContractUpdate.mockResolvedValue({ id: 'contract-1' });
+
+    const response = await PUT(createRequest('PUT', {
+      metadata: {
+        tcv_amount: 0,
+        notice_period: '90 days',
+      },
+    }), routeContext);
+
+    expect(response.status).toBe(200);
+    expect(mockContractUpdate).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: 'contract-1' },
+      data: expect.objectContaining({
+        totalValue: null,
+        noticePeriodDays: 90,
+        aiMetadata: expect.objectContaining({
+          tcv_amount: null,
+          notice_period: '90 days',
+          notice_period_days: 90,
         }),
       }),
     }));
