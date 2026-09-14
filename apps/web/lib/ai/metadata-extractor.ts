@@ -20,7 +20,15 @@ import {
   MetadataFieldType 
 } from '@/lib/services/metadata-schema.service';
 import { adaptiveExtractionEngine, type PromptEnhancement } from './adaptive-extraction-engine';
-import { analysisLanguageInstructions, ourOrganizationPromptBlock } from '@repo/utils';
+import {
+  EXTRACTION_PIPELINE_VERSION,
+  analysisLanguageInstructions,
+  normalizeExtractedFieldValue,
+  ourOrganizationPromptBlock,
+  quoteGrounded,
+  resolveAnalysisLanguage,
+  selectFieldEvidence,
+} from '@repo/utils';
 
 // ============================================================================
 // Types
@@ -67,12 +75,28 @@ export interface MetadataExtractionResult {
   contractId?: string;
   schemaId: string;
   schemaVersion: number;
+  pipelineVersion?: string;
   extractedAt: Date;
   results: ExtractionResult[];
   summary: ExtractionSummary;
   rawExtractions: Record<string, any>;
   warnings: string[];
   processingNotes: string[];
+  coverage?: {
+    totalChars: number;
+    usedChars: number;
+    omitted: boolean;
+    windowCount: number;
+  };
+}
+
+export class ExtractionServiceError extends Error {
+  override readonly cause?: unknown;
+  constructor(message: string, cause?: unknown) {
+    super(message);
+    this.name = 'ExtractionServiceError';
+    this.cause = cause;
+  }
 }
 
 export interface ExtractionOptions {
@@ -89,6 +113,7 @@ export interface ExtractionOptions {
   contractType?: string;
   enableAdaptiveLearning?: boolean;
   ourOrganization?: { name: string; aliases?: string[] } | null;
+  locale?: string | null;
 }
 
 // ============================================================================
@@ -107,10 +132,11 @@ export class SchemaAwareMetadataExtractor {
     includeAlternatives: true,
     maxTokens: 4000,
     temperature: 0.1,
-    tenantId: 'demo',
+    tenantId: '',
     contractType: '',
     enableAdaptiveLearning: true,
     ourOrganization: null,
+    locale: null,
   };
 
   constructor(apiKey?: string) {
@@ -161,12 +187,19 @@ export class SchemaAwareMetadataExtractor {
     // Group fields by category for better context
     const fieldsByCategory = this.groupFieldsByCategory(sortedFields);
 
-    // First pass: Extract all fields
+    const locale = opts.locale || resolveAnalysisLanguage({ contractText: documentText });
+    const evidence = selectFieldEvidence(
+      documentText,
+      sortedFields.map((f) => ({ name: f.name, label: f.label, hint: f.aiExtractionHint, type: f.type })),
+    );
+
+    // First pass: Extract all fields from field-relevant evidence, not a prefix
     let results = await this.firstPassExtraction(
+      evidence.text,
       documentText,
       fieldsByCategory,
       schema,
-      opts
+      { ...opts, locale },
     );
 
     // Second pass: Re-extract low-confidence fields with more context
@@ -176,11 +209,17 @@ export class SchemaAwareMetadataExtractor {
       );
       
       if (lowConfidenceResults.length > 0) {
+        const secondEvidence = selectFieldEvidence(
+          documentText,
+          lowConfidenceResults.map((r) => ({ name: r.fieldName, label: r.fieldLabel, type: r.fieldType })),
+          { maxChars: 15_000 },
+        );
         const reExtracted = await this.secondPassExtraction(
+          secondEvidence.text,
           documentText,
           lowConfidenceResults,
           results,
-          opts
+          { ...opts, locale },
         );
         
         // Merge improved results
@@ -210,15 +249,27 @@ export class SchemaAwareMetadataExtractor {
       processingNotes.push('Document is relatively short, some fields may not be present');
     }
 
+    if (evidence.coverage.omitted) {
+      processingNotes.push(...evidence.coverage.notes);
+      warnings.push('Document longer than the evidence window; packed field-relevant slices, head, and tail rather than a prefix.');
+    }
+
     return {
       schemaId: schema.id,
       schemaVersion: schema.version,
+      pipelineVersion: EXTRACTION_PIPELINE_VERSION,
       extractedAt: new Date(),
       results,
       summary,
       rawExtractions: this.buildRawExtractions(results),
       warnings,
       processingNotes,
+      coverage: {
+        totalChars: evidence.coverage.totalChars,
+        usedChars: evidence.coverage.usedChars,
+        omitted: evidence.coverage.omitted,
+        windowCount: evidence.coverage.windowCount,
+      },
     };
   }
 
@@ -227,16 +278,14 @@ export class SchemaAwareMetadataExtractor {
   // --------------------------------------------------------------------------
 
   private async firstPassExtraction(
-    documentText: string,
+    evidenceText: string,
+    fullDocumentText: string,
     fieldsByCategory: Map<string, MetadataFieldDefinition[]>,
     schema: MetadataSchema,
     opts: Required<ExtractionOptions>
   ): Promise<ExtractionResult[]> {
     const results: ExtractionResult[] = [];
-    const documentPreview = documentText.slice(0, 12000);
-
-    // Build the extraction prompt with schema awareness
-    const prompt = this.buildExtractionPrompt(fieldsByCategory, schema, documentPreview);
+    const prompt = this.buildExtractionPrompt(fieldsByCategory, schema, evidenceText);
 
     try {
       const completion = await this.openai.chat.completions.create({
@@ -244,7 +293,7 @@ export class SchemaAwareMetadataExtractor {
         messages: [
           {
             role: 'system',
-            content: this.getSystemPrompt(documentText, opts.ourOrganization),
+            content: this.getSystemPrompt(fullDocumentText, opts.ourOrganization),
           },
           { role: 'user', content: prompt },
         ],
@@ -253,22 +302,18 @@ export class SchemaAwareMetadataExtractor {
         response_format: { type: 'json_object' },
       });
 
-      const response = JSON.parse(completion.choices[0]?.message?.content || '{}');
+      const content = completion.choices[0]?.message?.content || '{}';
+      const response = JSON.parse(content);
       
-      // Process each extracted field
-      for (const [categoryId, fields] of fieldsByCategory) {
+      for (const [_categoryId, fields] of fieldsByCategory) {
         for (const field of fields) {
           const extraction = response.extractions?.[field.name] || response.extractions?.[field.id];
-          results.push(this.processExtractionResult(field, extraction, opts));
+          results.push(this.processExtractionResult(field, extraction, opts, fullDocumentText));
         }
       }
-    } catch {
-      // Return empty results for all fields
-      for (const [_, fields] of fieldsByCategory) {
-        for (const field of fields) {
-          results.push(this.createEmptyResult(field, 'Extraction failed'));
-        }
-      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new ExtractionServiceError(`Metadata extraction service failed: ${message}`, error);
     }
 
     return results;
@@ -279,14 +324,14 @@ export class SchemaAwareMetadataExtractor {
   // --------------------------------------------------------------------------
 
   private async secondPassExtraction(
-    documentText: string,
+    evidenceText: string,
+    fullDocumentText: string,
     lowConfidenceResults: ExtractionResult[],
     allResults: ExtractionResult[],
     opts: Required<ExtractionOptions>
   ): Promise<ExtractionResult[]> {
     const results: ExtractionResult[] = [];
 
-    // Build context from high-confidence extractions
     const contextFields = allResults
       .filter(r => r.confidence >= opts.confidenceThreshold)
       .map(r => `${r.fieldLabel}: ${r.value}`)
@@ -294,7 +339,7 @@ export class SchemaAwareMetadataExtractor {
 
     const prompt = this.buildSecondPassPrompt(
       lowConfidenceResults,
-      documentText.slice(0, 15000),
+      evidenceText,
       contextFields
     );
 
@@ -305,11 +350,11 @@ export class SchemaAwareMetadataExtractor {
           {
             role: 'system',
             content: `You are a precision metadata extraction specialist. Focus on extracting specific fields with high accuracy. Use the context from already-extracted fields to improve your extraction.
-${analysisLanguageInstructions({ contractText: documentText })}`,
+${analysisLanguageInstructions({ contractText: fullDocumentText })}`,
           },
           { role: 'user', content: prompt },
         ],
-        temperature: 0.05, // Lower temperature for more precision
+        temperature: 0.05,
         max_tokens: opts.maxTokens,
         response_format: { type: 'json_object' },
       });
@@ -319,19 +364,18 @@ ${analysisLanguageInstructions({ contractText: documentText })}`,
       for (const result of lowConfidenceResults) {
         const reExtraction = response.extractions?.[result.fieldName] || response.extractions?.[result.fieldId];
         if (reExtraction && reExtraction.confidence > result.confidence) {
-          results.push({
-            ...result,
-            value: this.parseValue(reExtraction.value, result.fieldType),
-            rawValue: String(reExtraction.value || ''),
-            confidence: Math.min(reExtraction.confidence / 100, 1),
-            confidenceExplanation: reExtraction.explanation || 'Improved in second pass',
-            source: {
-              text: reExtraction.source_text || result.source.text,
-              location: reExtraction.location,
-            },
-            alternatives: reExtraction.alternatives || result.alternatives,
-            requiresHumanReview: (reExtraction.confidence / 100) < opts.confidenceThreshold,
-          });
+          results.push(this.processExtractionResult(
+            {
+              id: result.fieldId,
+              name: result.fieldName,
+              label: result.fieldLabel,
+              type: result.fieldType,
+              category: result.category,
+            } as MetadataFieldDefinition,
+            reExtraction,
+            opts,
+            fullDocumentText,
+          ));
         } else {
           results.push(result);
         }
@@ -573,14 +617,15 @@ Respond with a JSON object:
   private processExtractionResult(
     field: MetadataFieldDefinition,
     extraction: any,
-    opts: Required<ExtractionOptions>
+    opts: Required<ExtractionOptions>,
+    fullDocumentText: string,
   ): ExtractionResult {
     if (!extraction) {
       return this.createEmptyResult(field, 'No extraction returned by AI');
     }
 
     let confidence = Math.min((extraction.confidence || 0) / 100, 1);
-    const value = this.parseValue(extraction.value, field.type);
+    const value = this.parseValue(extraction.value, field.type, opts.locale);
 
     // Apply confidence calibration from adaptive learning
     if (this.adaptiveEnhancements?.confidenceModifiers?.[field.name] !== undefined) {
@@ -591,6 +636,27 @@ Respond with a JSON object:
     }
 
     const confidenceThreshold = field.aiConfidenceThreshold ?? opts.confidenceThreshold;
+    const sourceText = String(extraction.source_text || '');
+    const grounded = quoteGrounded(sourceText, fullDocumentText);
+    const messages: string[] = [];
+    let validationStatus: ExtractionResult['validationStatus'] = confidence >= confidenceThreshold ? 'valid' : 'needs_review';
+    let requiresHumanReview = confidence < confidenceThreshold;
+
+    if ((field.type === 'currency' || field.type === 'number') && extraction.value && value == null) {
+      messages.push('Amount format was ambiguous or could not be parsed; source text retained');
+      validationStatus = 'invalid';
+      requiresHumanReview = true;
+    }
+    if (sourceText.length >= 8 && !grounded.ok) {
+      messages.push('Quoted evidence was not found in the contract text');
+      validationStatus = validationStatus === 'valid' ? 'needs_review' : validationStatus;
+      requiresHumanReview = true;
+      confidence = Math.min(confidence, 0.59);
+    } else if (!sourceText) {
+      requiresHumanReview = true;
+      if (validationStatus === 'valid') validationStatus = 'needs_review';
+      messages.push('No source quote provided');
+    }
 
     return {
       fieldId: field.id,
@@ -599,22 +665,22 @@ Respond with a JSON object:
       fieldType: field.type,
       category: field.category,
       value,
-      rawValue: String(extraction.value || ''),
+      rawValue: String(extraction.value ?? sourceText ?? ''),
       confidence,
       confidenceExplanation: extraction.explanation || 'No explanation provided',
       source: {
-        text: extraction.source_text || '',
+        text: sourceText,
         location: extraction.location,
       },
       alternatives: opts.includeAlternatives ? (extraction.alternatives || []).map((alt: any) => ({
-        value: this.parseValue(alt.value, field.type),
+        value: this.parseValue(alt.value, field.type, opts.locale),
         confidence: Math.min((alt.confidence || 0) / 100, 1),
         source: alt.source || '',
       })) : [],
-      validationStatus: confidence >= confidenceThreshold ? 'valid' : 'needs_review',
-      validationMessages: [],
+      validationStatus,
+      validationMessages: messages,
       suggestions: [],
-      requiresHumanReview: confidence < confidenceThreshold,
+      requiresHumanReview,
     };
   }
 
@@ -643,69 +709,16 @@ Respond with a JSON object:
     };
   }
 
-  private parseValue(value: any, fieldType: MetadataFieldType): any {
-    if (value === null || value === undefined || value === '') {
-      return null;
+  private parseValue(value: any, fieldType: MetadataFieldType, locale?: string | null): any {
+    if (fieldType === 'multiselect') {
+      if (value === null || value === undefined || value === '') return null;
+      if (Array.isArray(value)) return value;
+      if (typeof value === 'string') {
+        return value.split(/[,;]/).map(v => v.trim()).filter(Boolean);
+      }
+      return [value];
     }
-
-    switch (fieldType) {
-      case 'number':
-      case 'percentage':
-        const num = parseFloat(String(value).replace(/[^0-9.-]/g, ''));
-        return isNaN(num) ? null : num;
-
-      case 'currency':
-        // Try to extract number from currency string
-        const currencyMatch = String(value).match(/[\d,]+\.?\d*/);
-        if (currencyMatch) {
-          return parseFloat(currencyMatch[0].replace(/,/g, ''));
-        }
-        return value;
-
-      case 'date':
-      case 'datetime':
-        const date = new Date(value);
-        if (!isNaN(date.getTime())) {
-          return fieldType === 'date' 
-            ? date.toISOString().split('T')[0]
-            : date.toISOString();
-        }
-        return value;
-
-      case 'boolean':
-        if (typeof value === 'boolean') return value;
-        const strVal = String(value).toLowerCase();
-        if (['true', 'yes', '1', 'on'].includes(strVal)) return true;
-        if (['false', 'no', '0', 'off'].includes(strVal)) return false;
-        return null;
-
-      case 'multiselect':
-        if (Array.isArray(value)) return value;
-        if (typeof value === 'string') {
-          return value.split(/[,;]/).map(v => v.trim()).filter(Boolean);
-        }
-        return [value];
-
-      case 'duration':
-        // Duration in days or a duration string
-        if (typeof value === 'number') return value;
-        // Try to parse "X months", "X years", "X days"
-        const durationMatch = String(value).match(/(\d+)\s*(day|month|year|week)s?/i);
-        if (durationMatch && durationMatch[1] && durationMatch[2]) {
-          const num = parseInt(durationMatch[1]);
-          const unit = durationMatch[2].toLowerCase();
-          switch (unit) {
-            case 'day': return num;
-            case 'week': return num * 7;
-            case 'month': return num * 30;
-            case 'year': return num * 365;
-          }
-        }
-        return value;
-
-      default:
-        return value;
-    }
+    return normalizeExtractedFieldValue(value, fieldType, { locale });
   }
 
   private validateExtraction(

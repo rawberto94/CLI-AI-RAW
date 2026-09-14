@@ -207,7 +207,7 @@ describe('mapHeaderComplianceScore — LLM COMPLIANCE fallback', () => {
     expect(result.isCompliant).toBeNull()
   })
 
-  it('scores the share of passed / not-applicable checks', () => {
+  it('excludes not-applicable checks from the pass ratio', () => {
     const result = mapHeaderComplianceScore({
       compliance: {
         checks: [
@@ -219,9 +219,40 @@ describe('mapHeaderComplianceScore — LLM COMPLIANCE fallback', () => {
     })
 
     expect(result.source).toBe('llm')
-    expect(result.score).toBe(67)
+    expect(result.score).toBe(50)
     expect(result.isCompliant).toBe(false)
     expect(result.violations).toEqual(['Missing retention clause'])
+  })
+
+  it('does not treat N/A-only GDPR/HIPAA checks as 100% compliant', () => {
+    const result = mapHeaderComplianceScore({
+      compliance: {
+        compliant: true,
+        complianceScore: 100,
+        checks: [
+          { name: 'GDPR', status: 'not-applicable' },
+          { name: 'HIPAA', status: 'not-applicable' },
+          { name: 'SOC2', status: 'n/a' },
+        ],
+      },
+    })
+    expect(result.score).toBeUndefined()
+    expect(result.isCompliant).toBeNull()
+  })
+
+  it('flags dummy unenforceable penalty text even when the LLM scored 100', () => {
+    const result = mapHeaderComplianceScore({
+      compliance: {
+        compliant: true,
+        complianceScore: 100,
+        checks: [{ name: 'GDPR', status: 'not-applicable' }],
+      },
+    }, {
+      contractText: 'In case of not respecting a rule the company will give 20% of its total quotes.',
+    })
+    expect(result.isCompliant).toBe(false)
+    expect(result.score).toBeLessThanOrEqual(35)
+    expect(result.violations.join(' ')).toMatch(/unenforceable|rule/i)
   })
 
   it('counts needs-review and non-compliant as issues, not as passes', () => {
@@ -273,7 +304,7 @@ describe('mapHeaderComplianceScore — LLM COMPLIANCE fallback', () => {
       },
     })
 
-    expect(result.score).toBe(100)
+    expect(result.score).toBe(70)
     expect(result.isCompliant).toBe(false)
     expect(result.violations).toEqual(['Governing law conflict'])
   })

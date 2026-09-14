@@ -37,6 +37,20 @@ export function computeMetadataPageRange(totalPages?: number): string | undefine
 }
 
 /**
+ * Page count to use for the metadata (head+tail) window.
+ * A capped layout result must not be treated as the real document length,
+ * or last-N pages become the end of the cap instead of the actual tail.
+ */
+export function resolveMetadataPageCount(opts: {
+  documentPageCount?: number;
+  analyzedPageCount?: number;
+  layoutCapped: boolean;
+}): number | undefined {
+  if (opts.layoutCapped) return opts.documentPageCount;
+  return opts.analyzedPageCount || opts.documentPageCount;
+}
+
+/**
  * Poll budget for DI analyze (1s interval). Default 120s is tight for 20–30 page
  * layout jobs; raise slightly once pageCount exceeds ~15.
  */

@@ -18,15 +18,18 @@ import {
   type NormalizedContractFieldEvidence,
   parseIsoDate,
   parseMonetaryAmount,
-  resolveAnalysisLanguage,
   resolveLocalStoragePath,
   resolveTcvWinner,
   toDILocale,
   validateDIQueryAnswers,
   ocrLanguageInstructions,
   isHumanTcvLocked,
+  isHumanFieldLocked,
+  isPrebuiltContractLanguageSupported,
+  parseNoticePeriodFromClause,
   pickOurOrganization,
   prefixPages,
+  mapOverviewToPersistedColumns,
 } from '@repo/utils';
 import {
   CircuitBreaker,
@@ -180,6 +183,14 @@ export interface StructuredOCRResult {
   fieldMetadata?: NormalizedContractFieldEvidence['metadata'];
   /** Raw Azure DI query answers keyed by question */
   queryAnswers?: Record<string, string>;
+  /** Layout page coverage vs the actual document */
+  layoutCoverage?: {
+    documentPageCount?: number;
+    analyzedPageCount: number;
+    layoutCapped: boolean;
+    metadataPages?: string;
+    omittedTail: boolean;
+  };
 }
 
 /** Create a minimal StructuredOCRResult for non-DI providers */
@@ -1346,7 +1357,8 @@ async function performOCR(filePath: string, ocrMode: string, fileSize?: number, 
         const layoutPollAttempts = resolveDIPollAttempts(pagesForPoll);
         const metadataPages = computeMetadataPageRange(documentPageCount);
         const queryEnabled = process.env.AZURE_DI_QUERY_ENRICHMENT !== 'false';
-        const contractMetadataEnabled = ocrMode === 'azure-di-layout';
+        const contractMetadataEnabled = ocrMode === 'azure-di-layout'
+          && isPrebuiltContractLanguageSupported(ocrOpts?.locale, []);
         const diCallOpts = {
           estimatedPageCount: pagesForPoll,
           maxPollAttempts: layoutPollAttempts,
@@ -1485,12 +1497,30 @@ async function performOCR(filePath: string, ocrMode: string, fileSize?: number, 
         );
 
         // ── Metadata DI: query fields + prebuilt-contract on first 3 + last 2 pages ──
+        const layoutCapped = Boolean(pageRange);
+        structuredResult.layoutCoverage = {
+          documentPageCount,
+          analyzedPageCount: structuredResult.pages.length,
+          layoutCapped,
+          metadataPages: metadataPages ?? computeMetadataPageRange(documentPageCount),
+          omittedTail: layoutCapped,
+        };
         if (structuredResult.isDISource && structuredResult.confidence > 0.4 && (queryEnabled || contractMetadataEnabled)) {
           try {
-            const actualPages = structuredResult.pages.length || documentPageCount;
+            const detectedLocale = ocrOpts?.locale || toDILocale(resolveAnalysisLanguage({
+              contractText: structuredResult.text,
+              diDetectedLanguages: structuredResult.detectedLanguages,
+            }));
+            const runContract = contractMetadataEnabled
+              && !structuredResult.contractFields
+              && isPrebuiltContractLanguageSupported(detectedLocale, structuredResult.detectedLanguages);
+            const actualPages = layoutCapped
+              ? documentPageCount
+              : (structuredResult.pages.length || documentPageCount);
             const actualWindow = computeMetadataPageRange(actualPages);
             const peekedWindow = computeMetadataPageRange(documentPageCount);
-            const windowMismatch = Boolean(metadataPromise && peekedWindow !== actualWindow);
+            // Never recompute last-N from a capped layout page count (pages 49–50 ≠ document tail).
+            const windowMismatch = !layoutCapped && Boolean(metadataPromise && peekedWindow !== actualWindow);
             if (windowMismatch) {
               logger.warn(
                 { peekedPages: documentPageCount, actualPages, peekedWindow: peekedWindow ?? 'full', actualWindow: actualWindow ?? 'full' },
@@ -1501,15 +1531,22 @@ async function performOCR(filePath: string, ocrMode: string, fileSize?: number, 
             const meta = !windowMismatch && metadataPromise
               ? await metadataPromise
               : await runMetadataDIPasses(fileBuffer, {
-                  pages: actualWindow,
+                  pages: actualWindow ?? (layoutCapped ? `1-${Math.min(structuredResult.pages.length || DI_MAX_PAGES, DI_MAX_PAGES)}` : undefined),
                   estimatedPageCount: actualWindow ? 5 : actualPages,
-                  locale: ocrOpts?.locale || toDILocale(resolveAnalysisLanguage({
-                    contractText: structuredResult.text,
-                    diDetectedLanguages: structuredResult.detectedLanguages,
-                  })),
-                  runContract: contractMetadataEnabled && !structuredResult.contractFields,
+                  locale: detectedLocale,
+                  runContract,
                   runQueries: queryEnabled,
                 });
+            if (runContract && !meta.contract && !structuredResult.contractFields) {
+              const extra = await runMetadataDIPasses(fileBuffer, {
+                pages: actualWindow ?? metadataPages,
+                estimatedPageCount: actualWindow ? 5 : actualPages,
+                locale: detectedLocale,
+                runContract: true,
+                runQueries: false,
+              });
+              if (extra.contract) meta.contract = extra.contract;
+            }
             if (meta.contract && !structuredResult.contractFields) {
               structuredResult.contractFields = meta.contract;
               logger.info(
@@ -2281,6 +2318,26 @@ export async function processOCRArtifactJob(
       throw new Error(`Contract ${contractId} not found`);
     }
 
+    const tenantWorkflow = await prisma.tenantConfig.findUnique({
+      where: { tenantId },
+      select: { workflowSettings: true, extractionSettings: true },
+    });
+    const workflowSettings = tenantWorkflow?.workflowSettings;
+    const processingSettings = workflowSettings && typeof workflowSettings === 'object' && !Array.isArray(workflowSettings)
+      ? (workflowSettings as Record<string, unknown>).processing
+      : null;
+    const extractionSettings = tenantWorkflow?.extractionSettings && typeof tenantWorkflow.extractionSettings === 'object' && !Array.isArray(tenantWorkflow.extractionSettings)
+      ? tenantWorkflow.extractionSettings as Record<string, unknown>
+      : {};
+    const persistedOcrSettings = extractionSettings.ocrSettings && typeof extractionSettings.ocrSettings === 'object' && !Array.isArray(extractionSettings.ocrSettings)
+      ? extractionSettings.ocrSettings as Record<string, unknown>
+      : {};
+    if (processingSettings && typeof processingSettings === 'object' && !Array.isArray(processingSettings)
+      && (processingSettings as Record<string, unknown>).ocrEnabled === false) {
+      jobLogger.info('OCR disabled by tenant processing settings; skipping OCR and artifact generation');
+      return { success: true, artifactsCreated: 0, extractedText: '', partialSuccess: false, message: 'OCR disabled by tenant settings' };
+    }
+
     // Idempotency guard: if this is a retry and OCR already completed, skip re-processing
     if (job.attemptsMade > 0 && contract.rawText && contract.rawText.length > 100 && contract.status === 'COMPLETED') {
       const existingArtifacts = await prisma.artifact.count({ where: { contractId } });
@@ -2366,6 +2423,10 @@ export async function processOCRArtifactJob(
     
     // Get ocrMode from job data (user selection) or use preclassification
     let ocrMode: string = job.data.ocrMode || 'auto';
+    if (ocrMode === 'auto' && typeof persistedOcrSettings.defaultProvider === 'string') {
+      const configuredProvider = persistedOcrSettings.defaultProvider;
+      ocrMode = configuredProvider === 'gpt4' ? 'openai' : configuredProvider;
+    }
     let textSample = '';
     let hintedScanType: 'native' | 'scanned' | 'mixed' = 'native';
 
@@ -2714,6 +2775,11 @@ export async function processOCRArtifactJob(
               kvPairCount: ocrResult.keyValuePairs.length,
               paragraphCount: ocrResult.paragraphs.length,
               pageCount: ocrResult.pages.length,
+              documentPageCount: ocrResult.layoutCoverage?.documentPageCount ?? ocrResult.pages.length,
+              analyzedPageCount: ocrResult.layoutCoverage?.analyzedPageCount ?? ocrResult.pages.length,
+              layoutCapped: ocrResult.layoutCoverage?.layoutCapped === true,
+              omittedTail: ocrResult.layoutCoverage?.omittedTail === true,
+              metadataPages: ocrResult.layoutCoverage?.metadataPages,
               hasContractFields: !!ocrResult.contractFields,
               hasInvoiceFields: !!ocrResult.invoiceFields,
               processedAt: new Date().toISOString(),
@@ -2887,6 +2953,7 @@ export async function processOCRArtifactJob(
       });
       if (tenantConfig?.workflowSettings && typeof tenantConfig.workflowSettings === 'object') {
         const settings = tenantConfig.workflowSettings as Record<string, any>;
+        const processing = settings.processing || {};
         const artifactOverrides = settings.artifactTypes || {};
         
         // Also check per-contract-type overrides (P3 #16)
@@ -2898,7 +2965,11 @@ export async function processOCRArtifactJob(
           // Per-contract-type overrides take precedence over global tenant overrides
           return {
             ...defaultType,
-            enabled: perTypeOverride.enabled ?? globalOverride.enabled ?? defaultType.enabled,
+            enabled: processing.aiAnalysis === false
+              ? false
+              : processing.riskAssessment === false && defaultType.type === 'RISK'
+                ? false
+                : perTypeOverride.enabled ?? globalOverride.enabled ?? defaultType.enabled,
             priority: perTypeOverride.priority ?? globalOverride.priority ?? defaultType.priority,
             qualityThreshold: perTypeOverride.qualityThreshold ?? globalOverride.qualityThreshold ?? defaultType.qualityThreshold,
             maxRetries: perTypeOverride.maxRetries ?? globalOverride.maxRetries ?? defaultType.maxRetries,
@@ -3364,7 +3435,7 @@ export async function processOCRArtifactJob(
           const iso = parseIsoDate(String(unwrapped), { locale: analysisLocale });
           if (iso) return new Date(`${iso}T00:00:00Z`);
           try {
-            const d = new Date(unwrapped);
+            const d = new Date(String(unwrapped));
             return isNaN(d.getTime()) ? null : d;
           } catch { return null; }
         };
@@ -3392,146 +3463,34 @@ export async function processOCRArtifactJob(
           pipelineVersion: EXTRACTION_PIPELINE_VERSION,
         };
         
-        // Extract parties - handle various structures
-        if (overviewData.parties && Array.isArray(overviewData.parties)) {
-          const getPartyName = (p: any) => unwrap(p.name) || unwrap(p.legalName) || p;
-          const getPartyRole = (p: any) => (unwrap(p.role) || '').toLowerCase();
-          
-          const clientParty = overviewData.parties.find((p: any) => {
-            const role = getPartyRole(p);
-            return role.includes('client') || role.includes('buyer') || role.includes('customer');
-          });
-          const supplierParty = overviewData.parties.find((p: any) => {
-            const role = getPartyRole(p);
-            return role.includes('supplier') || role.includes('vendor') || role.includes('provider') || role.includes('contractor');
-          });
-          
-          if (clientParty) {
-            const name = getPartyName(clientParty);
-            if (name && typeof name === 'string') contractUpdate.clientName = name;
-          }
-          if (supplierParty) {
-            const name = getPartyName(supplierParty);
-            if (name && typeof name === 'string') contractUpdate.supplierName = name;
-          }
-          
-          // If only one party found, use it as supplier
-          if (!contractUpdate.supplierName && !contractUpdate.clientName && overviewData.parties.length > 0) {
-            const name = getPartyName(overviewData.parties[0]);
-            if (name && typeof name === 'string') contractUpdate.supplierName = name;
-          }
-        }
-        
-        // Extract total value - handle wrapped values and strings
-        const overviewTcv = resolveTcvWinner({
+        const persisted = mapOverviewToPersistedColumns({
+          text: extractedText,
+          locale: analysisLocale,
           contractType: detectedContractType,
+          overview: overviewData,
           diQueryAnswers: ocrResult.queryAnswers || {},
-          contractText: extractedText,
-          overviewTotal: unwrapNumber(overviewData.totalValue),
-          overviewCurrency: typeof unwrap(overviewData.currency) === 'string' ? unwrap(overviewData.currency) : null,
           invoiceTotal: ocrResult.invoiceFields?.invoiceTotal ?? null,
           invoiceCurrency: ocrResult.invoiceFields?.currency ?? null,
+          aiMetadata: contract.aiMetadata,
         });
-        if (overviewTcv.value != null && !isHumanTcvLocked(contract.aiMetadata)) {
-          contractUpdate.totalValue = overviewTcv.value;
-        }
-        const currency = overviewTcv.currency || unwrap(overviewData.currency);
-        if (currency && typeof currency === 'string' && !isHumanTcvLocked(contract.aiMetadata)) {
-          contractUpdate.currency = currency;
-        }
-        
-        // Extract dates - handle wrapped values, with keyDates fallback
-        let effectiveDate = unwrapDate(overviewData.effectiveDate);
-        let expirationDate = unwrapDate(overviewData.expirationDate);
-        
-        // Fallback: derive dates from keyDates array if top-level fields are empty
-        if ((!effectiveDate || !expirationDate) && Array.isArray(overviewData.keyDates)) {
-          for (const kd of overviewData.keyDates) {
-            const eventName = (unwrap(kd.event) || '').toLowerCase();
-            const kdDate = unwrapDate(kd.date);
-            if (!kdDate) continue;
-            
-            if (!effectiveDate) {
-              if (eventName.includes('effective') || eventName.includes('commencement') || eventName.includes('start date') || eventName.includes('inkraft') || eventName.includes('gültig ab')) {
-                effectiveDate = kdDate;
-              }
-            }
-            if (!expirationDate) {
-              if (eventName.includes('expir') || eventName.includes('term end') || eventName.includes('end date') || eventName.includes('termination date') || eventName.includes('auslauf') || eventName.includes('gültig bis')) {
-                expirationDate = kdDate;
-              }
-            }
-          }
-          // Last resort: use the latest signing date as effective date
-          if (!effectiveDate) {
-            let latestSigning: Date | null = null;
-            for (const kd of overviewData.keyDates) {
-              const eventName = (unwrap(kd.event) || '').toLowerCase();
-              if (eventName.includes('sign') || eventName.includes('execution')) {
-                const kdDate = unwrapDate(kd.date);
-                if (kdDate && (!latestSigning || kdDate > latestSigning)) {
-                  latestSigning = kdDate;
-                }
-              }
-            }
-            if (latestSigning) effectiveDate = latestSigning;
-          }
-        }
-        
-        // If we have an effective date but no expiration, try to derive from duration text
-        if (effectiveDate && !expirationDate) {
-          const termText = unwrap(overviewData.termAndTermination) || '';
-          if (typeof termText === 'string') {
-            // Match patterns like "two years", "3 years", "24 months", "six months"
-            const wordToNum: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, twelve: 12, eighteen: 18, twenty: 20 };
-            const yearMatch = termText.match(/(?:for|of|period of)\s+(?:a\s+)?(\d+|one|two|three|four|five|six|seven|eight|nine|ten)\s+(?:\(\d+\)\s+)?year/i);
-            const monthMatch = termText.match(/(?:for|of|period of)\s+(?:a\s+)?(\d+|one|two|three|four|five|six|seven|eight|nine|ten|twelve|eighteen|twenty)\s+(?:\(\d+\)\s+)?month/i);
-            if (yearMatch) {
-              const num = parseInt(yearMatch[1]!) || wordToNum[yearMatch[1]!.toLowerCase()] || 0;
-              if (num > 0) {
-                const computed = new Date(effectiveDate);
-                computed.setFullYear(computed.getFullYear() + num);
-                expirationDate = computed;
-              }
-            } else if (monthMatch) {
-              const num = parseInt(monthMatch[1]!) || wordToNum[monthMatch[1]!.toLowerCase()] || 0;
-              if (num > 0) {
-                const computed = new Date(effectiveDate);
-                computed.setMonth(computed.getMonth() + num);
-                expirationDate = computed;
-              }
-            }
-          }
+        if (persisted.clientName) contractUpdate.clientName = persisted.clientName;
+        if (persisted.supplierName) contractUpdate.supplierName = persisted.supplierName;
+        if (persisted.totalValue != null) contractUpdate.totalValue = persisted.totalValue;
+        if (persisted.currency) contractUpdate.currency = persisted.currency;
+        if (persisted.effectiveDate) contractUpdate.effectiveDate = new Date(`${persisted.effectiveDate}T00:00:00Z`);
+        if (persisted.expirationDate) contractUpdate.expirationDate = new Date(`${persisted.expirationDate}T00:00:00Z`);
+        if (persisted.jurisdiction) contractUpdate.jurisdiction = persisted.jurisdiction;
+        if (persisted.noticePeriodDays != null) contractUpdate.noticePeriodDays = persisted.noticePeriodDays;
+        if (persisted.derivedFields && Object.keys(persisted.derivedFields).length > 0) {
+          contractUpdate.aiMetadata = {
+            ...(contractUpdate.aiMetadata || existingAiMeta),
+            _derivedFields: persisted.derivedFields,
+          };
         }
 
-        if (effectiveDate) {
-          contractUpdate.effectiveDate = effectiveDate;
-        }
-        if (expirationDate) {
-          contractUpdate.expirationDate = expirationDate;
-        }
-        
-        // Extract jurisdiction from OVERVIEW (fallback: CLAUSES governing-law clause)
-        const jurisdiction = unwrap(overviewData.jurisdiction) || unwrap(overviewData.governingLaw);
-        if (jurisdiction && typeof jurisdiction === 'string') {
-          contractUpdate.jurisdiction = jurisdiction;
-        }
-
-        // Extract termination clause from OVERVIEW
         const termAndTermination = unwrap(overviewData.termAndTermination);
         if (termAndTermination && typeof termAndTermination === 'string') {
           contractUpdate.terminationClause = termAndTermination;
-        }
-
-        // Extract notice period days from termAndTermination text
-        if (termAndTermination && typeof termAndTermination === 'string') {
-          const noticeMatch = termAndTermination.match(/(\d+)\s*(?:calendar\s+)?day/i);
-          const monthMatch = termAndTermination.match(/(\d+)\s*month/i);
-          if (noticeMatch) {
-            contractUpdate.noticePeriodDays = parseInt(noticeMatch[1]!, 10);
-          } else if (monthMatch) {
-            contractUpdate.noticePeriodDays = parseInt(monthMatch[1]!, 10) * 30;
-          }
         }
 
         // Extract payment terms from FINANCIAL artifact
@@ -3678,17 +3637,15 @@ export async function processOCRArtifactJob(
       }
     }
 
-    // Extract notice period if available
+    // Extract notice period only from notice language, not any duration in a termination clause
     let noticePeriod = '';
     if (clausesData.clauses && Array.isArray(clausesData.clauses)) {
       const terminationClause = clausesData.clauses.find((c: any) => 
         c.type?.toLowerCase().includes('termination') || c.title?.toLowerCase().includes('termination')
       );
       if (terminationClause?.text) {
-        const noticeMatch = terminationClause.text.match(/(\d+)\s*(day|month|week)/i);
-        if (noticeMatch) {
-          noticePeriod = `${noticeMatch[1]} ${noticeMatch[2]}${parseInt(noticeMatch[1]) > 1 ? 's' : ''}`;
-        }
+        const noticeDays = parseNoticePeriodFromClause(String(terminationClause.text));
+        if (noticeDays != null) noticePeriod = `${noticeDays} days`;
       }
     }
 
@@ -3739,6 +3696,25 @@ export async function processOCRArtifactJob(
       : {};
     const humanTcvLocked = isHumanTcvLocked(existingAiMetadata);
 
+    const explicitEffectiveDate = unwrapVal(overviewArtifactData.effectiveDate)
+      || resolveFromKeyDates(overviewArtifactData.keyDates, ['effective', 'commencement', 'start date'], unwrapVal);
+    const explicitEndDate = unwrapVal(overviewArtifactData.expirationDate)
+      || resolveFromKeyDates(overviewArtifactData.keyDates, ['expir', 'term end', 'end date', 'termination date'], unwrapVal);
+    const termDurationText = unwrapVal(overviewArtifactData.termAndTermination);
+    let derivedEndDate: string | null = null;
+    if (!explicitEndDate && explicitEffectiveDate && typeof termDurationText === 'string') {
+      const wordToNum: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, twelve: 12, eighteen: 18, twenty: 20 };
+      const yearMatch = termDurationText.match(/(?:for|of|period of)\s+(?:a\s+)?(\d+|one|two|three|four|five|six|seven|eight|nine|ten)\s+(?:\(\d+\)\s+)?year/i);
+      const monthMatch = termDurationText.match(/(?:for|of|period of)\s+(?:a\s+)?(\d+|one|two|three|four|five|six|seven|eight|nine|ten|twelve|eighteen|twenty)\s+(?:\(\d+\)\s+)?month/i);
+      if (yearMatch) {
+        const num = parseInt(yearMatch[1]!) || wordToNum[yearMatch[1]!.toLowerCase()] || 0;
+        if (num > 0) { const d = new Date(explicitEffectiveDate); d.setFullYear(d.getFullYear() + num); derivedEndDate = d.toISOString(); }
+      } else if (monthMatch) {
+        const num = parseInt(monthMatch[1]!) || wordToNum[monthMatch[1]!.toLowerCase()] || 0;
+        if (num > 0) { const d = new Date(explicitEffectiveDate); d.setMonth(d.getMonth() + num); derivedEndDate = d.toISOString(); }
+      }
+    }
+
     // Build enterprise metadata schema
     const enterpriseMetadata = {
       // Document identification
@@ -3766,69 +3742,13 @@ export async function processOCRArtifactJob(
         ? (existingAiMetadata.currency ?? tcvWinner.currency ?? null)
         : (tcvWinner.currency || unwrapVal(overviewArtifactData.currency) || unwrapVal(financialData.currency) || ocrResult.fieldMetadata?.currency || null),
       
-      // Dates - with keyDates fallback (use latest signing date, not first)
-      execution_date: unwrapVal(overviewArtifactData.executionDate) || 
-        unwrapVal(overviewArtifactData.effectiveDate) || 
+      execution_date: unwrapVal(overviewArtifactData.executionDate) ||
+        resolveFromKeyDates(overviewArtifactData.keyDates, ['execution', 'sign'], unwrapVal) ||
+        null,
+      contract_effective_date: unwrapVal(overviewArtifactData.effectiveDate) ||
         resolveFromKeyDates(overviewArtifactData.keyDates, ['effective', 'commencement', 'start date'], unwrapVal) ||
-        (() => {
-          // Last resort: find the latest signing/execution date
-          if (!Array.isArray(overviewArtifactData.keyDates)) return null;
-          let latest: string | null = null;
-          let latestTime = 0;
-          for (const kd of overviewArtifactData.keyDates) {
-            const event = (unwrapVal(kd.event) || '').toLowerCase();
-            if (event.includes('sign') || event.includes('execution')) {
-              const dateVal = unwrapVal(kd.date);
-              if (dateVal && typeof dateVal === 'string') {
-                const t = new Date(dateVal).getTime();
-                if (!isNaN(t) && t > latestTime) { latest = dateVal; latestTime = t; }
-              }
-            }
-          }
-          return latest;
-        })() ||
         null,
-      contract_effective_date: unwrapVal(overviewArtifactData.effectiveDate) || 
-        resolveFromKeyDates(overviewArtifactData.keyDates, ['effective', 'commencement', 'start date'], unwrapVal) ||
-        (() => {
-          if (!Array.isArray(overviewArtifactData.keyDates)) return null;
-          let latest: string | null = null;
-          let latestTime = 0;
-          for (const kd of overviewArtifactData.keyDates) {
-            const event = (unwrapVal(kd.event) || '').toLowerCase();
-            if (event.includes('sign') || event.includes('execution')) {
-              const dateVal = unwrapVal(kd.date);
-              if (dateVal && typeof dateVal === 'string') {
-                const t = new Date(dateVal).getTime();
-                if (!isNaN(t) && t > latestTime) { latest = dateVal; latestTime = t; }
-              }
-            }
-          }
-          return latest;
-        })() ||
-        null,
-      contract_end_date: unwrapVal(overviewArtifactData.expirationDate) || 
-        resolveFromKeyDates(overviewArtifactData.keyDates, ['expir', 'term end', 'end date', 'termination date'], unwrapVal) ||
-        (() => {
-          // Derive from duration text (e.g., "two years", "24 months") + effective date
-          const effDate = unwrapVal(overviewArtifactData.effectiveDate) ||
-            resolveFromKeyDates(overviewArtifactData.keyDates, ['effective', 'commencement', 'start date'], unwrapVal);
-          if (!effDate) return null;
-          const termText = unwrapVal(overviewArtifactData.termAndTermination) || '';
-          if (typeof termText !== 'string') return null;
-          const wordToNum: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, twelve: 12, eighteen: 18, twenty: 20 };
-          const yearMatch = termText.match(/(?:for|of|period of)\s+(?:a\s+)?(\d+|one|two|three|four|five|six|seven|eight|nine|ten)\s+(?:\(\d+\)\s+)?year/i);
-          const monthMatch = termText.match(/(?:for|of|period of)\s+(?:a\s+)?(\d+|one|two|three|four|five|six|seven|eight|nine|ten|twelve|eighteen|twenty)\s+(?:\(\d+\)\s+)?month/i);
-          if (yearMatch) {
-            const num = parseInt(yearMatch[1]!) || wordToNum[yearMatch[1]!.toLowerCase()] || 0;
-            if (num > 0) { const d = new Date(effDate); d.setFullYear(d.getFullYear() + num); return d.toISOString(); }
-          } else if (monthMatch) {
-            const num = parseInt(monthMatch[1]!) || wordToNum[monthMatch[1]!.toLowerCase()] || 0;
-            if (num > 0) { const d = new Date(effDate); d.setMonth(d.getMonth() + num); return d.toISOString(); }
-          }
-          return null;
-        })() ||
-        null,
+      contract_end_date: explicitEndDate || derivedEndDate || null,
       
       signature_status: resolvedSignatureStatus,
       signature_date: resolvedSignatureRequiredFlag ? null : (
@@ -3870,11 +3790,19 @@ export async function processOCRArtifactJob(
         type => artifactDataArray.some((a: any) => a.type === type && !a.data?.error)
       ),
       _confidence: {
-        overall: successfulArtifacts.length / artifactDataArray.length,
-        parties: externalParties.length > 0 ? 0.9 : 0.3,
-        financial: unwrapVal(financialData.totalValue) ? 0.9 : 0.5,
-        dates: unwrapVal(overviewArtifactData.effectiveDate) ? 0.9 : 0.5,
+        extractionCompleteness: artifactDataArray.length
+          ? successfulArtifacts.length / artifactDataArray.length
+          : 0,
+        fieldPresence: {
+          parties: externalParties.length > 0,
+          financial: Boolean(unwrapVal(financialData.totalValue)),
+          dates: Boolean(unwrapVal(overviewArtifactData.effectiveDate)),
+        },
+        note: 'Completeness/presence only — not verified factual accuracy',
       },
+      _derivedFields: derivedEndDate
+        ? { contract_end_date: { rule: 'term_duration', source: String(termDurationText || '').slice(0, 240) } }
+        : {},
     };
 
     // Save enterprise metadata to contract.aiMetadata AND persist extracted fields to DB columns
@@ -3903,7 +3831,7 @@ export async function processOCRArtifactJob(
       // Parse total value as Decimal-compatible number
       const totalValueParsed = humanTcvLocked
         ? null
-        : ((enterpriseMetadata.tcv_amount != null && enterpriseMetadata.tcv_amount > 0)
+        : ((typeof enterpriseMetadata.tcv_amount === 'number' && enterpriseMetadata.tcv_amount > 0)
           ? enterpriseMetadata.tcv_amount : null);
 
       // Extract client/supplier names from parties
@@ -3913,20 +3841,9 @@ export async function processOCRArtifactJob(
       const supplierParty = externalParties.find((p: any) => 
         /vendor|supplier|provider|contractor|seller|service provider/i.test(p.role || '')
       );
-      // Fallback: if roles don't match, use first two parties
-      const firstParty = externalParties[0];
-      const secondParty = externalParties[1];
 
-      // Parse notice period string to days integer
-      let noticePeriodDaysParsed: number | null = null;
-      if (enterpriseMetadata.notice_period) {
-        const match = enterpriseMetadata.notice_period.match(/(\d+)\s*(day|month|week)/i);
-        if (match) {
-          const num = parseInt(match[1]!);
-          const unit = match[2]!.toLowerCase();
-          noticePeriodDaysParsed = unit === 'month' ? num * 30 : unit === 'week' ? num * 7 : num;
-        }
-      }
+      const noticePeriodDaysParsed = parseNoticePeriodFromClause(String(enterpriseMetadata.notice_period || ''))
+        ?? parseNoticePeriodFromClause(String(unwrapVal(overviewArtifactData.termAndTermination) || ''));
 
       // Determine contract type from OVERVIEW artifact
       const contractTypeParsed = unwrapVal(overviewArtifactData.contractType) || null;
@@ -3950,11 +3867,9 @@ export async function processOCRArtifactJob(
           // Dates
           ...(effectiveDateParsed ? { effectiveDate: effectiveDateParsed, startDate: effectiveDateParsed } : {}),
           ...(endDateParsed ? { expirationDate: endDateParsed, endDate: endDateParsed } : {}),
-          // Parties
-          ...(clientParty?.legalName ? { clientName: clientParty.legalName } : 
-              !supplierParty && firstParty?.legalName ? { clientName: firstParty.legalName } : {}),
-          ...(supplierParty?.legalName ? { supplierName: supplierParty.legalName } : 
-              !clientParty && secondParty?.legalName ? { supplierName: secondParty.legalName } : {}),
+          // Parties — only when the model named a role; never invent from array order
+          ...(!isHumanFieldLocked(existingAiMetadata, 'clientName') && clientParty?.legalName ? { clientName: clientParty.legalName } : {}),
+          ...(!isHumanFieldLocked(existingAiMetadata, 'supplierName') && supplierParty?.legalName ? { supplierName: supplierParty.legalName } : {}),
           // Classification & jurisdiction
           ...(contractTypeParsed ? { contractType: contractTypeParsed } : {}),
           ...(enterpriseMetadata.jurisdiction ? { jurisdiction: enterpriseMetadata.jurisdiction } : {}),
@@ -3998,8 +3913,8 @@ export async function processOCRArtifactJob(
           totalValue: totalValueParsed != null,
           effectiveDate: !!effectiveDateParsed,
           expirationDate: !!endDateParsed,
-          clientName: !!(clientParty?.legalName || firstParty?.legalName),
-          supplierName: !!(supplierParty?.legalName || secondParty?.legalName),
+          clientName: !!clientParty?.legalName,
+          supplierName: !!supplierParty?.legalName,
           contractType: !!contractTypeParsed,
           jurisdiction: !!enterpriseMetadata.jurisdiction,
           autoRenewalEnabled: enterpriseMetadata.auto_renewing,
@@ -4154,8 +4069,8 @@ export async function processOCRArtifactJob(
           };
           const gapUnwrapNumber = (val: any): number | null => {
             const v = gapUnwrap(val);
-            if (typeof v === 'number') return v;
-            if (typeof v === 'string') { const p = parseFloat(v.replace(/[$€£¥,]/g, '').trim()); return isNaN(p) ? null : p; }
+            if (typeof v === 'number') return Number.isFinite(v) ? v : null;
+            if (typeof v === 'string') return parseMonetaryAmount(v);
             return null;
           };
 
@@ -4194,10 +4109,8 @@ export async function processOCRArtifactJob(
                   const v = gapUnwrap(filled.value);
                   if (v && typeof v === 'string') {
                     gapFilledContractUpdate.terminationClause = v;
-                    const noticeMatch = v.match(/(\d+)\s*(?:calendar\s+)?day/i);
-                    const monthMatch = v.match(/(\d+)\s*month/i);
-                    if (noticeMatch) gapFilledContractUpdate.noticePeriodDays = parseInt(noticeMatch[1]!, 10);
-                    else if (monthMatch) gapFilledContractUpdate.noticePeriodDays = parseInt(monthMatch[1]!, 10) * 30;
+                    const noticeDays = parseNoticePeriodFromClause(v);
+                    if (noticeDays != null) gapFilledContractUpdate.noticePeriodDays = noticeDays;
                   }
                   break;
                 }

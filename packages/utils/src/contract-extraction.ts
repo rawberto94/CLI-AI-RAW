@@ -328,7 +328,10 @@ function extractExplicitEndDate(text: string): { date: string; source: string } 
 }
 
 function parseNoticePeriodDays(value: string): number | null {
-  const match = value.match(new RegExp(`(?<value>${NUMBER_PATTERN})\\s*(?<unit>days?|months?|weeks?)`, 'i'));
+  const match = value.match(new RegExp(
+    `(?<value>${NUMBER_PATTERN})\\s*(?<unit>days?|tagen?|tage|jours?|giorni|months?|monate?|mois|weeks?|wochen?|settimane?)`,
+    'i',
+  ));
   const parsedValue = parseNumberText(match?.groups?.value);
   const rawUnit = match?.groups?.unit;
   if (!parsedValue || !rawUnit) return null;
@@ -628,8 +631,8 @@ function parseNumberText(value: string | undefined): number | null {
 function normalizeTermUnit(value: string): ContractTermUnit {
   const normalized = value.toLowerCase();
   if (normalized.startsWith('year') || normalized === 'yr' || normalized === 'yrs') return 'year';
-  if (normalized.startsWith('month') || normalized === 'mo' || normalized === 'mos') return 'month';
-  if (normalized.startsWith('week') || normalized === 'wk' || normalized === 'wks') return 'week';
+  if (normalized.startsWith('month') || normalized.startsWith('monat') || normalized === 'mois' || normalized === 'mo' || normalized === 'mos') return 'month';
+  if (normalized.startsWith('week') || normalized.startsWith('woch') || normalized.startsWith('settiman') || normalized === 'wk' || normalized === 'wks') return 'week';
   return 'day';
 }
 
@@ -779,7 +782,7 @@ export function assessContractTermEvidence(
 
 export function parseMonetaryAmount(
   value: string,
-  options?: { locale?: 'de' | 'fr' | 'it' | 'en' | string | null },
+  options?: { locale?: 'de' | 'fr' | 'it' | 'en' | string | null; rejectAmbiguous?: boolean },
 ): number | null {
   const normalizedText = value.toLowerCase();
   const multiplier = /\b(?:m|mn|mm|million)\b/.test(normalizedText)
@@ -793,14 +796,17 @@ export function parseMonetaryAmount(
     .replace(/\bFr\.\s*/gi, '')
     .replace(/[$€£]/g, '')
     .replace(/\b(?:m|mn|mm|million|k|thousand)\b/gi, '')
-    .replace(/'/g, '')
+    .replace(/[\u2018\u2019\u201A\u2032\u02BC']/g, '')
+    .replace(/\u00A0/g, '')
     .replace(/[^\d,.-]/g, '')
+    .replace(/\.+$/, '')
     .trim();
 
   if (!cleaned) return null;
 
   const loc = (options?.locale || '').toString().toLowerCase().slice(0, 2);
   const european = loc === 'de' || loc === 'fr' || loc === 'it';
+  const rejectAmbiguous = options?.rejectAmbiguous ?? !loc;
 
   let numericText = cleaned;
   if (cleaned.includes(',') && cleaned.includes('.')) {
@@ -809,19 +815,93 @@ export function parseMonetaryAmount(
       : cleaned.replace(/\./g, '').replace(',', '.');
   } else if (cleaned.includes(',') && !cleaned.includes('.')) {
     const parts = cleaned.split(',');
-    numericText = parts[parts.length - 1]?.length === 2
+    const last = parts[parts.length - 1] || '';
+    numericText = last.length === 2 || last.length === 1
       ? cleaned.replace(',', '.')
-      : cleaned.replace(/,/g, '');
-  } else if (cleaned.includes('.') && !cleaned.includes(',') && european) {
+      : last.length === 3 && parts.length >= 2
+        ? cleaned.replace(/,/g, '')
+        : cleaned.replace(/,/g, '');
+  } else if (cleaned.includes('.') && !cleaned.includes(',')) {
     const parts = cleaned.split('.');
     const last = parts[parts.length - 1] || '';
     if (last.length === 3 && parts.length >= 2) {
-      numericText = cleaned.replace(/\./g, '');
+      if (european) {
+        numericText = cleaned.replace(/\./g, '');
+      } else if (rejectAmbiguous) {
+        return null;
+      }
     }
   }
 
   const parsed = Number.parseFloat(numericText);
   return Number.isFinite(parsed) ? parsed * multiplier : null;
+}
+
+/** Parse a notice duration only when the surrounding text is about notice, not term length. */
+export function parseNoticePeriodFromClause(text: string): number | null {
+  if (!text || typeof text !== 'string') return null;
+  const keyword = /notice period|prior written notice|kündigungsfrist|kündigen|préavis|preavviso/gi;
+  let match: RegExpExecArray | null;
+  while ((match = keyword.exec(text)) !== null) {
+    const after = text.slice(match.index, Math.min(text.length, match.index + match[0].length + 80));
+    const daysAfter = parseNoticePeriodDays(after);
+    if (daysAfter != null && daysAfter > 0 && daysAfter <= 730) return daysAfter;
+    const before = text.slice(Math.max(0, match.index - 40), match.index + match[0].length);
+    const daysBefore = parseNoticePeriodDays(before);
+    if (daysBefore != null && daysBefore > 0 && daysBefore <= 365) return daysBefore;
+  }
+  return null;
+}
+
+export function normalizeExtractedFieldValue(
+  value: unknown,
+  fieldType: string,
+  options?: { locale?: string | null },
+): unknown {
+  if (value === null || value === undefined || value === '') return null;
+  const locale = options?.locale;
+  switch (fieldType) {
+    case 'number':
+    case 'percentage':
+    case 'currency': {
+      if (typeof value === 'number' && Number.isFinite(value)) return value;
+      return parseMonetaryAmount(String(value), { locale, rejectAmbiguous: true });
+    }
+    case 'date':
+    case 'datetime': {
+      const iso = parseIsoDate(String(value), { locale });
+      if (iso) return fieldType === 'date' ? iso : `${iso}T00:00:00.000Z`;
+      const date = new Date(String(value));
+      if (!Number.isNaN(date.getTime())) {
+        return fieldType === 'date' ? date.toISOString().slice(0, 10) : date.toISOString();
+      }
+      return null;
+    }
+    case 'boolean': {
+      if (typeof value === 'boolean') return value;
+      const strVal = String(value).toLowerCase();
+      if (['true', 'yes', '1', 'on'].includes(strVal)) return true;
+      if (['false', 'no', '0', 'off'].includes(strVal)) return false;
+      return null;
+    }
+    case 'duration': {
+      if (typeof value === 'number' && Number.isFinite(value)) return value;
+      const fromNotice = parseNoticePeriodFromClause(String(value));
+      if (fromNotice != null) return fromNotice;
+      const durationMatch = String(value).match(/(\d+)\s*(day|month|year|week)s?/i);
+      if (durationMatch?.[1] && durationMatch[2]) {
+        const num = parseInt(durationMatch[1], 10);
+        const unit = durationMatch[2].toLowerCase();
+        if (unit === 'day') return num;
+        if (unit === 'week') return num * 7;
+        if (unit === 'month') return num * 30;
+        if (unit === 'year') return num * 365;
+      }
+      return value;
+    }
+    default:
+      return value;
+  }
 }
 
 function detectCurrency(value: string): string | null {

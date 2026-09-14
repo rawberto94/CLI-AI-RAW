@@ -99,6 +99,8 @@ async function loadTenantArtifactConfig(tenantId: string): Promise<{
     enableSelfCritique: boolean;
     continueOnPartialFailure: boolean;
     enableFallbackOnError: boolean;
+    aiAnalysisEnabled: boolean;
+    riskAssessmentEnabled: boolean;
   };
 }> {
   try {
@@ -112,6 +114,7 @@ async function loadTenantArtifactConfig(tenantId: string): Promise<{
       const settings = tenantConfig.workflowSettings as Record<string, any>;
       const artifactSettings = settings.artifactTypes || {};
       const generationSettings = settings.artifactGeneration || {};
+      const processing = settings.processing || {};
 
       // Merge tenant overrides with defaults
       const artifactTypes = DEFAULT_ARTIFACT_TYPES.map(defaultType => {
@@ -133,6 +136,8 @@ async function loadTenantArtifactConfig(tenantId: string): Promise<{
           enableSelfCritique: generationSettings.enableSelfCritique ?? true,
           continueOnPartialFailure: generationSettings.continueOnPartialFailure ?? true,
           enableFallbackOnError: generationSettings.enableFallbackOnError ?? true,
+          aiAnalysisEnabled: processing.aiAnalysis ?? true,
+          riskAssessmentEnabled: processing.riskAssessment ?? true,
         },
       };
     }
@@ -149,6 +154,8 @@ async function loadTenantArtifactConfig(tenantId: string): Promise<{
       enableSelfCritique: true,
       continueOnPartialFailure: true,
       enableFallbackOnError: true,
+      aiAnalysisEnabled: true,
+      riskAssessmentEnabled: true,
     },
   };
 }
@@ -343,10 +350,17 @@ export async function generateArtifactsJob(
       weight: config.weight,
       config,
     }));
+    if (!tenantConfig.generationConfig.aiAnalysisEnabled) {
+      logger.info({ contractId, tenantId }, 'AI analysis disabled by tenant processing settings');
+      return { artifactsCreated: 0, artifactIds: [], failedArtifacts: [], partialSuccess: false };
+    }
+    const configuredArtifactTypes = tenantConfig.generationConfig.riskAssessmentEnabled
+      ? allArtifactTypes
+      : allArtifactTypes.filter(({ type }) => type !== 'RISK');
     const generationConfig = tenantConfig.generationConfig;
 
     // Filter artifacts by contract type relevance (skip not-applicable)
-    const artifactTypes = allArtifactTypes.filter(({ type }) =>
+    const artifactTypes = configuredArtifactTypes.filter(({ type }) =>
       isArtifactApplicable(detectedContractType, type as any)
     );
     const skippedArtifacts = allArtifactTypes

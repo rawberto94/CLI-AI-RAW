@@ -169,6 +169,7 @@ export class AutoPopulateService {
               enableMultiPass: true,
               confidenceThreshold: this.config.requireReviewThreshold,
               priorityFields: this.config.priorityFields,
+              tenantId,
             }
           );
         } catch (error) {

@@ -79,5 +79,7 @@ describe('selectPagesForExtraction', () => {
     expect(result.bilingual).toBe(true);
     expect(result.prevailing).toBe('en');
     expect(result.pages.some((p) => p.pageNumber === 1)).toBe(true);
+    expect(result.pages.some((p) => p.pageNumber === 2)).toBe(true);
+    expect(result.bilingualWarning).toMatch(/All language pages retained/);
   });
 });

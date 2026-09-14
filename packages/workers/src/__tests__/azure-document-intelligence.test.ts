@@ -388,6 +388,114 @@ describe('Azure Document Intelligence', () => {
       expect(result.contract.title).toBe('Master Service Agreement');
       expect(result.contract.confidence).toBe(0.92);
     });
+
+    it('decodes REST valueArray/valueObject parties and Jurisdictions', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 202,
+        headers: mockHeaders({
+          'operation-location': `${TEST_ENDPOINT}/documentintelligence/documentModels/prebuilt-contract/analyzeResults/op-rest`,
+        }),
+      });
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          status: 'succeeded',
+          analyzeResult: {
+            content: 'Service Agreement',
+            pages: [],
+            documents: [
+              {
+                docType: 'contract',
+                confidence: 0.9,
+                fields: {
+                  Parties: {
+                    type: 'array',
+                    valueArray: [
+                      {
+                        type: 'object',
+                        confidence: 0.9,
+                        valueObject: {
+                          Name: { type: 'string', valueString: 'Acme Corp', confidence: 0.95 },
+                          Address: {
+                            type: 'address',
+                            content: '123 Main St',
+                            valueAddress: { streetAddress: '123 Main St', city: 'Zurich' },
+                            confidence: 0.85,
+                          },
+                        },
+                      },
+                    ],
+                    confidence: 0.9,
+                  },
+                  Jurisdictions: {
+                    type: 'array',
+                    valueArray: [
+                      {
+                        type: 'object',
+                        valueObject: {
+                          Region: { type: 'string', valueString: 'Switzerland', confidence: 0.88 },
+                          Clause: { type: 'string', valueString: 'Swiss law applies', confidence: 0.8 },
+                        },
+                      },
+                    ],
+                    confidence: 0.88,
+                  },
+                  EffectiveDate: { type: 'date', valueDate: '2025-03-01', confidence: 0.97 },
+                },
+              },
+            ],
+          },
+        }),
+      });
+
+      const { analyzeContract, decodeDocumentField } = await import('../azure-document-intelligence');
+      const nested = decodeDocumentField({
+        type: 'array',
+        valueArray: [{ type: 'object', valueObject: { Name: { type: 'string', valueString: 'Globex' } } }],
+        confidence: 0.9,
+      });
+      expect(nested.type).toBe('array');
+      expect(Array.isArray(nested.value)).toBe(true);
+      expect(nested.value[0].value.Name.value).toBe('Globex');
+
+      const result = await analyzeContract(Buffer.from('fake-contract'));
+      expect(result.contract.parties).toHaveLength(1);
+      expect(result.contract.parties[0]!.name).toBe('Acme Corp');
+      expect(result.contract.parties[0]!.address).toMatch(/123 Main St/);
+      expect(result.contract.jurisdiction).toBe('Switzerland');
+      expect(result.contract.dates.effectiveDate).toBe('2025-03-01');
+    });
+  });
+
+  describe('golden DI REST documents', () => {
+    it('does not drop nested parties on a German-style REST payload', async () => {
+      const { decodeDocumentField } = await import('../azure-document-intelligence');
+      const parties = decodeDocumentField({
+        type: 'array',
+        confidence: 0.91,
+        valueArray: [
+          {
+            type: 'object',
+            valueObject: {
+              Name: { type: 'string', valueString: 'Contigo AG', confidence: 0.94 },
+              Role: { type: 'string', valueString: 'Auftraggeber', confidence: 0.8 },
+            },
+          },
+          {
+            type: 'object',
+            valueObject: {
+              Name: { type: 'string', valueString: 'Helvetia IT GmbH', confidence: 0.93 },
+              Role: { type: 'string', valueString: 'Auftragnehmer', confidence: 0.8 },
+            },
+          },
+        ],
+      });
+      expect(parties.type).toBe('array');
+      expect(parties.value).toHaveLength(2);
+      expect(parties.value[0].value.Name.value).toBe('Contigo AG');
+      expect(parties.value[1].value.Name.value).toBe('Helvetia IT GmbH');
+    });
   });
 
   // ========================================================================
@@ -699,6 +807,17 @@ describe('DI metadata page-range helpers', () => {
       expect(metadataWindowMatches(25, 25)).toBe(true);
       expect(metadataWindowMatches(8, 25)).toBe(false);
       expect(metadataWindowMatches(3, 3)).toBe(true);
+    });
+
+    it('does not treat a capped layout page count as the document tail', async () => {
+      const { resolveMetadataPageCount, computeMetadataPageRange } = await import('../utils/di-page-range');
+      expect(resolveMetadataPageCount({
+        documentPageCount: 120,
+        analyzedPageCount: 50,
+        layoutCapped: true,
+      })).toBe(120);
+      expect(computeMetadataPageRange(120)).toBe('1-3,119-120');
+      expect(computeMetadataPageRange(50)).toBe('1-3,49-50');
     });
   });
 

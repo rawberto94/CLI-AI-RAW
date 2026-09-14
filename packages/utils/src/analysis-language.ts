@@ -2,6 +2,23 @@ export type AnalysisLanguage = 'de' | 'fr' | 'it' | 'en';
 
 export type DILocale = 'de-CH' | 'fr-CH' | 'it-CH' | 'en-US';
 
+/**
+ * Microsoft prebuilt-contract is English-only. DE/FR/IT documents must not
+ * depend on that specialized model; layout OCR still runs for those languages.
+ */
+export function isPrebuiltContractLanguageSupported(
+  locale?: string | null,
+  detected?: string[] | null,
+): boolean {
+  const tags = [locale, ...(detected || [])]
+    .filter((v): v is string => typeof v === 'string' && v.trim().length > 0)
+    .map((v) => v.toLowerCase());
+  if (tags.length === 0) return false;
+  const langs = tags.map((t) => t.replace('_', '-').slice(0, 2));
+  if (langs.some((l) => l === 'de' || l === 'fr' || l === 'it')) return false;
+  return langs.some((l) => l === 'en');
+}
+
 export function toDILocale(lang: AnalysisLanguage | string | null | undefined): DILocale {
   const code = (lang || '').toLowerCase().slice(0, 2);
   if (code === 'de') return 'de-CH';
@@ -36,6 +53,13 @@ function localeLang(langs: string[], prefix: string): boolean {
 
 function tokenScore(text: string, re: RegExp): number {
   return (text.match(re) || []).length;
+}
+
+/** True when the document should use the English-only Azure prebuilt-contract model. */
+export function isEnglishDocument(ctx: AnalysisLanguageContext = {}): boolean {
+  const localeHints = (ctx.diDetectedLanguages || []).map((item) => item.toLowerCase());
+  if (localeHints.some((item) => /^(de|fr|it)([-_]|$)/.test(item))) return false;
+  return resolveAnalysisLanguage(ctx) === 'en';
 }
 
 /** Detect whether narrative analysis should be German, French, Italian, or English. */
@@ -213,28 +237,16 @@ export function selectPagesForExtraction(
     return { pages, prevailing, bilingual: false, bilingualWarning: null };
   }
 
-  const counts: Record<AnalysisLanguage, number> = { de: 0, fr: 0, it: 0, en: 0 };
-  for (const p of labeled) counts[p.lang] += (p.text || '').length;
-  const majority = (Object.keys(counts) as AnalysisLanguage[]).sort((a, b) => counts[b] - counts[a])[0]!;
-  const target = prevailing || majority;
-  const kept = labeled.filter((p) => p.lang === target).map(({ lang: _lang, ...rest }) => rest);
-  const keptChars = kept.reduce((n, p) => n + (p.text || '').length, 0);
-  const totalChars = labeled.reduce((n, p) => n + (p.text || '').length, 0);
-  if (kept.length === 0 || (totalChars > 0 && keptChars / totalChars < 0.2)) {
-    return {
-      pages,
-      prevailing,
-      bilingual: true,
-      bilingualWarning: prevailing
-        ? `Prevailing language ${prevailing} found but pages could not be split cleanly`
-        : 'Bilingual document with no prevailing-language clause',
-    };
-  }
+  // A language difference does not prove that one page is a translation. A
+  // minority-language page may contain a unique schedule, obligation, or
+  // signature. Keep every page and expose precedence as a review signal.
   return {
-    pages: kept,
-    prevailing: target,
+    pages,
+    prevailing,
     bilingual: true,
-    bilingualWarning: prevailing ? null : 'Bilingual document; no prevailing-language clause — using majority language pages',
+    bilingualWarning: prevailing
+      ? `Bilingual document; prevailing language ${prevailing}. All language pages retained; reconcile conflicting provisions before applying precedence.`
+      : 'Bilingual document; no prevailing-language clause. All language pages retained; do not assume the majority language prevails.',
   };
 }
 

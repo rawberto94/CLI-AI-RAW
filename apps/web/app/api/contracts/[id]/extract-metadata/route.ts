@@ -13,6 +13,7 @@ import cors from '@/lib/security/cors';
 import type { Prisma } from '@prisma/client';
 import { 
   SchemaAwareMetadataExtractor,
+  ExtractionServiceError,
   ExtractionOptions,
   MetadataExtractionResult,
   type ExtractionResult
@@ -22,6 +23,8 @@ import { queueRAGReindex } from '@/lib/rag/reindex-helper';
 import { withContractApiHandler, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 import { hasAIClientConfig } from '@/lib/openai-client';
 import { logger } from '@/lib/logger';
+import { pickOurOrganization } from '@repo/utils';
+import { prisma } from '@/lib/prisma';
 
 interface ExtractRequest {
   documentText?: string;
@@ -81,6 +84,26 @@ export const POST = withContractApiHandler(async (request: NextRequest, ctx) => 
     // Create extractor
     const extractor = new SchemaAwareMetadataExtractor();
 
+    let ourOrganization: ExtractionOptions['ourOrganization'] = body.options?.ourOrganization ?? null;
+    if (!ourOrganization) {
+      try {
+        const tenant = await prisma.tenant.findUnique({
+          where: { id: tenantId },
+          select: { name: true },
+        });
+        const settings = await prisma.tenantSettings.findFirst({
+          where: { tenantId },
+          select: { customFields: true },
+        });
+        ourOrganization = pickOurOrganization({
+          settings: settings?.customFields,
+          tenantName: tenant?.name,
+        });
+      } catch {
+        ourOrganization = null;
+      }
+    }
+
     // Configure extraction options
     const options: ExtractionOptions = {
       maxPasses: body.options?.maxPasses ?? 2,
@@ -89,6 +112,9 @@ export const POST = withContractApiHandler(async (request: NextRequest, ctx) => 
       priorityFields: body.options?.priorityFields,
       skipFields: body.options?.skipFields,
       includeAlternatives: body.options?.includeAlternatives ?? true,
+      tenantId,
+      contractType: contract.contractType || body.options?.contractType,
+      ourOrganization,
     };
 
     // If specific fields requested, filter schema
@@ -122,6 +148,9 @@ export const POST = withContractApiHandler(async (request: NextRequest, ctx) => 
     });
 
   } catch (error: unknown) {
+    if (error instanceof ExtractionServiceError || (error as { name?: string })?.name === 'ExtractionServiceError') {
+      return createErrorResponse(ctx, 'SERVICE_UNAVAILABLE', (error as Error).message, 503);
+    }
     return handleApiError(ctx, error);
   }
 })
@@ -238,7 +267,7 @@ function tagsFromContract(tags: unknown): string[] {
 async function getTenantContract(
   contractId: string,
   tenantId: string,
-): Promise<{ rawText: string | null; searchableText: string | null } | null> {
+): Promise<{ rawText: string | null; searchableText: string | null; contractType?: string | null } | null> {
   try {
     const { prisma } = await import('@/lib/prisma');
 
@@ -247,6 +276,7 @@ async function getTenantContract(
       select: { 
         rawText: true,
         searchableText: true,
+        contractType: true,
       }
     });
   } catch (error) {

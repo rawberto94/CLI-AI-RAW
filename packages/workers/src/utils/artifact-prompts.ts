@@ -539,10 +539,10 @@ ANTI-HALLUCINATION RULES (CRITICAL):
 3. Use null for any field where data is not found in the contract
 4. Provide honest confidence/certainty scores (0.0-1.0)
 5. Extract party names EXACTLY as written - never invent names
-6. Quote or closely paraphrase actual contract language for sources
+6. Source fields must contain verbatim contract quotes; put interpretation in descriptions and explanations.
 7. Do NOT invent totals. Prefer an explicit Total Contract Value, NTE, or aggregate. Do not multiply recurring fees by term unless the contract states a total. Liability caps, insurance, penalties, and examples are not TCV.
 8. For every extracted value, include a "source" field citing the contract text
-9. Set "extractedFromText": true only for directly quoted/paraphrased data
+9. Set "extractedFromText": true only for facts supported by a verbatim source quote.
 10. Use "requiresHumanReview": true for any inferred or uncertain values
 
 OUTPUT QUALITY RULES:
@@ -843,8 +843,8 @@ export function packTextForType(
     headings,
   });
   const locate = formatLocatedCandidates(locateCriticalCandidates(packed.text));
-  if (!locate) return packed;
-  return { ...packed, text: `${locate}\n\n${packed.text}` };
+  const result = !locate ? packed : { ...packed, text: `${locate}\n\n${packed.text}` };
+  return { ...result, bilingualWarning: selected?.bilingualWarning || null };
 }
 
 export function truncateTextForType(
@@ -891,9 +891,11 @@ export function buildArtifactPrompt(
   ctx: PromptContext,
   options?: { includeContractText?: boolean },
 ): string | null {
-  const truncatedText = options?.includeContractText === false
-    ? ''
-    : truncateTextForType(ctx.contractText, type, ctx.diDocumentStructure);
+  const packed = options?.includeContractText === false
+    ? null
+    : packTextForType(ctx.contractText, type, ctx.diDocumentStructure, ctx.diPages);
+  if (packed?.bilingualWarning) ctx.bilingualWarning = packed.bilingualWarning;
+  const truncatedText = packed?.text || '';
   const typeContext = ctx.contractTypeHints
     ? `\nCONTRACT TYPE DETECTED: ${ctx.contractTypeDisplayName || ctx.contractType}\n${ctx.contractTypeHints}\n${ctx.expectedSections ? `EXPECTED SECTIONS: ${ctx.expectedSections.join(', ')}\n` : ''}`
     : '';
@@ -1249,9 +1251,9 @@ ${truncatedText}`,
     }
   ],
   "redFlags": [{"flag": "critical concern", "source": "contract quote", "extractedFromText": true}],
-  "missingProtections": ["Standard protections for this contract type that are missing"],
+  "missingProtections": ["Potential protection gaps, qualified as not found in the reviewed text and requiring full-document verification"],
   "recommendations": ["Key recommendations for negotiation or review"],
-  "comparativeAnalysis": "How this contract compares to market standard for its type",
+  "comparativeAnalysis": "Comparison against an explicitly supplied benchmark or playbook, or null when none is supplied",
   "additionalFindings": [
     {
       "field": "Any risk-related finding not fitting above schema",
@@ -1275,9 +1277,20 @@ Look for:
 - Compliance concerns (GDPR, nDSG/FADP, Datenschutz, regulatory)
 - Financial risks (payment terms, penalties)
 - Ambiguous language that could cause disputes
+- Parties and execution evidence; scope, deliverables, dependencies, acceptance and change control
+- Payment deadlines, disputed invoices, late fees, minimum commitments, taxes, currency and price/indexation changes
+- Term, auto-renewal, notice windows, termination rights, cure periods, exit charges and transition/data return
+- Liability caps, carve-outs, consequential-damage exclusions, indemnity scope and defense/settlement control
+- Warranties, service levels, service credits, exclusive remedies and claim windows
+- Intellectual property ownership/licensing, confidentiality, data protection, security, breach notice, subprocessors and deletion
+- Assignment, subcontracting, exclusivity, non-compete, non-solicitation and most-favored-customer clauses
+- Audit rights, records, insurance, force majeure, suspension, governing law, venue, arbitration and dispute escalation
+- Amendments, incorporated schedules, order of precedence, prevailing-language clauses, notices and survival obligations
 - German terms: Haftung, Schadloshaltung, Gewährleistung, Kündigungsfrist
 - French: responsabilité, indemnisation, garantie, préavis; Italian: responsabilità, indennizzo, recesso
 - CRITICAL: Every risk must cite specific contract language. DO NOT invent risks.
+- Absence from a truncated or unreadable excerpt is not proof that a protection is absent. Mark it "not found in reviewed text" and record coverage limits.
+- Do not invent market-standard comparisons unless a benchmark or playbook is supplied; otherwise return comparativeAnalysis as null.
 - Any risk or concern not fitting the schema goes in additionalFindings
 
 Contract text:
@@ -1328,6 +1341,8 @@ Also check Swiss/EU items when relevant: nDSG/FADP, DSGVO/GDPR, OR/ZGB, Datensch
 Flag unenforceable, contradictory, placeholder, or nonsense clauses even when no named regulation is cited.
 If OUR ORGANIZATION is provided in the system context, evaluate from that party's perspective (buy-side vs sell-side).
 Do not default compliant=true. If the text is junk, incomplete, or contains obviously unfair terms, set compliant=false and lower the score.
+Do not treat "not applicable" GDPR/HIPAA/SOC2 checks as a 100% pass. Named regulations that are absent are not-applicable, not evidence of compliance.
+Flag dummy or unenforceable penalties (for example forfeiting a percentage of "quotes", revenue, or the company for "not respecting a rule").
 
 Contract text:
 ${truncatedText}`,
@@ -1937,8 +1952,11 @@ Contract text:\n`
   const langBlock = analysisLanguageInstructions(ctx);
   const lang = resolveAnalysisLanguage(ctx);
   const synonymBlock = synonymsForPrompt(lang);
+  const coverageBlock = ctx.bilingualWarning
+    ? `\nCOVERAGE NOTICE: ${ctx.bilingualWarning}\nTreat language precedence as a review question and retain evidence from every language.\n`
+    : '';
   if (langBlock) {
-    finalPrompt = `${langBlock}\n\n${synonymBlock}\n\n${finalPrompt}`;
+    finalPrompt = `${langBlock}${coverageBlock}\n${synonymBlock}\n\n${finalPrompt}`;
   }
   return finalPrompt;
 }
@@ -1985,8 +2003,11 @@ export function buildGroupedPrompt(
   const body = packedText ?? packGroupedContractText(group, ctx).text;
   const langBlock = analysisLanguageInstructions(ctx);
   const synonymBlock = synonymsForPrompt(resolveAnalysisLanguage(ctx));
+  const coverageBlock = ctx.bilingualWarning
+    ? `\nCOVERAGE NOTICE: ${ctx.bilingualWarning}\nTreat language precedence as a review question and retain evidence from every language.\n`
+    : '';
 
-  return `${langBlock}
+  return `${langBlock}${coverageBlock}
 
 ${synonymBlock}
 

@@ -307,6 +307,7 @@ export class ExtractionQueueService {
           rawText: true,
           tenantId: true,
           contractTitle: true,
+          contractType: true,
         },
       });
 
@@ -332,6 +333,8 @@ export class ExtractionQueueService {
           enableMultiPass: true,
           confidenceThreshold: 0.5,
           priorityFields: job.options.specificFields,
+          tenantId: job.tenantId,
+          contractType: typeof contract.contractType === 'string' ? contract.contractType : '',
         }
       );
 

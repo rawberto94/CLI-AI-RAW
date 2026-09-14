@@ -1215,7 +1215,8 @@ export async function processDocumentAdvanced(
           const extractor = new SchemaAwareMetadataExtractor();
           metadataExtraction = await extractor.extractMetadata(
             ocrResult.text,
-            schema
+            schema,
+            { tenantId },
           );
 
           // Calibrate confidence

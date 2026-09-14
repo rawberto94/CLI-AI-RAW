@@ -19,7 +19,7 @@ import {
 } from './tag-registry';
 import { resolveDocumentNumber } from '@/lib/contracts/document-number';
 import { toPersistableMetadata } from '@/lib/contracts/metadata-display';
-import { analysisLanguageInstructions } from '@repo/utils';
+import { analysisLanguageInstructions, withHumanLocks, type HumanLockField } from '@repo/utils';
 
 async function contractTagSnapshot(contractId: string): Promise<string[]> {
   try {
@@ -1003,6 +1003,16 @@ export async function putContractMetadata(
     ...(metadata.document_classification_warning !== undefined && { document_classification_warning: metadata.document_classification_warning }),
     last_ai_extraction: existingAiMetadata.last_ai_extraction,
   };
+  const lockFields: HumanLockField[] = [];
+  if (metadata.tcv_amount !== undefined || metadata.currency !== undefined) lockFields.push('totalValue', 'currency');
+  if (metadata.start_date !== undefined) lockFields.push('effectiveDate');
+  if (metadata.end_date !== undefined) lockFields.push('expirationDate');
+  if (metadata.jurisdiction !== undefined) lockFields.push('jurisdiction');
+  if (metadata.notice_period_days !== undefined || metadata.notice_period !== undefined) lockFields.push('noticePeriodDays');
+  if (metadata.document_title !== undefined) lockFields.push('contractTitle');
+  if (lockFields.length > 0) {
+    Object.assign(updatedAiMetadata, withHumanLocks(updatedAiMetadata as Record<string, unknown>, lockFields));
+  }
 
   const legacyUpdates: Record<string, any> = {};
   if (metadata.document_title !== undefined) legacyUpdates.contractTitle = metadata.document_title || null;

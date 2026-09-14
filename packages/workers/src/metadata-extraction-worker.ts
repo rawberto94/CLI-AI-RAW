@@ -15,7 +15,15 @@
 // Use any for Job type due to cross-package compatibility
 type Job<T = any> = { id?: string; name: string; data: T; attemptsMade: number; opts: any; updateProgress: (progress: number | object) => Promise<void> };
 
-import { FIELD_TRUST_THRESHOLDS, isHumanTcvLocked } from '@repo/utils';
+import {
+  EXTRACTION_PIPELINE_VERSION,
+  FIELD_TRUST_THRESHOLDS,
+  isAutoApplyHighRisk,
+  isHumanFieldLocked,
+  isHumanTcvLocked,
+  pickOurOrganization,
+  quoteGrounded,
+} from '@repo/utils';
 import { getTraceContextFromJobData } from './observability/trace';
 import { ensureProcessingJob, updateStep, assertRetryableReady } from './workflow/processing-job';
 import { RetryableError } from './utils/errors';
@@ -124,6 +132,16 @@ export async function processMetadataExtractionJob(
         status: true,
         tags: true,
         aiMetadata: true,
+        contractType: true,
+        clientName: true,
+        supplierName: true,
+        effectiveDate: true,
+        expirationDate: true,
+        noticePeriodDays: true,
+        jurisdiction: true,
+        contractTitle: true,
+        totalValue: true,
+        currency: true,
         contractMetadata: { select: { customFields: true } },
       },
     });
@@ -145,13 +163,25 @@ export async function processMetadataExtractionJob(
     await job.updateProgress(20);
 
     const rawTextHash = sha256(contract.rawText);
+    const schemaService = MetadataSchemaService.getInstance();
+    const schema = await schemaService.getSchema(tenantId);
 
     // Check if extraction results already exist and we're not forcing re-extraction
     const existingCustomFields = (contract.contractMetadata as any)?.customFields as any;
     if (existingCustomFields && !forceReExtract) {
+      const last = existingCustomFields?._aiExtraction?.lastExtraction as Record<string, unknown> | undefined;
       const hasPriorExtraction = typeof existingCustomFields === 'object' && !!existingCustomFields?._aiExtraction;
-      const priorHash = existingCustomFields?._aiExtraction?.lastExtraction?.rawTextHash as string | undefined;
-      if (hasPriorExtraction && (!priorHash || priorHash === rawTextHash)) {
+      const priorHash = last?.rawTextHash as string | undefined;
+      const priorOk = last?.ok !== false;
+      const priorPipeline = last?.pipelineVersion as string | undefined;
+      const priorSchema = last?.schemaVersion as number | undefined;
+      if (
+        hasPriorExtraction
+        && priorOk
+        && (!priorHash || priorHash === rawTextHash)
+        && priorPipeline === EXTRACTION_PIPELINE_VERSION
+        && (priorSchema == null || priorSchema === schema.version)
+      ) {
 
         await updateStep({
           tenantId,
@@ -177,9 +207,23 @@ export async function processMetadataExtractionJob(
 
     await job.updateProgress(30);
 
-    // Load schema and extract metadata
-    const schemaService = MetadataSchemaService.getInstance();
-    const schema = await schemaService.getSchema(tenantId);
+    let ourOrganization: { name: string; aliases?: string[] } | null = null;
+    try {
+      const tenant = await prisma.tenant.findUnique({
+        where: { id: tenantId },
+        select: { name: true },
+      });
+      const settings = await prisma.tenantSettings.findFirst({
+        where: { tenantId },
+        select: { customFields: true },
+      });
+      ourOrganization = pickOurOrganization({
+        settings: settings?.customFields,
+        tenantName: tenant?.name,
+      });
+    } catch {
+      ourOrganization = pickOurOrganization({ tenantName: tenantId });
+    }
 
     const extractor = new SchemaAwareMetadataExtractor();
     const extractionResult = await Promise.race([
@@ -188,6 +232,9 @@ export async function processMetadataExtractionJob(
         maxPasses: 2,
         confidenceThreshold: 0.7,
         includeAlternatives: true,
+        tenantId,
+        contractType: typeof contract.contractType === 'string' ? contract.contractType : '',
+        ourOrganization,
       }),
       new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Metadata extraction timeout (120s)')), 120_000)),
     ]);
@@ -228,9 +275,11 @@ export async function processMetadataExtractionJob(
 
       const perFieldThreshold = (schema.fields.find((f: any) => f.id === result.fieldId)?.aiConfidenceThreshold) ?? 0;
       const threshold = Math.max(autoApplyThreshold, perFieldThreshold);
+      const grounded = quoteGrounded(result.source?.text, contract.rawText).ok;
+      const valid = result.validationStatus === 'valid' && result.requiresHumanReview !== true;
 
-      // Decide whether to auto-apply
-      if (autoApply && confidence >= threshold) {
+      // Auto-apply only valid, grounded, high-confidence values
+      if (autoApply && valid && isAutoApplyHighRisk(confidence, grounded) && confidence >= threshold) {
         metadataToApply[result.fieldName] = result.value;
         fieldsAutoApplied++;
 
@@ -258,9 +307,12 @@ export async function processMetadataExtractionJob(
         extractedAt: extractionResult.extractedAt,
         schemaId: extractionResult.schemaId,
         schemaVersion: extractionResult.schemaVersion,
+        pipelineVersion: extractionResult.pipelineVersion || EXTRACTION_PIPELINE_VERSION,
+        ok: true,
         rawTextHash,
         summary: extractionResult.summary,
         warnings: extractionResult.warnings,
+        coverage: extractionResult.coverage,
         source,
       },
       extractedFields: extractionResult.rawExtractions,
@@ -291,27 +343,38 @@ export async function processMetadataExtractionJob(
     };
 
     const contractUpdates: Record<string, any> = {};
-    if (typeof metadataToApply.contract_title === 'string') contractUpdates.contractTitle = metadataToApply.contract_title;
-    if (typeof metadataToApply.client_name === 'string') contractUpdates.clientName = metadataToApply.client_name;
-    if (typeof metadataToApply.supplier_name === 'string') contractUpdates.supplierName = metadataToApply.supplier_name;
+    const locks = contract.aiMetadata;
+    if (typeof metadataToApply.contract_title === 'string' && !isHumanFieldLocked(locks, 'contractTitle')) {
+      contractUpdates.contractTitle = metadataToApply.contract_title;
+    }
+    if (typeof metadataToApply.client_name === 'string' && !isHumanFieldLocked(locks, 'clientName')) {
+      contractUpdates.clientName = metadataToApply.client_name;
+    }
+    if (typeof metadataToApply.supplier_name === 'string' && !isHumanFieldLocked(locks, 'supplierName')) {
+      contractUpdates.supplierName = metadataToApply.supplier_name;
+    }
     if (typeof metadataToApply.contract_type === 'string') contractUpdates.contractType = metadataToApply.contract_type;
-    if (!isHumanTcvLocked(contract.aiMetadata)) {
+    if (!isHumanTcvLocked(locks) && !isHumanFieldLocked(locks, 'totalValue')) {
       if (metadataToApply.total_value !== undefined && metadataToApply.total_value !== null && !Number.isNaN(Number(metadataToApply.total_value))) {
         contractUpdates.totalValue = Number(metadataToApply.total_value);
       }
-      if (typeof metadataToApply.currency === 'string') contractUpdates.currency = metadataToApply.currency;
+    }
+    if (typeof metadataToApply.currency === 'string' && !isHumanFieldLocked(locks, 'currency')) {
+      contractUpdates.currency = metadataToApply.currency;
     }
     if (typeof metadataToApply.payment_terms === 'string') contractUpdates.paymentTerms = metadataToApply.payment_terms;
-    if (typeof metadataToApply.jurisdiction === 'string') contractUpdates.jurisdiction = metadataToApply.jurisdiction;
-    if (typeof metadataToApply.effective_date === 'string' || metadataToApply.effective_date instanceof Date) {
+    if (typeof metadataToApply.jurisdiction === 'string' && !isHumanFieldLocked(locks, 'jurisdiction')) {
+      contractUpdates.jurisdiction = metadataToApply.jurisdiction;
+    }
+    if (!isHumanFieldLocked(locks, 'effectiveDate') && (typeof metadataToApply.effective_date === 'string' || metadataToApply.effective_date instanceof Date)) {
       const d = new Date(metadataToApply.effective_date);
       if (!Number.isNaN(d.getTime())) contractUpdates.effectiveDate = d;
     }
-    if (typeof metadataToApply.expiration_date === 'string' || metadataToApply.expiration_date instanceof Date) {
+    if (!isHumanFieldLocked(locks, 'expirationDate') && (typeof metadataToApply.expiration_date === 'string' || metadataToApply.expiration_date instanceof Date)) {
       const d = new Date(metadataToApply.expiration_date);
       if (!Number.isNaN(d.getTime())) contractUpdates.expirationDate = d;
     }
-    if (typeof metadataToApply.notice_period === 'number' && Number.isFinite(metadataToApply.notice_period)) {
+    if (!isHumanFieldLocked(locks, 'noticePeriodDays') && typeof metadataToApply.notice_period === 'number' && Number.isFinite(metadataToApply.notice_period)) {
       contractUpdates.noticePeriodDays = Math.max(0, Math.round(metadataToApply.notice_period));
     }
     if (typeof metadataToApply.auto_renewal === 'boolean') {
@@ -419,9 +482,9 @@ export async function processMetadataExtractionJob(
       // Ignore analytics errors
     }
 
-    // Let BullMQ retry/backoff on retryable conditions.
-    if (error instanceof Error && error.name === 'RetryableError') {
-      throw error;
+    // Let BullMQ retry/backoff on retryable conditions and transient AI/API failures.
+    if (error instanceof Error && (error.name === 'RetryableError' || error.name === 'ExtractionServiceError')) {
+      throw error.name === 'RetryableError' ? error : new RetryableError(error.message);
     }
 
     return {

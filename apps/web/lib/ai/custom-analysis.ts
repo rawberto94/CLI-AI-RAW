@@ -15,7 +15,7 @@
 import { ContractAnonymizer, processWithAnonymization } from './anonymizer';
 import OpenAI from 'openai';
 import { createOpenAIClient, hasAIClientConfig } from '@/lib/openai-client';
-import { resolveAnalysisLanguage } from '@repo/utils';
+import { quoteGrounded, resolveAnalysisLanguage } from '@repo/utils';
 
 // Initialize OpenAI client
 const openai = createOpenAIClient();
@@ -676,20 +676,24 @@ function extractSourceReferences(text: string): string[] {
   return sources;
 }
 
-function calculateConfidence(response: string, originalText: string): number {
-  // Simple confidence heuristic
-  let confidence = 0.7;
-  
-  // Increase confidence if response cites specific sections
-  const citationCount = (response.match(/(Section|Clause|Article|Paragraph)\s*[\d.]+/gi) || []).length;
-  confidence += Math.min(citationCount * 0.02, 0.15);
-  
-  // Increase confidence for longer, more detailed responses
-  if (response.length > 1000) confidence += 0.05;
-  if (response.length > 2000) confidence += 0.05;
-  
-  // Cap at 0.95
-  return Math.min(confidence, 0.95);
+/**
+ * Citation-support score, not verified factual accuracy.
+ * Invented "Section 999" citations against unrelated source text score low.
+ */
+export function calculateConfidence(response: string, originalText: string): number {
+  const citations = response.match(/(Section|Clause|Article|Paragraph|§)\s*[\d.]+/gi) || [];
+  if (!originalText || originalText.trim().length < 20) return 0;
+  if (citations.length === 0) {
+    return quoteGrounded(response.slice(0, 180), originalText).ok ? 0.4 : 0.15;
+  }
+  let grounded = 0;
+  for (const citation of citations.slice(0, 8)) {
+    if (originalText.toLowerCase().includes(citation.toLowerCase()) || quoteGrounded(citation, originalText).ok) {
+      grounded += 1;
+    }
+  }
+  if (grounded === 0) return 0.1;
+  return Math.min(0.35 + (grounded / Math.max(citations.length, 1)) * 0.4, 0.75);
 }
 
 function generateFollowUps(question: string, response: string): string[] {

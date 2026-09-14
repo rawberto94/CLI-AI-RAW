@@ -3,6 +3,8 @@
  * POLICY_CHECK / policy evaluation takes precedence over LLM COMPLIANCE.
  */
 
+import { applyContractingHygieneToCompliance } from '@repo/utils'
+
 export type HeaderComplianceSource = 'policy' | 'llm' | 'none'
 
 export interface HeaderComplianceCheck {
@@ -42,9 +44,14 @@ const PASSING_STATUSES = new Set([
   'pass',
   'compliant',
   'ok',
+])
+
+/** N/A is not a pass. Counting it as passed is how junk contracts scored 100%. */
+const NEUTRAL_STATUSES = new Set([
   'not-applicable',
   'not_applicable',
   'n/a',
+  'na',
 ])
 
 const POLICY_PASS_STATUSES = new Set(['PASS', 'PASS_WITH_NOTES'])
@@ -240,7 +247,7 @@ export function describeHeaderCompliance(info: HeaderComplianceInfo): string {
       return `LLM compliance checks: ${scorePart} is the share that passed (${passed} passed, ${issues} issue${issues === 1 ? '' : 's'} of ${scored.length}).`
     }
     if (info.score != null) {
-      return `LLM compliance score ${scorePart} — share of checks that passed (compliant / not applicable).`
+      return `LLM compliance score ${scorePart} — share of applicable checks that passed. Not-applicable regulations are excluded.`
     }
     return 'LLM compliance was run but no scored checks were returned.'
   }
@@ -261,7 +268,9 @@ function mapLlmCompliance(complianceData: unknown): HeaderComplianceInfo {
         .filter((check): check is Record<string, unknown> => Boolean(check) && typeof check === 'object')
         .map((check) => {
           const status = String(check.status || '').toLowerCase()
-          const passed = check.passed === true || PASSING_STATUSES.has(status)
+          const passed = NEUTRAL_STATUSES.has(status)
+            ? undefined
+            : check.passed === true || PASSING_STATUSES.has(status)
             ? true
             : check.passed === false || FAILING_STATUSES.has(status)
               ? false
@@ -297,9 +306,10 @@ function mapLlmCompliance(complianceData: unknown): HeaderComplianceInfo {
       .map((issue: { description?: string }) => issue.description || ''),
   ].filter(Boolean)
 
-  const scoredChecks = checks.filter((check: { status?: string }) => {
+  const scoredChecks = checks.filter((check: { status?: string; passed?: boolean }) => {
     const status = String(check?.status || '').toLowerCase()
-    return FAILING_STATUSES.has(status) || PASSING_STATUSES.has(status)
+    if (NEUTRAL_STATUSES.has(status)) return false
+    return FAILING_STATUSES.has(status) || PASSING_STATUSES.has(status) || typeof check.passed === 'boolean'
   })
   const passedChecks = scoredChecks.filter((check: { status?: string; passed?: boolean }) =>
     check?.passed === true || PASSING_STATUSES.has(String(check?.status || '').toLowerCase()),
@@ -310,13 +320,25 @@ function mapLlmCompliance(complianceData: unknown): HeaderComplianceInfo {
     : typeof data.score === 'number'
       ? data.score
       : undefined
-  const score = scoredChecks.length > 0
+  let score = scoredChecks.length > 0
     ? Math.round((passedChecks / scoredChecks.length) * 100)
-    : normalizePercentScore(llmScore)
+    : (violations.length > 0 ? normalizePercentScore(llmScore) : undefined)
+  if (scoredChecks.length === 0 && violations.length === 0) {
+    // N/A-only or empty checks must not display as 100% compliant.
+    score = undefined
+  }
+  if (violations.length > 0 && score == null) {
+    score = 35
+  }
+  if (violations.length > 0 && score != null) {
+    score = Math.min(score, 70)
+  }
 
   const isCompliant = violations.length > 0
     ? false
-    : (typeof data.compliant === 'boolean' ? data.compliant : (score == null ? null : score >= 80))
+    : scoredChecks.length === 0
+      ? null
+      : (typeof data.compliant === 'boolean' ? data.compliant : (score == null ? null : score >= 80))
 
   return {
     isCompliant,
@@ -331,13 +353,23 @@ function mapLlmCompliance(complianceData: unknown): HeaderComplianceInfo {
 
 /**
  * Header compliance: policy-pack evaluation wins over LLM COMPLIANCE when present.
+ * Pass contractText so dummy/unenforceable clauses are flagged even if the stored
+ * LLM artifact said 100%.
  */
-export function mapHeaderComplianceScore(extractedData: unknown): HeaderComplianceInfo {
+export function mapHeaderComplianceScore(
+  extractedData: unknown,
+  options?: { contractText?: string | null },
+): HeaderComplianceInfo {
   const artifacts = artifactsByType(extractedData)
   if (!artifacts) return { ...EMPTY }
 
   const policy = pickPolicyArtifact(artifacts)
   if (policy) return mapPolicyCompliance(policy)
 
-  return mapLlmCompliance(artifacts.compliance ?? artifacts.COMPLIANCE)
+  const raw = artifacts.compliance ?? artifacts.COMPLIANCE
+  const rec = asRecord(raw)
+  const withHygiene = options?.contractText && rec
+    ? applyContractingHygieneToCompliance(rec, options.contractText)
+    : rec
+  return mapLlmCompliance(withHygiene ?? raw)
 }

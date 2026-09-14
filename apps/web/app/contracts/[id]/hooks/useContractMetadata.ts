@@ -431,8 +431,10 @@ export function useContractMetadata(contract: ContractData | null) {
   }, [contract?.extractedData?.risk])
   
   const complianceInfo = useMemo(
-    () => mapHeaderComplianceScore(contract?.extractedData),
-    [contract?.extractedData],
+    () => mapHeaderComplianceScore(contract?.extractedData, {
+      contractText: (contract as { rawText?: string } | undefined)?.rawText || null,
+    }),
+    [contract?.extractedData, (contract as { rawText?: string } | undefined)?.rawText],
   )
   
   const isProcessing = useMemo(() => {

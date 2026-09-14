@@ -4,6 +4,7 @@
  */
 
 import type { AnalysisLanguage } from './analysis-language';
+import { applyContractingHygieneToCompliance } from './contracting-hygiene';
 import { parseIsoDate, parseMonetaryAmount } from './contract-extraction';
 import {
   compositeConfidence,
@@ -14,7 +15,7 @@ import {
 } from './grounded-field';
 import { capConfidenceIfUngrounded, pageNumbersFromMarkers, quoteGrounded } from './grounding';
 
-export const EXTRACTION_PIPELINE_VERSION = 'qwen-ml-v1';
+export const EXTRACTION_PIPELINE_VERSION = 'qwen-ml-v2';
 
 const SOURCE_KEYS = new Set([
   'source',
@@ -387,6 +388,12 @@ export function applyExtractionValidation(
 } {
   const packed = options?.packedText || ocrText;
   const ungroundedPaths: string[] = [];
+  if (artifacts.COMPLIANCE && typeof artifacts.COMPLIANCE === 'object') {
+    artifacts.COMPLIANCE = applyContractingHygieneToCompliance(artifacts.COMPLIANCE, ocrText) || artifacts.COMPLIANCE;
+  }
+  if (artifacts.compliance && typeof artifacts.compliance === 'object') {
+    artifacts.compliance = applyContractingHygieneToCompliance(artifacts.compliance, ocrText) || artifacts.compliance;
+  }
   for (const [type, data] of Object.entries(artifacts)) {
     if (!data || typeof data !== 'object') continue;
     const walked = groundArtifactTree(data, ocrText, packed);

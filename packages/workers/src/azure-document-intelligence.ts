@@ -255,8 +255,24 @@ export interface DIDocument {
   confidence: number;
 }
 
+export type DIFieldType =
+  | 'string'
+  | 'date'
+  | 'time'
+  | 'phoneNumber'
+  | 'number'
+  | 'integer'
+  | 'selectionMark'
+  | 'countryRegion'
+  | 'signature'
+  | 'array'
+  | 'object'
+  | 'currency'
+  | 'address'
+  | 'boolean';
+
 export interface DIField {
-  type: 'string' | 'date' | 'number' | 'currency' | 'address' | 'array' | 'object';
+  type: DIFieldType | string;
   value: any;
   content?: string;
   confidence: number;
@@ -699,17 +715,122 @@ function parseFormulas(raw: any): DIFormula[] {
   );
 }
 
-function parseDocuments(raw: any): DIDocument[] {
+/**
+ * Decode one Azure DI REST DocumentField (2024-11-30).
+ * REST uses typed value* members (valueArray, valueObject, valueString, …);
+ * some SDK/test fixtures still use a nested `value`. Both are accepted.
+ */
+export function decodeDocumentField(raw: unknown): DIField {
+  if (raw == null || typeof raw !== 'object') {
+    return { type: 'string', value: raw ?? null, confidence: 0 };
+  }
+  const f = raw as Record<string, any>;
+  const type = (typeof f.type === 'string' && f.type ? f.type : inferRestFieldType(f)) as string;
+  const confidence = typeof f.confidence === 'number' ? f.confidence : 0.9;
+  const content = typeof f.content === 'string' ? f.content : undefined;
+
+  let value: any = null;
+  switch (type) {
+    case 'array': {
+      const items = Array.isArray(f.valueArray) ? f.valueArray : Array.isArray(f.value) ? f.value : [];
+      value = items.map((item: unknown) => decodeDocumentField(item));
+      break;
+    }
+    case 'object': {
+      const obj = (f.valueObject && typeof f.valueObject === 'object' && !Array.isArray(f.valueObject))
+        ? f.valueObject
+        : (f.value && typeof f.value === 'object' && !Array.isArray(f.value) ? f.value : {});
+      const decoded: Record<string, DIField> = {};
+      for (const [key, nested] of Object.entries(obj)) {
+        decoded[key] = decodeDocumentField(nested);
+      }
+      value = decoded;
+      break;
+    }
+    case 'currency':
+      value = f.valueCurrency ?? f.value ?? null;
+      break;
+    case 'address':
+      value = f.valueAddress ?? f.value ?? content ?? null;
+      break;
+    case 'number':
+      value = f.valueNumber ?? f.valueInteger ?? f.value ?? null;
+      break;
+    case 'integer':
+      value = f.valueInteger ?? f.valueNumber ?? f.value ?? null;
+      break;
+    case 'date':
+      value = f.valueDate ?? f.value ?? content ?? null;
+      break;
+    case 'time':
+      value = f.valueTime ?? f.value ?? content ?? null;
+      break;
+    case 'boolean':
+      value = typeof f.valueBoolean === 'boolean' ? f.valueBoolean : (f.value ?? null);
+      break;
+    case 'countryRegion':
+      value = f.valueCountryRegion ?? f.value ?? content ?? null;
+      break;
+    case 'phoneNumber':
+      value = f.valuePhoneNumber ?? f.value ?? content ?? null;
+      break;
+    case 'selectionMark':
+      value = f.valueSelectionMark ?? f.value ?? null;
+      break;
+    case 'signature':
+      value = f.valueSignature ?? f.value ?? content ?? null;
+      break;
+    default:
+      value = f.valueString ?? f.value ?? content ?? null;
+  }
+
+  return { type, value, content, confidence };
+}
+
+function inferRestFieldType(f: Record<string, any>): string {
+  if (f.valueArray != null) return 'array';
+  if (f.valueObject != null) return 'object';
+  if (f.valueCurrency != null) return 'currency';
+  if (f.valueAddress != null) return 'address';
+  if (f.valueNumber != null) return 'number';
+  if (f.valueInteger != null) return 'integer';
+  if (f.valueDate != null) return 'date';
+  if (f.valueBoolean != null) return 'boolean';
+  if (f.valueString != null) return 'string';
+  return 'string';
+}
+
+function fieldScalar(field?: DIField | null): string | undefined {
+  if (!field) return undefined;
+  if (typeof field.value === 'string' && field.value.trim()) return field.value;
+  if (typeof field.value === 'number' && Number.isFinite(field.value)) return String(field.value);
+  if (field.value && typeof field.value === 'object') {
+    const obj = field.value as Record<string, any>;
+    if (typeof obj.streetAddress === 'string' || typeof obj.city === 'string') {
+      return field.content || [obj.streetAddress, obj.city, obj.state, obj.postalCode, obj.countryRegion]
+        .filter((p) => typeof p === 'string' && p.trim())
+        .join(', ') || undefined;
+    }
+    if (typeof obj.Name?.value === 'string') return obj.Name.value;
+    if (typeof obj.Region?.value === 'string') return obj.Region.value;
+  }
+  if (typeof field.content === 'string' && field.content.trim()) return field.content;
+  return undefined;
+}
+
+function objectFieldMap(field?: DIField | null): Record<string, DIField> | null {
+  if (!field) return null;
+  if (field.type === 'object' && field.value && typeof field.value === 'object' && !Array.isArray(field.value)) {
+    return field.value as Record<string, DIField>;
+  }
+  return null;
+}
+
+export function parseDocuments(raw: any): DIDocument[] {
   return (raw.documents || []).map((doc: any) => {
     const fields: Record<string, DIField> = {};
     for (const [key, val] of Object.entries(doc.fields || {})) {
-      const f = val as any;
-      fields[key] = {
-        type: f.type || 'string',
-        value: f.value ?? f.valueString ?? f.valueDate ?? f.valueNumber ?? f.content ?? null,
-        content: f.content,
-        confidence: f.confidence ?? 0.9,
-      };
+      fields[key] = decodeDocumentField(val);
     }
     return {
       docType: doc.docType || 'unknown',
@@ -899,16 +1020,20 @@ export async function analyzeContract(
 
   const parties: ContractParty[] = [];
 
-  // DI contract model returns parties as an array field
+  // DI contract model returns Parties as an array of objects (REST: valueArray/valueObject)
   const partiesField = fields['Parties'];
   if (partiesField?.type === 'array' && Array.isArray(partiesField.value)) {
-    for (const p of partiesField.value) {
-      const partyObj = p.value || p;
+    for (const p of partiesField.value as DIField[]) {
+      const partyObj = objectFieldMap(p) || (p as any)?.value || p;
+      const nameField = partyObj?.Name;
+      const roleField = partyObj?.Role;
+      const addressField = partyObj?.Address;
+      const name = fieldScalar(nameField) || fieldScalar(p) || 'Unknown';
       parties.push({
-        name: partyObj?.Name?.value || partyObj?.Name?.content || partyObj?.content || 'Unknown',
-        role: partyObj?.Role?.value || partyObj?.Role?.content || undefined,
-        address: partyObj?.Address?.value || partyObj?.Address?.content || undefined,
-        confidence: partyObj?.Name?.confidence ?? p.confidence ?? 0.8,
+        name,
+        role: fieldScalar(roleField) || undefined,
+        address: fieldScalar(addressField) || undefined,
+        confidence: nameField?.confidence ?? p.confidence ?? 0.8,
       });
     }
   }
@@ -918,23 +1043,38 @@ export async function analyzeContract(
     for (const [key, field] of Object.entries(fields)) {
       if (key.toLowerCase().includes('party') && field.value) {
         parties.push({
-          name: typeof field.value === 'string' ? field.value : field.content || 'Unknown',
+          name: fieldScalar(field) || field.content || 'Unknown',
           confidence: field.confidence,
         });
       }
     }
   }
 
+  const jurisdictionsField = fields['Jurisdictions'];
+  let jurisdiction: string | undefined;
+  if (jurisdictionsField?.type === 'array' && Array.isArray(jurisdictionsField.value)) {
+    const regions = (jurisdictionsField.value as DIField[])
+      .map((item) => {
+        const obj = objectFieldMap(item);
+        return fieldScalar(obj?.Region) || fieldScalar(obj?.Clause) || fieldScalar(item);
+      })
+      .filter((v): v is string => Boolean(v));
+    if (regions.length > 0) jurisdiction = [...new Set(regions)].join('; ');
+  }
+  if (!jurisdiction) {
+    jurisdiction = fieldScalar(fields['Jurisdiction']) || fieldScalar(fields['GoverningLaw']) || undefined;
+  }
+
   const contract: ContractExtractionResult = {
     parties,
     dates: {
-      effectiveDate: fields['ContractStartDate']?.value || fields['EffectiveDate']?.value || undefined,
-      expirationDate: fields['ContractEndDate']?.value || fields['ExpirationDate']?.value || undefined,
-      executionDate: fields['ExecutionDate']?.value || fields['SignatureDate']?.value || undefined,
-      renewalDate: fields['RenewalDate']?.value || undefined,
+      effectiveDate: fieldScalar(fields['EffectiveDate']) || fieldScalar(fields['ContractStartDate']) || undefined,
+      expirationDate: fieldScalar(fields['ExpirationDate']) || fieldScalar(fields['ContractEndDate']) || undefined,
+      executionDate: fieldScalar(fields['ExecutionDate']) || fieldScalar(fields['SignatureDate']) || undefined,
+      renewalDate: fieldScalar(fields['RenewalDate']) || undefined,
     },
-    jurisdiction: fields['Jurisdiction']?.value || fields['GoverningLaw']?.value || undefined,
-    title: fields['Title']?.value || fields['ContractTitle']?.value || undefined,
+    jurisdiction,
+    title: fieldScalar(fields['Title']) || fieldScalar(fields['ContractTitle']) || undefined,
     documentType: doc?.docType,
     confidence: doc?.confidence ?? 0.8,
     rawFields: fields,

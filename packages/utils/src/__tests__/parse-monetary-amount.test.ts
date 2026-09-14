@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseIsoDate, parseMonetaryAmount } from '../contract-extraction'
+import { parseIsoDate, parseMonetaryAmount, normalizeExtractedFieldValue } from '../contract-extraction'
 
 describe('parseMonetaryAmount', () => {
   it('parses Swiss apostrophe thousands', () => {
@@ -22,6 +22,27 @@ describe('parseMonetaryAmount', () => {
 
   it('does not invent a value from empty text', () => {
     expect(parseMonetaryAmount('')).toBeNull()
+  })
+
+  it('parses Swiss unicode apostrophe thousands', () => {
+    expect(parseMonetaryAmount('CHF 1’500.00')).toBe(1500)
+    expect(parseMonetaryAmount("CHF 1‘500.00")).toBe(1500)
+  })
+
+  it('parses European comma decimals and thousands', () => {
+    expect(parseMonetaryAmount('EUR 1.500,00')).toBe(1500)
+    expect(parseMonetaryAmount('EUR 1500,50')).toBe(1500.5)
+    expect(parseMonetaryAmount('EUR 1500,50.')).toBe(1500.5)
+  })
+
+  it('rejects ambiguous 1.200 without a locale', () => {
+    expect(parseMonetaryAmount('1.200')).toBeNull()
+  })
+
+  it('does not parse formatted currency strings as US commas', () => {
+    expect(normalizeExtractedFieldValue('CHF 1’500.00', 'currency', { locale: 'de' })).toBe(1500)
+    expect(normalizeExtractedFieldValue('EUR 1.500,00', 'currency', { locale: 'de' })).toBe(1500)
+    expect(normalizeExtractedFieldValue('EUR 1500,50', 'currency', { locale: 'de' })).toBe(1500.5)
   })
 })
 

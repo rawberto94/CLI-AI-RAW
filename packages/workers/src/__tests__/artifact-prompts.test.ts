@@ -161,6 +161,18 @@ describe('buildGroupedPrompt packing', () => {
   });
 });
 
+describe('risk prompt coverage', () => {
+  it('requires common clause checks and evidence limits', () => {
+    const prompt = buildArtifactPrompt('RISK', {
+      contractText: 'Agreement between A and B. Section 1. Payment is due in 30 days.',
+    });
+    expect(prompt).toMatch(/auto-renewal/i);
+    expect(prompt).toMatch(/data protection/i);
+    expect(prompt).toMatch(/verbatim quote/i);
+    expect(prompt).toMatch(/not proof that a protection is absent/i);
+  });
+});
+
 describe('formatDiSharedAppendix', () => {
   it('skips low-confidence key-value pairs', () => {
     const appendix = formatDiSharedAppendix({

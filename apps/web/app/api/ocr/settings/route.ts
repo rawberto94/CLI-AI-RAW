@@ -10,6 +10,7 @@ import { NextRequest } from 'next/server';
 import { getAvailableProviders, logProviderStatus as _logProviderStatus } from '@/lib/ai/eu-compliant-ocr';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
 import { hasAIClientConfig } from '@/lib/openai-client';
+import { prisma } from '@/lib/prisma';
 
 // ============================================================================
 // Types
@@ -185,7 +186,22 @@ export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
       features: ['Text', 'Tables', 'Layout'],
     });
 
-    // Get current settings (from env or defaults)
+    // Environment values provide the deployment defaults; tenant settings win
+    // so the UI controls are effective for workers in every process.
+    let persisted: Partial<OCRSettings> = {};
+    if (ctx.tenantId) {
+      const tenant = await prisma.tenantConfig.findUnique({
+        where: { tenantId: ctx.tenantId },
+        select: { extractionSettings: true },
+      });
+      const extraction = tenant?.extractionSettings;
+      if (extraction && typeof extraction === 'object' && !Array.isArray(extraction)) {
+        const candidate = (extraction as Record<string, unknown>).ocrSettings;
+        if (candidate && typeof candidate === 'object' && !Array.isArray(candidate)) {
+          persisted = candidate as Partial<OCRSettings>;
+        }
+      }
+    }
     const settings: OCRSettings = {
       defaultProvider: process.env.OCR_DEFAULT_PROVIDER || DEFAULT_SETTINGS.defaultProvider,
       preprocessingEnabled: process.env.OCR_PREPROCESSING !== 'false',
@@ -195,6 +211,7 @@ export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
       confidenceThreshold: parseFloat(process.env.OCR_CONFIDENCE_THRESHOLD || '0.85'),
       enableCaching: process.env.OCR_CACHING !== 'false',
       maxRetries: parseInt(process.env.OCR_MAX_RETRIES || '3', 10),
+      ...persisted,
     };
 
     // Get recommendations based on configuration
@@ -237,18 +254,32 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
       }
     }
 
-    // In a real implementation, you'd save these to a database or config file
-    // For now, return success with the validated settings
     const updatedSettings: OCRSettings = {
       ...DEFAULT_SETTINGS,
       ...settings,
     };
 
+    if (!ctx.tenantId) {
+      return createErrorResponse(ctx, 'TENANT_REQUIRED', 'Tenant context is required to save OCR settings', 400);
+    }
+    const current = await prisma.tenantConfig.findUnique({
+      where: { tenantId: ctx.tenantId },
+      select: { extractionSettings: true },
+    });
+    const extraction = current?.extractionSettings && typeof current.extractionSettings === 'object' && !Array.isArray(current.extractionSettings)
+      ? current.extractionSettings as Record<string, unknown>
+      : {};
+    await prisma.tenantConfig.upsert({
+      where: { tenantId: ctx.tenantId },
+      update: { extractionSettings: { ...extraction, ocrSettings: updatedSettings } as any },
+      create: { tenantId: ctx.tenantId, extractionSettings: { ocrSettings: updatedSettings } as any },
+    });
+
     return createSuccessResponse(ctx, {
       success: true,
       message: 'OCR settings updated successfully',
       data: updatedSettings,
-      note: 'Settings are applied for this session. For persistent settings, update environment variables.',
+      note: 'Settings are persisted for this tenant and used by subsequent OCR jobs.',
     });
 });
 

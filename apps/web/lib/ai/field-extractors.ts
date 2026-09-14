@@ -8,7 +8,7 @@
 
 import OpenAI from 'openai';
 import { createOpenAIClient, getOpenAIApiKey } from '@/lib/openai-client';
-import { analysisLanguageInstructions, resolveAnalysisLanguage } from '@repo/utils';
+import { analysisLanguageInstructions, parseMonetaryAmount, resolveAnalysisLanguage } from '@repo/utils';
 
 let _openai: OpenAI | null = null;
 function getOpenAI(): OpenAI {
@@ -217,7 +217,7 @@ Return JSON:
   parseResponse(response: any, context: FieldExtractionContext): ExtractionResponse {
     let value = response.value;
     
-    // Parse numeric value
+    // Parse numeric value with locale-aware Swiss/EU formats
     if (typeof value === 'string') {
       value = this.parseAmountString(value);
     } else if (typeof value !== 'number') {
@@ -247,27 +247,9 @@ Return JSON:
   }
   
   private parseAmountString(str: any): number | null {
-    if (typeof str === 'number') return str;
+    if (typeof str === 'number') return Number.isFinite(str) ? str : null;
     if (!str) return null;
-    
-    let cleaned = String(str)
-      .replace(/[^0-9.,KMBkmb]/g, '')
-      .replace(/,/g, '');
-    
-    let multiplier = 1;
-    if (/[Kk]$/.test(cleaned)) {
-      multiplier = 1000;
-      cleaned = cleaned.slice(0, -1);
-    } else if (/[Mm]$/.test(cleaned)) {
-      multiplier = 1000000;
-      cleaned = cleaned.slice(0, -1);
-    } else if (/[Bb]$/.test(cleaned)) {
-      multiplier = 1000000000;
-      cleaned = cleaned.slice(0, -1);
-    }
-    
-    const value = parseFloat(cleaned);
-    return isNaN(value) ? null : value * multiplier;
+    return parseMonetaryAmount(String(str), { rejectAmbiguous: true });
   }
 }
 

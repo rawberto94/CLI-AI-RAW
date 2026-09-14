@@ -20,7 +20,7 @@ import type { EnterpriseMetadata } from '@/lib/contracts/server/metadata';
 import type { ContractApiContext } from '@/lib/contracts/server/context';
 import { describeHeaderCompliance, mapHeaderComplianceScore } from '@/lib/contracts/header-compliance';
 import { resolveDocumentClassification } from '@/lib/contracts/metadata-display';
-import { formatMoneyText } from '@repo/utils';
+import { formatMoneyText, withHumanLocks } from '@repo/utils';
 
 interface ExtractedDataArtifact {
   type: string;
@@ -1166,7 +1166,20 @@ export async function putContractDetails(
     if (updates.tags !== undefined) aiMetadataUpdates.tags = updates.tags;
 
     if (Object.keys(aiMetadataUpdates).length > 0) {
-      prismaUpdates.aiMetadata = { ...existingAiMetadata, ...aiMetadataUpdates } as any;
+      const lockFields: Array<'totalValue' | 'currency' | 'effectiveDate' | 'expirationDate' | 'clientName' | 'supplierName' | 'noticePeriodDays' | 'jurisdiction' | 'contractTitle'> = [];
+      if (updates.totalValue !== undefined || updates.currency !== undefined) {
+        lockFields.push('totalValue', 'currency');
+      }
+      if (updates.effectiveDate !== undefined || updates.startDate !== undefined) lockFields.push('effectiveDate');
+      if (updates.expirationDate !== undefined || updates.endDate !== undefined) lockFields.push('expirationDate');
+      if (updates.contractTitle !== undefined) lockFields.push('contractTitle');
+      if (updates.clientName !== undefined) lockFields.push('clientName');
+      if (updates.supplierName !== undefined) lockFields.push('supplierName');
+      if (updates.noticePeriodDays !== undefined) lockFields.push('noticePeriodDays');
+      const merged = { ...existingAiMetadata, ...aiMetadataUpdates };
+      prismaUpdates.aiMetadata = (lockFields.length
+        ? withHumanLocks(merged, lockFields)
+        : merged) as any;
     }
 
     const updatedContract = await prisma.contract.update({

@@ -129,7 +129,7 @@ describe('processMetadataExtractionJob metadata create tags', () => {
         confidence: 0.95,
         validationStatus: 'valid',
         requiresHumanReview: false,
-        source: { text: 'Legal' },
+        source: { text: 'The Legal department owns this MSA' },
       }],
     });
     mockTransaction.mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) => fn({
@@ -142,7 +142,7 @@ describe('processMetadataExtractionJob metadata create tags', () => {
   it('creates metadata with Contract.tags instead of []', async () => {
     mockFindFirst.mockResolvedValue({
       id: 'c1',
-      rawText: 'x'.repeat(200),
+      rawText: `The Legal department owns this MSA. ${'x'.repeat(200)}`,
       status: 'COMPLETED',
       tags: ['msa', 'renewal'],
       contractMetadata: null,
@@ -160,5 +160,64 @@ describe('processMetadataExtractionJob metadata create tags', () => {
     }));
     const upsertArg = mockUpsert.mock.calls[0][0];
     expect(upsertArg.update.tags).toBeUndefined();
+  });
+
+  it('does not auto-apply values that failed validation even at high confidence', async () => {
+    mockExtractMetadata.mockResolvedValue({
+      extractedAt: new Date(),
+      schemaId: 's1',
+      schemaVersion: 1,
+      pipelineVersion: 'qwen-ml-v2',
+      rawExtractions: {},
+      warnings: [],
+      results: [{
+        fieldName: 'department',
+        fieldId: 'f1',
+        fieldType: 'text',
+        value: 'Legal',
+        confidence: 0.99,
+        validationStatus: 'invalid',
+        requiresHumanReview: true,
+        source: { text: 'The Legal department owns this MSA' },
+      }],
+    });
+    mockFindFirst.mockResolvedValue({
+      id: 'c1',
+      rawText: `The Legal department owns this MSA. ${'x'.repeat(200)}`,
+      status: 'COMPLETED',
+      tags: [],
+      contractMetadata: null,
+    });
+
+    const result = await processMetadataExtractionJob(makeJob() as any);
+    expect(result.fieldsAutoApplied).toBe(0);
+    expect(mockRecordFieldAutoApplied).not.toHaveBeenCalled();
+  });
+
+  it('re-extracts when a prior run used a different pipeline version', async () => {
+    mockFindFirst.mockResolvedValue({
+      id: 'c1',
+      rawText: `The Legal department owns this MSA. ${'x'.repeat(200)}`,
+      status: 'COMPLETED',
+      tags: [],
+      contractMetadata: {
+        customFields: {
+          _aiExtraction: {
+            lastExtraction: {
+              ok: true,
+              pipelineVersion: 'qwen-ml-v1',
+              schemaVersion: 1,
+              rawTextHash: undefined,
+            },
+          },
+        },
+      },
+    });
+    const job = makeJob();
+    job.data.forceReExtract = false;
+
+    const result = await processMetadataExtractionJob(job as any);
+    expect(result.success).toBe(true);
+    expect(mockExtractMetadata).toHaveBeenCalled();
   });
 });

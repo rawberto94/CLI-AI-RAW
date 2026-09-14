@@ -65,6 +65,43 @@ export function isAutoApplyHighRisk(
 }
 
 /** High-risk / ungrounded / ambiguous extractions always need a human. */
+export type HumanLockField =
+  | 'totalValue'
+  | 'currency'
+  | 'effectiveDate'
+  | 'expirationDate'
+  | 'clientName'
+  | 'supplierName'
+  | 'noticePeriodDays'
+  | 'jurisdiction'
+  | 'contractTitle';
+
+function humanLocksOf(aiMetadata: unknown): Record<string, boolean> {
+  if (!aiMetadata || typeof aiMetadata !== 'object' || Array.isArray(aiMetadata)) return {};
+  const locks = (aiMetadata as { humanLocks?: unknown }).humanLocks;
+  if (!locks || typeof locks !== 'object' || Array.isArray(locks)) return {};
+  return locks as Record<string, boolean>;
+}
+
+export function isHumanFieldLocked(aiMetadata: unknown, field: HumanLockField): boolean {
+  if (field === 'totalValue' || field === 'currency') {
+    if (aiMetadata && typeof aiMetadata === 'object' && !Array.isArray(aiMetadata)
+      && (aiMetadata as { tcvSource?: unknown }).tcvSource === 'human') {
+      return true;
+    }
+  }
+  return humanLocksOf(aiMetadata)[field] === true;
+}
+
+export function withHumanLocks(
+  aiMetadata: Record<string, unknown>,
+  fields: HumanLockField[],
+): Record<string, unknown> {
+  const locks = { ...humanLocksOf(aiMetadata) };
+  for (const field of fields) locks[field] = true;
+  return { ...aiMetadata, humanLocks: locks };
+}
+
 export function needsHumanReviewHighRisk(input: {
   confidence?: number | null;
   grounded?: boolean;

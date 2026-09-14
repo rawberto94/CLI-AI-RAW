@@ -226,7 +226,7 @@ export const GET = withAuthApiHandler(async (request, ctx) => {
         }),
         prisma.tenantConfig.findUnique({
           where: { tenantId },
-          select: { securitySettings: true },
+          select: { securitySettings: true, workflowSettings: true },
         }),
       ]);
 
@@ -238,6 +238,12 @@ export const GET = withAuthApiHandler(async (request, ctx) => {
         ...settings,
         security: normalizeSettingsSecurity(tenantConfig?.securitySettings ?? settings.security),
       };
+      if (tenantConfig?.workflowSettings && typeof tenantConfig.workflowSettings === 'object' && !Array.isArray(tenantConfig.workflowSettings)) {
+        const workflow = tenantConfig.workflowSettings as Record<string, unknown>;
+        if (workflow.processing && typeof workflow.processing === 'object' && !Array.isArray(workflow.processing)) {
+          settings = deepMerge(settings, { processing: workflow.processing } as Record<string, unknown>) as typeof DEFAULT_SETTINGS;
+        }
+      }
     }
 
     // Get user-specific info
@@ -480,6 +486,24 @@ export const PUT = withAuthApiHandler(async (request, ctx) => {
     }
 
     if (tenantId) {
+      if (section === 'processing') {
+        const tenantConfig = await prisma.tenantConfig.findUnique({
+          where: { tenantId },
+          select: { workflowSettings: true },
+        });
+        const currentWorkflow = tenantConfig?.workflowSettings && typeof tenantConfig.workflowSettings === 'object' && !Array.isArray(tenantConfig.workflowSettings)
+          ? tenantConfig.workflowSettings as Record<string, unknown>
+          : {};
+        const currentProcessing = currentWorkflow.processing && typeof currentWorkflow.processing === 'object' && !Array.isArray(currentWorkflow.processing)
+          ? currentWorkflow.processing as Record<string, unknown>
+          : {};
+        const processing = { ...currentProcessing, ...updates };
+        await prisma.tenantConfig.upsert({
+          where: { tenantId },
+          update: { workflowSettings: { ...currentWorkflow, processing } as any },
+          create: { tenantId, workflowSettings: { processing } as any },
+        });
+      }
       // Get or create TenantSettings
       const tenantSettings = await prisma.tenantSettings.findFirst({
         where: { tenantId },

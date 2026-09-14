@@ -250,7 +250,8 @@ export function ContractScoresCard({
     ? describeHeaderCompliance(complianceInfo)
     : 'Compliance has not been assessed for this document.'
 
-  const healthScore = healthInfo?.score ?? 100
+  const healthAssessed = healthInfo?.score != null
+  const healthScore = healthInfo?.score ?? 0
   const compliancePercent = complianceScore ?? 0
 
   const riskColors = getRiskColor(riskLevel)
@@ -294,7 +295,7 @@ export function ContractScoresCard({
           />
           <CompactTile
             label="Health"
-            value={`${healthScore}%`}
+            value={healthAssessed ? `${healthScore}%` : '—'}
             icon={<Activity className={cn("h-3.5 w-3.5", healthColors.text)} />}
             percent={healthScore}
             active={active === 'health'}
