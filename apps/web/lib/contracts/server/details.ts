@@ -94,6 +94,7 @@ interface ExtractedDataset {
 interface ContractDataForInsights {
   processing: ProcessingData;
   extractedData?: ExtractedDataset;
+  rawText?: string | null;
 }
 
 interface FinancialDataInput {
@@ -219,7 +220,9 @@ function generateProcessingInsights(contractData: ContractDataForInsights) {
     }
   }
 
-  const headerCompliance = mapHeaderComplianceScore(extracted);
+  const headerCompliance = mapHeaderComplianceScore(extracted, {
+    contractText: contractData.rawText || null,
+  });
   if (headerCompliance.source !== 'none') {
     const score = headerCompliance.score ?? null;
     insights.push({
@@ -608,6 +611,7 @@ export async function getContractDetails(
             : undefined),
       },
       extractedData: artifactsByType,
+      rawText: typeof contract.rawText === 'string' ? contract.rawText : null,
     };
 
     const enterpriseMetadata = ((contract as any).aiMetadata || {}) as Record<string, any>;

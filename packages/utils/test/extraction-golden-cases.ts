@@ -287,6 +287,25 @@ Daily rate: CHF 1'500.00.`,
     },
   },
   {
+    id: 'en-junk-forfeiture',
+    language: 'en',
+    scanType: 'native',
+    length: 'short',
+    kind: 'sow',
+    locale: 'en',
+    text: `[PAGE 1]
+In case of not respecting a rule the company will give 20% of its total quotes.
+No total contract value is stated.`,
+    overview: { totalValue: null, currency: null },
+    expected: {
+      totalValue: null,
+      currency: null,
+      effectiveDate: null,
+      clientName: null,
+      supplierName: null,
+    },
+  },
+  {
     id: 'en-missing-fields',
     language: 'en',
     scanType: 'scanned',

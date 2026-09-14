@@ -20,7 +20,6 @@ import {
   FIELD_TRUST_THRESHOLDS,
   isAutoApplyHighRisk,
   isHumanFieldLocked,
-  isHumanTcvLocked,
   pickOurOrganization,
   quoteGrounded,
 } from '@repo/utils';
@@ -142,6 +141,8 @@ export async function processMetadataExtractionJob(
         contractTitle: true,
         totalValue: true,
         currency: true,
+        paymentTerms: true,
+        autoRenewalEnabled: true,
         contractMetadata: { select: { customFields: true } },
       },
     });
@@ -329,10 +330,32 @@ export async function processMetadataExtractionJob(
     };
 
     const appliedAt = new Date();
+    const CORE_PROPOSAL_FIELDS = [
+      'total_value',
+      'currency',
+      'effective_date',
+      'expiration_date',
+      'client_name',
+      'supplier_name',
+      'notice_period',
+      'jurisdiction',
+    ] as const;
+    const proposedCoreFields: Record<string, unknown> = {};
+    for (const key of CORE_PROPOSAL_FIELDS) {
+      if (metadataToApply[key] !== undefined && metadataToApply[key] !== null) {
+        proposedCoreFields[key] = metadataToApply[key];
+        delete metadataToApply[key];
+      }
+    }
+
     const mergedCustomFields = {
       ...existingCustom,
       ...(Object.keys(metadataToApply).length > 0 ? metadataToApply : {}),
-      _aiExtraction: extractionData,
+      _aiExtraction: {
+        ...extractionData,
+        proposedCoreFields,
+        coreFieldsWritePath: 'persist-mapper-only',
+      },
       _metadata: {
         ...(existingCustom?._metadata || {}),
         appliedAt: appliedAt.toISOString(),
@@ -344,40 +367,20 @@ export async function processMetadataExtractionJob(
 
     const contractUpdates: Record<string, any> = {};
     const locks = contract.aiMetadata;
-    if (typeof metadataToApply.contract_title === 'string' && !isHumanFieldLocked(locks, 'contractTitle')) {
+    if (
+      typeof metadataToApply.contract_title === 'string'
+      && !contract.contractTitle
+      && !isHumanFieldLocked(locks, 'contractTitle')
+    ) {
       contractUpdates.contractTitle = metadataToApply.contract_title;
     }
-    if (typeof metadataToApply.client_name === 'string' && !isHumanFieldLocked(locks, 'clientName')) {
-      contractUpdates.clientName = metadataToApply.client_name;
+    if (typeof metadataToApply.contract_type === 'string' && !contract.contractType) {
+      contractUpdates.contractType = metadataToApply.contract_type;
     }
-    if (typeof metadataToApply.supplier_name === 'string' && !isHumanFieldLocked(locks, 'supplierName')) {
-      contractUpdates.supplierName = metadataToApply.supplier_name;
+    if (typeof metadataToApply.payment_terms === 'string' && !contract.paymentTerms) {
+      contractUpdates.paymentTerms = metadataToApply.payment_terms;
     }
-    if (typeof metadataToApply.contract_type === 'string') contractUpdates.contractType = metadataToApply.contract_type;
-    if (!isHumanTcvLocked(locks) && !isHumanFieldLocked(locks, 'totalValue')) {
-      if (metadataToApply.total_value !== undefined && metadataToApply.total_value !== null && !Number.isNaN(Number(metadataToApply.total_value))) {
-        contractUpdates.totalValue = Number(metadataToApply.total_value);
-      }
-    }
-    if (typeof metadataToApply.currency === 'string' && !isHumanFieldLocked(locks, 'currency')) {
-      contractUpdates.currency = metadataToApply.currency;
-    }
-    if (typeof metadataToApply.payment_terms === 'string') contractUpdates.paymentTerms = metadataToApply.payment_terms;
-    if (typeof metadataToApply.jurisdiction === 'string' && !isHumanFieldLocked(locks, 'jurisdiction')) {
-      contractUpdates.jurisdiction = metadataToApply.jurisdiction;
-    }
-    if (!isHumanFieldLocked(locks, 'effectiveDate') && (typeof metadataToApply.effective_date === 'string' || metadataToApply.effective_date instanceof Date)) {
-      const d = new Date(metadataToApply.effective_date);
-      if (!Number.isNaN(d.getTime())) contractUpdates.effectiveDate = d;
-    }
-    if (!isHumanFieldLocked(locks, 'expirationDate') && (typeof metadataToApply.expiration_date === 'string' || metadataToApply.expiration_date instanceof Date)) {
-      const d = new Date(metadataToApply.expiration_date);
-      if (!Number.isNaN(d.getTime())) contractUpdates.expirationDate = d;
-    }
-    if (!isHumanFieldLocked(locks, 'noticePeriodDays') && typeof metadataToApply.notice_period === 'number' && Number.isFinite(metadataToApply.notice_period)) {
-      contractUpdates.noticePeriodDays = Math.max(0, Math.round(metadataToApply.notice_period));
-    }
-    if (typeof metadataToApply.auto_renewal === 'boolean') {
+    if (typeof metadataToApply.auto_renewal === 'boolean' && contract.autoRenewalEnabled == null) {
       contractUpdates.autoRenewalEnabled = metadataToApply.auto_renewal;
     }
 

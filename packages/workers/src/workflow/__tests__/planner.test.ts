@@ -31,10 +31,19 @@ describe('shouldEnqueuePolicyEvaluation', () => {
     ).toBe(true);
   });
 
-  it('does not enqueue short text (would be INDETERMINATE)', () => {
+  it('evaluates short demo files when a pack is selected', () => {
     expect(
       shouldEnqueuePolicyEvaluation({
-        textLength: 1000,
+        textLength: 200,
+        policyPackId: 'pack_swiss_dpa',
+      }),
+    ).toBe(true);
+  });
+
+  it('does not enqueue empty or tiny text', () => {
+    expect(
+      shouldEnqueuePolicyEvaluation({
+        textLength: 40,
         policyPackId: 'pack_swiss_dpa',
       }),
     ).toBe(false);

@@ -23,10 +23,10 @@ const JUNK_RE =
   /\blorem ipsum\b|\bplaceholder\b|\[insert\b|\btbd\b|\bsample contract\b|\bdummy (?:text|contract)\b|\basdfg|\bqwerty/i;
 
 const VAGUE_RULE_RE =
-  /\b(?:not respecting|non[-\s]?respect(?:ing)? of|does not respect|failure to respect)\s+(?:a |the |any )?rules?\b/i;
+  /\b(?:not respecting|non[-\s]?respect(?:ing)? of|does not respect|failure to respect|any infraction|ne pas respecter)\s+(?:a |the |any |une |la )?rules?\b|\bne pas respecter (?:une |la )?règle|\bbei (?:jeder |jederlei )?pflichtverletzung/i;
 
 const FORFEIT_QUOTES_RE =
-  /\b(?:give|pay|forfeit|transfer|hand over|cede)\s+(?:up to\s+)?(\d{1,3})\s*%\s+of\s+(?:its |the |their )?(?:total |entire )?(?:quotes?|quotations?|revenue|turnover|sales|profits?|company|business)\b/i;
+  /\b(?:give|pay|forfeit|transfer|hand over|cede|donate|surrender|relinquish)\s+(?:up to\s+)?(?:(\d{1,3})\s*%|(\d{1,3})\s*percent|a fifth|one fifth|a quarter|half)\s+of\s+(?:its |the |their )?(?:total |entire |billable )?(?:quotes?|quotations?|revenue|turnover|sales|profits?|company|business|pipeline)\b|\b(?:donnera?|versera?)\s+\d{1,3}\s*%\s+de\s+(?:ses |son )?(?:devis|chiffre|ca)\b|\b\d{1,3}\s*%\s+(?:seiner|ihres)\s+(?:angebote|umsätze|umsatzes)\b/i;
 
 const OVER_100_PCT_RE =
   /\b(1[0-9]{2}|[2-9][0-9]{2})\s*%\s+of\b/i;
@@ -78,10 +78,11 @@ export function assessContractingHygiene(text: string): HygieneAssessment {
 
   const forfeit = source.match(FORFEIT_QUOTES_RE);
   if (forfeit?.index != null) {
-    const pct = parseInt(forfeit[1] || '0', 10);
+    const pct = parseInt(forfeit[1] || forfeit[2] || '0', 10);
+    const pctLabel = pct > 0 ? `${pct}%` : 'a share';
     issues.push({
       severity: 'high',
-      description: `Unenforceable forfeiture of ${pct}% of quotes/revenue/company assets as a penalty. This is not a valid liquidated-damages clause.`,
+      description: `Unenforceable forfeiture of ${pctLabel} of quotes/revenue/company assets as a penalty. This is not a valid liquidated-damages clause.`,
       recommendation: 'Replace with a defined, proportionate contractual remedy (capped damages, service credits, or termination rights).',
       quote: snippet(source, forfeit.index),
       rule: 'unenforceable-forfeiture',

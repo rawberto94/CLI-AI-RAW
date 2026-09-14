@@ -1,6 +1,6 @@
 import { sha256 } from '../utils/hash';
 
-export const POLICY_EVAL_MIN_TEXT_LENGTH = 1000;
+export const POLICY_EVAL_MIN_TEXT_LENGTH = 80;
 
 export function shouldEnqueuePolicyEvaluation(args: {
   textLength: number;
@@ -10,9 +10,9 @@ export function shouldEnqueuePolicyEvaluation(args: {
 }): boolean {
   if (args.policyPacksEnabled === 'false') return false;
   if (args.autoPolicyEvaluation === 'false') return false;
-  if (args.textLength <= POLICY_EVAL_MIN_TEXT_LENGTH) return false;
-  // Default-on when a pack was selected at upload. Global AUTO=true still
-  // evaluates every long contract (tenant default / scope match).
+  if (args.textLength < POLICY_EVAL_MIN_TEXT_LENGTH) return false;
+  // Pack selected at upload or tenant default: evaluate even short/demo files.
+  // Global AUTO=true still evaluates every contract above the min length.
   return Boolean(args.policyPackId) || args.autoPolicyEvaluation === 'true';
 }
 

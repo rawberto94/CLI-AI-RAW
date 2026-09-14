@@ -18,6 +18,20 @@ describe('assessContractingHygiene', () => {
     const result = assessContractingHygiene(text)
     expect(result.issues).toEqual([])
   })
+
+  it('flags paraphrased forfeiture of pipeline/quotes', () => {
+    const text = 'The vendor shall donate a fifth of billable pipeline upon any infraction of a rule.'
+    const result = assessContractingHygiene(text)
+    expect(result.issues.some((issue) => issue.rule === 'unenforceable-forfeiture')).toBe(true)
+    expect(result.scoreCap).toBe(35)
+  })
+
+  it('flags a French 20% of quotes penalty', () => {
+    const text = 'Si le fournisseur ne respecte pas une règle, il donnera 20% de ses devis.'
+    const result = assessContractingHygiene(text)
+    expect(result.issues.length).toBeGreaterThan(0)
+    expect(result.scoreCap).not.toBeNull()
+  })
 })
 
 describe('applyContractingHygieneToCompliance', () => {

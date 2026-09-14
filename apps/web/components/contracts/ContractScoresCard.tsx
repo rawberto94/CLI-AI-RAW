@@ -253,6 +253,9 @@ export function ContractScoresCard({
   const healthAssessed = healthInfo?.score != null
   const healthScore = healthInfo?.score ?? 0
   const compliancePercent = complianceScore ?? 0
+  const flaggedChecks = complianceInfo?.checks?.filter((c) => c.passed !== true) || []
+  const firstFlagQuote = flaggedChecks.find((c) => c.quote && c.quote.trim().length >= 8)?.quote
+    || complianceInfo?.violations?.[0]
 
   const riskColors = getRiskColor(riskLevel)
   const complianceColors = getComplianceColor(isCompliant)
@@ -303,6 +306,17 @@ export function ContractScoresCard({
             colorScheme={healthColors}
           />
         </div>
+
+        {isCompliant === false && firstFlagQuote && (
+          <p className="mt-2 text-xs leading-5 text-red-800 bg-red-50 border border-red-100 rounded-md px-2.5 py-1.5">
+            Flagged in the text: “{firstFlagQuote.slice(0, 220)}{firstFlagQuote.length > 220 ? '…' : ''}”
+          </p>
+        )}
+        {isCompliant === false && !firstFlagQuote && (
+          <p className="mt-2 text-xs leading-5 text-amber-800 bg-amber-50 border border-amber-100 rounded-md px-2.5 py-1.5">
+            Compliance issues were raised without a source sentence — treat this score as a review queue, not a pass.
+          </p>
+        )}
 
         {active && (
           <div className="mt-3 p-3 rounded-lg bg-slate-50 border text-xs text-slate-600 space-y-2">
@@ -373,6 +387,9 @@ export function ContractScoresCard({
                         <AlertCircle className="h-3 w-3 mt-0.5 text-red-500 flex-shrink-0" />
                         <span className="min-w-0">
                           <span>{item.message || item.name || complianceIssues[i]}</span>
+                          {item.quote && (
+                            <span className="block text-slate-500 italic mt-0.5">“{item.quote.slice(0, 180)}”</span>
+                          )}
                           <FindingSourceLink
                             className="ml-1"
                             contractId={contractId}

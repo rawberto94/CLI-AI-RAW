@@ -194,6 +194,40 @@ describe('processMetadataExtractionJob metadata create tags', () => {
     expect(mockRecordFieldAutoApplied).not.toHaveBeenCalled();
   });
 
+  it('does not write TCV/dates/parties onto Contract columns — those stay proposals', async () => {
+    mockExtractMetadata.mockResolvedValue({
+      extractedAt: new Date(),
+      schemaId: 's1',
+      schemaVersion: 1,
+      pipelineVersion: 'qwen-ml-v2',
+      rawExtractions: {},
+      warnings: [],
+      results: [{
+        fieldName: 'total_value',
+        fieldId: 'f-tv',
+        fieldType: 'currency',
+        value: 999999,
+        confidence: 0.99,
+        validationStatus: 'valid',
+        requiresHumanReview: false,
+        source: { text: 'Total Contract Value CHF 999999 in this sentence here' },
+      }],
+    });
+    mockFindFirst.mockResolvedValue({
+      id: 'c1',
+      rawText: `Total Contract Value CHF 999999 in this sentence here. ${'x'.repeat(200)}`,
+      status: 'COMPLETED',
+      tags: [],
+      contractTitle: 'Existing',
+      contractMetadata: null,
+    });
+
+    await processMetadataExtractionJob(makeJob() as any);
+    expect(mockContractUpdate).not.toHaveBeenCalled();
+    const upsertArg = mockUpsert.mock.calls[0][0];
+    expect(upsertArg.update.customFields._aiExtraction.proposedCoreFields.total_value).toBe(999999);
+  });
+
   it('re-extracts when a prior run used a different pipeline version', async () => {
     mockFindFirst.mockResolvedValue({
       id: 'c1',
