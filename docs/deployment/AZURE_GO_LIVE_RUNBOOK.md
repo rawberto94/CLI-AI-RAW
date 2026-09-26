@@ -28,7 +28,7 @@ Provisioning a VM and running Docker Compose would create a parallel environment
 | Document Intelligence | `ConTigoDocumentIntelligence` | ✅ Provisioned — ❌ **not wired to app** |
 | Key Vault | `contigo` | ✅ Running |
 | Application Insights | `contigo-insights` | ✅ Running — wired |
-| Neon DB | `ep-long-wildflower-*` (gwc, Azure) | ✅ Connected — migrations applied |
+| Neon DB | `ep-weathered-band-*` (eu-central-1, AWS) | ✅ Connected — migrated off deprecated azure-gwc 2026-09-26 |
 | Redis | — | ❌ **Does not exist** |
 | File Storage | — | ❌ **Does not exist** — uploads fall back to ephemeral container disk |
 
